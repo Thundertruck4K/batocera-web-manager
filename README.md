@@ -1,24 +1,35 @@
-# Batocera System Manager Web — v1.0
+<div align="center">
 
-Interfaz web moderna para gestionar sistemas personalizados en **Batocera v43+**.
+# Batocera System Manager Web
+
+**v1.2** — Interfaz web para gestionar sistemas personalizados en **Batocera v43+**
+
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Dependencias](https://img.shields.io/badge/dependencias-stdlib%20(Python%20puro)-0d1117)]()
+
+**Sin dependencias externas** — solo usa la librería estándar de Python.  
 Accede desde cualquier navegador en tu red local (PC, celular, tablet).
 
----
-
-## Características
-
-- **Agregar sistemas** con formulario completo: nombre, slug, rutas, extensiones, emulador, core, plataforma de scraping
-- **Subir e instalar logos** directamente al directorio del tema activo
-- **Vista previa del XML** antes de escribir cualquier archivo
-- **Modo simulación** (dry-run) para ver qué haría sin modificar nada
-- **Lista de sistemas creados** con visor de XML y borrado
-- **Detección automática** del tema activo
-- **Configuración de rutas** ajustable y persistente
-- Acceso desde **cualquier dispositivo** en la red (no requiere display)
+</div>
 
 ---
 
-## Instalación rápida
+## ✨ Características
+
+- **🕹️ Gestor de sistemas** — Crear, editar y eliminar sistemas personalizados para EmulationStation con formulario completo
+- **🔍 Scraper multi-fuente** — ScreenScraper.fr, TheGamesDB, IGDB (Twitch)
+- **📊 Dashboard** — Monitor en vivo de CPU, GPU, RAM, disco, red, temperatura, procesos
+- **📁 Explorador de ROMs** — Navegar, buscar, renombrar, subir y eliminar ROMs
+- **🔬 Verificación de BIOS** — Chequea integridad MD5 de tus BIOS
+- **🖼️ Subida de logos** — Placeholder automático o subida manual al tema activo
+- **📄 Vista previa XML** — Modo simulación (dry-run) antes de escribir
+- **🚀 Gestor de autostart** — Instalar/desinstalar/reiniciar servicio en custom.sh
+- **⚙️ Configuración persistente** — Rutas ajustables guardadas en JSON
+
+---
+
+## 📦 Instalación
 
 ### En Batocera (vía SSH)
 
@@ -30,148 +41,120 @@ ssh root@<IP-de-Batocera>
 # Subir los archivos (desde tu PC)
 scp -r batocera_web/ root@<IP-Batocera>:/userdata/system/
 
-# En Batocera: instalar
+# En Batocera: ejecutar
 cd /userdata/system/batocera_web
-chmod +x install.sh
-bash install.sh
+python3 app.py
 ```
 
-### Manual (sin script)
+### Iniciar con puerto personalizado
 
 ```bash
-# 1. Instalar dependencias
-pip install flask pillow --break-system-packages
+python3 app.py --port 5001
+```
 
-# 2. Copiar archivos a un directorio persistente
-cp -r batocera_web/ /userdata/system/batocera-manager/
+### Pillow (opcional)
 
-# 3. Ejecutar
-python3 /userdata/system/batocera-manager/app.py
+Para generar placeholders de logos automáticos:
+```bash
+python3 -m pip install pillow --break-system-packages
 ```
 
 ---
 
-## Uso
+## 🚀 Uso
 
-### Iniciar el servidor
-
-```bash
-python3 app.py
-```
-
-Verás:
-```
-═══════════════════════════════════════════════════════
-  Batocera System Manager Web  v1.0
-  Abre en tu navegador:
-  → http://localhost:5000
-  → http://<IP-de-Batocera>:5000  (desde otra PC)
-═══════════════════════════════════════════════════════
-```
-
-### Acceder
-
-Desde cualquier dispositivo en tu red:
 ```
 http://<IP-de-Batocera>:5000
 ```
 
-Para ver la IP de Batocera:
-```bash
-ip addr show | grep "inet "
-# o
-hostname -I
-```
+Verás el dashboard con información del sistema. Navegación lateral con:
+
+| Panel | Descripción |
+|-------|-------------|
+| 📊 Dashboard | Monitor de sistema en vivo |
+| ➕ Agregar Sistema | Formulario para nuevo sistema personalizado |
+| 📋 Sistemas | Lista de sistemas creados |
+| 📁 ROMs | Explorador de ROMs por sistema |
+| 🎨 Temas | Gestión de temas y logos |
+| ⚙ Configuración | Rutas y autostart |
+| 🔍 Scraper | Búsqueda y descarga de metadatos |
 
 ---
 
-## Inicio automático con Batocera
+## 🔧 Configuración
 
-Para que el servidor arranque solo con Batocera, agrega esto a `/userdata/system/custom.sh`:
+Las rutas por defecto (pueden ajustarse desde el panel de configuración):
 
-```bash
-#!/bin/bash
-python3 /userdata/system/batocera-manager/app.py &
-```
+| Ruta | Propósito |
+|------|-----------|
+| `/userdata/roms/` | Base de ROMs |
+| `/userdata/system/configs/emulationstation/` | CFG de sistemas personalizados |
+| `/userdata/themes/` | Temas de usuario |
+| `/userdata/system/batocera.conf` | Configuración principal |
+| `/userdata/bios/` | Archivos BIOS |
 
-El `&` es importante — hace que corra en segundo plano sin bloquear el arranque.
+Los settings se guardan en `/userdata/system/batocera_manager_settings.json`.
 
 ---
 
-## Estructura de archivos
+## 🧱 Estructura del proyecto
 
 ```
 batocera_web/
-├── app.py              ← Servidor Flask (backend)
-├── install.sh          ← Script de instalación automática
-├── README.md           ← Este archivo
-└── templates/
-    └── index.html      ← Interfaz web completa (UI)
+├── app.py                  # Backend: servidor HTTP + API REST + scraper + dashboard
+├── templates/
+│   └── index.html          # Frontend SPA (todo el HTML/CSS/JS inline)
+├── AGENTS.md               # Guía para asistentes de IA
+├── install.sh              # Script de instalación (heredado)
+├── LICENSE                 # Licencia MIT
+└── README.md               # Este archivo
 ```
 
 ---
 
-## Cómo funciona por dentro
+## 📡 API REST
 
-### XML generado
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/api/info` | Info del sistema (temas, plataformas) |
+| `GET` | `/api/systems` | Lista sistemas personalizados |
+| `GET` | `/api/themes` | Tema activo y lista de temas |
+| `GET` | `/api/settings` | Configuración de rutas |
+| `POST` | `/api/settings` | Guardar configuración |
+| `GET` | `/api/rom-systems` | Lista sistemas con ROMs |
+| `GET` | `/api/dashboard` | Dashboard completo |
+| `POST` | `/api/create` | Crear sistema (soporta dry-run) |
+| `DELETE` | `/api/system/<slug>` | Eliminar sistema |
+| `POST` | `/api/scraper/search` | Buscar juego en scraper |
+| `POST` | `/api/scraper/download` | Descargar metadatos e imagen |
+| `POST` | `/api/scraper/scrape-system` | Scrapear sistema completo |
 
-Cada sistema se escribe en un archivo separado:
-```
-/userdata/system/configs/emulationstation/es_systems_<slug>.cfg
-```
-
-Ejemplo para un sistema "misonsola":
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<systemList>
-    <system>
-        <fullname>Mi Consola Personalizada</fullname>
-        <name>misonsola</name>
-        <manufacturer>MiFabricante</manufacturer>
-        <release>2000</release>
-        <hardware>console</hardware>
-        <path>/userdata/roms/misonsola</path>
-        <extension>.zip .7z .iso</extension>
-        <command>python /usr/lib/python3.11/site-packages/configgen/emulatorlauncher.py
-                 %CONTROLLERSCONFIG% -system %SYSTEM% -rom %ROM%</command>
-        <platform>snes</platform>
-        <theme>misonsola</theme>
-        <emulators>
-            <emulator name="libretro">
-                <cores>
-                    <core default="true">snes9x</core>
-                </cores>
-            </emulator>
-        </emulators>
-    </system>
-</systemList>
-```
-
-### Logos
-
-El logo se copia a:
-```
-/userdata/themes/<tema-activo>/<slug>/art/logo.png
-```
+Respuestas en JSON. Ver `app.py` para documentación detallada de endpoints.
 
 ---
 
-## Notas importantes para Batocera v43
+## 🗺️ Roadmap
 
-- El `python_path` por defecto es `/usr/lib/python3.11/site-packages/configgen/emulatorlauncher.py` — verifica con `find / -name emulatorlauncher.py 2>/dev/null`
-- Los CFG personalizados van en `/userdata/system/configs/emulationstation/` (NO en `/usr/share/`)
-- Batocera fusiona todos los `es_systems_*.cfg` al arrancar ES
-- Para aplicar cambios: reinicia EmulationStation con `batocera-es-swissknife --restart`
-- Los directorios bajo `/userdata/` son persistentes entre reinicios
+- [ ] Autenticación básica opcional
+- [ ] Scraping batch programable
+- [ ] Modo multiusuario
+- [ ] Exportar/importar configuración
+- [ ] Soporte para más fuentes de scraping
 
 ---
 
-## Solución de problemas
+## 📝 Licencia
 
-| Problema | Solución |
-|----------|----------|
-| Puerto 5000 ocupado | Edita `app.py`, cambia `port=5000` |
-| Flask no encontrado | `pip install flask --break-system-packages` |
-| Sistema no aparece en ES | Verifica el XML en "Vista Previa" y reinicia ES |
-| Logo no aparece | Revisa la ruta del tema activo en "Configuración" |
-| Permission denied al escribir CFG | Ejecutar con `sudo` o verificar permisos de `/userdata` |
+MIT © 2024 — Ver archivo [LICENSE](LICENSE).
+
+---
+
+## 🤝 Contribuciones
+
+Las contribuciones son bienvenidas. Por favor abre un issue o PR en GitHub.
+
+---
+
+<div align="center">
+<sub>Hecho para la comunidad de Batocera · Sin Flask · Sin complicaciones</sub>
+</div>
