@@ -1,0 +1,3012 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Batocera System Manager</title>
+<style>
+/* ── Reset & Base ── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;
+  --bg2:#161b22;
+  --bg3:#1c2333;
+  --bg4:#21262d;
+  --border:#30363d;
+  --border2:#484f58;
+  --text:#e6edf3;
+  --text2:#8b949e;
+  --text3:#6e7681;
+  --accent:#58a6ff;
+  --accent2:#1f6feb;
+  --green:#3fb950;
+  --green2:#238636;
+  --red:#f85149;
+  --red2:#da3633;
+  --yellow:#d29922;
+  --orange:#f0883e;
+  --purple:#bc8cff;
+  --radius:8px;
+  --radius2:12px;
+  --shadow:0 8px 32px rgba(0,0,0,.4);
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'Cascadia Code','Fira Code','Consolas',monospace;
+  --sidebar:260px;
+  --transition:0.18s ease;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px}
+a{color:var(--accent);text-decoration:none}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ── Layout ── */
+.layout{display:flex;height:100vh;overflow:hidden}
+
+/* ── Sidebar ── */
+.sidebar{
+  width:var(--sidebar);min-width:var(--sidebar);
+  background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  padding:0;overflow-y:auto;
+}
+.sidebar-logo{
+  padding:20px 20px 16px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-logo h1{
+  font-size:16px;font-weight:700;
+  color:var(--accent);letter-spacing:-0.3px;
+  display:flex;align-items:center;gap:8px;
+}
+.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:4px}
+.sidebar-badge{
+  display:inline-block;
+  background:var(--accent2);color:#fff;
+  font-size:10px;font-weight:600;
+  padding:2px 7px;border-radius:20px;
+  margin-top:6px;
+}
+.nav{padding:12px 8px;flex:1}
+.nav-section-label{
+  font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--text3);
+  padding:8px 12px 4px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:var(--radius);
+  cursor:pointer;color:var(--text2);
+  font-size:13px;font-weight:500;
+  transition:all var(--transition);
+  margin-bottom:2px;
+  border:none;background:none;width:100%;text-align:left;
+}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--accent2);color:#fff}
+.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{
+  margin-left:auto;background:var(--bg3);
+  font-size:10px;padding:2px 6px;
+  border-radius:20px;color:var(--text3);
+}
+.nav-item.active .nav-badge{background:rgba(255,255,255,.2);color:#fff}
+.sidebar-footer{
+  padding:14px 16px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--text3);
+}
+.sidebar-footer .theme-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--bg3);border:1px solid var(--border);
+  padding:4px 10px;border-radius:20px;
+  font-size:11px;color:var(--text2);margin-top:6px;
+}
+
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:14px 24px;display:flex;align-items:center;gap:12px;
+}
+.topbar-title{font-size:18px;font-weight:700;flex:1}
+.topbar-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ── Panels ── */
+.panel{display:none}
+.panel.active{display:block}
+
+/* ── Cards & Sections ── */
+.card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:20px;
+  margin-bottom:16px;
+}
+.card-title{
+  font-size:13px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--text2);
+  margin-bottom:16px;padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.card-title .icon{color:var(--accent);font-size:15px}
+
+/* ── Grid ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+/* ── Form Fields ── */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--text2)}
+.field label .req{color:var(--red);margin-left:2px}
+.field .hint{font-size:11px;color:var(--text3);margin-top:2px}
+input,select,textarea{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--text);
+  font-family:var(--font);font-size:13px;
+  padding:8px 12px;width:100%;
+  transition:border-color var(--transition),box-shadow var(--transition);
+  outline:none;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(88,166,255,.15);
+}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+select option{background:var(--bg3)}
+textarea{resize:vertical;min-height:70px;font-size:13px}
+.input-group{display:flex;gap:6px}
+.input-group input{flex:1}
+.input-row{display:flex;gap:6px;align-items:flex-end}
+.input-row .field{flex:1}
+
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 16px;border-radius:var(--radius);
+  font-size:13px;font-weight:600;cursor:pointer;
+  border:1px solid transparent;
+  transition:all var(--transition);white-space:nowrap;
+}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+.btn-primary:hover:not(:disabled){background:#388bfd;border-color:#388bfd}
+.btn-success{background:var(--green2);color:#fff;border-color:var(--green2)}
+.btn-success:hover:not(:disabled){background:#2ea043}
+.btn-danger{background:var(--red2);color:#fff;border-color:var(--red2)}
+.btn-danger:hover:not(:disabled){background:#f85149}
+.btn-ghost{background:var(--bg3);color:var(--text2);border-color:var(--border)}
+.btn-ghost:hover:not(:disabled){background:var(--bg4);color:var(--text)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-lg{padding:11px 22px;font-size:14px}
+.btn-icon{padding:7px 10px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+/* ── Toggle / Checkbox ── */
+.toggle-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 0;cursor:pointer;
+}
+.toggle-row input[type=checkbox]{
+  width:16px;height:16px;accent-color:var(--accent);
+  cursor:pointer;flex-shrink:0;
+}
+.toggle-row span{font-size:13px;color:var(--text2)}
+.toggle-row strong{color:var(--yellow);font-size:12px}
+
+/* ── Logo Upload ── */
+.logo-zone{
+  background:var(--bg3);border:2px dashed var(--border);
+  border-radius:var(--radius2);padding:20px;
+  display:flex;align-items:center;gap:20px;
+  transition:border-color var(--transition);
+}
+.logo-zone:hover{border-color:var(--accent)}
+.logo-preview-box{
+  width:180px;height:80px;flex-shrink:0;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--radius);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
+}
+.logo-preview-box img{max-width:100%;max-height:100%;object-fit:contain}
+.logo-preview-box .placeholder{font-size:11px;color:var(--text3);text-align:center}
+.logo-info{flex:1}
+.logo-info p{font-size:12px;color:var(--text3);margin-top:4px;line-height:1.5}
+
+/* ── Badge & Chips ── */
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:20px;
+  font-size:11px;font-weight:600;
+}
+.badge-green{background:rgba(63,185,80,.15);color:var(--green)}
+.badge-blue{background:rgba(88,166,255,.15);color:var(--accent)}
+.badge-orange{background:rgba(240,136,62,.15);color:var(--orange)}
+.badge-red{background:rgba(248,81,73,.15);color:var(--red)}
+.badge-purple{background:rgba(188,140,255,.15);color:var(--purple)}
+
+/* ── System Cards (List) ── */
+.system-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:16px 20px;
+  margin-bottom:10px;display:flex;align-items:center;gap:16px;
+  transition:border-color var(--transition),box-shadow var(--transition);
+}
+.system-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+.system-card-icon{font-size:28px;width:44px;text-align:center;flex-shrink:0}
+.system-card-info{flex:1;min-width:0}
+.system-card-info h3{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.system-card-info p{font-size:11px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.system-card-actions{display:flex;gap:8px;flex-shrink:0}
+
+/* ── Log / Terminal ── */
+.log-box{
+  background:#0d1117;border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:14px;font-family:var(--mono);font-size:12px;
+  color:#3fb950;max-height:220px;overflow-y:auto;
+  line-height:1.6;white-space:pre-wrap;word-break:break-all;
+}
+.log-box .log-warn{color:var(--yellow)}
+.log-box .log-err{color:var(--red)}
+.log-box .log-ok{color:var(--green)}
+.log-box .log-info{color:var(--accent)}
+
+/* ── XML Preview ── */
+.xml-box{
+  background:#0d1117;border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;
+  font-family:var(--mono);font-size:12px;line-height:1.6;
+  max-height:420px;overflow-y:auto;
+  color:#a8d8f0;white-space:pre;
+}
+.xml-tag{color:#7ee787}
+.xml-attr{color:#ffab70}
+.xml-val{color:#a5d6ff}
+.xml-comment{color:#8b949e;font-style:italic}
+
+/* ── Settings ── */
+.settings-path-row{display:flex;gap:6px;align-items:center}
+.settings-path-row input{flex:1;font-family:var(--mono);font-size:12px}
+
+/* ── Info Boxes ── */
+.info-box{
+  background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.2);
+  border-radius:var(--radius);padding:10px 14px;
+  font-size:12px;color:var(--text2);line-height:1.5;
+}
+.warn-box{
+  background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.2);
+  border-radius:var(--radius);padding:10px 14px;
+  font-size:12px;color:#e3b341;line-height:1.5;
+}
+.success-box{
+  background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);
+  border-radius:var(--radius);padding:14px;
+  font-size:13px;color:var(--green);line-height:1.6;
+}
+
+/* ── Theme Grid ── */
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+.theme-item{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 14px;
+  font-size:12px;color:var(--text2);
+  display:flex;align-items:center;gap:8px;
+  transition:border-color var(--transition);
+}
+.theme-item.active{border-color:var(--accent);color:var(--accent)}
+.theme-item .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--border2);flex-shrink:0;
+}
+.theme-item.active .dot{background:var(--accent)}
+
+/* ── Modal ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;opacity:0;pointer-events:none;
+  transition:opacity var(--transition);
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius2);padding:24px;
+  max-width:680px;width:90%;max-height:85vh;
+  overflow-y:auto;box-shadow:var(--shadow);
+  transform:scale(.96);transition:transform var(--transition);
+}
+.modal-overlay.open .modal{transform:scale(1)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-header h2{font-size:16px;font-weight:700}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:4px}
+.modal-close:hover{color:var(--text)}
+
+/* ── Spinner ── */
+.spinner{
+  width:18px;height:18px;border:2px solid rgba(255,255,255,.2);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Toast ── */
+#toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px 18px;
+  font-size:13px;z-index:9999;
+  transform:translateY(80px);opacity:0;
+  transition:all .3s ease;box-shadow:var(--shadow);
+  max-width:340px;
+}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok{border-color:var(--green);color:var(--green)}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+/* ── Divider ── */
+.divider{height:1px;background:var(--border);margin:16px 0}
+
+/* ── Ext preset select ── */
+.preset-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.preset-row select{flex:1}
+
+/* ── Dashboard ── */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+.dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:18px;position:relative;overflow:hidden}
+.dash-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent2))}
+.dash-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.dash-card h3 .icon{font-size:14px}
+.metric-big{font-size:36px;font-weight:700;line-height:1;color:var(--text)}
+.metric-sub{font-size:12px;color:var(--text3);margin-top:4px}
+.gauge-wrap{position:relative;width:110px;height:60px;margin:0 auto 8px}
+.gauge-bg{fill:none;stroke:var(--bg3);stroke-width:10}
+.gauge-fg{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s ease,stroke .4s}
+.gauge-text{font-size:13px;font-weight:700;fill:var(--text)}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-label{font-size:12px;color:var(--text2);width:80px;flex-shrink:0}
+.bar-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.bar-val{font-size:11px;color:var(--text3);width:45px;text-align:right;flex-shrink:0}
+.kv-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.kv-row:last-child{border-bottom:none}
+.kv-key{font-size:12px;color:var(--text3)}
+.kv-val{font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.dot-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot-red{background:var(--red)}
+.dot-yellow{background:var(--yellow)}
+.refresh-btn{position:absolute;top:14px;right:14px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
+.refresh-btn:hover{background:var(--bg3);color:var(--text)}
+.proc-table{width:100%;border-collapse:collapse;font-size:11px}
+.proc-table th{color:var(--text3);font-weight:600;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border)}
+.proc-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);font-family:var(--mono)}
+.proc-table tr:last-child td{border-bottom:none}
+.temp-ok{color:var(--green)} .temp-warn{color:var(--yellow)} .temp-hot{color:var(--red)}
+.net-iface{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.net-iface:last-child{border-bottom:none}
+.disk-item{margin-bottom:12px}
+.disk-item:last-child{margin-bottom:0}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── Service Manager ── */
+.service-status-box{
+  display:flex;align-items:center;gap:14px;
+  padding:16px 20px;border-radius:var(--radius2);
+  border:1px solid var(--border);background:var(--bg2);
+  margin-bottom:16px;
+}
+.service-icon{font-size:36px;line-height:1}
+.service-status-label{font-size:15px;font-weight:700}
+.service-status-sub{font-size:12px;color:var(--text3);margin-top:3px}
+.service-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.cmd-editor{
+  font-family:var(--mono);font-size:12px;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--radius);padding:10px 12px;
+  width:100%;color:var(--text);
+}
+.cmd-editor:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(88,166,255,.15)}
+.custom-sh-preview{
+  background:#0d1117;border:1px solid var(--border);
+  border-radius:var(--radius);padding:12px;
+  font-family:var(--mono);font-size:11px;color:#a8d8f0;
+  max-height:160px;overflow-y:auto;white-space:pre;
+}
+.check-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:var(--radius);
+  background:var(--bg3);border:1px solid var(--border);
+  margin-bottom:8px;font-size:13px;
+}
+.check-icon{font-size:18px;width:24px;text-align:center}
+
+/* ── Responsive ── */
+@media(max-width:700px){
+  .sidebar{display:none}
+  .content{padding:14px}
+  .grid-2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>⚙ Batocera Manager</h1>
+      <p>Sistema Manager Web v1.0</p>
+      <div class="sidebar-badge">Batocera v43+</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section-label">Principal</div>
+      <button class="nav-item" onclick="showPanel('dashboard',this)">
+        <span class="icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item active" onclick="showPanel('add',this)">
+        <span class="icon">➕</span> Agregar Sistema
+      </button>
+      <button class="nav-item" onclick="showPanel('list',this)">
+        <span class="icon">📋</span> Sistemas Creados
+        <span class="nav-badge" id="badge-count">…</span>
+      </button>
+      <div class="nav-section-label">Visual</div>
+      <button class="nav-item" onclick="showPanel('themes',this)">
+        <span class="icon">🎨</span> Temas & Assets
+      </button>
+      <button class="nav-item" onclick="showPanel('preview',this)">
+        <span class="icon">👁</span> Vista Previa XML
+      </button>
+      <div class="nav-section-label">Contenido</div>
+      <button class="nav-item" onclick="showPanel('roms',this)">
+        <span class="icon">🎮</span> ROMs & BIOS
+        <span class="nav-badge" id="badge-roms">…</span>
+      </button>
+      <div class="nav-section-label">Sistema</div>
+      <button class="nav-item" onclick="showPanel('settings',this)">
+        <span class="icon">⚙</span> Configuración
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div>Tema activo:</div>
+      <div class="theme-chip">🎨 <span id="sb-theme">cargando…</span></div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">➕ Agregar Sistema</div>
+        <div class="topbar-sub" id="topbar-sub">Configura y genera el cfg para un nuevo sistema en EmulationStation</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="window.location.reload()">↺ Recargar</button>
+    </div>
+    <div class="content">
+
+
+      <!-- ═══════════════════════════════════════════════
+           PANEL: DASHBOARD
+           ═══════════════════════════════════════════════ -->
+      <div class="panel" id="panel-dashboard">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+          <div>
+            <h2 style="font-size:18px;font-weight:700">System Dashboard</h2>
+            <p style="font-size:12px;color:var(--text3);margin-top:2px" id="dash-updated">Cargando…</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="font-size:12px;color:var(--text3);display:flex;align-items:center;gap:6px">
+              <input type="checkbox" id="dash-auto" checked onchange="toggleDashAuto()"> Auto-refresh 5s
+            </label>
+            <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↺ Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Fila 1: Version + Status + Uptime -->
+        <div class="dash-grid" id="dash-row1" style="grid-template-columns:1fr 1fr 1fr"></div>
+
+        <!-- Fila 2: CPU + RAM + GPU -->
+        <div class="dash-grid" id="dash-row2" style="grid-template-columns:1fr 1fr 1fr"></div>
+
+        <!-- Fila 3: Disco + Red + Procesos -->
+        <div class="dash-grid" id="dash-row3" style="grid-template-columns:1.2fr 1fr 1.4fr"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           PANEL: AGREGAR SISTEMA
+           ═══════════════════════════════════════════════ -->
+      <div class="panel active" id="panel-add">
+
+        <!-- Básico -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📌</span>Información Básica</div>
+          <div class="grid-2">
+            <div class="field">
+              <label>Nombre completo <span class="req">*</span></label>
+              <input id="f-fullname" type="text" placeholder="ej: Super Nintendo Entertainment System">
+            </div>
+            <div class="field">
+              <label>Nombre corto (slug) <span class="req">*</span>
+                <span style="font-size:10px;color:var(--text3);font-weight:400"> — sin espacios, minúsculas</span>
+              </label>
+              <div class="input-group">
+                <input id="f-name" type="text" placeholder="ej: snes">
+                <button class="btn btn-ghost btn-sm btn-icon" title="Auto-generar desde nombre completo" onclick="autoSlug()">✨</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Fabricante / Marca</label>
+              <input id="f-manufacturer" type="text" placeholder="ej: Nintendo">
+            </div>
+            <div class="field">
+              <label>Año de lanzamiento</label>
+              <input id="f-release" type="text" placeholder="ej: 1990" maxlength="4">
+            </div>
+            <div class="field">
+              <label>Tipo de hardware</label>
+              <select id="f-hardware">
+{{hardware_opts}}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rutas -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📁</span>Rutas y Extensiones de Archivo</div>
+          <div class="grid-2">
+            <div class="field">
+              <label>Ruta de ROMs <span class="req">*</span></label>
+              <div class="input-group">
+                <input id="f-rompath" type="text" placeholder="/userdata/roms/snes">
+                <button class="btn btn-ghost btn-sm" onclick="autoRomPath()">Auto</button>
+              </div>
+              <span class="hint">Siempre debe comenzar con /userdata/roms/</span>
+            </div>
+            <div class="field">
+              <label>Extensiones de archivo <span class="req">*</span></label>
+              <input id="f-extensions" type="text" placeholder=".zip .7z .iso .chd">
+              <div class="preset-row">
+                <select id="ext-preset" onchange="applyExtPreset()">
+<option value="">— Presets de extensiones —</option>
+                  {{ext_preset_opts}}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tema y Scraping -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🎨</span>Tema y Scraping</div>
+          <div class="info-box" style="margin-bottom:12px">
+            Tema activo detectado: <strong style="color:var(--accent)">{{active_theme}}</strong>
+            — El campo <em>theme</em> debe coincidir con una carpeta existente en ese tema.
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>Nombre del tema (theme) <span class="req">*</span></label>
+              <div class="input-group">
+                <input id="f-theme" type="text" placeholder="ej: snes">
+                <button class="btn btn-ghost btn-sm btn-icon" title="Copiar desde slug" onclick="document.getElementById('f-theme').value=document.getElementById('f-name').value">↙</button>
+              </div>
+              <span class="hint">Generalmente igual al slug del sistema</span>
+            </div>
+            <div class="field">
+              <label>Platform ID (scraping)</label>
+              <select id="f-platform">
+                <option value="">— Seleccionar plataforma —</option>
+                {{platform_opts}}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Emuladores -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🕹</span>Emulador y Core</div>
+          <div class="grid-3">
+            <div class="field">
+              <label>Emulador principal</label>
+              <select id="f-emulator">
+                <option value="">— Ninguno (usa default) —</option>
+                <option value="libretro">libretro</option>
+                <option value="standalone">standalone</option>
+                <option value="mupen64plus">mupen64plus</option>
+                <option value="custom">custom</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Core por defecto</label>
+              <input id="f-core" type="text" placeholder="ej: snes9x">
+            </div>
+            <div class="field">
+              <label>Cores adicionales</label>
+              <input id="f-extra-cores" type="text" placeholder="ej: bsnes,snes9x2010">
+              <span class="hint">Separados por coma</span>
+            </div>
+          </div>
+          <div class="info-box" style="margin-top:12px">
+            Dejar vacío para usar los defaults de Batocera. Si defines un emulador único con &lt;name&gt; personalizado, también agrega la entrada en batocera.conf (opción abajo).
+          </div>
+        </div>
+
+        <!-- Logo -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🖼</span>Logo del Sistema</div>
+          <div class="logo-zone" id="logo-zone">
+            <div class="logo-preview-box" id="logo-preview-box">
+              <div class="placeholder" id="logo-placeholder">Sin imagen</div>
+              <img id="logo-img" src="" alt="" style="display:none">
+            </div>
+            <div class="logo-info">
+              <strong>Logo PNG del sistema para el tema</strong>
+              <p>
+                Se instalará en:<br>
+                <code style="font-family:var(--mono);font-size:11px;color:var(--accent)">
+                  {{themes_user}}/{{active_theme}}/&lt;slug&gt;/art/logo.png
+                </code>
+              </p>
+              <div class="btn-row" style="margin-top:10px">
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer">
+                  📂 Seleccionar imagen
+                  <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="previewLogo(event)">
+                </label>
+                <button class="btn btn-ghost btn-sm" style="background:rgba(63,185,80,.1);border-color:var(--green2);color:var(--green)" onclick="uploadLogo()">⬆ Instalar logo</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="clearLogo()">✖ Limpiar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Descripción -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📝</span>Descripción y Opciones</div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Descripción del sistema <span style="font-size:11px;color:var(--text3);font-weight:400">(opcional)</span></label>
+            <textarea id="f-description" placeholder="Descripción breve del sistema para mostrar en ES..."></textarea>
+          </div>
+          <div class="divider"></div>
+          <div>
+            <label class="toggle-row">
+              <input type="checkbox" id="opt-create-dir" checked>
+              <span>Crear directorio de ROMs si no existe</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="opt-batocera-conf">
+              <span>Agregar entrada en <code>batocera.conf</code> (emulador/core por defecto)</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" id="opt-dry-run">
+              <span><strong>⚡ Modo simulación</strong> — no escribe archivos, solo muestra el XML generado</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="btn-row">
+          <button class="btn btn-success btn-lg" onclick="createSystem()">
+            <span>✅</span> Crear Sistema
+          </button>
+          <button class="btn btn-primary btn-lg" onclick="previewXml()">
+            <span>👁</span> Previsualizar XML
+          </button>
+          <button class="btn btn-ghost btn-lg" onclick="clearForm()">
+            <span>🗑</span> Limpiar
+          </button>
+        </div>
+
+        <!-- Log -->
+        <div style="margin-top:16px">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+            <span>Log de operaciones</span>
+            <button class="btn btn-ghost btn-sm" onclick="clearLog()">Limpiar log</button>
+          </div>
+          <div class="log-box" id="log-box">Listo. Completa el formulario y presiona "Crear Sistema".</div>
+        </div>
+
+      </div><!-- /panel-add -->
+
+
+      <!-- ═══════════════════════════════════════════════
+           PANEL: LISTA DE SISTEMAS
+           ═══════════════════════════════════════════════ -->
+      <div class="panel" id="panel-list">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <h2 style="font-size:18px;font-weight:700">Sistemas Personalizados</h2>
+            <p style="font-size:12px;color:var(--text3);margin-top:2px">Archivos es_systems_*.cfg en tu directorio de configuración</p>
+          </div>
+          <button class="btn btn-ghost" onclick="loadSystems()">↺ Actualizar</button>
+        </div>
+        <div id="systems-container">
+          <div style="text-align:center;padding:40px;color:var(--text3)">Cargando…</div>
+        </div>
+      </div>
+
+
+      <!-- ═══════════════════════════════════════════════
+           PANEL: TEMAS
+           ═══════════════════════════════════════════════ -->
+      <div class="panel" id="panel-themes">
+        <div class="card">
+          <div class="card-title"><span class="icon">🎨</span>Temas Instalados</div>
+          <div id="themes-active-info" style="margin-bottom:12px"></div>
+          <div id="themes-grid" class="theme-grid">Cargando…</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="icon">📂</span>Estructura de Assets Esperada</div>
+          <div class="info-box" style="margin-bottom:12px">
+            Para que EmulationStation muestre el logo de tu sistema personalizado en el tema activo, 
+            coloca los archivos en esta estructura:
+          </div>
+          <div class="log-box" id="theme-tree-box" style="color:#a8d8f0;max-height:200px">Cargando…</div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="icon">ℹ</span>Notas sobre logos y assets</div>
+          <ul style="font-size:13px;color:var(--text2);line-height:2;padding-left:18px">
+            <li>El logo debe llamarse <code style="color:var(--accent)">logo.png</code> (PNG con transparencia recomendado)</li>
+            <li>Tamaño recomendado: <strong>400×100 px</strong> o mayor, fondo transparente</li>
+            <li>El fondo opcional se llama <code style="color:var(--accent)">background.jpg</code></li>
+            <li>Si el tema no tiene carpeta para tu sistema, ES usa texto como fallback</li>
+            <li>Algunos temas usan rutas diferentes — consulta el README de tu tema</li>
+          </ul>
+        </div>
+      </div>
+
+
+      <!-- ═══════════════════════════════════════════════
+           PANEL: VISTA PREVIA XML
+           ═══════════════════════════════════════════════ -->
+      <div class="panel" id="panel-preview">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <h2 style="font-size:18px;font-weight:700">Vista Previa XML</h2>
+            <p style="font-size:12px;color:var(--text3);margin-top:2px">XML que se generará en <code>es_systems_&lt;nombre&gt;.cfg</code></p>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" onclick="previewXml()">↺ Actualizar</button>
+            <button class="btn btn-ghost" onclick="copyXml()">📋 Copiar</button>
+          </div>
+        </div>
+        <div class="xml-box" id="xml-preview">Genera un preview desde el panel "Agregar Sistema".</div>
+      </div>
+
+
+
+      <!-- ═══════════════════════════════════════════════
+           PANEL: ROMs & BIOS MONITOR
+           ═══════════════════════════════════════════════ -->
+      <div class="panel" id="panel-roms">
+
+        <!-- Toolbar -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <div style="flex:1">
+            <h2 style="font-size:18px;font-weight:700">ROMs & BIOS Monitor</h2>
+            <p style="font-size:12px;color:var(--text3);margin-top:2px" id="rom-summary-text">Cargando…</p>
+          </div>
+          <input type="text" id="rom-search" placeholder="🔍 Buscar sistema…"
+            style="width:200px" oninput="filterRomSystems()">
+          <button class="btn btn-ghost" onclick="loadRomSystems()">↺ Actualizar</button>
+        </div>
+
+        <!-- Vista: lista sistemas -->
+        <div id="roms-systems-view">
+          <div id="roms-systems-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+            <div style="text-align:center;padding:40px;color:var(--text3);grid-column:1/-1">Cargando sistemas…</div>
+          </div>
+        </div>
+
+        <!-- Vista: detalle sistema (hidden inicialmente) -->
+        <div id="roms-detail-view" style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <button class="btn btn-ghost btn-sm" onclick="backToSystems()">← Volver</button>
+            <h3 id="detail-title" style="font-size:16px;font-weight:700"></h3>
+            <div id="detail-badges" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            <div style="flex:1"></div>
+            <button class="btn btn-ghost btn-sm" onclick="openBiosPanel()">🔍 Verificar BIOS</button>
+            <button class="btn btn-ghost btn-sm" onclick="openScraperForSystem()" style="background:rgba(88,166,255,.1);border-color:var(--accent2);color:var(--accent)">🌐 Scrapear sistema</button>
+            <label class="btn btn-primary btn-sm" style="cursor:pointer">
+              ⬆ Subir ROM
+              <input type="file" id="rom-upload-file" multiple style="display:none" onchange="uploadRoms()">
+            </label>
+          </div>
+
+          <!-- Bios panel (inline) -->
+          <div id="bios-panel" style="display:none;margin-bottom:16px">
+            <div class="card">
+              <div class="card-title"><span class="icon">🔬</span>Verificación de BIOS</div>
+              <div id="bios-results">Verificando…</div>
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin-top:10px">
+                ⬆ Subir BIOS
+                <input type="file" id="bios-upload-file" multiple style="display:none" onchange="uploadBios()">
+              </label>
+            </div>
+          </div>
+
+          <!-- Stats bar -->
+          <div id="detail-stats" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"></div>
+
+          <!-- Search ROMs -->
+          <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+            <input type="text" id="rom-search-detail" placeholder="🔍 Buscar ROM…"
+              style="flex:1;max-width:320px" oninput="filterRoms()">
+            <select id="rom-sort" onchange="sortRoms()" style="width:160px">
+              <option value="name">Ordenar: Nombre</option>
+              <option value="size">Ordenar: Tamaño</option>
+              <option value="ext">Ordenar: Extensión</option>
+            </select>
+            <span id="rom-count-label" style="font-size:12px;color:var(--text3)"></span>
+          </div>
+
+          <!-- ROM table -->
+          <div class="card" style="padding:0;overflow:hidden">
+            <table id="roms-table" style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="background:var(--bg3);border-bottom:1px solid var(--border)">
+                  <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2);width:36px">#</th>
+                  <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2)">Nombre</th>
+                  <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2);width:60px">Ext</th>
+                  <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2);width:80px">Tamaño</th>
+                  <th style="padding:10px 14px;text-align:left;font-weight:600;color:var(--text2);width:80px">Info</th>
+                  <th style="padding:10px 14px;text-align:center;font-weight:600;color:var(--text2);width:100px">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="roms-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /panel-roms -->
+
+      <!-- ═══════════════════════════════════════════════
+           PANEL: CONFIGURACIÓN
+           ═══════════════════════════════════════════════ -->
+      <div class="panel" id="panel-settings">
+        <!-- ── Autostart Service Manager ── -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🚀</span>Autostart — Inicio automático con Batocera</div>
+
+          <!-- Status box -->
+          <div id="svc-status-box" class="service-status-box">
+            <div class="service-icon">⏳</div>
+            <div style="flex:1">
+              <div class="service-status-label">Verificando estado…</div>
+              <div class="service-status-sub" id="svc-status-sub"></div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="checkServiceStatus()">↺ Verificar</button>
+          </div>
+
+          <!-- Checks -->
+          <div id="svc-checks" style="margin-bottom:16px"></div>
+
+          <!-- Comando editable -->
+          <div class="field" style="margin-bottom:14px">
+            <label style="font-size:12px;font-weight:600;color:var(--text2)">
+              Comando de inicio
+              <span style="font-size:10px;color:var(--text3);font-weight:400"> — editable</span>
+            </label>
+            <input class="cmd-editor" id="svc-cmd" type="text"
+              placeholder="python3 /userdata/system/batocera_web/app.py --port 5000">
+            <span class="hint">Se agrega automáticamente el <code>&</code> para correr en background</span>
+          </div>
+
+          <!-- Botones de acción -->
+          <div class="service-actions">
+            <button class="btn btn-success" onclick="installService()">
+              ✅ Instalar autostart
+            </button>
+            <button class="btn btn-ghost" onclick="removeService()"
+              style="border-color:var(--red2);color:var(--red)">
+              🗑 Desinstalar autostart
+            </button>
+            <button class="btn btn-primary" onclick="restartService()">
+              🔄 Reiniciar servicio
+            </button>
+            <button class="btn btn-ghost" onclick="killService()"
+              style="border-color:var(--yellow);color:var(--yellow)">
+              ⏹ Detener servicio
+            </button>
+          </div>
+
+          <!-- Preview custom.sh -->
+          <div style="margin-top:16px">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
+              <span>Contenido de <code>/userdata/system/custom.sh</code></span>
+              <button class="btn btn-ghost btn-sm" onclick="checkServiceStatus()" style="font-size:10px">↺</button>
+            </div>
+            <div class="custom-sh-preview" id="svc-sh-preview">Cargando…</div>
+          </div>
+        </div>
+
+        <!-- ── Rutas de Batocera ── -->
+        <div class="card">
+          <div class="card-title"><span class="icon">⚙</span>Rutas de Batocera</div>
+          <div class="warn-box" style="margin-bottom:16px">
+            ⚠ Los valores por defecto corresponden a Batocera v43 estándar. 
+            Cambia solo si tu instalación tiene paths distintos.
+          </div>
+          <div id="settings-fields"></div>
+          <div class="btn-row" style="margin-top:16px">
+            <button class="btn btn-success" onclick="saveSettings()">💾 Guardar configuración</button>
+            <button class="btn btn-ghost" onclick="loadSettings()">↺ Recargar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="icon">🚀</span>Instrucciones de uso</div>
+          <div style="font-size:13px;color:var(--text2);line-height:2">
+            <p><strong style="color:var(--text)">1. Instalar dependencias en Batocera:</strong></p>
+            <div class="log-box" style="color:#a8d8f0;margin:8px 0 14px">pip install flask pillow</div>
+            <p><strong style="color:var(--text)">2. Copiar y ejecutar el servidor:</strong></p>
+            <div class="log-box" style="color:#a8d8f0;margin:8px 0 14px">python3 app.py</div>
+            <p><strong style="color:var(--text)">3. Acceder desde cualquier dispositivo en la red:</strong></p>
+            <div class="log-box" style="color:#3fb950;margin:8px 0 14px">http://&lt;IP-de-Batocera&gt;:5000</div>
+            <p><strong style="color:var(--text)">4. Para ejecutar al inicio (opcional), agregar a:</strong></p>
+            <div class="log-box" style="color:#a8d8f0;margin:8px 0">/userdata/system/custom.sh</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ── MODAL: Ver XML de sistema existente ── -->
+<div class="modal-overlay" id="modal-xml">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📄 XML del sistema</h2>
+      <button class="modal-close" onclick="closeModal('modal-xml')">✕</button>
+    </div>
+    <div class="xml-box" id="modal-xml-content" style="max-height:500px"></div>
+    <div class="btn-row" style="margin-top:14px">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-xml')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: ROM Detail ── -->
+<div class="modal-overlay" id="modal-rom">
+  <div class="modal" style="max-width:780px;width:95%">
+    <div class="modal-header">
+      <h2 id="rom-modal-title" style="font-size:17px">🎮 Detalle del juego</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary btn-sm" id="rom-modal-edit-btn" onclick="toggleRomEdit()">✏ Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="openScraperForRom()" style="background:rgba(88,166,255,.1);border-color:var(--accent2);color:var(--accent)">🔍 Scrapear</button>
+        <button class="btn btn-ghost btn-sm" id="rom-modal-save-btn" onclick="saveRomEdit()" style="display:none">💾 Guardar</button>
+        <button class="btn btn-ghost btn-sm" id="rom-modal-cancel-btn" onclick="cancelRomEdit()" style="display:none">✕ Cancelar</button>
+        <button class="modal-close" onclick="closeModal('modal-rom')">✕</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:20px">
+      <!-- Imagen -->
+      <div>
+        <div id="rom-modal-img-wrap" style="width:200px;height:150px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;margin-bottom:10px">
+          <img id="rom-modal-img" src="" alt="" style="max-width:100%;max-height:100%;object-fit:contain;display:none">
+          <span id="rom-modal-img-placeholder" style="font-size:11px;color:var(--text3);text-align:center;padding:8px">Sin imagen</span>
+        </div>
+        <div id="rom-modal-meta" style="font-size:11px;color:var(--text3);line-height:1.8"></div>
+      </div>
+      <!-- Datos -->
+      <div>
+        <div id="rom-modal-fields"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Scraper ── -->
+<div class="modal-overlay" id="modal-scraper">
+  <div class="modal" style="max-width:700px;width:95%">
+    <div class="modal-header">
+      <h2 id="scraper-modal-title">🔍 Scraper — ScreenScraper.fr</h2>
+      <button class="modal-close" onclick="closeModal('modal-scraper')">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg3);padding:4px;border-radius:var(--radius)">
+      <button id="stab-single" onclick="scraperTab('single')"
+        class="btn btn-primary btn-sm" style="flex:1">🎮 ROM individual</button>
+      <button id="stab-system" onclick="scraperTab('system')"
+        class="btn btn-ghost btn-sm" style="flex:1">📦 Sistema completo</button>
+      <button id="stab-config" onclick="scraperTab('config')"
+        class="btn btn-ghost btn-sm" style="flex:1">⚙ Configuración</button>
+    </div>
+
+    <!-- Tab: ROM individual -->
+    <div id="stab-single-panel">
+      <div id="scraper-rom-info" class="info-box" style="margin-bottom:12px"></div>
+      <div class="field" style="margin-bottom:14px">
+        <label>Fuente de datos</label>
+        <select id="sc-source" onchange="scraperSourceChanged('single')">
+          <option value="screenscraper">ScreenScraper.fr</option>
+          <option value="thegamesdb">TheGamesDB</option>
+          <option value="igdb">IGDB (Twitch)</option>
+        </select>
+      </div>
+      <div id="sc-fields-screenscraper">
+      <!-- Credenciales rápidas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="field">
+          <label>Usuario ScreenScraper</label>
+          <input type="text" id="sc-user" placeholder="tu_usuario">
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" id="sc-pass" placeholder="tu_contraseña">
+        </div>
+        <div class="field">
+          <label>Developer ID</label>
+          <input type="text" id="sc-devid" placeholder="tu_devid">
+        </div>
+        <div class="field">
+          <label>Developer Password</label>
+          <input type="password" id="sc-devpass" placeholder="tu_dev_password">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Tipo de imagen</label>
+          <select id="sc-imgtype">
+            <option value="mixrbv1">Mix v1 (recomendado)</option>
+            <option value="mixrbv2">Mix v2</option>
+            <option value="box-2D">Caja 2D</option>
+            <option value="ss">Screenshot</option>
+            <option value="wheel">Logo/Wheel</option>
+            <option value="fanart">Fanart</option>
+          </select>
+        </div>
+      </div>
+      </div>
+      <div id="sc-fields-thegamesdb" style="display:none">
+        <div class="field" style="margin-bottom:14px">
+          <label>API Key de TheGamesDB</label>
+          <input type="text" id="sc-tgdb-key" placeholder="tu_api_key">
+          <span class="hint">Gratis e instantánea en
+            <a href="https://thegamesdb.net" target="_blank" style="color:var(--accent)">thegamesdb.net</a></span>
+        </div>
+      </div>
+      <div id="sc-fields-igdb" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="field">
+            <label>Client ID (Twitch)</label>
+            <input type="text" id="sc-igdb-id" placeholder="tu_client_id">
+          </div>
+          <div class="field">
+            <label>Client Secret (Twitch)</label>
+            <input type="password" id="sc-igdb-secret" placeholder="tu_client_secret">
+          </div>
+        </div>
+        <span class="hint">Crea una app gratis en
+          <a href="https://dev.twitch.tv/console/apps" target="_blank" style="color:var(--accent)">dev.twitch.tv/console/apps</a></span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;margin-top:14px">
+        <button class="btn btn-primary" onclick="scraperSearch()" id="sc-search-btn">
+          🔍 Buscar en ScreenScraper
+        </button>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="sc-save-meta" checked style="accent-color:var(--accent)">
+          <label for="sc-save-meta" style="font-size:12px;color:var(--text2)">Guardar metadatos</label>
+        </div>
+      </div>
+
+      <!-- Resultado búsqueda -->
+      <div id="scraper-result" style="display:none">
+        <div style="display:grid;grid-template-columns:160px 1fr;gap:16px;margin-bottom:14px">
+          <div>
+            <img id="scraper-preview-img" src="" alt="" style="width:160px;height:120px;object-fit:contain;
+              background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius)">
+            <div id="scraper-img-types" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px"></div>
+          </div>
+          <div id="scraper-meta-display"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-success" onclick="scraperDownload()" id="sc-download-btn">
+            ⬇ Descargar imagen y guardar
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="scraperSearch()">↺ Rebuscar</button>
+        </div>
+      </div>
+
+      <div id="scraper-status" style="margin-top:12px"></div>
+    </div>
+
+    <!-- Tab: Sistema completo -->
+    <div id="stab-system-panel" style="display:none">
+      <div class="warn-box" style="margin-bottom:14px">
+        El scraper buscará cada ROM en ScreenScraper.fr. Respeta el límite de la API
+        (0.5s entre requests). Puede tardar varios minutos para sistemas grandes.
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label>Fuente de datos</label>
+        <select id="sc-sys-source" onchange="scraperSourceChanged('system')">
+          <option value="screenscraper">ScreenScraper.fr</option>
+          <option value="thegamesdb">TheGamesDB</option>
+          <option value="igdb">IGDB (Twitch)</option>
+        </select>
+      </div>
+      <div id="sc-sys-fields-screenscraper">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="field">
+            <label>Usuario ScreenScraper</label>
+            <input type="text" id="sc-sys-user" placeholder="tu_usuario">
+          </div>
+          <div class="field">
+            <label>Contraseña</label>
+            <input type="password" id="sc-sys-pass" placeholder="tu_contraseña">
+          </div>
+          <div class="field">
+            <label>Developer ID</label>
+            <input type="text" id="sc-sys-devid" placeholder="tu_devid">
+          </div>
+          <div class="field">
+            <label>Developer Password</label>
+            <input type="password" id="sc-sys-devpass" placeholder="tu_dev_password">
+          </div>
+          <div class="field">
+            <label>Tipo de imagen</label>
+            <select id="sc-sys-imgtype">
+              <option value="mixrbv1">Mix v1 (recomendado)</option>
+              <option value="mixrbv2">Mix v2</option>
+              <option value="box-2D">Caja 2D</option>
+              <option value="ss">Screenshot</option>
+              <option value="wheel">Logo/Wheel</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Región</label>
+            <select id="sc-sys-region">
+              <option value="wor">Mundial</option>
+              <option value="us">USA</option>
+              <option value="eu">Europa</option>
+              <option value="jp">Japón</option>
+              <option value="es">España</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="sc-sys-fields-thegamesdb" style="display:none">
+        <div class="field" style="margin-bottom:14px">
+          <label>API Key de TheGamesDB</label>
+          <input type="text" id="sc-sys-tgdb-key" placeholder="tu_api_key">
+        </div>
+      </div>
+      <div id="sc-sys-fields-igdb" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="field">
+            <label>Client ID (Twitch)</label>
+            <input type="text" id="sc-sys-igdb-id" placeholder="tu_client_id">
+          </div>
+          <div class="field">
+            <label>Client Secret (Twitch)</label>
+            <input type="password" id="sc-sys-igdb-secret" placeholder="tu_client_secret">
+          </div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer">
+        <input type="checkbox" id="sc-sys-missing" checked style="accent-color:var(--accent)">
+        <span style="font-size:13px">Solo ROMs sin imagen (más rápido)</span>
+      </label>
+
+      <!-- Progreso scraper sistema -->
+      <div id="sc-sys-progress" style="display:none;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px">
+          <span id="sc-sys-label">Scrapeando…</span>
+          <span id="sc-sys-pct">0%</span>
+        </div>
+        <div style="height:10px;background:var(--bg3);border-radius:5px;overflow:hidden">
+          <div id="sc-sys-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),#58a6ff);border-radius:5px;transition:width .3s"></div>
+        </div>
+        <div id="sc-sys-stats" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-success" onclick="scraperSystem()" id="sc-sys-btn">
+          🚀 Iniciar scraping del sistema
+        </button>
+      </div>
+      <div id="sc-sys-result" style="margin-top:12px"></div>
+    </div>
+
+    <!-- Tab: Configuración -->
+    <div id="stab-config-panel" style="display:none">
+      <div class="info-box" style="margin-bottom:14px">
+        Las credenciales se guardan en <code>/userdata/system/batocera.conf</code>.<br><br>
+        <strong>ScreenScraper.fr</strong> — cuenta gratis en
+        <a href="https://www.screenscraper.fr" target="_blank" style="color:var(--accent)">screenscraper.fr</a>.
+        El Developer ID <strong style="color:var(--yellow)">no es autoservicio</strong>:
+        debes publicar un mensaje presentando la app en
+        <a href="https://www.screenscraper.fr/forumsujets.php?forum=12" target="_blank" style="color:var(--accent)">este foro</a>
+        y el equipo te asigna devid/devpassword manualmente (puede tardar días).
+        Tu cuota de requests/min y requests/día depende de tu nivel de contribución —
+        revisa la <a href="https://www.screenscraper.fr/faq.php" target="_blank" style="color:var(--accent)">FAQ</a>.<br><br>
+        <strong>TheGamesDB</strong> — API key instantánea sin aprobación en
+        <a href="https://thegamesdb.net" target="_blank" style="color:var(--accent)">thegamesdb.net</a>.
+        <span style="color:var(--green)">Recomendada si quieres empezar a scrapear ya mismo.</span><br><br>
+        <strong>IGDB</strong> — crea una app gratis e instantánea en
+        <a href="https://dev.twitch.tv/console/apps" target="_blank" style="color:var(--accent)">dev.twitch.tv/console/apps</a>
+        para obtener Client ID y Secret. También funciona de inmediato.
+      </div>
+      <div id="sc-cfg-fields"></div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-primary" onclick="scraperSaveConfig()">💾 Guardar en batocera.conf</button>
+        <button class="btn btn-ghost" onclick="loadScraperConfig()">↺ Recargar</button>
+      </div>
+      <div id="sc-cfg-status" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Upload progreso ── -->
+<div class="modal-overlay" id="modal-upload">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h2>⬆ Subiendo archivos</h2>
+    </div>
+    <div id="upload-file-list" style="margin-bottom:16px;max-height:200px;overflow-y:auto"></div>
+
+    <!-- Progreso global -->
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px">
+        <span id="upload-status-label">Preparando…</span>
+        <span id="upload-pct-label">0%</span>
+      </div>
+      <div style="height:12px;background:var(--bg3);border-radius:6px;overflow:hidden;position:relative">
+        <div id="upload-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),#58a6ff);border-radius:6px;transition:width .15s ease"></div>
+        <div id="upload-bar-anim" style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);animation:shimmer 1.2s infinite;display:none"></div>
+      </div>
+    </div>
+
+    <!-- Velocidad / tamaño -->
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:16px">
+      <span id="upload-transferred">0 B / 0 B</span>
+      <span id="upload-speed">— KB/s</span>
+    </div>
+
+    <!-- Resultado -->
+    <div id="upload-result" style="display:none"></div>
+
+    <div id="upload-close-btn" style="display:none">
+      <button class="btn btn-ghost" onclick="closeModal('modal-upload')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(200%)}}
+</style>
+
+<!-- ── MODAL: Renombrar ROM ── -->
+<div class="modal-overlay" id="modal-rename">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <h2>✏ Renombrar archivo</h2>
+      <button class="modal-close" onclick="closeModal('modal-rename')">✕</button>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Nombre actual</label>
+      <input id="rename-old" type="text" readonly style="color:var(--text3);background:var(--bg3)">
+    </div>
+    <div class="field" style="margin-bottom:20px">
+      <label>Nuevo nombre <span class="req">*</span></label>
+      <input id="rename-new" type="text" placeholder="nuevo_nombre.zip">
+      <span class="hint">Mantén la extensión del archivo original</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="confirmRename()">✔ Renombrar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-rename')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL: Confirmar borrado ── -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h2>🗑 Eliminar sistema</h2>
+      <button class="modal-close" onclick="closeModal('modal-delete')">✕</button>
+    </div>
+    <p style="color:var(--text2);margin-bottom:16px" id="modal-delete-msg"></p>
+    <div class="btn-row">
+      <button class="btn btn-danger" id="modal-delete-confirm">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ─── State & Init ────────────────────────────────────────────
+let settingsData = {};
+let currentXml = '';
+
+async function init() {
+  const info = await fetchJson('/api/info');
+  if (info) {
+    document.getElementById('sb-theme').textContent = info.active_theme || '?';
+    document.getElementById('badge-count').textContent = info.systems_count;
+  }
+  loadSettings();
+}
+
+// ─── Navigation ──────────────────────────────────────────────
+const panelMeta = {
+  add:      { title:'➕ Agregar Sistema',    sub:'Configura y genera el cfg para un nuevo sistema en EmulationStation' },
+  list:     { title:'📋 Sistemas Creados',   sub:'Todos los sistemas personalizados en tu directorio CFG' },
+  themes:   { title:'🎨 Temas & Assets',     sub:'Temas instalados y estructura de archivos para logos' },
+  preview:  { title:'👁 Vista Previa XML',   sub:'XML que se generará al crear el sistema' },
+  dashboard:{ title:'📊 Dashboard',           sub:'Estado del sistema en tiempo real — Batocera' },
+  roms:     { title:'🎮 ROMs & BIOS Monitor',  sub:'Explora sistemas, ROMs, multimedia y verifica BIOS' },
+  settings: { title:'⚙ Configuración',      sub:'Rutas de Batocera e instrucciones de uso' },
+};
+
+function showPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const meta = panelMeta[name] || {};
+  document.getElementById('topbar-title').textContent = meta.title || '';
+  document.getElementById('topbar-sub').textContent = meta.sub || '';
+  if (name === 'list') loadSystems();
+  // Limpiar auto-refresh al salir del dashboard
+  if (name !== 'dashboard') { clearInterval(_dashTimer); _dashTimer = null; }
+  if (name === 'themes')    loadThemes();
+  if (name === 'dashboard') initDashboard();
+  if (name === 'settings')  checkServiceStatus();
+  if (name === 'roms')   loadRomSystems();
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
+async function fetchJson(url, opts = {}) {
+  try {
+    const r = await fetch(url, opts);
+    return await r.json();
+  } catch(e) {
+    toast('Error de red: ' + e.message, 'err');
+    return null;
+  }
+}
+
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.className = '' }, 3200);
+}
+
+function log(msg, type='') {
+  const box = document.getElementById('log-box');
+  const cls = type ? ` class="log-${type}"` : '';
+  box.innerHTML += `<span${cls}>${escHtml(msg)}</span>\n`;
+  box.scrollTop = box.scrollHeight;
+}
+function clearLog() {
+  document.getElementById('log-box').innerHTML = '';
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ─── Form helpers ─────────────────────────────────────────────
+function formData() {
+  return {
+    fullname:      document.getElementById('f-fullname').value,
+    name:          document.getElementById('f-name').value.trim().toLowerCase().replace(/\s+/g,''),
+    manufacturer:  document.getElementById('f-manufacturer').value,
+    release:       document.getElementById('f-release').value,
+    hardware:      document.getElementById('f-hardware').value,
+    rompath:       document.getElementById('f-rompath').value,
+    extensions:    document.getElementById('f-extensions').value,
+    theme:         document.getElementById('f-theme').value,
+    platform:      document.getElementById('f-platform').value,
+    emulator:      document.getElementById('f-emulator').value,
+    core:          document.getElementById('f-core').value,
+    extra_cores:   document.getElementById('f-extra-cores').value,
+    description:   document.getElementById('f-description').value,
+    create_roms_dir: document.getElementById('opt-create-dir').checked,
+    batocera_conf_entry: document.getElementById('opt-batocera-conf').checked,
+    dry_run:       document.getElementById('opt-dry-run').checked,
+  };
+}
+
+function autoSlug() {
+  const fn = document.getElementById('f-fullname').value;
+  const slug = fn.toLowerCase()
+    .replace(/\s+/g,'-')
+    .replace(/[^a-z0-9\-]/g,'')
+    .replace(/-+/g,'-')
+    .replace(/^-|-$/g,'');
+  document.getElementById('f-name').value = slug;
+}
+
+function autoRomPath() {
+  const slug = document.getElementById('f-name').value.trim();
+  if (!slug) { toast('Escribe primero el slug', 'err'); return; }
+  const base = (settingsData.roms_base || '/userdata/roms');
+  document.getElementById('f-rompath').value = `${base}/${slug}`;
+}
+
+function applyExtPreset() {
+  const val = document.getElementById('ext-preset').value;
+  if (val) document.getElementById('f-extensions').value = val;
+}
+
+function clearForm() {
+  ['f-fullname','f-name','f-manufacturer','f-release','f-rompath',
+   'f-extensions','f-theme','f-core','f-extra-cores','f-description'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('f-hardware').selectedIndex = 0;
+  document.getElementById('f-emulator').selectedIndex = 0;
+  document.getElementById('f-platform').selectedIndex = 0;
+  clearLogo();
+  clearLog();
+  log('Formulario limpiado.');
+}
+
+// ─── Logo ──────────────────────────────────────────────────────
+function previewLogo(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('logo-img');
+    img.src = ev.target.result;
+    img.style.display = '';
+    document.getElementById('logo-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+function clearLogo() {
+  document.getElementById('logo-file').value = '';
+  document.getElementById('logo-img').src = '';
+  document.getElementById('logo-img').style.display = 'none';
+  document.getElementById('logo-placeholder').style.display = '';
+}
+async function uploadLogo() {
+  const slug = document.getElementById('f-name').value.trim();
+  const file = document.getElementById('logo-file').files[0];
+  if (!slug) { toast('Define el slug primero', 'err'); return; }
+  if (!file) { toast('Selecciona una imagen primero', 'err'); return; }
+  const fd = new FormData();
+  fd.append('logo', file);
+  fd.append('slug', slug);
+  const res = await fetch('/api/upload-logo', { method:'POST', body: fd });
+  const data = await res.json();
+  if (data.ok) {
+    toast(`✔ Logo instalado en: ${data.path}`, 'ok');
+    log(`✔ Logo instalado: ${data.path}`, 'ok');
+  } else {
+    toast(data.error, 'err');
+    log(`✖ Error: ${data.error}`, 'err');
+  }
+}
+
+// ─── Preview XML ───────────────────────────────────────────────
+async function previewXml() {
+  const data = formData();
+  const res = await fetchJson('/api/preview', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data),
+  });
+  if (!res) return;
+  if (res.ok) {
+    currentXml = res.xml;
+    const box = document.getElementById('xml-preview');
+    box.textContent = res.xml;
+    showPanel('preview', document.querySelectorAll('.nav-item')[3]);
+    document.querySelectorAll('.nav-item')[3].classList.add('active');
+    document.querySelectorAll('.nav-item').forEach((b,i)=>{if(i!==3)b.classList.remove('active')});
+  } else {
+    toast(res.error, 'err');
+  }
+}
+
+function copyXml() {
+  if (!currentXml) { toast('No hay XML generado','err'); return; }
+  navigator.clipboard.writeText(currentXml).then(()=>toast('XML copiado al portapapeles'));
+}
+
+// ─── Create System ──────────────────────────────────────────────
+async function createSystem() {
+  clearLog();
+  const data = formData();
+  if (!data.fullname) { log('✖ Nombre completo requerido','err'); return; }
+  if (!data.name)     { log('✖ Slug requerido','err'); return; }
+  if (!data.rompath)  { log('✖ Ruta de ROMs requerida','err'); return; }
+  if (!data.extensions){ log('✖ Extensiones requeridas','err'); return; }
+
+  log(`Creando sistema: ${data.name} ${data.dry_run ? '[SIMULACIÓN]' : ''}...`, 'info');
+
+  const res = await fetchJson('/api/create', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data),
+  });
+  if (!res) return;
+
+  if (!res.ok) {
+    (res.errors || ['Error desconocido']).forEach(e => log('✖ '+e,'err'));
+    toast('Error al crear el sistema','err');
+    return;
+  }
+
+  res.log.forEach(l => {
+    const type = l.startsWith('✔') ? 'ok' : l.startsWith('✖') ? 'err' : l.startsWith('⚠') ? 'warn' : '';
+    log(l, type);
+  });
+
+  if (res.xml) {
+    currentXml = res.xml;
+    document.getElementById('xml-preview').textContent = res.xml;
+  }
+
+  if (!data.dry_run) {
+    toast(`✅ Sistema '${data.name}' creado`, 'ok');
+    document.getElementById('badge-count').textContent =
+      parseInt(document.getElementById('badge-count').textContent||0)+1;
+  } else {
+    toast('Simulación completada — no se escribieron archivos','ok');
+  }
+}
+
+// ─── Systems List ───────────────────────────────────────────────
+async function loadSystems() {
+  document.getElementById('systems-container').innerHTML =
+    '<div style="text-align:center;padding:40px;color:var(--text3)">Cargando…</div>';
+  const systems = await fetchJson('/api/systems');
+  if (!systems) return;
+
+  document.getElementById('badge-count').textContent = systems.length;
+
+  if (systems.length === 0) {
+    document.getElementById('systems-container').innerHTML = `
+      <div style="text-align:center;padding:60px;color:var(--text3)">
+        <div style="font-size:40px;margin-bottom:12px">📭</div>
+        <div>No se encontraron sistemas personalizados.</div>
+        <div style="font-size:12px;margin-top:6px">Usa "Agregar Sistema" para crear el primero.</div>
+      </div>`;
+    return;
+  }
+
+  const hwIcons = {console:'🎮',portable:'👾',computer:'💻',arcade:'🕹',engine:'⚙',fantasy:'✨',other:'📦'};
+  const html = systems.map(s => `
+    <div class="system-card">
+      <div class="system-card-icon">${hwIcons[s.hardware]||'🕹'}</div>
+      <div class="system-card-info">
+        <h3>${escHtml(s.fullname||s.name)}</h3>
+        <p>
+          <span class="badge badge-blue">${escHtml(s.name)}</span>
+          ${s.theme ? `<span class="badge badge-purple" style="margin-left:5px">theme:${escHtml(s.theme)}</span>` : ''}
+          <span style="margin-left:8px;color:var(--text3)">${escHtml(s.filename)}</span>
+        </p>
+        <p style="margin-top:4px">${escHtml(s.path)}</p>
+      </div>
+      <div class="system-card-actions">
+        <button class="btn btn-ghost btn-sm" onclick="viewSystemXml('${escHtml(s.name)}')">📄 XML</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSystem('${escHtml(s.name)}','${escHtml(s.fullname||s.name)}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('systems-container').innerHTML = html;
+}
+
+async function viewSystemXml(name) {
+  const res = await fetchJson(`/api/system/${encodeURIComponent(name)}/xml`);
+  if (!res || !res.ok) { toast('No se pudo leer el XML','err'); return; }
+  document.getElementById('modal-xml-content').textContent = res.xml;
+  openModal('modal-xml');
+}
+
+function deleteSystem(name, fullname) {
+  document.getElementById('modal-delete-msg').textContent =
+    `¿Eliminar el sistema "${fullname}" (${name})? Esta acción no se puede deshacer.`;
+  document.getElementById('modal-delete-confirm').onclick = async () => {
+    const res = await fetchJson(`/api/system/${encodeURIComponent(name)}`, { method:'DELETE' });
+    closeModal('modal-delete');
+    if (res && res.ok) {
+      toast('Sistema eliminado','ok');
+      loadSystems();
+    } else {
+      toast((res && res.error) || 'Error','err');
+    }
+  };
+  openModal('modal-delete');
+}
+
+// ─── Themes ─────────────────────────────────────────────────────
+async function loadThemes() {
+  const data = await fetchJson('/api/themes');
+  if (!data) return;
+  document.getElementById('sb-theme').textContent = data.active || '?';
+  document.getElementById('themes-active-info').innerHTML =
+    `<div class="info-box">Tema activo: <strong style="color:var(--accent)">${escHtml(data.active)}</strong> — ${data.list.length} temas instalados</div>`;
+
+  const grid = data.list.map(t => `
+    <div class="theme-item ${t===data.active?'active':''}">
+      <div class="dot"></div>
+      ${escHtml(t)} ${t===data.active?'<span class="badge badge-green" style="margin-left:auto">activo</span>':''}
+    </div>
+  `).join('');
+  document.getElementById('themes-grid').innerHTML = grid;
+
+  document.getElementById('theme-tree-box').textContent =
+`/userdata/themes/${data.active}/
+  └── <tu_sistema>/
+        ├── art/
+        │     ├── logo.png        ← logo del sistema (recomendado PNG transparente)
+        │     ├── background.jpg  ← fondo opcional
+        │     └── controller.png  ← imagen del controlador (opcional)
+        └── theme.xml             ← override del tema (opcional)`;
+}
+
+// ─── Settings ────────────────────────────────────────────────────
+const settingsMeta = {
+  es_cfg_dir:    { label:'Directorio CFG de EmulationStation', hint:'Donde se guardan los es_systems_*.cfg personalizados' },
+  roms_base:     { label:'Directorio base de ROMs',             hint:'Raíz donde viven los subdirectorios de ROMs' },
+  themes_user:   { label:'Temas de usuario',                    hint:'Para instalar logos/assets de temas personalizados' },
+  themes_sys:    { label:'Temas del sistema',                   hint:'Temas incluidos en la instalación base de Batocera' },
+  batocera_conf: { label:'Archivo batocera.conf',               hint:'Configuración principal de Batocera' },
+  app_path:      { label:'Ruta de app.py',                    hint:'Ruta completa al servidor de Batocera Manager' },
+  server_port:   { label:'Puerto del servidor',               hint:'Puerto HTTP donde escucha la app (default: 5000)' },
+  python_path:   { label:'Ruta del emulatorlauncher.py',        hint:'Debe coincidir con la versión Python de tu Batocera v43' },
+};
+
+async function loadSettings() {
+  const data = await fetchJson('/api/settings');
+  if (!data) return;
+  settingsData = data;
+  const cont = document.getElementById('settings-fields');
+  cont.innerHTML = Object.entries(settingsMeta).map(([key,meta]) => `
+    <div class="field" style="margin-bottom:14px">
+      <label>${meta.label}</label>
+      <div class="settings-path-row">
+        <input id="set-${key}" type="text" value="${escHtml(data[key]||'')}">
+      </div>
+      <span class="hint">${meta.hint}</span>
+    </div>
+  `).join('');
+}
+
+async function saveSettings() {
+  const payload = {};
+  Object.keys(settingsMeta).forEach(key => {
+    const el = document.getElementById(`set-${key}`);
+    if (el) payload[key] = el.value;
+  });
+  const res = await fetchJson('/api/settings', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload),
+  });
+  if (res && res.ok) {
+    settingsData = { ...settingsData, ...payload };
+    toast('✔ Configuración guardada','ok');
+  } else {
+    toast('Error guardando configuración','err');
+  }
+}
+
+// ─── Close modal on overlay click ────────────────────────────────
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+//  ROM & BIOS MONITOR
+// ═══════════════════════════════════════════════════════════════
+let allRomSystems = [];
+let currentSystem = null;
+let currentRoms   = [];
+
+async function loadRomSystems() {
+  document.getElementById('roms-systems-grid').innerHTML =
+    '<div style="text-align:center;padding:40px;color:var(--text3);grid-column:1/-1"><div class="spinner" style="margin:0 auto"></div></div>';
+  const data = await fetchJson('/api/rom-systems');
+  if (!data) return;
+  allRomSystems = data;
+  document.getElementById('badge-roms').textContent = data.length;
+  const total = data.reduce((a,s) => a + s.rom_count, 0);
+  const empty = data.filter(s => s.is_empty).length;
+  document.getElementById('rom-summary-text').textContent =
+    `${data.length} sistemas · ${total} ROMs en total · ${empty} sistemas vacíos`;
+  renderRomSystems(data);
+}
+
+function renderRomSystems(systems) {
+  const hwColors = {
+    console:'#1f6feb',portable:'#2d5a27',computer:'#6b3fa0',
+    arcade:'#8b2020',engine:'#6b5a00',fantasy:'#1a5a6b',other:'#444'
+  };
+  const grid = document.getElementById('roms-systems-grid');
+  if (!systems.length) {
+    grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);grid-column:1/-1">Sin sistemas encontrados</div>';
+    return;
+  }
+  grid.innerHTML = systems.map(s => {
+    const barW = s.rom_count > 0 ? Math.min(100, Math.round(s.rom_count/3)) : 0;
+    const statusDot = s.is_empty
+      ? '<span style="color:var(--text3);font-size:10px">● vacío</span>'
+      : `<span style="color:var(--green);font-size:10px">● ${s.rom_count} ROMs</span>`;
+    const biosWarning = s.has_bios && s.bios_count > 0
+      ? `<span style="color:var(--yellow);font-size:10px" title="Requiere BIOS">⚠ BIOS</span>` : '';
+    return `
+    <div class="system-card" style="flex-direction:column;align-items:stretch;gap:10px;cursor:pointer;padding:14px"
+         onclick="openSystem('${s.name}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:8px;background:${hwColors[s.hardware]||'#333'};
+          display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🕹</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</div>
+          <div style="display:flex;gap:8px;margin-top:3px;align-items:center">${statusDot} ${biosWarning}</div>
+        </div>
+      </div>
+      <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${barW}%;background:${s.is_empty?'var(--border)':'var(--accent2)'};border-radius:2px;transition:width .4s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
+        <span>${s.size_human}</span>
+        <span>${s.has_gamelist?'📋 gamelist':''} ${s.media_count>0?'🖼 '+s.media_count:''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterRomSystems() {
+  const q = document.getElementById('rom-search').value.toLowerCase();
+  renderRomSystems(q ? allRomSystems.filter(s => s.name.includes(q)) : allRomSystems);
+}
+
+async function openSystem(name) {
+  currentSystem = name;
+  document.getElementById('roms-systems-view').style.display = 'none';
+  document.getElementById('roms-detail-view').style.display  = 'block';
+  document.getElementById('detail-title').textContent = '🕹 ' + name;
+  document.getElementById('detail-badges').innerHTML  = '<span class="badge badge-blue">Cargando…</span>';
+  document.getElementById('bios-panel').style.display = 'none';
+  document.getElementById('roms-tbody').innerHTML     =
+    '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner" style="margin:0 auto"></div></td></tr>';
+
+  // Update upload input
+  document.getElementById('rom-upload-file').onchange = uploadRoms;
+
+  const data = await fetchJson(`/api/rom-systems/${encodeURIComponent(name)}`);
+  if (!data || !data.ok) { toast('Error cargando sistema','err'); return; }
+  const sys = data.system;
+  currentRoms = sys.roms || [];
+
+  // Badges
+  const badges = [
+    sys.is_empty ? '<span class="badge badge-red">Vacío</span>' : `<span class="badge badge-green">${sys.rom_count} ROMs</span>`,
+    sys.has_gamelist ? '<span class="badge badge-blue">gamelist.xml</span>' : '',
+    sys.media_count > 0 ? `<span class="badge badge-purple">🖼 ${sys.media_count} media</span>` : '',
+    sys.has_bios ? '<span class="badge badge-orange">⚠ requiere BIOS</span>' : '',
+  ].filter(Boolean);
+  document.getElementById('detail-badges').innerHTML = badges.join(' ');
+
+  // Stats
+  document.getElementById('detail-stats').innerHTML = [
+    statCard('ROMs','🎮', sys.rom_count),
+    statCard('Media','🖼', sys.media_count),
+    statCard('Tamaño','💾', sys.size_human),
+    statCard('Ruta','📁', sys.path, true),
+  ].join('');
+
+  renderRoms(currentRoms);
+}
+
+function statCard(label, icon, val, small=false) {
+  return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);
+    padding:10px 16px;display:flex;align-items:center;gap:10px;flex:1;min-width:120px">
+    <span style="font-size:20px">${icon}</span>
+    <div>
+      <div style="font-size:${small?'11':'15'}px;font-weight:${small?400:700}">${escHtml(String(val))}</div>
+      <div style="font-size:10px;color:var(--text3)">${label}</div>
+    </div>
+  </div>`;
+}
+
+function renderRoms(roms) {
+  const tbody = document.getElementById('roms-tbody');
+  document.getElementById('rom-count-label').textContent = `${roms.length} archivos`;
+  if (!roms.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3)">
+      <div style="font-size:32px;margin-bottom:8px">📭</div>
+      Sistema vacío — sube ROMs con el botón "Subir ROM"
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = roms.map((rom, i) => {
+    const extColor = rom.ext === 'dir' ? '#bc8cff' : rom.is_rom ? '#3fb950' : '#8b949e';
+    const infoBadges = [
+      rom.has_image ? '<span title="Tiene imagen" style="cursor:default">🖼</span>' : '',
+      rom.has_video ? '<span title="Tiene video" style="cursor:default">🎬</span>' : '',
+      rom.genre     ? `<span title="${escHtml(rom.genre)}" style="font-size:10px;color:var(--text3)">${escHtml(rom.genre)}</span>` : '',
+    ].filter(Boolean).join(' ');
+    const rating = rom.rating ? '⭐'.repeat(Math.round(parseFloat(rom.rating)*5)) : '';
+    return `<tr style="border-bottom:1px solid var(--border);transition:background .1s"
+               onmouseover="this.style.background='var(--bg3)'"
+               onmouseout="this.style.background=''">
+      <td style="padding:9px 14px;color:var(--text3);font-size:11px">${i+1}</td>
+      <td style="padding:9px 14px;max-width:300px">
+        <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+             title="${escHtml(rom.filename)}">${escHtml(rom.name)}</div>
+        ${rom.year||rom.publisher ? `<div style="font-size:10px;color:var(--text3)">${escHtml(rom.year||'')} ${escHtml(rom.publisher||'')} ${rating}</div>` : ''}
+      </td>
+      <td style="padding:9px 14px"><span style="font-size:11px;font-weight:600;color:${extColor};font-family:var(--mono)">${escHtml(rom.ext)}</span></td>
+      <td style="padding:9px 14px;font-size:12px;color:var(--text2);white-space:nowrap">${rom.size_human}</td>
+      <td style="padding:9px 14px">${infoBadges}</td>
+      <td style="padding:9px 14px;text-align:center">
+        <div style="display:flex;gap:4px;justify-content:center">
+          <button class="btn btn-ghost btn-sm btn-icon" title="Ver detalles"
+            onclick="showRomDetail(${i})" style="padding:4px 7px">👁</button>
+          <button class="btn btn-ghost btn-sm btn-icon" title="Renombrar"
+            onclick="renameRom('${escHtml(rom.filename)}')" style="padding:4px 7px">✏</button>
+          <button class="btn btn-danger btn-sm btn-icon" title="Eliminar"
+            onclick="deleteRom('${escHtml(rom.filename)}')" style="padding:4px 7px">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterRoms() {
+  const q = document.getElementById('rom-search-detail').value.toLowerCase();
+  renderRoms(q ? currentRoms.filter(r => r.name.toLowerCase().includes(q) || r.filename.toLowerCase().includes(q)) : currentRoms);
+}
+
+function sortRoms() {
+  const key = document.getElementById('rom-sort').value;
+  const sorted = [...currentRoms].sort((a,b) => {
+    if (key === 'size') return b.size - a.size;
+    if (key === 'ext')  return a.ext.localeCompare(b.ext);
+    return a.name.localeCompare(b.name);
+  });
+  renderRoms(sorted);
+}
+
+function backToSystems() {
+  document.getElementById('roms-systems-view').style.display = '';
+  document.getElementById('roms-detail-view').style.display  = 'none';
+  currentSystem = null;
+}
+
+// ── ROM Detail modal ──
+let _editingRomIdx = null;
+let _editingRomOriginal = {};
+
+function showRomDetail(idx) {
+  const rom = currentRoms[idx];
+  if (!rom) return;
+  _editingRomIdx      = idx;
+  _editingRomOriginal = {...rom};
+
+  document.getElementById('rom-modal-title').textContent        = rom.name;
+  document.getElementById('rom-modal-edit-btn').style.display   = '';
+  document.getElementById('rom-modal-save-btn').style.display   = 'none';
+  document.getElementById('rom-modal-cancel-btn').style.display = 'none';
+
+  const img = document.getElementById('rom-modal-img');
+  const ph  = document.getElementById('rom-modal-img-placeholder');
+  if (rom.has_image && currentSystem) {
+    img.src           = `/api/rom-image/${encodeURIComponent(currentSystem)}/${encodeURIComponent(rom.filename)}`;
+    img.style.display = '';
+    ph.style.display  = 'none';
+    img.onerror = () => { img.style.display='none'; ph.style.display=''; ph.textContent='Sin imagen'; };
+  } else {
+    img.style.display = 'none';
+    ph.style.display  = '';
+    ph.textContent    = 'Sin imagen scrapeada';
+  }
+
+  document.getElementById('rom-modal-meta').innerHTML = [
+    `<div style="margin-bottom:6px"><span style="color:var(--text3);font-size:10px">ARCHIVO</span><br>
+      <span style="font-size:11px;word-break:break-all">${escHtml(rom.filename)}</span></div>`,
+    `<div style="margin-bottom:6px"><span style="color:var(--text3);font-size:10px">EXTENSIÓN</span><br>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--accent)">${escHtml(rom.ext)}</span></div>`,
+    `<div style="margin-bottom:6px"><span style="color:var(--text3);font-size:10px">TAMAÑO</span><br>
+      <span style="font-size:12px">${escHtml(rom.size_human)}</span></div>`,
+    rom.has_video ? '<div style="margin-top:8px"><span class="badge badge-purple">Video</span></div>' : '',
+  ].join('');
+
+  renderRomFields(rom, false);
+  openModal('modal-rom');
+}
+
+function renderRomFields(rom, editing) {
+  const stars = r => {
+    const n = Math.max(0, Math.min(5, Math.round(parseFloat(r||0)*5)));
+    return '★'.repeat(n) + '☆'.repeat(5-n) + ' (' + parseFloat(r||0).toFixed(1) + ')';
+  };
+
+  const cont = document.getElementById('rom-modal-fields');
+  if (!editing) {
+    cont.innerHTML = `
+      <div class="kv-row" style="padding:10px 0">
+        <span class="kv-key" style="font-size:13px">Nombre</span>
+        <span class="kv-val" style="font-size:14px;font-weight:700">${escHtml(rom.name||'')}</span>
+      </div>
+      ${rom.year      ? `<div class="kv-row"><span class="kv-key">Año</span><span class="kv-val">${escHtml(rom.year)}</span></div>` : ''}
+      ${rom.publisher ? `<div class="kv-row"><span class="kv-key">Publisher</span><span class="kv-val">${escHtml(rom.publisher)}</span></div>` : ''}
+      ${rom.genre     ? `<div class="kv-row"><span class="kv-key">Género</span><span class="kv-val">${escHtml(rom.genre)}</span></div>` : ''}
+      ${rom.rating    ? `<div class="kv-row"><span class="kv-key">Rating</span>
+        <span class="kv-val" style="color:var(--yellow)">${stars(rom.rating)}</span></div>` : ''}
+      ${rom.desc
+        ? `<div style="margin-top:14px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:6px">Descripción</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.7;max-height:150px;overflow-y:auto;
+              background:var(--bg3);padding:10px;border-radius:var(--radius)">${escHtml(rom.desc)}</div>
+           </div>`
+        : `<div style="margin-top:24px;text-align:center;color:var(--text3);font-size:12px;padding:20px;
+              background:var(--bg3);border-radius:var(--radius);border:1px dashed var(--border)">
+            Sin metadatos — presiona <strong>✏ Editar</strong> para agregar información
+           </div>`
+      }`;
+  } else {
+    cont.innerHTML = `
+      <div class="field" style="margin-bottom:12px">
+        <label>Nombre</label>
+        <input type="text" id="redit-name" value="${escHtml(rom.name||'')}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div class="field">
+          <label>Año</label>
+          <input type="text" id="redit-year" value="${escHtml(rom.year||'')}" maxlength="4" placeholder="ej: 1994">
+        </div>
+        <div class="field">
+          <label>Publisher</label>
+          <input type="text" id="redit-publisher" value="${escHtml(rom.publisher||'')}" placeholder="ej: Nintendo">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Género</label>
+        <input type="text" id="redit-genre" value="${escHtml(rom.genre||'')}" placeholder="ej: Action, RPG, Sports">
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Rating <span style="font-size:10px;color:var(--text3)">(0.0 – 1.0)</span></label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <input type="range" id="redit-rating" min="0" max="1" step="0.1"
+            value="${parseFloat(rom.rating||0)}" style="flex:1;accent-color:var(--yellow)"
+            oninput="document.getElementById('redit-rating-stars').textContent=ratingStarsJs(this.value)">
+          <span id="redit-rating-stars" style="font-size:13px;min-width:110px;color:var(--yellow)">${stars(rom.rating)}</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Descripción</label>
+        <textarea id="redit-desc" style="min-height:110px">${escHtml(rom.desc||'')}</textarea>
+      </div>`;
+  }
+}
+
+function ratingStarsJs(r) {
+  const n = Math.max(0, Math.min(5, Math.round(parseFloat(r)*5)));
+  return '★'.repeat(n) + '☆'.repeat(5-n) + ' (' + parseFloat(r).toFixed(1) + ')';
+}
+
+function toggleRomEdit() {
+  document.getElementById('rom-modal-edit-btn').style.display   = 'none';
+  document.getElementById('rom-modal-save-btn').style.display   = '';
+  document.getElementById('rom-modal-cancel-btn').style.display = '';
+  renderRomFields(currentRoms[_editingRomIdx], true);
+}
+
+function cancelRomEdit() {
+  document.getElementById('rom-modal-edit-btn').style.display   = '';
+  document.getElementById('rom-modal-save-btn').style.display   = 'none';
+  document.getElementById('rom-modal-cancel-btn').style.display = 'none';
+  renderRomFields(_editingRomOriginal, false);
+}
+
+async function saveRomEdit() {
+  const rom     = currentRoms[_editingRomIdx];
+  const updated = {
+    name:      document.getElementById('redit-name')?.value?.trim()      || rom.name,
+    year:      document.getElementById('redit-year')?.value?.trim()      || '',
+    publisher: document.getElementById('redit-publisher')?.value?.trim() || '',
+    genre:     document.getElementById('redit-genre')?.value?.trim()     || '',
+    rating:    document.getElementById('redit-rating')?.value            || '',
+    desc:      document.getElementById('redit-desc')?.value?.trim()      || '',
+  };
+  const btn = document.getElementById('rom-modal-save-btn');
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  const res = await fetchJson('/api/rom/update-meta', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({system:currentSystem, filename:rom.filename, ...updated}),
+  });
+  btn.disabled = false; btn.textContent = 'Guardar';
+  if (res?.ok) {
+    Object.assign(currentRoms[_editingRomIdx], updated);
+    _editingRomOriginal = {...currentRoms[_editingRomIdx]};
+    toast('Guardado en gamelist.xml', 'ok');
+    cancelRomEdit();
+    renderRomFields(currentRoms[_editingRomIdx], false);
+  } else {
+    toast(res?.error || 'Error guardando', 'err');
+  }
+}
+// ── BIOS ──
+async function openBiosPanel() {
+  const panel = document.getElementById('bios-panel');
+  panel.style.display = panel.style.display === 'none' ? '' : 'none';
+  if (panel.style.display === '') {
+    document.getElementById('bios-results').innerHTML =
+      '<div style="color:var(--text3)">Verificando…</div>';
+    const data = await fetchJson(`/api/rom-systems/${encodeURIComponent(currentSystem)}/bios`);
+    renderBios(data);
+  }
+}
+
+function renderBios(data) {
+  const cont = document.getElementById('bios-results');
+  if (!data || !data.ok) { cont.innerHTML = '<div class="warn-box">No hay información de BIOS para este sistema en la base de datos.</div>'; return; }
+  if (!data.bios.length)  { cont.innerHTML = '<div class="info-box">✔ Este sistema no requiere BIOS adicionales.</div>'; return; }
+
+  const rows = data.bios.map(b => {
+    let status, statusColor;
+    if (!b.exists) {
+      status = b.mandatory ? '✖ FALTA (requerida)' : '– No encontrada (opcional)';
+      statusColor = b.mandatory ? 'var(--red)' : 'var(--text3)';
+    } else if (b.md5_ok === true) {
+      status = '✔ OK — MD5 verificado';
+      statusColor = 'var(--green)';
+    } else if (b.md5_ok === false) {
+      status = '⚠ BIOS incorrecta (MD5 no coincide)';
+      statusColor = 'var(--yellow)';
+    } else {
+      status = '✔ Presente (sin MD5 de referencia)';
+      statusColor = 'var(--green)';
+    }
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:8px 12px;font-family:var(--mono);font-size:12px">${escHtml(b.file)}</td>
+      <td style="padding:8px 12px;font-size:12px;color:var(--text2)">${escHtml(b.desc)}</td>
+      <td style="padding:8px 12px;font-size:11px">${b.mandatory?'<span class="badge badge-red">requerida</span>':'<span class="badge badge-blue">opcional</span>'}</td>
+      <td style="padding:8px 12px;font-size:12px;color:${statusColor};font-weight:500">${status}</td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--text3);font-family:var(--mono)">${b.size||''}</td>
+    </tr>`;
+  }).join('');
+
+  cont.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg3)">
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text3)">Archivo</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text3)">Descripción</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text3)">Tipo</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text3)">Estado</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--text3)">Tamaño</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── Upload ROMs con progreso ──
+function uploadRoms() {
+  const input = document.getElementById('rom-upload-file');
+  if (!input.files.length || !currentSystem) return;
+  const files = Array.from(input.files);
+  input.value = '';
+
+  // Mostrar modal
+  openModal('modal-upload');
+  document.getElementById('upload-close-btn').style.display = 'none';
+  document.getElementById('upload-result').style.display    = 'none';
+  document.getElementById('upload-bar-anim').style.display  = '';
+  document.getElementById('upload-bar').style.width         = '0%';
+  document.getElementById('upload-pct-label').textContent   = '0%';
+  document.getElementById('upload-speed').textContent       = '— KB/s';
+
+  // Lista de archivos
+  const fmtSize = b => b>1048576?`${(b/1048576).toFixed(1)} MB`:b>1024?`${(b/1024).toFixed(0)} KB`:`${b} B`;
+  document.getElementById('upload-file-list').innerHTML = files.map(f => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px">📄</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(f.name)}</div>
+        <div style="font-size:10px;color:var(--text3)">${fmtSize(f.size)}</div>
+      </div>
+      <span id="file-status-${CSS.escape(f.name)}" style="font-size:11px;color:var(--text3)">En cola</span>
+    </div>`).join('');
+
+  const totalBytes = files.reduce((a,f) => a+f.size, 0);
+  let loadedBytes  = 0, startTime = Date.now();
+
+  function updateBar(loaded, total) {
+    const pct = total > 0 ? Math.round(loaded/total*100) : 0;
+    document.getElementById('upload-bar').style.width       = pct + '%';
+    document.getElementById('upload-pct-label').textContent = pct + '%';
+    const elapsed = (Date.now()-startTime)/1000 || 0.001;
+    const speed   = loaded/elapsed;
+    document.getElementById('upload-speed').textContent =
+      speed>1048576 ? `${(speed/1048576).toFixed(1)} MB/s` : `${(speed/1024).toFixed(0)} KB/s`;
+    document.getElementById('upload-transferred').textContent =
+      `${fmtSize(loaded)} / ${fmtSize(total)}`;
+  }
+
+  // Subir archivos en secuencia para mostrar progreso por archivo
+  const results = [], errors = [];
+
+  function uploadNext(idx) {
+    if (idx >= files.length) {
+      // Terminar
+      document.getElementById('upload-bar-anim').style.display = 'none';
+      document.getElementById('upload-bar').style.background   =
+        errors.length ? '#f85149' : 'var(--green)';
+      document.getElementById('upload-status-label').textContent =
+        errors.length
+          ? `✖ ${errors.length} error(s) — ${results.length} subidos`
+          : `✔ ${results.length} archivo(s) subidos correctamente`;
+      document.getElementById('upload-result').style.display   = '';
+      document.getElementById('upload-result').innerHTML = results.map(r =>
+        `<div style="font-size:11px;color:var(--green)">✔ ${escHtml(r)}</div>`).join('') +
+        errors.map(e =>
+        `<div style="font-size:11px;color:var(--red)">✖ ${escHtml(e)}</div>`).join('');
+      document.getElementById('upload-close-btn').style.display = '';
+      openSystem(currentSystem);
+      return;
+    }
+
+    const file = files[idx];
+    const statusEl = document.getElementById('file-status-' + CSS.escape(file.name));
+    if (statusEl) statusEl.textContent = 'Subiendo…';
+    document.getElementById('upload-status-label').textContent =
+      `Subiendo ${idx+1}/${files.length}: ${file.name}`;
+
+    const fd = new FormData();
+    fd.append('rom', file);
+    fd.append('slug', currentSystem);
+
+    const xhr = new XMLHttpRequest();
+    const fileStart = loadedBytes;
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        updateBar(fileStart + e.loaded, totalBytes);
+      }
+    };
+
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (data.ok) {
+          results.push(file.name);
+          if (statusEl) { statusEl.textContent = '✔'; statusEl.style.color = 'var(--green)'; }
+        } else {
+          errors.push(`${file.name}: ${data.error||'Error'}`);
+          if (statusEl) { statusEl.textContent = '✖ Error'; statusEl.style.color = 'var(--red)'; }
+        }
+      } catch(e) {
+        errors.push(`${file.name}: respuesta inválida`);
+      }
+      loadedBytes += file.size;
+      updateBar(loadedBytes, totalBytes);
+      uploadNext(idx+1);
+    };
+
+    xhr.onerror = () => {
+      errors.push(`${file.name}: error de red`);
+      if (statusEl) { statusEl.textContent = '✖ Red'; statusEl.style.color = 'var(--red)'; }
+      loadedBytes += file.size;
+      uploadNext(idx+1);
+    };
+
+    xhr.open('POST', `/api/rom-systems/${encodeURIComponent(currentSystem)}/upload`);
+    xhr.send(fd);
+  }
+
+  uploadNext(0);
+}
+
+// ── Upload BIOS ──
+async function uploadBios() {
+  const input = document.getElementById('bios-upload-file');
+  if (!input.files.length) return;
+  const fd = new FormData();
+  for (const f of input.files) fd.append('bios', f);
+  toast(`Subiendo ${input.files.length} BIOS…`);
+  try {
+    const r = await fetch('/api/bios/upload', {method:'POST',body:fd});
+    const data = await r.json();
+    if (data.ok) {
+      toast(`✔ BIOS subida correctamente`,'ok');
+      openBiosPanel(); // refrescar
+      openBiosPanel();
+    } else {
+      toast(data.error||'Error','err');
+    }
+  } catch(e) { toast('Error de red','err'); }
+  input.value = '';
+}
+
+// ── Delete ROM ──
+function deleteRom(filename) {
+  document.getElementById('modal-delete-msg').textContent =
+    `¿Eliminar "${filename}" del sistema ${currentSystem}? Esta acción no se puede deshacer.`;
+  document.getElementById('modal-delete-confirm').onclick = async () => {
+    closeModal('modal-delete');
+    const r = await fetch(`/api/rom/${encodeURIComponent(currentSystem)}/${encodeURIComponent(filename)}`,
+      {method:'DELETE'});
+    const data = await r.json();
+    if (data.ok) {
+      toast('ROM eliminada','ok');
+      openSystem(currentSystem);
+    } else {
+      toast(data.error||'Error','err');
+    }
+  };
+  openModal('modal-delete');
+}
+
+// ── Rename ROM ──
+async function renameRom(filename) {
+  const newName = prompt(`Nuevo nombre para:
+${filename}`, filename);
+  if (!newName || newName === filename) return;
+  const res = await fetchJson('/api/rom/rename', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({system:currentSystem, old_name:filename, new_name:newName}),
+  });
+  if (res && res.ok) {
+    toast('✔ Renombrado correctamente','ok');
+    openSystem(currentSystem);
+  } else {
+    toast((res&&res.error)||'Error al renombrar','err');
+  }
+}
+
+
+
+
+// ═══════════════════════════════════════════════════════════════
+//  SCRAPER — ScreenScraper.fr
+// ═══════════════════════════════════════════════════════════════
+let _scraperCurrentRom    = null;
+let _scraperCurrentSystem = null;
+let _scraperGameData      = null;
+let _scraperLastSource    = 'screenscraper';
+
+function scraperTab(tab) {
+  ['single','system','config'].forEach(t => {
+    document.getElementById(`stab-${t}`).className =
+      t === tab ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+    document.getElementById(`stab-${t}-panel`).style.display = t === tab ? '' : 'none';
+  });
+  document.getElementById(`stab-${tab}`).style.flex = '1';
+  document.querySelectorAll('#modal-scraper .btn').forEach(b => b.style.flex = '1');
+}
+
+function scraperSourceChanged(scope) {
+  const prefix = scope === 'system' ? 'sc-sys-source' : 'sc-source';
+  const source = document.getElementById(prefix).value;
+  const fieldPrefix = scope === 'system' ? 'sc-sys-fields-' : 'sc-fields-';
+  ['screenscraper','thegamesdb','igdb'].forEach(s => {
+    const el = document.getElementById(fieldPrefix + s);
+    if (el) el.style.display = (s === source) ? '' : 'none';
+  });
+}
+
+async function loadScraperConfig() {
+  const cfg = await fetchJson('/api/scraper/config');
+  if (!cfg) return;
+  const cont = document.getElementById('sc-cfg-fields');
+  cont.innerHTML = [
+    { key:'ss_user',           label:'ScreenScraper — Usuario',       type:'text'     },
+    { key:'ss_password',       label:'ScreenScraper — Contraseña',    type:'password' },
+    { key:'ss_devid',          label:'ScreenScraper — Developer ID',  type:'text',     ph:'tu_devid'       },
+    { key:'ss_devpassword',    label:'ScreenScraper — Developer Pass',type:'password', ph:'tu_dev_password' },
+    { key:'ss_region',         label:'ScreenScraper — Región',        type:'text',     ph:'wor' },
+    { key:'ss_lang',           label:'ScreenScraper — Idioma',        type:'text',     ph:'es'  },
+    { key:'ss_image_type',     label:'ScreenScraper — Tipo imagen',   type:'text',     ph:'mixrbv1' },
+    { key:'tgdb_apikey',       label:'TheGamesDB — API Key',          type:'text',     ph:'tu_api_key' },
+    { key:'igdb_client_id',    label:'IGDB — Client ID (Twitch)',     type:'text',     ph:'tu_client_id' },
+    { key:'igdb_client_secret',label:'IGDB — Client Secret (Twitch)', type:'password', ph:'tu_client_secret' },
+  ].map(f => `
+    <div class="field" style="margin-bottom:12px">
+      <label>${f.label}</label>
+      <input type="${f.type}" id="sccfg-${f.key}"
+        value="${escHtml(cfg[f.key]||'')}" placeholder="${f.ph||''}">
+    </div>`).join('');
+  // Prellenar tabs single/system con credenciales guardadas
+  const fillIfEmpty = (id, val) => { const el=document.getElementById(id); if(el&&!el.value&&val) el.value=val; };
+  fillIfEmpty('sc-user',          cfg.ss_user||'');
+  fillIfEmpty('sc-pass',          cfg.ss_password||'');
+  fillIfEmpty('sc-devid',         cfg.ss_devid||'');
+  fillIfEmpty('sc-devpass',       cfg.ss_devpassword||'');
+  fillIfEmpty('sc-sys-user',      cfg.ss_user||'');
+  fillIfEmpty('sc-sys-pass',      cfg.ss_password||'');
+  fillIfEmpty('sc-sys-devid',     cfg.ss_devid||'');
+  fillIfEmpty('sc-sys-devpass',   cfg.ss_devpassword||'');
+  fillIfEmpty('sc-tgdb-key',      cfg.tgdb_apikey||'');
+  fillIfEmpty('sc-sys-tgdb-key',  cfg.tgdb_apikey||'');
+  fillIfEmpty('sc-igdb-id',       cfg.igdb_client_id||'');
+  fillIfEmpty('sc-igdb-secret',   cfg.igdb_client_secret||'');
+  fillIfEmpty('sc-sys-igdb-id',     cfg.igdb_client_id||'');
+  fillIfEmpty('sc-sys-igdb-secret', cfg.igdb_client_secret||'');
+  if (cfg.ss_image_type) {
+    ['sc-imgtype','sc-sys-imgtype'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = cfg.ss_image_type;
+    });
+  }
+  if (cfg.scraper_source) {
+    const s1 = document.getElementById('sc-source');
+    const s2 = document.getElementById('sc-sys-source');
+    if (s1) { s1.value = cfg.scraper_source; scraperSourceChanged('single'); }
+    if (s2) { s2.value = cfg.scraper_source; scraperSourceChanged('system'); }
+  }
+}
+
+async function scraperSaveConfig() {
+  const fields = ['ss_user','ss_password','ss_devid','ss_devpassword','ss_region','ss_lang','ss_image_type','tgdb_apikey','igdb_client_id','igdb_client_secret'];
+  const lines  = [];
+  fields.forEach(k => {
+    const el = document.getElementById('sccfg-' + k);
+    if (el && el.value.trim()) {
+      const keyMap = {
+        ss_user:'global.scrapper.user', ss_password:'global.scrapper.password',
+        ss_devid:'global.scrapper.devid', ss_devpassword:'global.scrapper.devpassword',
+        ss_region:'global.scrapper.region', ss_lang:'global.scrapper.lang',
+        ss_image_type:'global.scrapper.imageSource',
+        tgdb_apikey:'global.tgdb.apikey',
+        igdb_client_id:'global.igdb.clientid', igdb_client_secret:'global.igdb.clientsecret',
+      };
+      const bkey = keyMap[k] || k;
+      lines.push({key: bkey, val: el.value.trim()});
+    }
+  });
+  const res = await fetchJson('/api/scraper/save-config', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({lines}),
+  });
+  if (res?.ok) {
+    document.getElementById('sc-cfg-status').innerHTML =
+      '<div class="success-box">✔ Guardado en batocera.conf</div>';
+    loadScraperConfig();
+  } else {
+    document.getElementById('sc-cfg-status').innerHTML =
+      `<div class="warn-box">Error: ${escHtml(res?.error||'desconocido')}</div>`;
+  }
+}
+
+function openScraperForRom() {
+  if (!_editingRomIdx && _editingRomIdx !== 0) return;
+  const rom = currentRoms[_editingRomIdx];
+  if (!rom) return;
+  _scraperCurrentRom    = rom;
+  _scraperCurrentSystem = currentSystem;
+  _scraperGameData      = null;
+  document.getElementById('scraper-modal-title').textContent =
+    `🔍 Scrapear: ${rom.name}`;
+  document.getElementById('scraper-rom-info').innerHTML =
+    `<strong>${escHtml(rom.name)}</strong> · ${escHtml(rom.filename)} · Sistema: <strong>${escHtml(currentSystem)}</strong>`;
+  document.getElementById('scraper-result').style.display = 'none';
+  document.getElementById('scraper-status').innerHTML     = '';
+  scraperTab('single');
+  loadScraperConfig();
+  openModal('modal-scraper');
+}
+
+function openScraperForSystem() {
+  _scraperCurrentSystem = currentSystem;
+  document.getElementById('scraper-modal-title').textContent =
+    `🔍 Scrapear sistema: ${currentSystem}`;
+  scraperTab('system');
+  loadScraperConfig();
+  openModal('modal-scraper');
+}
+
+function getScraperCreds(scope) {
+  const isSys = scope === 'system';
+  const source = document.getElementById(isSys ? 'sc-sys-source' : 'sc-source').value;
+  const g = id => document.getElementById(id)?.value?.trim() || '';
+  if (source === 'thegamesdb') {
+    return { source, tgdb_apikey: g(isSys?'sc-sys-tgdb-key':'sc-tgdb-key') };
+  }
+  if (source === 'igdb') {
+    return { source,
+      igdb_client_id:     g(isSys?'sc-sys-igdb-id':'sc-igdb-id'),
+      igdb_client_secret: g(isSys?'sc-sys-igdb-secret':'sc-igdb-secret') };
+  }
+  return { source,
+    ss_user:        g(isSys?'sc-sys-user':'sc-user'),
+    ss_password:    g(isSys?'sc-sys-pass':'sc-pass'),
+    ss_devid:       g(isSys?'sc-sys-devid':'sc-devid'),
+    ss_devpassword: g(isSys?'sc-sys-devpass':'sc-devpass') };
+}
+
+function credsValid(creds) {
+  if (creds.source === 'thegamesdb') return !!creds.tgdb_apikey;
+  if (creds.source === 'igdb')       return !!(creds.igdb_client_id && creds.igdb_client_secret);
+  return !!(creds.ss_user && creds.ss_password);
+}
+
+const SOURCE_LABELS = { screenscraper:'ScreenScraper.fr', thegamesdb:'TheGamesDB', igdb:'IGDB' };
+
+async function scraperSearch() {
+  if (!_scraperCurrentRom) return;
+  const btn   = document.getElementById('sc-search-btn');
+  const creds = getScraperCreds('single');
+
+  if (!credsValid(creds)) {
+    document.getElementById('scraper-status').innerHTML =
+      `<div class="warn-box">Ingresa las credenciales de ${SOURCE_LABELS[creds.source]}</div>`; return;
+  }
+
+  btn.disabled = true; btn.textContent = '🔍 Buscando…';
+  document.getElementById('scraper-status').innerHTML =
+    `<div class="info-box">Consultando ${SOURCE_LABELS[creds.source]}…</div>`;
+  document.getElementById('scraper-result').style.display = 'none';
+
+  const res = await fetchJson('/api/scraper/search', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      filename: _scraperCurrentRom.filename,
+      system:   _scraperCurrentSystem,
+      ...creds,
+    }),
+  });
+
+  btn.disabled = false; btn.textContent = '🔍 Buscar';
+
+  if (!res?.ok) {
+    document.getElementById('scraper-status').innerHTML =
+      `<div class="warn-box">Sin resultados: ${escHtml(res?.error||'desconocido')}</div>`; return;
+  }
+
+  _scraperGameData   = res.game;
+  _scraperLastSource = res.source || creds.source;
+  const meta = res.meta || {};
+  document.getElementById('scraper-status').innerHTML = '';
+  document.getElementById('scraper-result').style.display = '';
+
+  const imgTypes = res.img_types || [];
+  document.getElementById('scraper-img-types').innerHTML = imgTypes.map(t =>
+    `<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 6px"
+       onclick="previewScraperImg('${escHtml(t)}')">${escHtml(t)}</button>`).join('');
+
+  if (_scraperLastSource === 'thegamesdb') {
+    // Para TGDB necesitamos pedir la imagen por separado (no viene en search)
+    document.getElementById('scraper-preview-img').style.display = 'none';
+  } else if (_scraperLastSource === 'igdb') {
+    const url = igdbImgPreview(res.game);
+    if (url) { document.getElementById('scraper-preview-img').src = url;
+               document.getElementById('scraper-preview-img').style.display = ''; }
+  } else {
+    previewScraperImg(document.getElementById('sc-imgtype').value, res.game);
+  }
+
+  const stars = r => {
+    const n = Math.max(0,Math.min(5,Math.round(parseFloat(r||0)*5)));
+    return '★'.repeat(n)+'☆'.repeat(5-n);
+  };
+  document.getElementById('scraper-meta-display').innerHTML = `
+    <div class="kv-row"><span class="kv-key">Título</span>
+      <span class="kv-val" style="font-weight:700">${escHtml(meta.name||'')}</span></div>
+    ${meta.year ? `<div class="kv-row"><span class="kv-key">Año</span><span class="kv-val">${escHtml(meta.year)}</span></div>` : ''}
+    ${meta.publisher ? `<div class="kv-row"><span class="kv-key">Publisher</span><span class="kv-val">${escHtml(meta.publisher)}</span></div>` : ''}
+    ${meta.genre ? `<div class="kv-row"><span class="kv-key">Género</span><span class="kv-val">${escHtml(meta.genre)}</span></div>` : ''}
+    ${meta.rating ? `<div class="kv-row"><span class="kv-key">Rating</span>
+      <span class="kv-val" style="color:var(--yellow)">${stars(meta.rating)} (${parseFloat(meta.rating).toFixed(2)})</span></div>` : ''}
+    ${meta.desc ? `<div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.6;
+      max-height:80px;overflow-y:auto">${escHtml(meta.desc)}</div>` : ''}`;
+
+  renderQuotaBadge(res.quota);
+}
+
+function renderQuotaBadge(quota) {
+  const existing = document.getElementById('scraper-quota-badge');
+  if (existing) existing.remove();
+  if (!quota || !quota.maxrequestsperday) return;
+  const used = parseInt(quota.requeststoday||0);
+  const max  = parseInt(quota.maxrequestsperday||1);
+  const pct  = Math.min(100, Math.round(used/max*100));
+  const color = pct < 70 ? 'var(--green)' : pct < 90 ? 'var(--yellow)' : 'var(--red)';
+  const badge = document.createElement('div');
+  badge.id = 'scraper-quota-badge';
+  badge.className = 'info-box';
+  badge.style.marginTop = '10px';
+  badge.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <span>Cuota ScreenScraper — Nivel: <strong>${escHtml(quota.level||'?')}</strong></span>
+      <span style="color:${color};font-weight:600">${used} / ${max} hoy</span>
+    </div>
+    <div class="bar-track" style="height:6px">
+      <div class="bar-fill" style="width:${pct}%;background:${color}"></div>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px">
+      Threads simultáneos permitidos: ${quota.maxthreads||1}
+    </div>`;
+  document.getElementById('scraper-status').after(badge);
+}
+
+function igdbImgPreview(game) {
+  const cover = game.cover || {};
+  let url = cover.url || '';
+  if (!url) return null;
+  if (url.startsWith('//')) url = 'https:' + url;
+  return url.replace('t_thumb','t_cover_big');
+}
+
+function previewScraperImg(imgType, gameData) {
+  gameData = gameData || _scraperGameData;
+  if (!gameData) return;
+  const medias = gameData.medias || [];
+  const typeMap = {'mixrbv1':'mixrbv1','mixrbv2':'mixrbv2','box-2D':'box-2D',
+                   'ss':'ss','wheel':'wheel','fanart':'fanart','screenshot':'ss'};
+  const target = typeMap[imgType] || imgType;
+  let url = '';
+  for (const m of medias) {
+    if (m.type === target || m.type?.includes(target)) { url = m.url; break; }
+  }
+  if (!url && medias.length) url = medias[0].url;
+  const img = document.getElementById('scraper-preview-img');
+  if (url) { img.src = url; img.style.display = ''; }
+}
+
+async function scraperDownload() {
+  if (!_scraperGameData || !_scraperCurrentRom) return;
+  const btn   = document.getElementById('sc-download-btn');
+  const creds = getScraperCreds('single');
+  btn.disabled = true; btn.textContent = '⬇ Descargando…';
+  const res = await fetchJson('/api/scraper/download', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      system:     _scraperCurrentSystem,
+      filename:   _scraperCurrentRom.filename,
+      game:       _scraperGameData,
+      img_types:  [document.getElementById('sc-imgtype').value],
+      save_meta:  document.getElementById('sc-save-meta').checked,
+      ...creds,
+    }),
+  });
+  btn.disabled = false; btn.textContent = '⬇ Descargar imagen y guardar';
+  if (res?.ok) {
+    const r = res.results;
+    const msg = r.images.length
+      ? `✔ Imagen guardada en ${escHtml(r.images[0].path)}`
+      : `⚠ Sin imagen: ${escHtml(r.errors[0]||'')}`;
+    document.getElementById('scraper-status').innerHTML =
+      `<div class="${r.images.length?'success-box':'warn-box'}">${msg}${r.meta?' · Metadatos guardados':''}</div>`;
+    // Actualizar la ROM en memoria
+    if (_scraperCurrentRom && r.meta) {
+      const romIdx = currentRoms.findIndex(r => r.filename === _scraperCurrentRom.filename);
+      if (romIdx >= 0) {
+        currentRoms[romIdx].has_image = r.images.length > 0;
+        // Refrescar imagen en modal-rom si está abierto
+        if (!document.getElementById('modal-rom').classList.contains('open')) return;
+        _editingRomIdx = romIdx;
+        const img = document.getElementById('rom-modal-img');
+        img.src = `/api/rom-image/${encodeURIComponent(_scraperCurrentSystem)}/${encodeURIComponent(_scraperCurrentRom.filename)}?t=${Date.now()}`;
+        img.style.display = '';
+        document.getElementById('rom-modal-img-placeholder').style.display = 'none';
+      }
+    }
+    toast('Scraping completado', 'ok');
+  } else {
+    document.getElementById('scraper-status').innerHTML =
+      `<div class="warn-box">Error: ${escHtml(res?.error||'desconocido')}</div>`;
+  }
+}
+
+async function scraperSystem() {
+  const creds = getScraperCreds('system');
+  if (!credsValid(creds)) { toast(`Ingresa credenciales de ${SOURCE_LABELS[creds.source]}`,'err'); return; }
+
+  const btn = document.getElementById('sc-sys-btn');
+  btn.disabled = true; btn.textContent = '⏳ Scrapeando…';
+  document.getElementById('sc-sys-progress').style.display = '';
+  document.getElementById('sc-sys-bar').style.width  = '5%';
+  document.getElementById('sc-sys-label').textContent = `Scrapeando con ${SOURCE_LABELS[creds.source]}…`;
+  document.getElementById('sc-sys-result').innerHTML  = '';
+
+  const res = await fetchJson('/api/scraper/scrape-system', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      system:        _scraperCurrentSystem,
+      ss_image_type: document.getElementById('sc-sys-imgtype')?.value || 'mixrbv1',
+      ss_region:     document.getElementById('sc-sys-region')?.value  || 'wor',
+      only_missing:  document.getElementById('sc-sys-missing').checked,
+      ...creds,
+    }),
+  });
+
+  btn.disabled = false; btn.textContent = '🚀 Iniciar scraping del sistema';
+  document.getElementById('sc-sys-bar').style.width = '100%';
+
+  if (res?.ok) {
+    const r = res.results;
+    document.getElementById('sc-sys-label').textContent = 'Completado';
+    const q = r.quota || {};
+    const quotaHtml = q.maxrequestsperday ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)">
+        Cuota: ${q.requeststoday||0} / ${q.maxrequestsperday} requests hoy ·
+        Nivel: ${escHtml(q.level||'?')} · Threads: ${q.maxthreads||1}
+      </div>` : '';
+    document.getElementById('sc-sys-result').innerHTML = `
+      <div class="success-box">
+        ✔ ${r.ok} ROMs scrapeados exitosamente<br>
+        ${r.fail ? `⚠ ${r.fail} fallos` : ''}<br>
+        Total procesados: ${r.ok + r.fail} / ${r.total}
+        ${r.errors.length ? `<div style="margin-top:8px;font-size:11px;max-height:80px;overflow-y:auto">
+          ${r.errors.map(e=>`<div>• ${escHtml(e)}</div>`).join('')}</div>` : ''}
+        ${quotaHtml}
+      </div>`;
+    toast(`Scraping: ${r.ok} OK, ${r.fail} fallos`, r.fail ? 'ok' : 'ok');
+    openSystem(_scraperCurrentSystem);
+  } else {
+    document.getElementById('sc-sys-result').innerHTML =
+      `<div class="warn-box">Error: ${escHtml(res?.error||'desconocido')}</div>`;
+    toast(res?.error||'Error en scraping','err');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SERVICE MANAGER
+// ═══════════════════════════════════════════════════════════════
+
+async function checkServiceStatus() {
+  const data = await fetchJson('/api/service/status');
+  if (!data) return;
+  const proc = data.process || {}, auto = data.autostart || {};
+  const running = proc.running, registered = auto.registered;
+
+  const configs = [
+    [running && registered,  'var(--green2)', '✅', 'Servicio activo y autostart configurado',
+     `PID ${proc.pids?.join(',')||'?'} · Puerto ${proc.port||'?'} · Arranca con Batocera`],
+    [running && !registered, 'var(--yellow)', '⚠️', 'Activo — sin autostart',
+     `PID ${proc.pids?.join(',')||'?'} · Se detendrá al reiniciar`],
+    [!running && registered, 'var(--orange)', '🔴', 'Autostart OK — servicio detenido',
+     'Arrancará en el próximo reinicio de Batocera'],
+    [true, 'var(--border)', '⭕', 'Detenido — sin autostart', 'Inicio manual requerido'],
+  ];
+  const [,borderColor,icon,label,sub] = configs.find(c=>c[0]);
+
+  document.getElementById('svc-status-box').style.borderColor = borderColor;
+  document.getElementById('svc-status-box').innerHTML = `
+    <div class="service-icon">${icon}</div>
+    <div style="flex:1">
+      <div class="service-status-label">${label}</div>
+      <div class="service-status-sub">${sub}</div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="checkServiceStatus()">↺</button>`;
+
+  const checks = [
+    { ok: data.exists,    warn: !data.exists,
+      label: 'Archivo custom.sh',
+      ok_txt: `Existe: ${data.custom_sh}`,
+      fail_txt: 'No existe aún — se creará al instalar' },
+    { ok: registered,
+      label: 'Bloque autostart registrado',
+      ok_txt: 'Bloque [batocera-manager] presente en custom.sh',
+      fail_txt: 'No registrado — presiona Instalar autostart' },
+    { ok: running,
+      label: 'Servidor corriendo',
+      ok_txt: `PID: ${proc.pids?.join(', ')||'?'} · Puerto: ${proc.port||'?'}`,
+      fail_txt: 'El servidor no está corriendo actualmente' },
+    { ok: !!(running && proc.port),
+      label: 'Puerto accesible',
+      ok_txt: `http://[IP]:${proc.port||5000} disponible`,
+      fail_txt: 'Puerto no detectable' },
+  ];
+  document.getElementById('svc-checks').innerHTML = checks.map(c => `
+    <div class="check-row" style="border-color:${c.ok?'var(--green2)':c.warn?'var(--border)':'var(--red2)'}">
+      <span class="check-icon">${c.ok?'✔':c.warn?'–':'✖'}</span>
+      <div style="flex:1">
+        <div style="font-weight:600">${c.label}</div>
+        <div style="font-size:11px;color:${c.ok?'var(--green)':c.warn?'var(--text3)':'var(--red)'};margin-top:2px">
+          ${c.ok?c.ok_txt:c.fail_txt}</div>
+      </div>
+    </div>`).join('');
+
+  const cmdInp = document.getElementById('svc-cmd');
+  if (cmdInp && !cmdInp.value)
+    cmdInp.value = auto.cmd || data.cmd_current || 'python3 /userdata/system/batocera_web/app.py --port 5000';
+
+  const prev = document.getElementById('svc-sh-preview');
+  if (prev) {
+    if (data.exists) {
+      const r = await fetchJson('/api/service/read-sh');
+      prev.textContent = r?.content || '(vacío)';
+    } else {
+      prev.textContent = '(el archivo no existe aún)';
+    }
+  }
+}
+
+async function installService() {
+  const cmd = document.getElementById('svc-cmd')?.value?.trim();
+  if (!cmd) { toast('Escribe el comando primero','err'); return; }
+  const res = await fetchJson('/api/service/install',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({cmd}) });
+  if (res?.ok) { toast('✔ Autostart instalado en custom.sh','ok'); checkServiceStatus(); }
+  else toast(res?.error||'Error instalando','err');
+}
+
+async function removeService() {
+  if (!confirm('¿Eliminar el bloque de autostart de custom.sh?')) return;
+  const res = await fetchJson('/api/service/remove',{
+    method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  if (res?.ok) { toast(res.removed?'✔ Autostart eliminado':'No había bloque','ok'); checkServiceStatus(); }
+  else toast(res?.error||'Error','err');
+}
+
+async function killService() {
+  const res = await fetchJson('/api/service/kill',{
+    method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  if (res?.ok) { toast('⏹ Servicio detenido','ok'); setTimeout(checkServiceStatus,1500); }
+  else toast(res?.error||'Error','err');
+}
+
+async function restartService() {
+  const cmd = document.getElementById('svc-cmd')?.value?.trim();
+  toast('Reiniciando servicio…');
+  const res = await fetchJson('/api/service/restart',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({cmd}) });
+  if (res?.ok) { toast('🔄 Servicio reiniciado','ok'); setTimeout(checkServiceStatus,2500); }
+  else toast(res?.error||'Error reiniciando','err');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+let _dashTimer = null;
+let _dashData  = null;
+
+function toggleDashAuto() {
+  const on = document.getElementById('dash-auto').checked;
+  if (on) { _dashTimer = setInterval(loadDashboard, 5000); }
+  else     { clearInterval(_dashTimer); _dashTimer = null; }
+}
+
+function initDashboard() {
+  loadDashboard();
+  if (document.getElementById('dash-auto').checked) {
+    clearInterval(_dashTimer);
+    _dashTimer = setInterval(loadDashboard, 5000);
+  }
+}
+
+async function loadDashboard() {
+  const data = await fetchJson('/api/dashboard');
+  if (!data) return;
+  _dashData = data;
+  renderDashboard(data);
+  const now = new Date().toLocaleTimeString('es-CL');
+  document.getElementById('dash-updated').textContent = `Última actualización: ${now}`;
+}
+
+function renderDashboard(d) {
+  renderRow1(d);
+  renderRow2(d);
+  renderRow3(d);
+}
+
+// ── Fila 1: Batocera info + ES status + Uptime ──────────────────
+function renderRow1(d) {
+  const es = d.es || {};
+  const esDot   = es.running ? '<span class="status-dot dot-green"></span>' : '<span class="status-dot dot-red"></span>';
+  const esLabel = es.running ? `Corriendo (PID ${es.pid})` : 'Detenido';
+
+  document.getElementById('dash-row1').innerHTML = `
+    <div class="dash-card" style="--card-accent:#1f6feb">
+      <h3><span class="icon">🐧</span>Batocera</h3>
+      <div class="metric-big" style="font-size:22px">${escHtml(d.batocera_version||'?')}</div>
+      <div class="metric-sub" style="margin-top:10px">
+        <div class="kv-row"><span class="kv-key">CPU</span><span class="kv-val" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml((d.cpu&&d.cpu.model)||'?')}</span></div>
+        <div class="kv-row"><span class="kv-key">Núcleos</span><span class="kv-val">${(d.cpu&&d.cpu.cores)||'?'}</span></div>
+      </div>
+    </div>
+    <div class="dash-card" style="--card-accent:${es.running?'#238636':'#da3633'}">
+      <h3><span class="icon">🎮</span>EmulationStation</h3>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        ${esDot}
+        <span style="font-size:15px;font-weight:700">${esLabel}</span>
+      </div>
+      <div class="kv-row"><span class="kv-key">Uptime sistema</span><span class="kv-val">${escHtml(d.uptime||'?')}</span></div>
+    </div>
+    <div class="dash-card" style="--card-accent:#6e40c9">
+      <h3><span class="icon">⏱</span>Tiempo encendido</h3>
+      <div class="metric-big">${escHtml(d.uptime||'?')}</div>
+      <div class="metric-sub">Sistema activo</div>
+    </div>
+  `;
+}
+
+// ── Fila 2: CPU + RAM + GPU ──────────────────────────────────────
+function renderRow2(d) {
+  const cpu  = d.cpu  || {};
+  const mem  = d.memory || {};
+  const gpu  = d.gpu  || {};
+
+  // CPU gauge
+  const cpuPct  = cpu.usage || 0;
+  const cpuTemp = cpu.temp;
+  const tempCls = !cpuTemp ? '' : cpuTemp < 60 ? 'temp-ok' : cpuTemp < 80 ? 'temp-warn' : 'temp-hot';
+  const tempStr = cpuTemp ? `${cpuTemp.toFixed(1)}°C` : 'N/D';
+
+  // RAM bar
+  const ramPct  = mem.used_pct || 0;
+  const ramColor= ramPct < 60 ? '#3fb950' : ramPct < 80 ? '#d29922' : '#f85149';
+
+  // GPU
+  let gpuHtml = '';
+  if (gpu.available) {
+    const gTemp = parseFloat(gpu.temp) || 0;
+    const gCls  = gTemp < 60 ? 'temp-ok' : gTemp < 80 ? 'temp-warn' : 'temp-hot';
+    const gUtil = parseFloat(gpu.util) || 0;
+    gpuHtml = `
+      <div class="dash-card" style="--card-accent:#bc8cff">
+        <h3><span class="icon">🎨</span>GPU</h3>
+        <div style="font-size:12px;font-weight:600;margin-bottom:12px;color:var(--text2)">${escHtml(gpu.name||'')}</div>
+        <div class="bar-row">
+          <span class="bar-label">Uso</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${gUtil}%;background:#bc8cff"></div></div>
+          <span class="bar-val">${gUtil}%</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Temperatura</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(gTemp,100)}%;background:${gTemp<60?'#3fb950':gTemp<80?'#d29922':'#f85149'}"></div></div>
+          <span class="bar-val ${gCls}">${gTemp}°C</span>
+        </div>
+        <div class="kv-row" style="margin-top:8px">
+          <span class="kv-key">VRAM</span>
+          <span class="kv-val">${escHtml(gpu.mem_used||'?')} / ${escHtml(gpu.mem_total||'?')} MB</span>
+        </div>
+        ${gpu.power!=='N/A'?`<div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val">${escHtml(gpu.power)} W</span></div>`:''}
+      </div>`;
+  } else {
+    gpuHtml = `
+      <div class="dash-card" style="--card-accent:#484f58">
+        <h3><span class="icon">🎨</span>GPU</h3>
+        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">
+          No detectada<br><span style="font-size:11px">nvidia-smi no disponible</span>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('dash-row2').innerHTML = `
+    <div class="dash-card" style="--card-accent:#f0883e">
+      <h3><span class="icon">⚙</span>CPU</h3>
+      ${gaugeHtml(cpuPct, cpuPct < 60 ? '#3fb950' : cpuPct < 80 ? '#d29922' : '#f85149', `${cpuPct}%`)}
+      <div style="text-align:center;margin-bottom:12px">
+        <span class="kv-key">Temperatura: </span>
+        <span class="kv-val ${tempCls}">${tempStr}</span>
+        <span style="font-size:10px;color:var(--text3)"> (${escHtml(cpu.temp_src||'')})</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Uso actual</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${cpuPct}%;background:#f0883e"></div></div>
+        <span class="bar-val">${cpuPct}%</span>
+      </div>
+    </div>
+    <div class="dash-card" style="--card-accent:#58a6ff">
+      <h3><span class="icon">🧠</span>Memoria RAM</h3>
+      ${gaugeHtml(ramPct, ramColor, `${ramPct}%`)}
+      <div class="bar-row">
+        <span class="bar-label">Usada</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${ramPct}%;background:${ramColor}"></div></div>
+        <span class="bar-val">${mem.used_mb||0} MB</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-key">Total</span><span class="kv-val">${mem.total_mb||0} MB</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-key">Libre</span><span class="kv-val">${mem.free_mb||0} MB</span>
+      </div>
+      ${mem.swap_total_mb>0?`<div class="kv-row"><span class="kv-key">Swap</span><span class="kv-val">${mem.swap_used_mb}/${mem.swap_total_mb} MB</span></div>`:''}
+    </div>
+    ${gpuHtml}
+  `;
+}
+
+function gaugeHtml(pct, color, label) {
+  // SVG semicírculo
+  const r  = 45, cx = 60, cy = 55;
+  const circ = Math.PI * r;  // semicircle
+  const dash = circ;
+  const offset = circ * (1 - pct / 100);
+  return `<svg viewBox="0 0 120 65" width="120" height="65" style="display:block;margin:0 auto 8px">
+    <path d="M 15 55 A ${r} ${r} 0 0 1 105 55" fill="none" stroke="var(--bg3)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M 15 55 A ${r} ${r} 0 0 1 105 55" fill="none" stroke="${color}" stroke-width="10"
+      stroke-linecap="round" stroke-dasharray="${dash}" stroke-dashoffset="${offset}"
+      style="transition:stroke-dashoffset .6s ease,stroke .4s"/>
+    <text x="60" y="52" text-anchor="middle" font-size="16" font-weight="700" fill="${color}">${label}</text>
+  </svg>`;
+}
+
+// ── Fila 3: Disco + Red + Procesos ──────────────────────────────
+function renderRow3(d) {
+  const disk = d.disk    || [];
+  const net  = d.network || [];
+  const proc = d.processes || [];
+
+  // Disco
+  const diskHtml = disk.length ? disk.map(p => {
+    const pct   = p.pct || 0;
+    const color = pct < 70 ? '#3fb950' : pct < 85 ? '#d29922' : '#f85149';
+    return `<div class="disk-item">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:600">${escHtml(p.mount)}</span>
+        <span style="font-size:11px;color:var(--text3)">${p.used_gb}/${p.size_gb} GB</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="bar-track" style="flex:1;height:10px">
+          <div class="bar-fill" style="width:${pct}%;background:${color}"></div>
+        </div>
+        <span style="font-size:11px;color:${color};font-weight:700;width:35px">${pct}%</span>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">${escHtml(p.fs)} — ${p.free_gb} GB libres</div>
+    </div>`;
+  }).join('') : '<div style="color:var(--text3);font-size:12px">Sin datos de disco</div>';
+
+  // Red
+  const netHtml = net.length ? net.map(n => `
+    <div class="net-iface">
+      <div>
+        <div style="font-size:13px;font-weight:600">${escHtml(n.iface)}</div>
+      </div>
+      <div style="text-align:right;font-size:11px;font-family:var(--mono)">
+        <div style="color:var(--green)">↓ ${escHtml(n.rx)}</div>
+        <div style="color:var(--accent)">↑ ${escHtml(n.tx)}</div>
+      </div>
+    </div>`).join('')
+  : '<div style="color:var(--text3);font-size:12px">Sin interfaces de red</div>';
+
+  // Procesos
+  const procRows = proc.map((p,i) => `
+    <tr>
+      <td>${escHtml(p.cmd)}</td>
+      <td style="color:${parseFloat(p.cpu)>50?'var(--red)':parseFloat(p.cpu)>20?'var(--yellow)':'var(--text2)'}">${p.cpu}%</td>
+      <td>${p.mem}%</td>
+      <td style="color:var(--text3)">${p.pid}</td>
+    </tr>`).join('');
+
+  document.getElementById('dash-row3').innerHTML = `
+    <div class="dash-card" style="--card-accent:#3fb950">
+      <h3><span class="icon">💾</span>Almacenamiento</h3>
+      ${diskHtml}
+    </div>
+    <div class="dash-card" style="--card-accent:#58a6ff">
+      <h3><span class="icon">🌐</span>Red</h3>
+      ${netHtml}
+    </div>
+    <div class="dash-card" style="--card-accent:#d29922">
+      <h3><span class="icon">📋</span>Procesos (top CPU)</h3>
+      <table class="proc-table">
+        <thead><tr><th>Proceso</th><th>CPU</th><th>MEM</th><th>PID</th></tr></thead>
+        <tbody>${procRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+// Enter en modal rename
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('rename-new')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmRename();
+    if (e.key === 'Escape') closeModal('modal-rename');
+  });
+});
+
+// ─── Boot ────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
