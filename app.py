@@ -2171,6 +2171,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "exists":     CUSTOM_SH.exists(),
                 "cmd_current": get_service_cmd(s2),
             })
+        elif len(parts)==4 and parts[:2]==["api","system-logo"]:
+            system = urllib.parse.unquote(parts[2])
+            self._serve_system_logo(system, s)
         elif len(parts)==4 and parts[:2]==["api","rom-image"]:
             system   = urllib.parse.unquote(parts[2])
             filename = urllib.parse.unquote(parts[3])
@@ -2786,6 +2789,31 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
 
         # 4. Sin imagen — devolver 404 JSON
         self.send_json({"error":"Sin imagen"},404)
+
+    def _serve_system_logo(self, system, s):
+        """Sirve el logo de un sistema desde el tema activo."""
+        theme = detect_active_theme(s)
+        logo_paths = [
+            Path(s["themes_user"]) / theme / system / "art" / "logo.png",
+            Path(s["themes_user"]) / theme / system / "logo.png",
+        ]
+        for p in logo_paths:
+            try:
+                p = p.resolve()
+                base = Path(s["themes_user"]).resolve()
+                p.relative_to(base)
+                if p.exists():
+                    self.send_response(200)
+                    self.send_header("Content-Type","image/png")
+                    self.send_header("Content-Length",p.stat().st_size)
+                    self.send_header("Cache-Control","max-age=86400")
+                    self.end_headers()
+                    self.wfile.write(p.read_bytes())
+                    return
+            except Exception:
+                continue
+        self.send_response(204)
+        self.end_headers()
 
     def _update_rom_meta(self, s):
         """Actualiza o crea entrada en gamelist.xml con los nuevos metadatos.
