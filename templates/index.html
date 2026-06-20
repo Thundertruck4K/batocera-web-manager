@@ -2127,9 +2127,11 @@ async function openBiosPanel() {
 function renderBios(data) {
   const cont = document.getElementById('bios-results');
   if (!data || !data.ok) { cont.innerHTML = '<div class="warn-box">No hay información de BIOS para este sistema en la base de datos.</div>'; return; }
-  if (!data.bios.length)  { cont.innerHTML = '<div class="info-box">✔ Este sistema no requiere BIOS adicionales.</div>'; return; }
+  const bios = data.bios;
+  if (!bios.known) { cont.innerHTML = '<div class="warn-box">Sistema no encontrado en la base de datos de BIOS.</div>'; return; }
+  if (!bios.files.length)  { cont.innerHTML = '<div class="info-box">✔ Este sistema no requiere BIOS adicionales.</div>'; return; }
 
-  const rows = data.bios.map(b => {
+  const rows = bios.files.map(b => {
     let status, statusColor;
     if (!b.exists) {
       status = b.mandatory ? '✖ FALTA (requerida)' : '– No encontrada (opcional)';
