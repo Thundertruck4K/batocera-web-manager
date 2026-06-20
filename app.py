@@ -656,6 +656,31 @@ BIOS_DB = {
     ],
 }
 
+# Batocera platforms that need no BIOS files (explicitly acknowledged
+# so the UI shows "no BIOS required" instead of "unknown system").
+NOBIOS_PLATFORMS = {
+    "3ds":[], "amiga":[], "amstradcpc":[], "arcade":[], "atari2600":[],
+    "atari7800":[], "c64":[], "famicom":[], "fba":[], "gamegear":[],
+    "gb":[], "gbc":[], "gc":[], "genesis":[], "jaguar":[], "mame":[],
+    "mastersystem":[], "megacd":[], "megadrive":[], "n64":[], "nes":[],
+    "ngp":[], "pc":[], "pce":[], "psp":[], "sega32x":[], "sg1000":[],
+    "snes":[], "tg16":[], "virtualboy":[], "wii":[], "wiiu":[],
+    "wonderswan":[], "wonderswancolor":[], "zxspectrum":[],
+}
+
+# Combined case-insensitive lookup
+_BIOS_LOOKUP = {}
+for k, v in BIOS_DB.items():
+    _BIOS_LOOKUP[k.strip().lower()] = v
+for k, v in NOBIOS_PLATFORMS.items():
+    _BIOS_LOOKUP[k.strip().lower()] = v
+
+def _bios_key(slug):
+    return slug.strip().lower() if slug else ""
+
+def _get_bios_entries(slug):
+    return _BIOS_LOOKUP.get(_bios_key(slug), [])
+
 # ─── Cache ───────────────────────────────────────────────────────
 import threading, time
 _rom_cache      = {}   # {roms_base: (timestamp, data)}
@@ -956,15 +981,16 @@ def get_rom_systems(settings, fast=False):
             "total_size":total_size,"size_human":human_size(total_size),
             "has_gamelist":gl.exists(),"roms":roms,
             "is_empty":len(roms)==0,
-            "has_bios":name in BIOS_DB,
-            "bios_count":len(BIOS_DB.get(name,[])),
+            "has_bios":_bios_key(name) in _BIOS_LOOKUP,
+            "bios_count":len(_get_bios_entries(name)),
         })
     return result
 
 def check_bios(system_name, bios_dir):
     bios_path = Path(bios_dir)
-    entries = BIOS_DB.get(system_name)
-    if entries is None:
+    entries = _get_bios_entries(system_name)
+    known = _bios_key(system_name) in _BIOS_LOOKUP
+    if not known:
         return {"known": False, "files": []}
     results = []
     for b in entries:
