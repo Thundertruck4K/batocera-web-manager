@@ -2944,30 +2944,38 @@ function renderRow2(d) {
 
   // GPU
   let gpuHtml = '';
-  if (gpu.available) {
-    const gTemp = parseFloat(gpu.temp) || 0;
-    const gCls  = gTemp < 60 ? 'temp-ok' : gTemp < 80 ? 'temp-warn' : 'temp-hot';
-    const gUtil = parseFloat(gpu.util) || 0;
-    gpuHtml = `
-      <div class="dash-card" style="--card-accent:#bc8cff">
-        <h3><span class="icon">🎨</span>GPU</h3>
-        <div style="font-size:12px;font-weight:600;margin-bottom:12px;color:var(--text2)">${escHtml(gpu.name||'')}</div>
+  const gpuList = gpu.gpus && gpu.gpus.length ? gpu.gpus : (gpu.available ? [gpu] : []);
+  if (gpuList.length) {
+    gpuHtml = gpuList.map(g => {
+      const gTemp = parseFloat(g.temp) || 0;
+      const gCls  = gTemp < 60 ? 'temp-ok' : gTemp < 80 ? 'temp-warn' : 'temp-hot';
+      const gUtil = parseFloat(g.util) || 0;
+      const accent = g.is_nvidia ? '#76b900' : g.vendor === 'AMD' ? '#ff6900' : '#bc8cff';
+      const label = gpuList.length > 1 ? `GPU: ${escHtml(g.name||'')}` : 'GPU';
+      return `
+      <div class="dash-card" style="--card-accent:${accent}">
+        <h3><span class="icon">🎨</span>${label}</h3>
+        <div style="font-size:12px;font-weight:600;margin-bottom:12px;color:var(--text2)">${escHtml(g.name||'')}</div>
+        ${g.util !== undefined && g.util !== null ? `
         <div class="bar-row">
           <span class="bar-label">Uso</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${gUtil}%;background:#bc8cff"></div></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${gUtil}%;background:${accent}"></div></div>
           <span class="bar-val">${gUtil}%</span>
-        </div>
+        </div>` : ''}
+        ${g.temp !== undefined && g.temp !== null ? `
         <div class="bar-row">
           <span class="bar-label">Temperatura</span>
           <div class="bar-track"><div class="bar-fill" style="width:${Math.min(gTemp,100)}%;background:${gTemp<60?'#3fb950':gTemp<80?'#d29922':'#f85149'}"></div></div>
           <span class="bar-val ${gCls}">${gTemp}°C</span>
-        </div>
+        </div>` : ''}
+        ${g.mem_used || g.mem_total ? `
         <div class="kv-row" style="margin-top:8px">
           <span class="kv-key">VRAM</span>
-          <span class="kv-val">${escHtml(gpu.mem_used||'?')} / ${escHtml(gpu.mem_total||'?')} MB</span>
-        </div>
-        ${gpu.power!=='N/A'?`<div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val">${escHtml(gpu.power)} W</span></div>`:''}
+          <span class="kv-val">${escHtml(g.mem_used||'?')} / ${escHtml(g.mem_total||'?')}</span>
+        </div>` : ''}
+        ${g.power ? `<div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val">${escHtml(g.power)}</span></div>` : ''}
       </div>`;
+    }).join('');
   } else {
     gpuHtml = `
       <div class="dash-card" style="--card-accent:#484f58">

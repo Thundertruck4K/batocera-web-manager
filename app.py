@@ -543,27 +543,16 @@ def get_cpu_temp():
         except Exception: pass
     return None, "N/A"
 
-def get_gpu_info():
-    """Lee info GPU desde /sys/class/drm — funciona sin nvidia-smi."""
-    result = {"available": False, "name": "N/A", "temp": None,
-               "util": None, "mem_used": None, "mem_total": None, "power": None}
-
-    # Detectar tarjetas DRM
-    drm = Path("/sys/class/drm")
-    cards = sorted(drm.glob("card[0-9]")) if drm.exists() else []
-    if not cards:
-        return result
-
-    card = cards[0]
-    dev  = card / "device"
-
-    # Nombre del dispositivo
+def _gpu_from_drm(card):
+    """Extrae info de una GPU desde una entrada /sys/class/drm/cardN."""
+    dev = card / "device"
     vendor_id = _read_file(dev / "vendor")
     device_id = _read_file(dev / "device")
     vendor_name = {"0x10de":"NVIDIA","0x1002":"AMD","0x8086":"Intel"}.get(vendor_id, "GPU")
-    name = f"{vendor_name} [{device_id}]"
+    is_nvidia = vendor_id == "0x10de"
 
-    # Intentar nombre amigable desde modalias/uevent
+    # Nombre
+    name = f"{vendor_name} [{device_id}]"
     uevent = _read_file(dev / "uevent")
     for line in uevent.splitlines():
         if "DRIVER=" in line:
@@ -581,22 +570,7 @@ def get_gpu_info():
             except Exception: pass
         if temp: break
 
-    # Intentar hwmon general si no encontramos bajo drm
-    if temp is None:
-        for hwmon in Path("/sys/class/hwmon").glob("hwmon*"):
-            name_h = _read_file(hwmon / "name").lower()
-            if any(x in name_h for x in ["nouveau","nvidia","radeon","amdgpu","i915"]):
-                for tf in sorted(hwmon.glob("temp*_input")):
-                    try:
-                        t = int(tf.read_text().strip()) / 1000
-                        if 0 < t < 120:
-                            temp = round(t, 1)
-                            name = f"{name_h.title()} GPU"
-                            break
-                    except Exception: pass
-                if temp: break
-
-    # VRAM desde /sys (funciona con nouveau/amdgpu)
+    # VRAM desde sysfs (nouveau/amdgpu)
     mem_used  = _read_file(dev / "mem_info_vram_used",  None)
     mem_total = _read_file(dev / "mem_info_vram_total", None)
     if mem_used and mem_total:
@@ -606,31 +580,125 @@ def get_gpu_info():
         except Exception:
             mem_used = mem_total = None
 
-    # Potencia (amdgpu tiene esto, nvidia sin smi no)
-    power = None
-    for hwmon in Path("/sys/class/hwmon").glob("hwmon*"):
-        pf = hwmon / "power1_average"
-        if pf.exists():
-            try: power = f"{int(pf.read_text().strip())//1000000} W"
-            except Exception: pass
-
-    # Uso GPU (amdgpu/radeon)
+    # Uso GPU
     util = None
     busy = _read_file(dev / "gpu_busy_percent", None)
     if busy:
         try: util = int(busy)
         except Exception: pass
 
-    return {
-        "available": True,
-        "name":      name,
-        "temp":      temp,
-        "util":      util,
-        "mem_used":  mem_used,
-        "mem_total": mem_total,
-        "power":     power,
-        "note":      "nvidia-smi no requerido",
-    }
+    return {"name": name, "temp": temp, "util": util,
+            "mem_used": mem_used, "mem_total": mem_total,
+            "vendor": vendor_name, "is_nvidia": is_nvidia}
+
+
+def _gpu_from_nvidia_smi():
+    """Intenta leer datos de todas las GPUs NVIDIA via nvidia-smi."""
+    try:
+        out = _run(
+            "nvidia-smi --query-gpu=index,name,temperature.gpu,"
+            "utilization.gpu,memory.used,memory.total,power.draw "
+            "--format=csv,noheader,nounits 2>/dev/null"
+        )
+        if not out:
+            return None
+        gpus = []
+        for line in out.splitlines():
+            parts = [p.strip() for p in line.split(",")]
+            if len(parts) < 7:
+                continue
+            idx, gname, gtemp, gutil, gmem_used, gmem_total, gpower = parts[:7]
+            try:
+                temp_val = round(float(gtemp), 1) if gtemp else None
+            except Exception:
+                temp_val = None
+            try:
+                util_val = int(gutil) if gutil else None
+            except Exception:
+                util_val = None
+            try:
+                mem_used_str = f"{int(gmem_used)//1024} MB" if gmem_used else None
+            except Exception:
+                mem_used_str = None
+            try:
+                mem_total_str = f"{int(gmem_total)//1024} MB" if gmem_total else None
+            except Exception:
+                mem_total_str = None
+            try:
+                power_str = f"{round(float(gpower))} W" if gpower else None
+            except Exception:
+                power_str = None
+            gpus.append({
+                "name": gname,
+                "temp": temp_val,
+                "util": util_val,
+                "mem_used": mem_used_str,
+                "mem_total": mem_total_str,
+                "power": power_str,
+                "vendor": "NVIDIA",
+                "is_nvidia": True,
+            })
+        return gpus if gpus else None
+    except Exception:
+        return None
+
+
+def get_gpu_info():
+    """Detecta todas las GPUs del sistema (iGPU + dGPU NVIDIA/AMD).
+    Para NVIDIA intenta nvidia-smi primero, fallback a sysfs.
+    """
+    result = {"available": False, "name": "N/A", "temp": None,
+               "util": None, "mem_used": None, "mem_total": None,
+               "power": None, "gpus": []}
+
+    gpus = []
+    seen_names = set()
+
+    # 1. nvidia-smi (datos más completos para NVIDIA)
+    nv_gpus = _gpu_from_nvidia_smi()
+    if nv_gpus:
+        for g in nv_gpus:
+            gpus.append(g)
+            seen_names.add(g["name"])
+
+    # 2. DRM sysfs (para AMD/Intel y NVIDIA si no se detectó via smi)
+    drm = Path("/sys/class/drm")
+    if drm.exists():
+        for card in sorted(drm.glob("card[0-9]")):
+            try:
+                g = _gpu_from_drm(card)
+                # Evitar duplicados si nvidia-smi ya lo encontró
+                if g["name"] in seen_names:
+                    continue
+                # Completar power desde hwmon general (solo si no lo trajo smi)
+                if g.get("power") is None:
+                    for hwmon in Path("/sys/class/hwmon").glob("hwmon*"):
+                        pf = hwmon / "power1_average"
+                        if pf.exists():
+                            try:
+                                g["power"] = f"{int(pf.read_text().strip())//1000000} W"
+                            except Exception:
+                                pass
+                            break
+                seen_names.add(g["name"])
+                gpus.append(g)
+            except Exception:
+                pass
+
+    if not gpus:
+        return result
+
+    result["available"] = True
+    result["gpus"] = gpus
+    # Backward compat: primer GPU como principal
+    primary = gpus[0]
+    result["name"] = primary["name"]
+    result["temp"] = primary["temp"]
+    result["util"] = primary["util"]
+    result["mem_used"] = primary["mem_used"]
+    result["mem_total"] = primary["mem_total"]
+    result["power"] = primary.get("power")
+    return result
 
 def get_memory():
     info = {}
