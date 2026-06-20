@@ -60,6 +60,8 @@ ROM_EXTENSIONS = {
     ".md",".gen",".32x",".col",".m3u",".scummvm",".3ds",".cia",
     ".nsp",".xci",".ws",".wsc",".ngc",".dsk",".st",".adf",
 }
+FILTER_DIRS  = {"manuals","videos","images"}
+FILTER_FILES = {"_info.txt"}
 # Auto-generated from official batocera-systems script
 BIOS_DB = {
     "3do": [
@@ -843,6 +845,10 @@ def list_rom_folder(settings, system, subpath=""):
             continue
         if item.name.startswith(".") or item.name == "gamelist.xml":
             continue
+        if item.name in FILTER_FILES:
+            continue
+        if item.is_dir() and item.name.lower() in FILTER_DIRS:
+            continue
         if item.is_file():
             sz = item.stat().st_size
             total_size += sz
@@ -861,7 +867,9 @@ def list_rom_folder(settings, system, subpath=""):
                 child_count = sum(1 for f in item.iterdir()
                                   if f.is_file() and not f.name.startswith(".")
                                   and f.name != "gamelist.xml")
-                child_has_subdirs = any(f.is_dir() and f.name != "media" for f in item.iterdir())
+                child_has_subdirs = any(f.is_dir() and f.name != "media"
+                                        and f.name.lower() not in FILTER_DIRS
+                                        for f in item.iterdir())
             except Exception:
                 child_count, child_has_subdirs = 0, False
             sz = 0
@@ -938,6 +946,8 @@ def get_rom_systems(settings, fast=False):
                     except Exception: media_count = 0
                     continue
                 if item.name.startswith(".") or item.name == "gamelist.xml": continue
+                if item.name in FILTER_FILES: continue
+                if item.is_dir() and item.name.lower() in FILTER_DIRS: continue
                 if item.is_file():
                     sz = item.stat().st_size; total_size += sz
                     roms.append({"name":item.stem,"filename":item.name,
