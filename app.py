@@ -2177,7 +2177,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "exists":     CUSTOM_SH.exists(),
                 "cmd_current": get_service_cmd(s2),
             })
-        elif len(parts)==4 and parts[:2]==["api","system-logo"]:
+        elif len(parts)==3 and parts[:2]==["api","system-logo"]:
             system = urllib.parse.unquote(parts[2])
             self._serve_system_logo(system, s)
         elif len(parts)==4 and parts[:2]==["api","rom-image"]:
