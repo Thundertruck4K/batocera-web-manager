@@ -2115,20 +2115,28 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json(get_scraper_config(s))
         elif path == "/api/bios/missing":
             bios_dir = Path(s.get("bios_dir","/userdata/bios"))
+            # Only check systems the user actually has (ROM folders)
+            user_systems = get_rom_systems_cached(s)
             items = []
-            for sys_slug, sys_bios in BIOS_DB.items():
-                for b in sys_bios:
+            for usys in user_systems:
+                name = usys["name"]
+                entries = _get_bios_entries(name)
+                if not entries:
+                    continue  # no BIOS entries for this system
+                for b in entries:
                     fpath = bios_dir / b["file"]
                     exists = fpath.exists()
                     md5_ok = None
                     if exists and b.get("md5"):
                         md5_ok = (md5_file(fpath) == b["md5"])
                     missing = not exists or md5_ok is False
-                    skip_key = f"{sys_slug}/{b['file']}"
+                    if not missing:
+                        continue
+                    skip_key = f"{name}/{b['file']}"
                     if skip_key in _missing_bios_skipped:
                         continue
                     items.append({
-                        "system": sys_slug,
+                        "system": name,
                         "file": b["file"],
                         "desc": b["desc"],
                         "mandatory": b["mandatory"],
@@ -2138,7 +2146,6 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                         "skip_key": skip_key,
                     })
             total = len(items)
-            # Group by system
             systems = {}
             for it in items:
                 systems.setdefault(it["system"], []).append(it)

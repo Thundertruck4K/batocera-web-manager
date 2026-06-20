@@ -977,6 +977,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         </div>
       </div>
 
+      <!-- ── PANEL: BIOS FALTANTE ── -->
+      <div class="panel" id="panel-biosmissing">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <div style="flex:1">
+            <h2 style="font-size:18px;font-weight:700">🧩 BIOS Faltante</h2>
+            <p style="font-size:12px;color:var(--text3);margin-top:2px" id="biosmissing-summary">Cargando…</p>
+          </div>
+          <button class="btn btn-ghost" onclick="loadMissingBios()">↺ Actualizar</button>
+        </div>
+        <div id="biosmissing-list">
+          <div style="text-align:center;padding:40px;color:var(--text3)">Cargando lista de BIOS faltantes…</div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /layout -->
@@ -992,20 +1006,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
     <div class="btn-row" style="margin-top:14px">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-xml')">Cerrar</button>
     </div>
-  </div>
-</div>
-
-<!-- ── PANEL: BIOS FA L TANTE ── -->
-<div class="panel" id="panel-biosmissing">
-  <div class="toolbar" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-    <div style="flex:1">
-      <h2 style="font-size:18px;font-weight:700">🧩 BIOS Faltante</h2>
-      <p style="font-size:12px;color:var(--text3);margin-top:2px" id="biosmissing-summary">Cargando…</p>
-    </div>
-    <button class="btn btn-ghost" onclick="loadMissingBios()">↺ Actualizar</button>
-  </div>
-  <div id="biosmissing-list">
-    <div style="text-align:center;padding:40px;color:var(--text3)">Cargando lista de BIOS faltantes…</div>
   </div>
 </div>
 
