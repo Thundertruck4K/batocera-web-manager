@@ -2177,6 +2177,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "exists":     CUSTOM_SH.exists(),
                 "cmd_current": get_service_cmd(s2),
             })
+        elif path == "/favicon.ico":
+            self.send_response(204); self.end_headers()
         elif len(parts)==3 and parts[:2]==["api","system-logo"]:
             system = urllib.parse.unquote(parts[2])
             self._serve_system_logo(system, s)
