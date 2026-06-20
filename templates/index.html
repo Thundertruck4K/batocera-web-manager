@@ -804,7 +804,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
         <!-- Vista: detalle sistema (hidden inicialmente) -->
         <div id="roms-detail-view" style="display:none">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
             <button class="btn btn-ghost btn-sm" onclick="backToSystems()">← Volver</button>
             <h3 id="detail-title" style="font-size:16px;font-weight:700"></h3>
             <div id="detail-badges" style="display:flex;gap:6px;flex-wrap:wrap"></div>
@@ -816,6 +816,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               <input type="file" id="rom-upload-file" multiple style="display:none" onchange="uploadRoms()">
             </label>
           </div>
+          <div id="detail-breadcrumb" style="font-size:12px;color:var(--text2);margin-bottom:16px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius);display:inline-block"></div>
 
           <!-- Bios panel (inline) -->
           <div id="bios-panel" style="display:none;margin-bottom:16px">
@@ -1509,9 +1510,8 @@ async function previewXml() {
     currentXml = res.xml;
     const box = document.getElementById('xml-preview');
     box.textContent = res.xml;
-    showPanel('preview', document.querySelectorAll('.nav-item')[3]);
-    document.querySelectorAll('.nav-item')[3].classList.add('active');
-    document.querySelectorAll('.nav-item').forEach((b,i)=>{if(i!==3)b.classList.remove('active')});
+    const previewBtn = document.querySelector('.nav-item[onclick*="preview"]');
+    showPanel('preview', previewBtn);
   } else {
     toast(res.error, 'err');
   }
@@ -1712,8 +1712,9 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 //  ROM & BIOS MONITOR
 // ═══════════════════════════════════════════════════════════════
 let allRomSystems = [];
-let currentSystem = null;
-let currentRoms   = [];
+let currentSystem  = null;
+let currentSubpath = "";   // ruta relativa dentro del sistema, ej: "CPS1" o "CPS1/bootlegs"
+let currentRoms     = [];
 
 async function loadRomSystems() {
   document.getElementById('roms-systems-grid').innerHTML =
@@ -1774,41 +1775,74 @@ function filterRomSystems() {
 }
 
 async function openSystem(name) {
-  currentSystem = name;
+  currentSystem  = name;
+  currentSubpath = "";
   document.getElementById('roms-systems-view').style.display = 'none';
   document.getElementById('roms-detail-view').style.display  = 'block';
-  document.getElementById('detail-title').textContent = '🕹 ' + name;
-  document.getElementById('detail-badges').innerHTML  = '<span class="badge badge-blue">Cargando…</span>';
   document.getElementById('bios-panel').style.display = 'none';
+  document.getElementById('rom-upload-file').onchange = uploadRoms;
+  await loadFolder();
+}
+
+async function navigateToFolder(subpath) {
+  currentSubpath = subpath;
+  await loadFolder();
+}
+
+async function navigateUp() {
+  const parts = currentSubpath.split('/').filter(Boolean);
+  parts.pop();
+  currentSubpath = parts.join('/');
+  await loadFolder();
+}
+
+async function loadFolder() {
+  document.getElementById('detail-title').textContent = '🕹 ' + currentSystem;
+  document.getElementById('detail-badges').innerHTML  = '<span class="badge badge-blue">Cargando…</span>';
   document.getElementById('roms-tbody').innerHTML     =
     '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3)"><div class="spinner" style="margin:0 auto"></div></td></tr>';
 
-  // Update upload input
-  document.getElementById('rom-upload-file').onchange = uploadRoms;
+  const url = currentSubpath
+    ? `/api/rom-folder/${encodeURIComponent(currentSystem)}?path=${encodeURIComponent(currentSubpath)}`
+    : `/api/rom-folder/${encodeURIComponent(currentSystem)}`;
+  const data = await fetchJson(url);
+  if (!data || !data.ok) { toast(data?.error || 'Error cargando carpeta','err'); return; }
+  const folder = data.folder;
+  currentRoms  = folder.items || [];
 
-  const data = await fetchJson(`/api/rom-systems/${encodeURIComponent(name)}`);
-  if (!data || !data.ok) { toast('Error cargando sistema','err'); return; }
-  const sys = data.system;
-  currentRoms = sys.roms || [];
+  renderBreadcrumb(folder.breadcrumb);
 
-  // Badges
+  const hasBios = !!(allRomSystems.find(s => s.name === currentSystem)?.has_bios);
   const badges = [
-    sys.is_empty ? '<span class="badge badge-red">Vacío</span>' : `<span class="badge badge-green">${sys.rom_count} ROMs</span>`,
-    sys.has_gamelist ? '<span class="badge badge-blue">gamelist.xml</span>' : '',
-    sys.media_count > 0 ? `<span class="badge badge-purple">🖼 ${sys.media_count} media</span>` : '',
-    sys.has_bios ? '<span class="badge badge-orange">⚠ requiere BIOS</span>' : '',
+    folder.is_empty ? '<span class="badge badge-red">Vacío</span>' : `<span class="badge badge-green">${folder.item_count} elementos</span>`,
+    folder.has_gamelist ? '<span class="badge badge-blue">gamelist.xml</span>' : '',
+    folder.media_count > 0 ? `<span class="badge badge-purple">🖼 ${folder.media_count} media</span>` : '',
+    (!currentSubpath && hasBios) ? '<span class="badge badge-orange">⚠ requiere BIOS</span>' : '',
   ].filter(Boolean);
   document.getElementById('detail-badges').innerHTML = badges.join(' ');
 
-  // Stats
   document.getElementById('detail-stats').innerHTML = [
-    statCard('ROMs','🎮', sys.rom_count),
-    statCard('Media','🖼', sys.media_count),
-    statCard('Tamaño','💾', sys.size_human),
-    statCard('Ruta','📁', sys.path, true),
+    statCard(currentSubpath ? 'Elementos' : 'ROMs', '🎮', folder.item_count),
+    statCard('Media','🖼', folder.media_count),
+    statCard('Tamaño','💾', folder.size_human),
+    statCard('Ruta','📁', currentSubpath ? `${currentSystem}/${currentSubpath}` : currentSystem, true),
   ].join('');
 
   renderRoms(currentRoms);
+}
+
+function renderBreadcrumb(parts) {
+  parts = parts || [currentSystem];
+  const html = parts.map((p, i) => {
+    const isLast = i === parts.length - 1;
+    const subpathUpTo = parts.slice(1, i + 1).join('/');
+    if (isLast) {
+      return `<span style="color:var(--text);font-weight:600">${escHtml(p)}</span>`;
+    }
+    return `<span style="color:var(--accent);cursor:pointer" onclick="navigateToFolder('${escHtml(subpathUpTo)}')">${escHtml(p)}</span>`;
+  }).join(' <span style="color:var(--text3)">/</span> ');
+  const cont = document.getElementById('detail-breadcrumb');
+  if (cont) cont.innerHTML = '📁 ' + html;
 }
 
 function statCard(label, icon, val, small=false) {
@@ -1824,16 +1858,50 @@ function statCard(label, icon, val, small=false) {
 
 function renderRoms(roms) {
   const tbody = document.getElementById('roms-tbody');
-  document.getElementById('rom-count-label').textContent = `${roms.length} archivos`;
+  const label = currentSubpath ? 'elementos' : 'archivos';
+  document.getElementById('rom-count-label').textContent = `${roms.length} ${label}`;
+
+  // Botón "subir nivel" si estamos dentro de una subcarpeta
+  const upRow = currentSubpath ? `
+    <tr style="border-bottom:1px solid var(--border);cursor:pointer;background:rgba(88,166,255,.04)"
+        onclick="navigateUp()" onmouseover="this.style.background='var(--bg3)'"
+        onmouseout="this.style.background='rgba(88,166,255,.04)'">
+      <td style="padding:9px 14px;color:var(--text3)">↩</td>
+      <td colspan="5" style="padding:9px 14px;color:var(--accent);font-weight:600">.. (subir un nivel)</td>
+    </tr>` : '';
+
   if (!roms.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3)">
+    tbody.innerHTML = upRow + `<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3)">
       <div style="font-size:32px;margin-bottom:8px">📭</div>
-      Sistema vacío — sube ROMs con el botón "Subir ROM"
+      ${currentSubpath ? 'Carpeta vacía' : 'Sistema vacío — sube ROMs con el botón "Subir ROM"'}
     </td></tr>`;
     return;
   }
-  tbody.innerHTML = roms.map((rom, i) => {
-    const extColor = rom.ext === 'dir' ? '#bc8cff' : rom.is_rom ? '#3fb950' : '#8b949e';
+
+  const rows = roms.map((rom, i) => {
+    if (rom.is_dir) {
+      const childInfo = rom.child_count > 0 ? `${rom.child_count} archivo(s)` : 'vacía';
+      const subdirIcon = rom.has_subdirs ? ' 📁' : '';
+      const newSubpath = currentSubpath ? `${currentSubpath}/${rom.filename}` : rom.filename;
+      return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s"
+                 onclick="navigateToFolder('${escHtml(newSubpath)}')"
+                 onmouseover="this.style.background='var(--bg3)'"
+                 onmouseout="this.style.background=''">
+        <td style="padding:9px 14px;color:var(--text3);font-size:11px">${i+1}</td>
+        <td style="padding:9px 14px;max-width:300px" colspan="2">
+          <div style="font-weight:600;color:var(--purple);display:flex;align-items:center;gap:6px">
+            📁 ${escHtml(rom.name)}${subdirIcon}
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">${childInfo}</div>
+        </td>
+        <td style="padding:9px 14px;font-size:12px;color:var(--text2);white-space:nowrap">${rom.size_human}</td>
+        <td></td>
+        <td style="padding:9px 14px;text-align:center">
+          <span style="font-size:11px;color:var(--accent)">Abrir →</span>
+        </td>
+      </tr>`;
+    }
+    const extColor = rom.is_rom ? '#3fb950' : '#8b949e';
     const infoBadges = [
       rom.has_image ? '<span title="Tiene imagen" style="cursor:default">🖼</span>' : '',
       rom.has_video ? '<span title="Tiene video" style="cursor:default">🎬</span>' : '',
@@ -1864,6 +1932,8 @@ function renderRoms(roms) {
       </td>
     </tr>`;
   }).join('');
+
+  tbody.innerHTML = upRow + rows;
 }
 
 function filterRoms() {
@@ -1884,7 +1954,8 @@ function sortRoms() {
 function backToSystems() {
   document.getElementById('roms-systems-view').style.display = '';
   document.getElementById('roms-detail-view').style.display  = 'none';
-  currentSystem = null;
+  currentSystem  = null;
+  currentSubpath = "";
 }
 
 // ── ROM Detail modal ──
@@ -1905,7 +1976,8 @@ function showRomDetail(idx) {
   const img = document.getElementById('rom-modal-img');
   const ph  = document.getElementById('rom-modal-img-placeholder');
   if (rom.has_image && currentSystem) {
-    img.src           = `/api/rom-image/${encodeURIComponent(currentSystem)}/${encodeURIComponent(rom.filename)}`;
+    const subQ = currentSubpath ? ('?subpath=' + encodeURIComponent(currentSubpath)) : '';
+    img.src           = `/api/rom-image/${encodeURIComponent(currentSystem)}/${encodeURIComponent(rom.filename)}${subQ}`;
     img.style.display = '';
     ph.style.display  = 'none';
     img.onerror = () => { img.style.display='none'; ph.style.display=''; ph.textContent='Sin imagen'; };
@@ -2027,7 +2099,7 @@ async function saveRomEdit() {
   btn.disabled = true; btn.textContent = 'Guardando…';
   const res = await fetchJson('/api/rom/update-meta', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({system:currentSystem, filename:rom.filename, ...updated}),
+    body: JSON.stringify({system:currentSystem, subpath:currentSubpath, filename:rom.filename, ...updated}),
   });
   btn.disabled = false; btn.textContent = 'Guardar';
   if (res?.ok) {
@@ -2109,6 +2181,8 @@ function uploadRoms() {
   document.getElementById('upload-bar').style.width         = '0%';
   document.getElementById('upload-pct-label').textContent   = '0%';
   document.getElementById('upload-speed').textContent       = '— KB/s';
+  const destLabel = currentSubpath ? (currentSystem + '/' + currentSubpath) : currentSystem;
+  document.querySelector('#modal-upload .modal-header h2').textContent = 'Subiendo a: ' + destLabel;
 
   // Lista de archivos
   const fmtSize = b => b>1048576?`${(b/1048576).toFixed(1)} MB`:b>1024?`${(b/1024).toFixed(0)} KB`:`${b} B`;
@@ -2156,7 +2230,7 @@ function uploadRoms() {
         errors.map(e =>
         `<div style="font-size:11px;color:var(--red)">✖ ${escHtml(e)}</div>`).join('');
       document.getElementById('upload-close-btn').style.display = '';
-      openSystem(currentSystem);
+      loadFolder();
       return;
     }
 
@@ -2169,6 +2243,7 @@ function uploadRoms() {
     const fd = new FormData();
     fd.append('rom', file);
     fd.append('slug', currentSystem);
+    fd.append('subpath', currentSubpath);
 
     const xhr = new XMLHttpRequest();
     const fileStart = loadedBytes;
@@ -2223,7 +2298,6 @@ async function uploadBios() {
     const data = await r.json();
     if (data.ok) {
       toast(`✔ BIOS subida correctamente`,'ok');
-      openBiosPanel(); // refrescar
       openBiosPanel();
     } else {
       toast(data.error||'Error','err');
@@ -2234,16 +2308,19 @@ async function uploadBios() {
 
 // ── Delete ROM ──
 function deleteRom(filename) {
-  document.getElementById('modal-delete-msg').textContent =
-    `¿Eliminar "${filename}" del sistema ${currentSystem}? Esta acción no se puede deshacer.`;
+  const fullPath = currentSubpath ? `${currentSubpath}/${filename}` : filename;
+  document.getElementById('modal-delete-msg').innerHTML =
+    `<div style="margin-bottom:8px">¿Eliminar este archivo?</div>
+     <div style="font-family:var(--mono);font-size:13px;background:var(--bg3);padding:8px 12px;border-radius:6px;color:var(--red);word-break:break-all">${escHtml(fullPath)}</div>
+     <div style="font-size:11px;color:var(--text3);margin-top:8px">Sistema: <strong>${escHtml(currentSystem)}</strong> — Esta acción no se puede deshacer.</div>`;
   document.getElementById('modal-delete-confirm').onclick = async () => {
     closeModal('modal-delete');
-    const r = await fetch(`/api/rom/${encodeURIComponent(currentSystem)}/${encodeURIComponent(filename)}`,
+    const r = await fetch(`/api/rom/${encodeURIComponent(currentSystem)}/${encodeURIComponent(fullPath)}`,
       {method:'DELETE'});
     const data = await r.json();
     if (data.ok) {
       toast('ROM eliminada','ok');
-      openSystem(currentSystem);
+      loadFolder();
     } else {
       toast(data.error||'Error','err');
     }
@@ -2251,19 +2328,32 @@ function deleteRom(filename) {
   openModal('modal-delete');
 }
 
-// ── Rename ROM ──
-async function renameRom(filename) {
-  const newName = prompt(`Nuevo nombre para:
-${filename}`, filename);
-  if (!newName || newName === filename) return;
+// ── Rename ROM (modal propio, sin prompt() del browser) ──
+function renameRom(filename) {
+  document.getElementById('rename-old').value = filename;
+  document.getElementById('rename-new').value = filename;
+  openModal('modal-rename');
+  setTimeout(() => {
+    const inp = document.getElementById('rename-new');
+    const dot = filename.lastIndexOf('.');
+    inp.setSelectionRange(0, dot > 0 ? dot : filename.length);
+    inp.focus();
+  }, 150);
+}
+
+async function confirmRename() {
+  const oldName = document.getElementById('rename-old').value;
+  const newName = document.getElementById('rename-new').value.trim();
+  if (!newName || newName === oldName) { closeModal('modal-rename'); return; }
   const res = await fetchJson('/api/rom/rename', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({system:currentSystem, old_name:filename, new_name:newName}),
+    body: JSON.stringify({system:currentSystem, subpath:currentSubpath, old_name:oldName, new_name:newName}),
   });
+  closeModal('modal-rename');
   if (res && res.ok) {
     toast('✔ Renombrado correctamente','ok');
-    openSystem(currentSystem);
+    loadFolder();
   } else {
     toast((res&&res.error)||'Error al renombrar','err');
   }
@@ -2275,10 +2365,11 @@ ${filename}`, filename);
 // ═══════════════════════════════════════════════════════════════
 //  SCRAPER — ScreenScraper.fr
 // ═══════════════════════════════════════════════════════════════
-let _scraperCurrentRom    = null;
-let _scraperCurrentSystem = null;
-let _scraperGameData      = null;
-let _scraperLastSource    = 'screenscraper';
+let _scraperCurrentRom     = null;
+let _scraperCurrentSystem  = null;
+let _scraperCurrentSubpath = '';
+let _scraperGameData       = null;
+let _scraperLastSource     = 'screenscraper';
 
 function scraperTab(tab) {
   ['single','system','config'].forEach(t => {
@@ -2387,9 +2478,10 @@ function openScraperForRom() {
   if (!_editingRomIdx && _editingRomIdx !== 0) return;
   const rom = currentRoms[_editingRomIdx];
   if (!rom) return;
-  _scraperCurrentRom    = rom;
-  _scraperCurrentSystem = currentSystem;
-  _scraperGameData      = null;
+  _scraperCurrentRom     = rom;
+  _scraperCurrentSystem  = currentSystem;
+  _scraperCurrentSubpath = currentSubpath;
+  _scraperGameData       = null;
   document.getElementById('scraper-modal-title').textContent =
     `🔍 Scrapear: ${rom.name}`;
   document.getElementById('scraper-rom-info').innerHTML =
@@ -2402,7 +2494,8 @@ function openScraperForRom() {
 }
 
 function openScraperForSystem() {
-  _scraperCurrentSystem = currentSystem;
+  _scraperCurrentSystem  = currentSystem;
+  _scraperCurrentSubpath = currentSubpath;
   document.getElementById('scraper-modal-title').textContent =
     `🔍 Scrapear sistema: ${currentSystem}`;
   scraperTab('system');
@@ -2457,6 +2550,7 @@ async function scraperSearch() {
     body: JSON.stringify({
       filename: _scraperCurrentRom.filename,
       system:   _scraperCurrentSystem,
+      subpath:  _scraperCurrentSubpath,
       ...creds,
     }),
   });
@@ -2567,6 +2661,7 @@ async function scraperDownload() {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
       system:     _scraperCurrentSystem,
+      subpath:    _scraperCurrentSubpath,
       filename:   _scraperCurrentRom.filename,
       game:       _scraperGameData,
       img_types:  [document.getElementById('sc-imgtype').value],
@@ -2591,7 +2686,8 @@ async function scraperDownload() {
         if (!document.getElementById('modal-rom').classList.contains('open')) return;
         _editingRomIdx = romIdx;
         const img = document.getElementById('rom-modal-img');
-        img.src = `/api/rom-image/${encodeURIComponent(_scraperCurrentSystem)}/${encodeURIComponent(_scraperCurrentRom.filename)}?t=${Date.now()}`;
+        const subQ2 = _scraperCurrentSubpath ? ('&subpath=' + encodeURIComponent(_scraperCurrentSubpath)) : '';
+        img.src = `/api/rom-image/${encodeURIComponent(_scraperCurrentSystem)}/${encodeURIComponent(_scraperCurrentRom.filename)}?t=${Date.now()}${subQ2}`;
         img.style.display = '';
         document.getElementById('rom-modal-img-placeholder').style.display = 'none';
       }
@@ -2618,6 +2714,7 @@ async function scraperSystem() {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
       system:        _scraperCurrentSystem,
+      subpath:       _scraperCurrentSubpath,
       ss_image_type: document.getElementById('sc-sys-imgtype')?.value || 'mixrbv1',
       ss_region:     document.getElementById('sc-sys-region')?.value  || 'wor',
       only_missing:  document.getElementById('sc-sys-missing').checked,
@@ -2647,7 +2744,7 @@ async function scraperSystem() {
         ${quotaHtml}
       </div>`;
     toast(`Scraping: ${r.ok} OK, ${r.fail} fallos`, r.fail ? 'ok' : 'ok');
-    openSystem(_scraperCurrentSystem);
+    currentSystem = _scraperCurrentSystem; currentSubpath = _scraperCurrentSubpath; loadFolder();
   } else {
     document.getElementById('sc-sys-result').innerHTML =
       `<div class="warn-box">Error: ${escHtml(res?.error||'desconocido')}</div>`;

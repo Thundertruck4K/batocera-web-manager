@@ -134,8 +134,8 @@ def save_settings_to_file(data):
 
 def human_size(n):
     for u in ["B","KB","MB","GB","TB"]:
-        if n < 1024: return f"{n:.1f} {u}"
-        n /= 1024
+        if abs(n) < 1024: return f"{n:.1f} {u}"
+        n /= 1024.0
     return f"{n:.1f} PB"
 
 def md5_file(path):
@@ -225,6 +225,116 @@ def list_custom_systems(settings):
                 })
         except Exception: pass
     return systems
+
+
+def list_rom_folder(settings, system, subpath=""):
+    """Lista el contenido de una carpeta dentro de un sistema, soportando subcarpetas anidadas.
+    subpath es relativo a la raíz del sistema, ej: 'CPS1' o 'CPS1/bootlegs'.
+    """
+    roms_base = Path(settings["roms_base"]) / system
+    target    = (roms_base / subpath) if subpath else roms_base
+    target    = target.resolve()
+    roms_base_resolved = roms_base.resolve()
+
+    # Seguridad: evitar path traversal fuera del sistema
+    try:
+        target.relative_to(roms_base_resolved)
+    except ValueError:
+        return None  # intento de escape fuera del directorio del sistema
+
+    if not target.exists() or not target.is_dir():
+        return None
+
+    items, media_count, total_size = [], 0, 0
+    try:
+        entries = sorted(target.iterdir())
+    except PermissionError:
+        entries = []
+
+    for item in entries:
+        if item.name == "media" and item.is_dir():
+            try: media_count = sum(1 for _ in item.iterdir() if _.is_file())
+            except Exception: media_count = 0
+            continue
+        if item.name.startswith(".") or item.name == "gamelist.xml":
+            continue
+        if item.is_file():
+            sz = item.stat().st_size
+            total_size += sz
+            items.append({
+                "name": item.stem, "filename": item.name,
+                "ext": item.suffix.lower(), "size": sz,
+                "size_human": human_size(sz),
+                "is_rom": item.suffix.lower() in ROM_EXTENSIONS,
+                "is_dir": False,
+                "desc":"","rating":"","genre":"","publisher":"","year":"",
+                "has_image": False, "has_video": False,
+            })
+        elif item.is_dir():
+            # Para carpetas, contar ROMs dentro (sin recursión profunda, solo 1er nivel)
+            try:
+                child_count = sum(1 for f in item.iterdir()
+                                  if f.is_file() and not f.name.startswith(".")
+                                  and f.name != "gamelist.xml")
+                child_has_subdirs = any(f.is_dir() and f.name != "media" for f in item.iterdir())
+            except Exception:
+                child_count, child_has_subdirs = 0, False
+            sz = 0
+            try:
+                sz = sum(f.stat().st_size for f in item.rglob("*") if f.is_file())
+            except Exception:
+                pass
+            total_size += sz
+            items.append({
+                "name": item.name, "filename": item.name,
+                "ext": "dir", "size": sz, "size_human": human_size(sz),
+                "is_rom": False, "is_dir": True,
+                "child_count": child_count,
+                "has_subdirs": child_has_subdirs,
+                "desc":"","rating":"","genre":"","publisher":"","year":"",
+                "has_image": False, "has_video": False,
+            })
+
+    # Gamelist: buscar en la carpeta actual (algunos sistemas tienen gamelist por subcarpeta)
+    gl = target / "gamelist.xml"
+    if gl.exists():
+        try:
+            tree = ET.parse(gl)
+            gdata = {}
+            for game in tree.findall(".//game"):
+                fn = game.findtext("path","").lstrip("./")
+                gdata[fn] = {
+                    "desc":      game.findtext("desc",""),
+                    "rating":    game.findtext("rating",""),
+                    "genre":     game.findtext("genre",""),
+                    "publisher": game.findtext("publisher",""),
+                    "year":      (game.findtext("releasedate","") or "")[:4],
+                    "has_image": bool(game.findtext("image","")),
+                    "has_video": bool(game.findtext("video","")),
+                }
+            for it in items:
+                if it["is_dir"]: continue
+                meta = gdata.get(it["filename"], gdata.get(it["name"], {}))
+                if meta: it.update(meta)
+        except Exception:
+            pass
+
+    # Breadcrumb: partes del path para navegación
+    breadcrumb = [system] + ([p for p in subpath.split("/") if p] if subpath else [])
+
+    return {
+        "system": system,
+        "subpath": subpath,
+        "breadcrumb": breadcrumb,
+        "items": items,
+        "item_count": len(items),
+        "media_count": media_count,
+        "total_size": total_size,
+        "size_human": human_size(total_size),
+        "has_gamelist": gl.exists(),
+        "is_empty": len(items) == 0,
+    }
+
 
 def get_rom_systems(settings, fast=False):
     roms_base = Path(settings["roms_base"])
@@ -840,8 +950,8 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass, region="wor", la
     # Usar las credenciales del usuario como devid también
     # (cuenta personal puede actuar como dev para uso personal)
     params = {
-        "devid":      devid      or "recalbox",
-        "devpassword":devpassword or "recalbox",
+        "devid":      devid      or "batocera_manager",
+        "devpassword":devpassword or "batocera_manager",
         "softname":   SS_SOFTNAME,
         "output":     "json",
         "ssid":       ss_user,
@@ -1007,7 +1117,7 @@ def tgdb_search_game(rom_filename, system_name, api_key, clean_name=None):
     if not clean_name:
         clean_name = _clean_rom_name(rom_filename)
     platform_id = TGDB_PLATFORMS.get(system_name.lower())
-    params = {"apikey": api_key, "name": clean_name, "fields": "players,publishers,genres,overview,rating"}
+    params = {"apikey": api_key, "name": clean_name, "fields": "players,publishers,genres,overview"}
     if platform_id:
         params["filter[platform]"] = str(platform_id)
     url = f"{TGDB_API}/Games/ByGameName?" + _uparse.urlencode(params)
@@ -1044,19 +1154,58 @@ def tgdb_get_image(game_id, api_key):
     except Exception as e:
         return None, str(e)
 
-def tgdb_build_meta(game):
-    """Extrae metadatos de la respuesta TGDB."""
+_tgdb_genres_cache    = {}
+_tgdb_publishers_cache = {}
+
+def tgdb_resolve_genres(genre_ids, api_key):
+    """Resuelve IDs de género a nombres, con cache en memoria."""
+    if not genre_ids:
+        return ""
+    global _tgdb_genres_cache
+    if not _tgdb_genres_cache:
+        try:
+            url = f"{TGDB_API}/Genres?" + _uparse.urlencode({"apikey": api_key})
+            req = _ureq.Request(url, headers={"User-Agent":"BatoceraManager/1.0"})
+            with _ureq.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+                genres = data.get("data", {}).get("genres", {})
+                _tgdb_genres_cache = {int(k): v.get("name","") for k, v in genres.items()}
+        except Exception:
+            return ""
+    names = [_tgdb_genres_cache.get(gid, "") for gid in genre_ids[:2]]
+    return ", ".join(n for n in names if n)
+
+def tgdb_resolve_publisher(publisher_ids, api_key):
+    """Resuelve el primer ID de publisher a nombre, con cache en memoria."""
+    if not publisher_ids:
+        return ""
+    global _tgdb_publishers_cache
+    if not _tgdb_publishers_cache:
+        try:
+            url = f"{TGDB_API}/Publishers?" + _uparse.urlencode({"apikey": api_key})
+            req = _ureq.Request(url, headers={"User-Agent":"BatoceraManager/1.0"})
+            with _ureq.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+                pubs = data.get("data", {}).get("publishers", {})
+                _tgdb_publishers_cache = {int(k): v.get("name","") for k, v in pubs.items()}
+        except Exception:
+            return ""
+    return _tgdb_publishers_cache.get(publisher_ids[0], "")
+
+def tgdb_build_meta(game, api_key=None):
+    """Extrae metadatos de la respuesta TGDB, resolviendo genre/publisher si hay api_key."""
     overview = game.get("overview","") or ""
-    rating   = game.get("rating","")
-    try: rating_norm = str(round(float(rating)/10, 2)) if rating else ""
-    except Exception: rating_norm = ""
+    genre_ids = game.get("genres", []) or []
+    pub_ids   = game.get("publishers", []) or []
+    genre     = tgdb_resolve_genres(genre_ids, api_key) if api_key else ""
+    publisher = tgdb_resolve_publisher(pub_ids, api_key) if api_key else ""
     return {
         "name":      game.get("game_title",""),
         "desc":      overview,
-        "genre":     "",  # requiere join con Genres endpoint
+        "genre":     genre,
         "year":      (game.get("release_date","") or "")[:4],
-        "publisher": "",  # requiere join con Publishers endpoint
-        "rating":    rating_norm,
+        "publisher": publisher,
+        "rating":    "",   # TGDB no tiene rating de usuario en este endpoint
     }
 
 # ── IGDB (requiere OAuth de Twitch) ──
@@ -1070,7 +1219,7 @@ def igdb_get_token(client_id, client_secret):
     params = {"client_id": client_id, "client_secret": client_secret, "grant_type": "client_credentials"}
     url = "https://id.twitch.tv/oauth2/token?" + _uparse.urlencode(params)
     try:
-        req = _ureq.Request(url, method="POST")
+        req = _ureq.Request(url, data=b"", method="POST")
         with _ureq.urlopen(req, timeout=10) as r:
             data = json.loads(r.read())
             token = data.get("access_token")
@@ -1093,9 +1242,9 @@ def igdb_search_game(rom_filename, system_name, client_id, client_secret, clean_
     if not clean_name:
         clean_name = _clean_rom_name(rom_filename)
     platform_id = IGDB_PLATFORMS.get(system_name.lower())
-    body = f'search "{clean_name}"; fields name,summary,rating,first_release_date,genres.name,involved_companies.company.name,cover.url,platforms; limit 5;'
-    if platform_id:
-        body += f' where platforms = ({platform_id});'
+    fields_str = "name,summary,rating,first_release_date,genres.name,involved_companies.company.name,cover.url,platforms"
+    where_clause = f"where platforms = ({platform_id});" if platform_id else ""
+    body = f'search "{clean_name}"; fields {fields_str}; {where_clause} limit 5;'
     try:
         req = _ureq.Request("https://api.igdb.com/v4/games",
                             data=body.encode(),
@@ -1191,6 +1340,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type","application/json; charset=utf-8")
         self.send_header("Content-Length",len(body))
         self.send_header("Access-Control-Allow-Origin","*")
+        self.send_header("Connection","close")
         self.end_headers(); self.wfile.write(body)
 
     def send_html(self, html):
@@ -1263,6 +1413,15 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             name = urllib.parse.unquote(parts[2])
             self.send_json({"ok":True,"system":name,
                 "bios":check_bios(name, s.get("bios_dir","/userdata/bios"))})
+        elif len(parts)>=3 and parts[:2]==["api","rom-folder"]:
+            name = urllib.parse.unquote(parts[2])
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            subpath = urllib.parse.unquote(query.get("path",[""])[0])
+            folder = list_rom_folder(s, name, subpath)
+            if folder is None:
+                self.send_json({"ok":False,"error":"Carpeta no encontrada o acceso inválido"})
+            else:
+                self.send_json({"ok":True,"folder":folder})
         elif path == "/api/dashboard":
             self.send_json(get_dashboard())
         elif path == "/api/rom-image-info":
@@ -1386,7 +1545,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             filename = urllib.parse.unquote("/".join(parts[3:])) if len(parts)>3 else ""
             if not filename:
                 self.send_json({"ok":False,"error":"Falta filename"}); return
-            target = Path(s["roms_base"]) / system / filename
+            base = Path(s["roms_base"]).resolve()
+            target = (base / system / filename).resolve()
+            try:
+                target.relative_to(base / system)
+            except ValueError:
+                self.send_json({"ok":False,"error":"Acceso denegado"}); return
             if not target.exists():
                 self.send_json({"ok":False,"error":"No encontrado"}); return
             try:
@@ -1473,10 +1637,17 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
     def _upload_rom(self, system, s):
         body = self.read_body()
         ct   = self.headers.get("Content-Type","")
-        _, files = parse_multipart({"CONTENT_TYPE":ct}, body)
+        fields, files = parse_multipart({"CONTENT_TYPE":ct}, body)
         if not files:
             self.send_json({"ok":False,"error":"No se recibió archivo"}); return
-        dest_dir = Path(s["roms_base"]) / system
+        subpath  = fields.get("subpath","").strip().strip("/")
+        roms_base= Path(s["roms_base"]) / system
+        dest_dir = (roms_base / subpath) if subpath else roms_base
+        # Seguridad: evitar path traversal
+        try:
+            dest_dir.resolve().relative_to(roms_base.resolve())
+        except ValueError:
+            self.send_json({"ok":False,"error":"Ruta inválida"}); return
         dest_dir.mkdir(parents=True, exist_ok=True)
         saved = []
         for fdata in files.values():
@@ -1505,11 +1676,16 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
 
     def _rename_rom(self, s):
         d = self.read_json()
-        system, old_name, new_name = d.get("system",""), d.get("old_name",""), d.get("new_name","").strip()
+        system   = d.get("system","")
+        subpath  = d.get("subpath","").strip().strip("/")
+        old_name = d.get("old_name","")
+        new_name = d.get("new_name","").strip()
         if not all([system, old_name, new_name]):
             self.send_json({"ok":False,"error":"Faltan parámetros"}); return
-        src  = Path(s["roms_base"]) / system / old_name
-        dest = Path(s["roms_base"]) / system / new_name
+        roms_base = Path(s["roms_base"]) / system
+        base_dir  = (roms_base / subpath) if subpath else roms_base
+        src  = base_dir / old_name
+        dest = base_dir / new_name
         if not src.exists():
             self.send_json({"ok":False,"error":"Archivo no encontrado"}); return
         if dest.exists():
@@ -1524,6 +1700,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         d        = self.read_json()
         filename = d.get("filename","")
         system   = d.get("system","")
+        subpath  = d.get("subpath","").strip().strip("/")
         source   = d.get("source", "screenscraper")
         cfg      = get_scraper_config(s)
         cfg.update({k:v for k,v in d.items() if k in (
@@ -1533,7 +1710,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if source == "thegamesdb":
             game, err = tgdb_search_game(filename, system, cfg.get("tgdb_apikey",""))
             if game:
-                meta = tgdb_build_meta(game)
+                meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
                 self.send_json({"ok":True,"game":game,"meta":meta,
                                "img_types":["boxart"],"cfg":cfg,"source":"thegamesdb"})
             else:
@@ -1571,6 +1748,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         """Descarga imagen y/o metadatos del juego para un ROM (fuente seleccionable)."""
         d        = self.read_json()
         system   = d.get("system","")
+        subpath  = d.get("subpath","").strip().strip("/")
         filename = d.get("filename","")
         game     = d.get("game",{})
         source   = d.get("source", "screenscraper")
@@ -1580,7 +1758,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             "tgdb_apikey","igdb_client_id","igdb_client_secret")})
 
         results   = {"images":[],"meta":False,"errors":[]}
-        roms_base = Path(s["roms_base"]) / system
+        sys_root  = Path(s["roms_base"]) / system
+        roms_base = (sys_root / subpath) if subpath else sys_root
         rom_stem  = Path(filename).stem
 
         if source == "thegamesdb":
@@ -1594,8 +1773,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             else:
                 results["errors"].append(f"Imagen: {err}")
             if d.get("save_meta", True):
-                meta = tgdb_build_meta(game)
-                meta.update({"system":system,"filename":filename})
+                meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
+                meta.update({"system":system,"subpath":subpath,"filename":filename})
                 if results["images"]:
                     meta["image_path"] = "./media/images/" + rom_stem + ".png"
                 self._save_gamelist_entry(s, meta)
@@ -1612,7 +1791,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 results["errors"].append("Sin imagen de portada en IGDB")
             if d.get("save_meta", True):
                 meta = igdb_build_meta(game)
-                meta.update({"system":system,"filename":filename})
+                meta.update({"system":system,"subpath":subpath,"filename":filename})
                 if results["images"]:
                     meta["image_path"] = "./media/images/" + rom_stem + ".png"
                 self._save_gamelist_entry(s, meta)
@@ -1632,7 +1811,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 else:  results["errors"].append(f"Imagen {itype}: {msg}")
             if d.get("save_meta", True) and game:
                 meta = ss_build_meta(game, cfg["ss_region"], cfg["ss_lang"])
-                meta.update({"system":system,"filename":filename})
+                meta.update({"system":system,"subpath":subpath,"filename":filename})
                 if results["images"]:
                     first_img = results["images"][0]["path"]
                     meta["image_path"] = "./media/" + "/".join(Path(first_img).parts[-2:])
@@ -1676,7 +1855,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             el.text = val
         try:
             rough    = ET.tostring(root, encoding="unicode")
-            reparsed = __import__("xml.dom.minidom",fromlist=["minidom"]).minidom.parseString(rough)
+            reparsed = minidom.parseString(rough)
             lines    = reparsed.toprettyxml(indent="    ").split("\n")
             filtered = [l for l in lines if l.strip()]
             if filtered and filtered[0].startswith("<?xml"): filtered = filtered[1:]
@@ -1729,12 +1908,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             if source == "thegamesdb":
                 game, err = tgdb_search_game(rom["filename"], system, cfg.get("tgdb_apikey",""))
                 if game:
-                    meta = tgdb_build_meta(game)
+                    meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
                     img_url, ierr = tgdb_get_image(game.get("id"), cfg.get("tgdb_apikey",""))
                     if img_url:
                         dest = roms_base / "media" / "images" / (rom_stem + ".png")
                         ok_img, _ = download_image_generic(img_url, dest)
-                        if ok_img: meta["image_path"] = f"./media/images/{rom_stem}.png"
+                        if ok_img: meta["image_path"] = ("." + ("/" + subpath if subpath else "") + f"/media/images/{rom_stem}.png")
                 _t.sleep(0.3)
 
             elif source == "igdb":
@@ -1746,7 +1925,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     if img_url:
                         dest = roms_base / "media" / "images" / (rom_stem + ".png")
                         ok_img, _ = download_image_generic(img_url, dest)
-                        if ok_img: meta["image_path"] = f"./media/images/{rom_stem}.png"
+                        if ok_img: meta["image_path"] = ("." + ("/" + subpath if subpath else "") + f"/media/images/{rom_stem}.png")
                 _t.sleep(0.3)
 
             else:  # screenscraper
@@ -1815,27 +1994,37 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok":False,"error":str(e)})
 
     def _serve_rom_image(self, system, rom_filename, s):
-        """Sirve imagen de un ROM leyendo la ruta real del gamelist.xml."""
+        """Sirve imagen de un ROM leyendo la ruta real del gamelist.xml.
+        Soporta ROMs dentro de subcarpetas via ?subpath=CPS1 en la query string.
+        """
+        query   = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        subpath = urllib.parse.unquote(query.get("subpath",[""])[0]).strip("/")
         roms_base = Path(s["roms_base"]) / system
+        base_dir  = (roms_base / subpath) if subpath else roms_base
+        try:
+            base_dir.resolve().relative_to(roms_base.resolve())
+        except ValueError:
+            self.send_json({"error":"Acceso denegado"},403)
+            return
         rom_stem  = Path(rom_filename).stem
+        # Path relativo completo del ROM dentro del sistema (para matchear gamelist)
+        rom_relpath = f"{subpath}/{rom_filename}" if subpath else rom_filename
         candidates = []
 
-        # 1. Leer ruta real desde gamelist.xml (Batocera guarda la ruta exacta)
+        # 1. Leer ruta real desde gamelist.xml (siempre en la raíz del sistema)
         gl = roms_base / "gamelist.xml"
         if gl.exists():
             try:
                 tree = ET.parse(gl)
                 for game in tree.findall(".//game"):
                     gpath = game.findtext("path","").lstrip("./")
-                    if gpath == rom_filename or Path(gpath).stem == rom_stem:
+                    if gpath == rom_relpath or gpath == rom_filename or Path(gpath).stem == rom_stem:
                         img_tag = game.findtext("image","")
                         if img_tag:
-                            # Puede ser ./media/images/... o ruta absoluta
                             img_clean = img_tag.lstrip("./")
                             p = roms_base / img_clean
                             if p.exists():
-                                candidates.insert(0, p)  # prioridad máxima
-                            # También intentar ruta absoluta
+                                candidates.insert(0, p)
                             p2 = Path(img_tag) if img_tag.startswith("/") else None
                             if p2 and p2.exists():
                                 candidates.insert(0, p2)
@@ -1843,15 +2032,16 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-        # 2. Fallback: buscar por stem en todas las carpetas de media conocidas
+        # 2. Fallback: buscar por stem en carpetas de media, tanto en la raíz como en la subcarpeta
         media_dirs = ["images","named_boxarts","named_logos","screenshots",
                       "wheels","marquees","boxart","fanart","mixrbv1","mixrbv2"]
         img_exts   = [".png",".jpg",".jpeg",".webp",".gif"]
-        for mdir in media_dirs:
-            for ext in img_exts:
-                p = roms_base / "media" / mdir / (rom_stem + ext)
-                if p.exists():
-                    candidates.append(p)
+        for search_base in ([base_dir, roms_base] if subpath else [roms_base]):
+            for mdir in media_dirs:
+                for ext in img_exts:
+                    p = search_base / "media" / mdir / (rom_stem + ext)
+                    if p.exists():
+                        candidates.append(p)
 
         # 3. Servir la primera imagen encontrada
         for img_path in candidates:
@@ -1875,33 +2065,37 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.send_json({"error":"Sin imagen"},404)
 
     def _update_rom_meta(self, s):
-        """Actualiza o crea entrada en gamelist.xml con los nuevos metadatos."""
+        """Actualiza o crea entrada en gamelist.xml con los nuevos metadatos.
+        Soporta ROMs dentro de subcarpetas via el campo 'subpath' en el JSON.
+        """
         d        = self.read_json()
         system   = d.get("system","")
+        subpath  = d.get("subpath","").strip().strip("/")
         filename = d.get("filename","")
         if not system or not filename:
             self.send_json({"ok":False,"error":"Faltan parámetros"}); return
 
+        rom_relpath = f"{subpath}/{filename}" if subpath else filename
         sys_dir  = Path(s["roms_base"]) / system
         gl_path  = sys_dir / "gamelist.xml"
 
-        # Leer o crear gamelist
+        # Leer o crear gamelist (siempre uno solo en la raíz del sistema)
         if gl_path.exists():
             try: tree = ET.parse(gl_path); root = tree.getroot()
             except Exception: root = ET.Element("gameList")
         else:
             root = ET.Element("gameList")
 
-        # Buscar entrada existente
+        # Buscar entrada existente por path relativo completo
         game = None
         for g in root.findall("game"):
             gpath = g.findtext("path","").lstrip("./")
-            if gpath == filename or Path(gpath).name == filename:
+            if gpath == rom_relpath or (not subpath and Path(gpath).name == filename):
                 game = g; break
 
         if game is None:
             game = ET.SubElement(root, "game")
-            ET.SubElement(game, "path").text = f"./{filename}"
+            ET.SubElement(game, "path").text = f"./{rom_relpath}"
 
         # Actualizar campos
         fields_map = {
@@ -1923,7 +2117,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         # Guardar con formato bonito
         try:
             rough    = ET.tostring(root, encoding="unicode")
-            reparsed = __import__("xml.dom.minidom",fromlist=["minidom"]).minidom.parseString(rough)
+            reparsed = minidom.parseString(rough)
             lines    = reparsed.toprettyxml(indent="    ").split("\n")
             filtered = [l for l in lines if l.strip()]
             if filtered and filtered[0].startswith("<?xml"): filtered = filtered[1:]
