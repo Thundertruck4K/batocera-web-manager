@@ -425,6 +425,26 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 }
 .check-icon{font-size:18px;width:24px;text-align:center}
 
+/* ── BIOS Missing ── */
+.bios-miss-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;border-radius:var(--radius);
+  background:var(--bg3);border:1px solid var(--border);
+  margin-bottom:8px;font-size:13px;flex-wrap:wrap;
+}
+.bios-miss-item .file{font-family:var(--mono);font-size:12px;flex:1;min-width:140px;word-break:break-all}
+.bios-miss-item .desc{font-size:11px;color:var(--text3);min-width:80px}
+.bios-miss-item .badge{font-size:10px}
+.bios-miss-item .actions{display:flex;gap:6px;align-items:center;margin-left:auto}
+.upload-progress{width:120px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden;display:none}
+.upload-progress .fill{height:100%;background:var(--green);border-radius:3px;width:0%;transition:width .15s}
+.upload-progress.active{display:block}
+.upload-progress .pct{font-size:10px;color:var(--text3);text-align:right;margin-top:2px}
+.bios-miss-group h3{font-size:14px;font-weight:700;margin:16px 0 8px;padding:6px 10px;background:var(--bg2);border-radius:var(--radius);border-left:3px solid var(--accent2)}
+.bios-miss-group h3 span{font-size:11px;font-weight:400;color:var(--text3);margin-left:8px}
+.bios-miss-ok{text-align:center;padding:40px;color:var(--green)}
+.bios-miss-ok .icon{font-size:48px;display:block;margin-bottom:12px}
+
 /* ── Responsive ── */
 @media(max-width:700px){
   .sidebar{display:none}
@@ -468,6 +488,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <span class="nav-badge" id="badge-roms">…</span>
       </button>
       <div class="nav-section-label">Sistema</div>
+      <button class="nav-item" onclick="showPanel('biosmissing',this)">
+        <span class="icon">🧩</span> BIOS Faltante
+        <span class="nav-badge" id="badge-biosmissing" style="display:none">0</span>
+      </button>
       <button class="nav-item" onclick="showPanel('settings',this)">
         <span class="icon">⚙</span> Configuración
       </button>
@@ -971,6 +995,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   </div>
 </div>
 
+<!-- ── PANEL: BIOS FA L TANTE ── -->
+<div class="panel" id="panel-biosmissing">
+  <div class="toolbar" style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="flex:1">
+      <h2 style="font-size:18px;font-weight:700">🧩 BIOS Faltante</h2>
+      <p style="font-size:12px;color:var(--text3);margin-top:2px" id="biosmissing-summary">Cargando…</p>
+    </div>
+    <button class="btn btn-ghost" onclick="loadMissingBios()">↺ Actualizar</button>
+  </div>
+  <div id="biosmissing-list">
+    <div style="text-align:center;padding:40px;color:var(--text3)">Cargando lista de BIOS faltantes…</div>
+  </div>
+</div>
+
 <!-- ── MODAL: ROM Detail ── -->
 <div class="modal-overlay" id="modal-rom">
   <div class="modal" style="max-width:780px;width:95%">
@@ -1333,6 +1371,7 @@ async function init() {
     document.getElementById('badge-count').textContent = info.systems_count;
   }
   loadSettings();
+  loadMissingBios();
 }
 
 // ─── Navigation ──────────────────────────────────────────────
@@ -1343,6 +1382,7 @@ const panelMeta = {
   preview:  { title:'👁 Vista Previa XML',   sub:'XML que se generará al crear el sistema' },
   dashboard:{ title:'📊 Dashboard',           sub:'Estado del sistema en tiempo real — Batocera' },
   roms:     { title:'🎮 ROMs & BIOS Monitor',  sub:'Explora sistemas, ROMs, multimedia y verifica BIOS' },
+  biosmissing:{ title:'🧩 BIOS Faltante',     sub:'Busca y sube archivos BIOS faltantes' },
   settings: { title:'⚙ Configuración',      sub:'Rutas de Batocera e instrucciones de uso' },
 };
 
@@ -1361,6 +1401,7 @@ function showPanel(name, btn) {
   if (name === 'dashboard') initDashboard();
   if (name === 'settings')  checkServiceStatus();
   if (name === 'roms')   loadRomSystems();
+  if (name === 'biosmissing') loadMissingBios();
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -2306,6 +2347,175 @@ async function uploadBios() {
     }
   } catch(e) { toast('Error de red','err'); }
   input.value = '';
+}
+
+// ── BIOS Missing ──
+async function loadMissingBios() {
+  const list = document.getElementById('biosmissing-list');
+  const summary = document.getElementById('biosmissing-summary');
+  list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">Cargando…</div>';
+  try {
+    const data = await fetchJson('/api/bios/missing');
+    if (!data || !data.ok) { list.innerHTML = '<div class="warn-box">Error al cargar BIOS faltantes</div>'; return; }
+    renderMissingBios(data);
+    summary.textContent = `${data.total_missing} archivo(s) BIOS faltante(s) en ${Object.keys(data.systems||{}).length} sistema(s)`;
+    // Update sidebar badge
+    const badge = document.getElementById('badge-biosmissing');
+    if (data.total_missing > 0) { badge.textContent = data.total_missing; badge.style.display = ''; }
+    else { badge.style.display = 'none'; }
+  } catch(e) {
+    list.innerHTML = '<div class="warn-box">Error de red</div>';
+  }
+}
+
+function renderMissingBios(data) {
+  const list = document.getElementById('biosmissing-list');
+  if (!data.total_missing) {
+    list.innerHTML = '<div class="bios-miss-ok"><span class="icon">✔</span>Todos los archivos BIOS están presentes y correctos.</div>';
+    return;
+  }
+  const systems = data.systems || {};
+  const sysNames = Object.keys(systems).sort();
+  let html = '';
+  for (const sys of sysNames) {
+    const items = systems[sys] || [];
+    html += `<div class="bios-miss-group"><h3>🎮 ${escHtml(sys)} <span>${items.length} faltante(s)</span></h3>`;
+    for (const b of items) {
+      const md5info = b.md5 ? `<span title="MD5 esperado: ${b.md5}" style="cursor:help">🔑</span>` : '';
+      const mandatoryLabel = b.mandatory
+        ? '<span class="badge badge-red">requerida</span>'
+        : '<span class="badge badge-blue">opcional</span>';
+      const statusIcon = b.exists
+        ? (b.md5_ok === false ? '⚠' : '✔')
+        : '✖';
+      const statusColor = b.exists
+        ? (b.md5_ok === false ? 'var(--yellow)' : 'var(--green)')
+        : 'var(--red)';
+      html += `<div class="bios-miss-item" id="bmi-${b.skip_key.replace(/[^a-zA-Z0-9_-]/g,'_')}">
+        <span style="color:${statusColor};font-size:16px">${statusIcon}</span>
+        <span class="file">${escHtml(b.file)}</span>
+        <span class="desc">${escHtml(b.desc)} ${md5info}</span>
+        ${mandatoryLabel}
+        <div class="actions">
+          <div class="upload-progress" id="up-${b.skip_key.replace(/[^a-zA-Z0-9_-]/g,'_')}">
+            <div class="fill" id="upf-${b.skip_key.replace(/[^a-zA-Z0-9_-]/g,'_')}"></div>
+            <div class="pct" id="upp-${b.skip_key.replace(/[^a-zA-Z0-9_-]/g,'_')}">0%</div>
+          </div>
+          <label class="btn btn-primary btn-sm" style="cursor:pointer" title="Subir BIOS">
+            ⬆ Subir
+            <input type="file" style="display:none" onchange="uploadSingleBios(this,'${escHtml(b.system)}','${escHtml(b.file)}','${b.skip_key.replace(/'/g,"\\'")}')">
+          </label>
+          <button class="btn btn-ghost btn-sm" onclick="skipMissingBios('${b.skip_key.replace(/'/g,"\\'")}')" title="Ignorar y ocultar">✕</button>
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  list.innerHTML = html;
+}
+
+function uploadSingleBios(input, system, filePath, skipKey) {
+  const safeId = skipKey.replace(/[^a-zA-Z0-9_-]/g,'_');
+  const progWrap = document.getElementById(`up-${safeId}`);
+  const progFill = document.getElementById(`upf-${safeId}`);
+  const progPct  = document.getElementById(`upp-${safeId}`);
+  if (!input.files.length) return;
+  const file = input.files[0];
+  const fd = new FormData();
+  fd.append('bios', file, filePath.split('/').pop());
+  // Send the subdirectory path
+  const dir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
+  if (dir) fd.append('path', dir);
+
+  progWrap.classList.add('active');
+  progFill.style.width = '0%';
+  progPct.textContent = '0%';
+
+  const xhr = new XMLHttpRequest();
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      progFill.style.width = pct + '%';
+      progPct.textContent = pct + '%';
+    }
+  };
+  xhr.onload = () => {
+    if (xhr.status === 200) {
+      try {
+        const resp = JSON.parse(xhr.responseText);
+        if (resp.ok) {
+          progFill.style.width = '100%';
+          progPct.textContent = '✔';
+          progFill.style.background = 'var(--green)';
+          toast(`✔ BIOS ${escHtml(filePath)} subida correctamente`, 'ok');
+          // Remove the item from the list
+          const item = document.getElementById(`bmi-${safeId}`);
+          if (item) {
+            item.style.transition = 'opacity .3s';
+            item.style.opacity = '0';
+            setTimeout(() => item.remove(), 350);
+          }
+          // Update summary
+          loadMissingBiosSummary();
+        } else {
+          progPct.textContent = '✖';
+          progFill.style.background = 'var(--red)';
+          toast(resp.error || 'Error al subir', 'err');
+        }
+      } catch(e) {
+        progPct.textContent = '✖';
+        progFill.style.background = 'var(--red)';
+        toast('Error al procesar respuesta', 'err');
+      }
+    } else {
+      progPct.textContent = '✖';
+      progFill.style.background = 'var(--red)';
+      toast('Error de red', 'err');
+    }
+    setTimeout(() => progWrap.classList.remove('active'), 2000);
+  };
+  xhr.onerror = () => {
+    progPct.textContent = '✖';
+    progFill.style.background = 'var(--red)';
+    toast('Error de red', 'err');
+    setTimeout(() => progWrap.classList.remove('active'), 2000);
+  };
+  xhr.open('POST', '/api/bios/upload');
+  xhr.send(fd);
+  input.value = '';
+}
+
+async function skipMissingBios(skipKey) {
+  try {
+    const r = await fetch('/api/bios/missing/skip', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({skip_key: skipKey}),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      const safeId = skipKey.replace(/[^a-zA-Z0-9_-]/g,'_');
+      const item = document.getElementById(`bmi-${safeId}`);
+      if (item) {
+        item.style.transition = 'opacity .3s';
+        item.style.opacity = '0';
+        setTimeout(() => item.remove(), 350);
+      }
+      toast('Ignorado','ok');
+      loadMissingBiosSummary();
+    } else {
+      toast('Error','err');
+    }
+  } catch(e) { toast('Error de red','err'); }
+}
+
+function loadMissingBiosSummary() {
+  const summary = document.getElementById('biosmissing-summary');
+  const remaining = document.querySelectorAll('.bios-miss-item').length;
+  summary.textContent = `${remaining} archivo(s) BIOS faltante(s) restante(s)`;
+  const badge = document.getElementById('badge-biosmissing');
+  if (remaining > 0) { badge.textContent = remaining; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
 }
 
 // ── Delete ROM ──

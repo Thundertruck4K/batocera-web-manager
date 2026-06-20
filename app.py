@@ -685,9 +685,12 @@ def _get_bios_entries(slug):
 
 # ─── Cache ───────────────────────────────────────────────────────
 import threading, time
-_rom_cache      = {}   # {roms_base: (timestamp, data)}
-_rom_cache_lock = threading.Lock()
-ROM_CACHE_TTL   = 60   # segundos
+_rom_cache        = {}   # {roms_base: (timestamp, data)}
+_rom_cache_lock   = threading.Lock()
+ROM_CACHE_TTL     = 60   # segundos
+
+# In-memory set of skipped missing BIOS entries (skip_key = "system/file")
+_missing_bios_skipped = set()
 
 def get_rom_systems_cached(settings):
     key   = settings["roms_base"]
@@ -2110,6 +2113,42 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":False,"error":"Faltan parámetros"})
         elif path == "/api/scraper/config":
             self.send_json(get_scraper_config(s))
+        elif path == "/api/bios/missing":
+            bios_dir = Path(s.get("bios_dir","/userdata/bios"))
+            items = []
+            for sys_slug, sys_bios in BIOS_DB.items():
+                for b in sys_bios:
+                    fpath = bios_dir / b["file"]
+                    exists = fpath.exists()
+                    md5_ok = None
+                    if exists and b.get("md5"):
+                        md5_ok = (md5_file(fpath) == b["md5"])
+                    missing = not exists or md5_ok is False
+                    skip_key = f"{sys_slug}/{b['file']}"
+                    if skip_key in _missing_bios_skipped:
+                        continue
+                    items.append({
+                        "system": sys_slug,
+                        "file": b["file"],
+                        "desc": b["desc"],
+                        "mandatory": b["mandatory"],
+                        "md5": b.get("md5"),
+                        "exists": exists,
+                        "md5_ok": md5_ok,
+                        "skip_key": skip_key,
+                    })
+            total = len(items)
+            # Group by system
+            systems = {}
+            for it in items:
+                systems.setdefault(it["system"], []).append(it)
+            self.send_json({"ok":True,"total_missing":total,"items":items,"systems":systems})
+        elif path == "/api/bios/missing/skip":
+            d = self.read_json()
+            key = d.get("skip_key","")
+            if key:
+                _missing_bios_skipped.add(key)
+            self.send_json({"ok":True})
         elif path == "/api/service/read-sh":
             try:
                 txt = CUSTOM_SH.read_text(errors="replace") if CUSTOM_SH.exists() else "(no existe)"
@@ -2327,16 +2366,26 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
     def _upload_bios(self, s):
         body = self.read_body()
         ct   = self.headers.get("Content-Type","")
-        _, files = parse_multipart({"CONTENT_TYPE":ct}, body)
+        fields, files = parse_multipart({"CONTENT_TYPE":ct}, body)
         if not files:
             self.send_json({"ok":False,"error":"No se recibió archivo"}); return
         bios_dir = Path(s.get("bios_dir","/userdata/bios"))
-        bios_dir.mkdir(parents=True, exist_ok=True)
+        subpath  = fields.get("path","").strip().strip("/")
+        if subpath:
+            # Security: prevent path traversal
+            dest_base = (bios_dir / subpath).resolve()
+            try:
+                dest_base.relative_to(bios_dir.resolve())
+            except ValueError:
+                self.send_json({"ok":False,"error":"Ruta inválida"}); return
+        else:
+            dest_base = bios_dir
+        dest_base.mkdir(parents=True, exist_ok=True)
         saved = []
         for fdata in files.values():
-            dest = bios_dir / fdata["filename"]
+            dest = dest_base / fdata["filename"]
             dest.write_bytes(fdata["data"])
-            saved.append({"file":fdata["filename"],
+            saved.append({"file":str(dest.relative_to(bios_dir)).replace("\\","/"),
                 "size":human_size(len(fdata["data"])),
                 "md5":hashlib.md5(fdata["data"]).hexdigest()})
         self.send_json({"ok":True,"saved":saved})
