@@ -1788,18 +1788,17 @@ function renderRomSystems(systems) {
       : `<span style="color:var(--green);font-size:10px">● ${s.rom_count} ROMs</span>`;
     const biosWarning = s.has_bios && s.bios_count > 0
       ? `<span style="color:var(--yellow);font-size:10px" title="Requiere BIOS">⚠ BIOS</span>` : '';
-    const logoUrl = `/api/system-logo/${encodeURIComponent(s.name)}`;
+    const logoHtml = s.has_logo
+      ? `<img src="/api/system-logo/${encodeURIComponent(s.name)}" style="width:28px;height:28px;object-fit:contain"
+              alt="${escHtml(s.name)}">`
+      : `<span>🕹</span>`;
     return `
     <div class="system-card" style="flex-direction:column;align-items:stretch;gap:10px;cursor:pointer;padding:14px"
          onclick="openSystem('${s.name}')">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="width:36px;height:36px;border-radius:8px;background:${hwColors[s.hardware]||'#333'};
           display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">
-          <img src="${logoUrl}" style="width:28px;height:28px;object-fit:contain;display:none"
-               onerror="this.style.display='none';this.nextElementSibling.style.display=''"
-               onload="this.style.display='';this.nextElementSibling.style.display='none'"
-               alt="${escHtml(s.name)}">
-          <span style="display:">🕹</span>
+          ${logoHtml}
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</div>

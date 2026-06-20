@@ -938,6 +938,7 @@ def get_rom_systems(settings, fast=False):
     if not roms_base.exists(): return result
     try: dirs = sorted(roms_base.iterdir())
     except Exception: return result
+    active_theme = detect_active_theme(settings)
     for sys_dir in dirs:
         if not sys_dir.is_dir(): continue
         name = sys_dir.name
@@ -988,6 +989,9 @@ def get_rom_systems(settings, fast=False):
                     meta = gdata.get(rom["filename"], gdata.get(rom["name"], {}))
                     if meta: rom.update(meta)
             except Exception: pass
+        theme_dir = Path(settings["themes_user"]) / active_theme / name
+        logo_paths = [theme_dir / "art" / "logo.png", theme_dir / "logo.png"]
+        has_logo = any(p.exists() for p in logo_paths)
         result.append({
             "name":name,"path":str(sys_dir),
             "rom_count":len(roms),"media_count":media_count,
@@ -996,6 +1000,7 @@ def get_rom_systems(settings, fast=False):
             "is_empty":len(roms)==0,
             "has_bios":_bios_key(name) in _BIOS_LOOKUP,
             "bios_count":len(_get_bios_entries(name)),
+            "has_logo": has_logo,
         })
     return result
 
@@ -2067,6 +2072,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "media_count":x["media_count"],"size_human":x["size_human"],
                 "is_empty":x["is_empty"],"has_gamelist":x["has_gamelist"],
                 "has_bios":x["has_bios"],"bios_count":x["bios_count"],
+                "has_logo":x.get("has_logo",False),
             } for x in systems])
         elif len(parts)==3 and parts[:2]==["api","rom-systems"]:
             name = urllib.parse.unquote(parts[2])
