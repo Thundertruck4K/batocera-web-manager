@@ -568,6 +568,28 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
            ═══════════════════════════════════════════════ -->
       <div class="panel active" id="panel-add">
 
+        <!-- Batocera Reference -->
+        <div class="card">
+          <div class="card-title"><span class="icon">📖</span>Sistema de Referencia Batocera</div>
+          <div class="info-box" style="margin-bottom:10px">
+            Selecciona un sistema de la lista de Batocera para auto-completar los campos. Puedes editar cualquier campo manualmente.
+          </div>
+          <div class="field">
+            <label>Sistema conocido</label>
+            <div class="input-group">
+              <select id="f-ref-system" onchange="applyRefSystem()">
+                <option value="">— Seleccionar sistema de referencia —</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="clearRefSystem()">✖ Limpiar</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+            <span class="badge badge-purple" id="ref-slug" style="display:none"></span>
+            <span class="badge badge-green" id="ref-emulators" style="display:none"></span>
+            <span class="badge badge-blue" id="ref-cores" style="display:none"></span>
+          </div>
+        </div>
+
         <!-- Básico -->
         <div class="card">
           <div class="card-title"><span class="icon">📌</span>Información Básica</div>
@@ -658,23 +680,22 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <div class="card-title"><span class="icon">🕹</span>Emulador y Core</div>
           <div class="grid-3">
             <div class="field">
-              <label>Emulador principal</label>
-              <select id="f-emulator">
+              <label>Emulador</label>
+              <select id="f-emulator" onchange="onEmulatorChange()">
                 <option value="">— Ninguno (usa default) —</option>
-                <option value="libretro">libretro</option>
-                <option value="standalone">standalone</option>
-                <option value="mupen64plus">mupen64plus</option>
-                <option value="custom">custom</option>
               </select>
             </div>
-            <div class="field">
+            <div class="field" id="f-core-group">
               <label>Core por defecto</label>
-              <input id="f-core" type="text" placeholder="ej: snes9x">
+              <select id="f-core">
+                <option value="">— Default —</option>
+              </select>
             </div>
-            <div class="field">
+            <div class="field" id="f-extra-cores-group">
               <label>Cores adicionales</label>
-              <input id="f-extra-cores" type="text" placeholder="ej: bsnes,snes9x2010">
-              <span class="hint">Separados por coma</span>
+              <select id="f-extra-cores" multiple style="min-height:48px">
+              </select>
+              <span class="hint">Ctrl+clic para seleccionar varios</span>
             </div>
           </div>
           <div class="info-box" style="margin-top:12px">
@@ -1506,13 +1527,28 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 // ─── State & Init ────────────────────────────────────────────
 let settingsData = {};
 let currentXml = '';
-let _editingSystem = null; // slug original cuando se está editando
+let _editingSystem = null;
+let _batoceraSystems = {}; // slug -> {n: fullname, l: [libretro cores], s: [standalone emulators]}
 
 async function init() {
   const info = await fetchJson('/api/info');
   if (info) {
     document.getElementById('sb-theme').textContent = info.active_theme || '?';
     document.getElementById('badge-count').textContent = info.systems_count;
+  }
+  const bs = await fetchJson('/api/batocera-systems');
+  if (bs && bs.ok) _batoceraSystems = bs.systems || {};
+  // Populate reference system dropdown
+  const refSel = document.getElementById('f-ref-system');
+  if (refSel && _batoceraSystems) {
+    const slugs = Object.keys(_batoceraSystems).sort();
+    for (const slug of slugs) {
+      const sys = _batoceraSystems[slug];
+      const opt = document.createElement('option');
+      opt.value = slug;
+      opt.textContent = `${sys.n || slug}`;
+      refSel.appendChild(opt);
+    }
   }
   loadSettings();
   loadMissingBios();
@@ -1591,6 +1627,8 @@ function closeModal(id) {
 
 // ─── Form helpers ─────────────────────────────────────────────
 function formData() {
+  const extraSel = document.getElementById('f-extra-cores');
+  const extraVals = extraSel ? Array.from(extraSel.selectedOptions).map(o => o.value).filter(v => v).join(',') : '';
   return {
     fullname:      document.getElementById('f-fullname').value,
     name:          document.getElementById('f-name').value.trim().toLowerCase().replace(/\s+/g,''),
@@ -1603,7 +1641,7 @@ function formData() {
     platform:      document.getElementById('f-platform').value,
     emulator:      document.getElementById('f-emulator').value,
     core:          document.getElementById('f-core').value,
-    extra_cores:   document.getElementById('f-extra-cores').value,
+    extra_cores:   extraVals,
     description:   document.getElementById('f-description').value,
     create_roms_dir: document.getElementById('opt-create-dir').checked,
     batocera_conf_entry: document.getElementById('opt-batocera-conf').checked,
@@ -1633,25 +1671,143 @@ function applyExtPreset() {
   if (val) document.getElementById('f-extensions').value = val;
 }
 
+// ─── Batocera Reference System ─────────────────────────────────
+function applyRefSystem() {
+  const slug = document.getElementById('f-ref-system').value;
+  if (!slug || !_batoceraSystems[slug]) return;
+  const sys = _batoceraSystems[slug];
+  document.getElementById('f-fullname').value = sys.n || '';
+  document.getElementById('f-name').value = slug;
+  document.getElementById('f-theme').value = slug;
+  autoRomPath();
+  // Show badges
+  document.getElementById('ref-slug').textContent = slug;
+  document.getElementById('ref-slug').style.display = '';
+  const ec = sys.l.length + sys.s.length;
+  document.getElementById('ref-emulators').textContent = `${ec} emulador(es)`;
+  document.getElementById('ref-emulators').style.display = '';
+  if (sys.l.length) {
+    document.getElementById('ref-cores').textContent = `${sys.l.length} core(s) libretro`;
+    document.getElementById('ref-cores').style.display = '';
+  } else {
+    document.getElementById('ref-cores').style.display = 'none';
+  }
+  populateEmulators(slug);
+}
+
+function clearRefSystem() {
+  document.getElementById('f-ref-system').value = '';
+  document.getElementById('ref-slug').style.display = 'none';
+  document.getElementById('ref-emulators').style.display = 'none';
+  document.getElementById('ref-cores').style.display = 'none';
+}
+
+function populateEmulators(slug) {
+  const sel = document.getElementById('f-emulator');
+  const sys = _batoceraSystems[slug];
+  sel.innerHTML = '<option value="">— Ninguno (usa default) —</option>';
+  if (!sys) return;
+  // Add standalone emulators first
+  for (const em of sys.s) {
+    const opt = document.createElement('option');
+    opt.value = em;
+    opt.textContent = em;
+    sel.appendChild(opt);
+  }
+  // Add libretro
+  if (sys.l.length) {
+    const opt = document.createElement('option');
+    opt.value = 'libretro';
+    opt.textContent = `libretro (${sys.l.length} cores)`;
+    sel.appendChild(opt);
+  }
+  onEmulatorChange();
+}
+
+function onEmulatorChange() {
+  const emul = document.getElementById('f-emulator').value;
+  const coreGroup = document.getElementById('f-core-group');
+  const extraGroup = document.getElementById('f-extra-cores-group');
+  const coreSel = document.getElementById('f-core');
+  const extraSel = document.getElementById('f-extra-cores');
+  if (emul === 'libretro') {
+    coreGroup.style.display = '';
+    extraGroup.style.display = '';
+    // Populate cores from the selected reference system, or from all
+    const refSlug = document.getElementById('f-ref-system').value;
+    const coreList = refSlug && _batoceraSystems[refSlug] ? _batoceraSystems[refSlug].l : [];
+    coreSel.innerHTML = '<option value="">— Default —</option>';
+    extraSel.innerHTML = '';
+    if (coreList.length) {
+      for (const core of coreList) {
+        const opt = document.createElement('option');
+        opt.value = core;
+        opt.textContent = core;
+        coreSel.appendChild(opt);
+        const opt2 = document.createElement('option');
+        opt2.value = core;
+        opt2.textContent = core;
+        extraSel.appendChild(opt2);
+      }
+    } else {
+      // No reference system selected - show all known libretro cores
+      const allCores = new Set();
+      for (const slug of Object.keys(_batoceraSystems)) {
+        for (const c of _batoceraSystems[slug].l) allCores.add(c);
+      }
+      const sorted = [...allCores].sort();
+      for (const core of sorted) {
+        const opt = document.createElement('option');
+        opt.value = core;
+        opt.textContent = core;
+        coreSel.appendChild(opt);
+        const opt2 = document.createElement('option');
+        opt2.value = core;
+        opt2.textContent = core;
+        extraSel.appendChild(opt2);
+      }
+    }
+  } else if (emul) {
+    // Standalone emulator - hide core fields
+    coreGroup.style.display = 'none';
+    extraGroup.style.display = 'none';
+    coreSel.innerHTML = '<option value="">— Default —</option>';
+    extraSel.innerHTML = '';
+  } else {
+    // No emulator selected - hide core fields
+    coreGroup.style.display = 'none';
+    extraGroup.style.display = 'none';
+    coreSel.innerHTML = '<option value="">— Default —</option>';
+    extraSel.innerHTML = '';
+  }
+}
+
 function clearForm() {
   ['f-fullname','f-name','f-manufacturer','f-release','f-rompath',
-   'f-extensions','f-theme','f-core','f-extra-cores','f-description'].forEach(id => {
+   'f-extensions','f-theme','f-description'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('f-hardware').selectedIndex = 0;
-  document.getElementById('f-emulator').selectedIndex = 0;
   document.getElementById('f-platform').selectedIndex = 0;
+  document.getElementById('f-emulator').innerHTML = '<option value="">— Ninguno (usa default) —</option>';
+  document.getElementById('f-core').innerHTML = '<option value="">— Default —</option>';
+  document.getElementById('f-extra-cores').innerHTML = '';
+  document.getElementById('f-core-group').style.display = 'none';
+  document.getElementById('f-extra-cores-group').style.display = 'none';
   document.getElementById('opt-create-dir').checked = true;
   document.getElementById('opt-batocera-conf').checked = false;
   document.getElementById('opt-dry-run').checked = false;
+  clearRefSystem();
   clearLogo();
   clearLog();
   _editingSystem = null;
   panelMeta.add.title = '➕ Agregar Sistema';
   panelMeta.add.sub   = 'Configura y genera el cfg para un nuevo sistema en EmulationStation';
-  document.querySelector('.btn-success.btn-lg span').textContent = '✅';
-  document.querySelector('.btn-success.btn-lg').childNodes[2].textContent = ' Crear Sistema';
+  const btn = document.querySelector('.btn-success.btn-lg');
+  if (btn) {
+    btn.innerHTML = '<span>✅</span> Crear Sistema';
+  }
   log('Formulario limpiado.');
 }
 
@@ -1776,11 +1932,59 @@ async function editSystem(name) {
   document.getElementById('f-extensions').value   = sys.extension || '';
   document.getElementById('f-theme').value        = sys.theme || '';
   document.getElementById('f-description').value  = sys.description || '';
-  document.getElementById('f-core').value         = sys.core || '';
-  document.getElementById('f-extra-cores').value   = sys.extra_cores || '';
   setSelect('f-hardware', sys.hardware);
   setSelect('f-platform',  sys.platform);
-  setSelect('f-emulator',  sys.emulator);
+  // See if we can find this system in the reference list
+  const refSlug = sys.name && _batoceraSystems[sys.name] ? sys.name : null;
+  if (refSlug) {
+    setSelect('f-ref-system', refSlug);
+    populateEmulators(refSlug);
+  } else {
+    // Try to match by fullname
+    const match = Object.keys(_batoceraSystems).find(k => _batoceraSystems[k].n === sys.fullname);
+    if (match) {
+      setSelect('f-ref-system', match);
+      populateEmulators(match);
+    }
+  }
+  // Set emulator and core
+  const emul = sys.emulator || '';
+  const core = sys.core || '';
+  if (emul) {
+    const emulSel = document.getElementById('f-emulator');
+    // If emulator is a libretro core name, set emulator to libretro and core
+    const refSys = _batoceraSystems[refSlug || ''];
+    const isLibretroCore = refSys && refSys.l.includes(emul);
+    if (isLibretroCore) {
+      setSelect('f-emulator', 'libretro');
+      onEmulatorChange();
+      // Wait for options to populate then set core
+      setTimeout(() => { setSelect('f-core', emul); }, 0);
+    } else if (emul && emulSel.querySelector(`option[value="${emul}"]`)) {
+      setSelect('f-emulator', emul);
+      onEmulatorChange();
+    } else {
+      // Unknown emulator, add it as custom
+      const opt = document.createElement('option');
+      opt.value = emul;
+      opt.textContent = emul;
+      emulSel.appendChild(opt);
+      setSelect('f-emulator', emul);
+      onEmulatorChange();
+    }
+  }
+  if (core && !document.getElementById('f-core').value) {
+    setSelect('f-core', core);
+  }
+  // Set extra cores
+  const extraCores = sys.extra_cores || '';
+  if (extraCores) {
+    const extraEl = document.getElementById('f-extra-cores');
+    const parts = extraCores.split(',').map(s => s.trim()).filter(Boolean);
+    for (const opt of extraEl.options) {
+      if (parts.includes(opt.value)) opt.selected = true;
+    }
+  }
   document.getElementById('opt-batocera-conf').checked = false;
   document.getElementById('opt-create-dir').checked = false;
   document.getElementById('opt-dry-run').checked = false;
@@ -1789,8 +1993,8 @@ async function editSystem(name) {
   panelMeta.add.sub   = `Editando: ${sys.fullname||sys.name}`;
   document.getElementById('topbar-title').textContent = panelMeta.add.title;
   document.getElementById('topbar-sub').textContent = panelMeta.add.sub;
-  document.querySelector('.btn-success.btn-lg span').textContent = '💾';
-  document.querySelector('.btn-success.btn-lg').childNodes[2].textContent = ' Guardar Cambios';
+  const btn = document.querySelector('.btn-success.btn-lg');
+  if (btn) btn.innerHTML = '<span>💾</span> Guardar Cambios';
   const navBtn = document.querySelector('.nav-item[onclick*="showPanel.*add"]');
   showPanel('add', navBtn);
 }

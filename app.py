@@ -19,6 +19,14 @@ except ImportError:
 HOST, PORT = "0.0.0.0", 5000
 
 SETTINGS_FILE = Path("/userdata/system/batocera_manager_settings.json")
+
+_BATOCERA_SYSTEMS_FILE = Path(__file__).parent / "batocera_systems.json"
+_BATOCERA_SYSTEMS = {}
+if _BATOCERA_SYSTEMS_FILE.exists():
+    try:
+        _BATOCERA_SYSTEMS = json.loads(_BATOCERA_SYSTEMS_FILE.read_text())
+    except Exception: pass
+
 DEFAULT_SETTINGS = {
     "es_cfg_dir":    "/userdata/system/configs/emulationstation",
     "roms_base":     "/userdata/roms",
@@ -2668,6 +2676,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "hardware_types":HARDWARE_TYPES,"has_pil":HAS_PIL})
         elif path == "/api/systems":
             self.send_json(list_custom_systems(s))
+        elif path == "/api/batocera-systems":
+            self.send_json({"ok":True,"count":len(_BATOCERA_SYSTEMS),"systems":_BATOCERA_SYSTEMS})
         elif path == "/api/themes":
             self.send_json({"active":detect_active_theme(s),"list":list_themes(s)})
         elif path == "/api/settings":

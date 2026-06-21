@@ -1,0 +1,1813 @@
+{
+ "3do": {
+  "n": "3DO Interactive Multiplayer",
+  "l": [
+   "opera"
+  ],
+  "s": []
+ },
+ "3ds": {
+  "n": "3DS",
+  "l": [
+   "citra"
+  ],
+  "s": [
+   "citra"
+  ]
+ },
+ "abuse": {
+  "n": "Abuse",
+  "l": [],
+  "s": [
+   "abuse"
+  ]
+ },
+ "adam": {
+  "n": "ADAM",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "adventure-vision": {
+  "n": "Adventure Vision",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "amiga-aga": {
+  "n": "Amiga AGA",
+  "l": [
+   "puae",
+   "puae2021",
+   "uae4arm"
+  ],
+  "s": [
+   "amiberry/A1200",
+   "amiberry/A4000",
+   "fsuae/A1200",
+   "fsuae/A4000"
+  ]
+ },
+ "amiga-ocs-ecs": {
+  "n": "Amiga OCS/ECS",
+  "l": [
+   "puae",
+   "puae2021",
+   "uae4arm"
+  ],
+  "s": [
+   "amiberry/A500",
+   "amiberry/A500+",
+   "fsuae/A1000",
+   "fsuae/A3000",
+   "fsuae/A500",
+   "fsuae/A500+",
+   "fsuae/A600"
+  ]
+ },
+ "amiga-cd32": {
+  "n": "Amiga CD32",
+  "l": [
+   "puae",
+   "puae2021",
+   "uae4arm"
+  ],
+  "s": [
+   "amiberry/CD32",
+   "fsuae/CD32"
+  ]
+ },
+ "amiga-cdtv": {
+  "n": "Amiga CDTV",
+  "l": [
+   "puae",
+   "puae2021",
+   "uae4arm"
+  ],
+  "s": [
+   "amiberry/CDTV",
+   "fsuae/CDTV"
+  ]
+ },
+ "amstradcpc": {
+  "n": "Amstrad CPC",
+  "l": [
+   "cap32"
+  ],
+  "s": []
+ },
+ "m-1000": {
+  "n": "M-1000",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "apple-ii": {
+  "n": "Apple II",
+  "l": [
+   "applewin",
+   "mame"
+  ],
+  "s": [
+   "applewin",
+   "gsplus",
+   "mame"
+  ]
+ },
+ "apple-iigs": {
+  "n": "Apple IIGS",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "gsplus",
+   "mame"
+  ]
+ },
+ "arcadia-2001": {
+  "n": "Arcadia 2001",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "archimedes": {
+  "n": "Archimedes",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "arduboy": {
+  "n": "Arduboy",
+  "l": [
+   "arduous"
+  ],
+  "s": []
+ },
+ "astrocade": {
+  "n": "Astrocade",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "atari2600": {
+  "n": "Atari 2600",
+  "l": [
+   "stella",
+   "stella2014"
+  ],
+  "s": [
+   "stella"
+  ]
+ },
+ "atari5200": {
+  "n": "Atari 5200",
+  "l": [
+   "a5200",
+   "atari800"
+  ],
+  "s": []
+ },
+ "atari7800": {
+  "n": "Atari 7800",
+  "l": [
+   "prosystem"
+  ],
+  "s": []
+ },
+ "atari-800": {
+  "n": "Atari 800",
+  "l": [
+   "atari800"
+  ],
+  "s": []
+ },
+ "atari-st": {
+  "n": "Atari ST",
+  "l": [
+   "hatari",
+   "hatarib"
+  ],
+  "s": [
+   "hatari"
+  ]
+ },
+ "atom": {
+  "n": "Atom",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "atomiswave": {
+  "n": "Atomiswave",
+  "l": [
+   "flycast",
+   "flycastvl"
+  ],
+  "s": [
+   "flycast"
+  ]
+ },
+ "bbc-micro": {
+  "n": "BBC Micro",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "c128": {
+  "n": "Commodore 128",
+  "l": [
+   "vice_x128"
+  ],
+  "s": [
+   "vice/x128"
+  ]
+ },
+ "vic20": {
+  "n": "Commodore VIC-20",
+  "l": [
+   "vice_xvic"
+  ],
+  "s": [
+   "vice/xvic"
+  ]
+ },
+ "c64": {
+  "n": "Commodore 64",
+  "l": [
+   "vice_x64",
+   "vice_x64sc",
+   "vice_xscpu64"
+  ],
+  "s": [
+   "vice/x64",
+   "vice/x64dtv",
+   "vice/xscpu64"
+  ]
+ },
+ "camputers-lynx": {
+  "n": "Camputers Lynx",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "cannonball": {
+  "n": "Cannonball",
+  "l": [],
+  "s": [
+   "cannonball"
+  ]
+ },
+ "cave-cv1000": {
+  "n": "Cave CV1000",
+  "l": [],
+  "s": [
+   "demul"
+  ]
+ },
+ "cave-story": {
+  "n": "Cave Story",
+  "l": [
+   "nxengine"
+  ],
+  "s": []
+ },
+ "cd-i": {
+  "n": "CD-i",
+  "l": [
+   "same_cdi"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "c-dogs-sdl": {
+  "n": "C-Dogs SDL",
+  "l": [],
+  "s": [
+   "cdogs"
+  ]
+ },
+ "commander-genius": {
+  "n": "Commander Genius",
+  "l": [],
+  "s": [
+   "cgenius"
+  ]
+ },
+ "channel-f": {
+  "n": "Channel-F",
+  "l": [
+   "freechaf"
+  ],
+  "s": []
+ },
+ "chihiro": {
+  "n": "Sega Chihiro",
+  "l": [],
+  "s": [
+   "xemu"
+  ]
+ },
+ "color-computer": {
+  "n": "Color Computer",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "colecovision": {
+  "n": "ColecoVision",
+  "l": [
+   "bluemsx"
+  ],
+  "s": [
+   "openmsx"
+  ]
+ },
+ "commander-x16": {
+  "n": "Commander X16",
+  "l": [],
+  "s": [
+   "x16emu"
+  ]
+ },
+ "corsixth": {
+  "n": "CorsixTH",
+  "l": [],
+  "s": [
+   "corsixth"
+  ]
+ },
+ "commodore-plus4": {
+  "n": "Commodore Plus4",
+  "l": [
+   "vice_xplus4"
+  ],
+  "s": [
+   "vice/xplus4"
+  ]
+ },
+ "creativision": {
+  "n": "CreatiVision",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "daphne": {
+  "n": "Daphne",
+  "l": [],
+  "s": [
+   "hypseus-singe"
+  ]
+ },
+ "diablo": {
+  "n": "Diablo",
+  "l": [],
+  "s": [
+   "devilutionx"
+  ]
+ },
+ "doom-3": {
+  "n": "Doom 3",
+  "l": [
+   "boom3"
+  ],
+  "s": [
+   "dhewm3"
+  ]
+ },
+ "dos": {
+  "n": "Dos (x86)",
+  "l": [
+   "dosbox_pure"
+  ],
+  "s": [
+   "dosbox",
+   "dosbox_staging",
+   "dosboxx/dosbox-x"
+  ]
+ },
+ "dc": {
+  "n": "Dreamcast",
+  "l": [
+   "flycast",
+   "flycastvl"
+  ],
+  "s": [
+   "flycast",
+   "redream"
+  ]
+ },
+ "dxx-rebirth": {
+  "n": "DXX Rebirth",
+  "l": [],
+  "s": [
+   "dxx-rebirth"
+  ]
+ },
+ "easyrpg": {
+  "n": "EasyRPG",
+  "l": [
+   "easyrpg"
+  ],
+  "s": [
+   "easyrpg"
+  ]
+ },
+ "ecwolf": {
+  "n": "ECWolf",
+  "l": [],
+  "s": [
+   "ecwolf"
+  ]
+ },
+ "eduke32": {
+  "n": "EDuke32",
+  "l": [],
+  "s": [
+   "eduke32"
+  ]
+ },
+ "electron": {
+  "n": "Electron",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "wolfenstein-enemy-territory": {
+  "n": "Wolfenstein - Enemy Territory",
+  "l": [],
+  "s": [
+   "etlegacy"
+  ]
+ },
+ "fallout-community-edition": {
+  "n": "Fallout Community Edition",
+  "l": [],
+  "s": [
+   "fallout1-ce"
+  ]
+ },
+ "fallout-2-community-edition": {
+  "n": "Fallout 2 Community Edition",
+  "l": [],
+  "s": [
+   "fallout2-ce"
+  ]
+ },
+ "fbneo": {
+  "n": "Final Burn Neo",
+  "l": [
+   "fbalpha",
+   "fbneo"
+  ],
+  "s": [
+   "fba2x"
+  ]
+ },
+ "fds": {
+  "n": "Family Computer Disk System",
+  "l": [
+   "fceumm",
+   "mesen",
+   "nestopia"
+  ],
+  "s": []
+ },
+ "flash-player": {
+  "n": "Flash Player",
+  "l": [],
+  "s": [
+   "lightspark",
+   "ruffle"
+  ]
+ },
+ "applications": {
+  "n": "Applications",
+  "l": [],
+  "s": [
+   "flatpak"
+  ]
+ },
+ "fm-7": {
+  "n": "FM-7",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "fm-towns": {
+  "n": "FM-TOWNS",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame",
+   "tsugaru"
+  ]
+ },
+ "future-pinball": {
+  "n": "Future Pinball",
+  "l": [],
+  "s": [
+   "fpinball"
+  ]
+ },
+ "ion-fury": {
+  "n": "Ion Fury",
+  "l": [],
+  "s": [
+   "eduke32/fury"
+  ]
+ },
+ "gaelco": {
+  "n": "Gaelco",
+  "l": [],
+  "s": [
+   "demul"
+  ]
+ },
+ "gamate": {
+  "n": "Gamate",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "game-and-watch": {
+  "n": "Game and Watch",
+  "l": [
+   "gw",
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "game-com": {
+  "n": "Game.com",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "gc": {
+  "n": "GameCube",
+  "l": [
+   "dolphin"
+  ],
+  "s": [
+   "dolphin"
+  ]
+ },
+ "gamegear": {
+  "n": "Game Gear",
+  "l": [
+   "gearsystem",
+   "genesisplusgx",
+   "picodrive",
+   "smsplus"
+  ],
+  "s": []
+ },
+ "game-pocket-computer": {
+  "n": "Game Pocket Computer",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "gb": {
+  "n": "Game Boy",
+  "l": [
+   "gambatte",
+   "mesen-s",
+   "mgba",
+   "vba-m"
+  ],
+  "s": []
+ },
+ "gb-2p": {
+  "n": "Game Boy (2 players)",
+  "l": [
+   "tgbdual"
+  ],
+  "s": []
+ },
+ "gba": {
+  "n": "Game Boy Advance",
+  "l": [
+   "gpsp",
+   "mgba",
+   "vba-m"
+  ],
+  "s": []
+ },
+ "gbc": {
+  "n": "Game Boy Color",
+  "l": [
+   "gambatte",
+   "mesen-s",
+   "mgba",
+   "vba-m"
+  ],
+  "s": []
+ },
+ "gbc-2p": {
+  "n": "Game Boy Color (2 players)",
+  "l": [
+   "tgbdual"
+  ],
+  "s": []
+ },
+ "game-master": {
+  "n": "Game Master",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "pong": {
+  "n": "Pong",
+  "l": [
+   "gong"
+  ],
+  "s": []
+ },
+ "gp32": {
+  "n": "GP32",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "gx4000": {
+  "n": "GX4000",
+  "l": [
+   "cap32"
+  ],
+  "s": []
+ },
+ "gzdoom": {
+  "n": "GZDoom",
+  "l": [],
+  "s": [
+   "gzdoom"
+  ]
+ },
+ "hydra-castle-labyrinth": {
+  "n": "Hydra Castle Labyrinth",
+  "l": [],
+  "s": [
+   "hcl"
+  ]
+ },
+ "hikaru": {
+  "n": "Hikaru",
+  "l": [],
+  "s": [
+   "demul"
+  ]
+ },
+ "hurrican": {
+  "n": "Hurrican",
+  "l": [],
+  "s": [
+   "hurrican"
+  ]
+ },
+ "ikemen": {
+  "n": "IKEMEN",
+  "l": [],
+  "s": [
+   "ikemen"
+  ]
+ },
+ "intellivision": {
+  "n": "Mattel Intellivision",
+  "l": [
+   "freeintv"
+  ],
+  "s": []
+ },
+ "return-to-castle-wolfenstein": {
+  "n": "Return To Castle Wolfenstein",
+  "l": [],
+  "s": [
+   "iortcw"
+  ]
+ },
+ "java-2-microedition": {
+  "n": "Java 2 MicroEdition",
+  "l": [
+   "freej2me",
+   "squirreljme"
+  ],
+  "s": []
+ },
+ "jaguar": {
+  "n": "Jaguar",
+  "l": [
+   "virtualjaguar"
+  ],
+  "s": [
+   "bigpemu"
+  ]
+ },
+ "jaguarcd": {
+  "n": "Jaguar CD",
+  "l": [
+   "virtualjaguar"
+  ],
+  "s": [
+   "bigpemu"
+  ]
+ },
+ "jazz-jackrabbit-2": {
+  "n": "Jazz Jackrabbit 2",
+  "l": [],
+  "s": [
+   "jazz2-native"
+  ]
+ },
+ "laser-310": {
+  "n": "Laser 310",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "lcd-games": {
+  "n": "LCD Games",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "lowres-nx": {
+  "n": "Lowres NX",
+  "l": [
+   "lowresnx"
+  ],
+  "s": []
+ },
+ "lutro": {
+  "n": "Lutro",
+  "l": [
+   "lutro"
+  ],
+  "s": []
+ },
+ "lynx": {
+  "n": "Atari Lynx",
+  "l": [
+   "handy",
+   "mednafen_lynx"
+  ],
+  "s": []
+ },
+ "macintosh": {
+  "n": "Macintosh",
+  "l": [
+   "mame",
+   "minivmac"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "mame": {
+  "n": "Mame",
+  "l": [
+   "imame4all",
+   "mame",
+   "mame078plus"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "mastersystem": {
+  "n": "Master System",
+  "l": [
+   "gearsystem",
+   "genesisplusgx",
+   "picodrive",
+   "smsplus"
+  ],
+  "s": []
+ },
+ "megadrive": {
+  "n": "Mega Drive",
+  "l": [
+   "blastem",
+   "genesisplusgx",
+   "genesisplusgx-wide",
+   "picodrive"
+  ],
+  "s": []
+ },
+ "mega-duck-cougar-boy": {
+  "n": "Mega Duck / Cougar Boy",
+  "l": [
+   "mame",
+   "sameduck"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "model2": {
+  "n": "Model 2",
+  "l": [],
+  "s": [
+   "model2emu"
+  ]
+ },
+ "model3": {
+  "n": "Model 3",
+  "l": [],
+  "s": [
+   "supermodel",
+   "supermodel/supermodel-legacy"
+  ]
+ },
+ "moonlight-embedded": {
+  "n": "Moonlight Embedded",
+  "l": [],
+  "s": [
+   "moonlight"
+  ]
+ },
+ "mrboom": {
+  "n": "MrBoom",
+  "l": [
+   "mrboom"
+  ],
+  "s": []
+ },
+ "msu-md": {
+  "n": "MSU-MD",
+  "l": [
+   "genesisplusgx",
+   "genesisplusgx-wide"
+  ],
+  "s": []
+ },
+ "msx1": {
+  "n": "MSX1",
+  "l": [
+   "bluemsx",
+   "fmsx"
+  ],
+  "s": [
+   "openmsx"
+  ]
+ },
+ "msx2": {
+  "n": "MSX2",
+  "l": [
+   "bluemsx",
+   "fmsx"
+  ],
+  "s": [
+   "openmsx"
+  ]
+ },
+ "msx-turbo-r": {
+  "n": "MSX Turbo-R",
+  "l": [
+   "bluemsx"
+  ],
+  "s": [
+   "openmsx"
+  ]
+ },
+ "mugen": {
+  "n": "MUGEN",
+  "l": [],
+  "s": [
+   "mugen/wine-tkg"
+  ]
+ },
+ "othello-multivision": {
+  "n": "Othello Multivision",
+  "l": [
+   "gearsystem"
+  ],
+  "s": []
+ },
+ "n64": {
+  "n": "Nintendo 64",
+  "l": [
+   "mupen64plus-next",
+   "parallel_n64"
+  ],
+  "s": [
+   "mupen64plus/glide64mk2",
+   "mupen64plus/gliden64",
+   "mupen64plus/rice"
+  ]
+ },
+ "64dd": {
+  "n": "Nintendo 64 Disk Drive",
+  "l": [
+   "mupen64plus-next",
+   "parallel_n64"
+  ],
+  "s": [
+   "mupen64plus/glide64mk2",
+   "mupen64plus/gliden64",
+   "mupen64plus/rice"
+  ]
+ },
+ "namco-system-246-256": {
+  "n": "Namco System 246/256",
+  "l": [],
+  "s": [
+   "play"
+  ]
+ },
+ "naomi": {
+  "n": "Naomi",
+  "l": [
+   "flycast",
+   "flycastvl"
+  ],
+  "s": [
+   "flycast"
+  ]
+ },
+ "naomi2": {
+  "n": "Naomi 2",
+  "l": [
+   "flycast"
+  ],
+  "s": [
+   "flycast"
+  ]
+ },
+ "nds": {
+  "n": "Nintendo DS",
+  "l": [
+   "desmume",
+   "melonds",
+   "melondsds"
+  ],
+  "s": [
+   "drastic",
+   "melonds"
+  ]
+ },
+ "neogeo": {
+  "n": "Neo-Geo",
+  "l": [
+   "fbalpha",
+   "fbneo",
+   "imame4all",
+   "mame",
+   "mame078plus"
+  ],
+  "s": [
+   "fba2x",
+   "mame"
+  ]
+ },
+ "neogeocd": {
+  "n": "Neo-Geo CD",
+  "l": [
+   "neocd"
+  ],
+  "s": []
+ },
+ "nes": {
+  "n": "Nintendo Entertainment System",
+  "l": [
+   "fceumm",
+   "mesen",
+   "nestopia"
+  ],
+  "s": []
+ },
+ "n-gage": {
+  "n": "N-Gage",
+  "l": [],
+  "s": [
+   "eka2l1"
+  ]
+ },
+ "ngp": {
+  "n": "Neo-Geo Pocket",
+  "l": [
+   "mednafen_ngp"
+  ],
+  "s": []
+ },
+ "ngpc": {
+  "n": "Neo-Geo Pocket Color",
+  "l": [
+   "mednafen_ngp"
+  ],
+  "s": []
+ },
+ "odyssey2": {
+  "n": "Odyssey2",
+  "l": [
+   "o2em"
+  ],
+  "s": []
+ },
+ "od-commander": {
+  "n": "OD-Commander",
+  "l": [],
+  "s": [
+   "odcommander"
+  ]
+ },
+ "openbor": {
+  "n": "OpenBOR",
+  "l": [],
+  "s": [
+   "openbor/openbor4432",
+   "openbor/openbor6412",
+   "openbor/openbor7142",
+   "openbor/openbor7530"
+  ]
+ },
+ "jazz-jackrabbit": {
+  "n": "Jazz Jackrabbit",
+  "l": [],
+  "s": [
+   "openjazz"
+  ]
+ },
+ "openlara": {
+  "n": "OpenLara",
+  "l": [
+   "openlara"
+  ],
+  "s": []
+ },
+ "pc-8800": {
+  "n": "PC-8800",
+  "l": [
+   "quasi88"
+  ],
+  "s": []
+ },
+ "pc-9800": {
+  "n": "PC-9800",
+  "l": [
+   "np2kai"
+  ],
+  "s": []
+ },
+ "pce": {
+  "n": "PC Engine",
+  "l": [
+   "pce",
+   "pce_fast"
+  ],
+  "s": []
+ },
+ "pcecd": {
+  "n": "PC Engine CD",
+  "l": [
+   "pce",
+   "pce_fast"
+  ],
+  "s": []
+ },
+ "pc-fx": {
+  "n": "PC-FX",
+  "l": [
+   "pcfx"
+  ],
+  "s": []
+ },
+ "pdp-1": {
+  "n": "PDP-1",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "commodore-pet": {
+  "n": "Commodore PET",
+  "l": [
+   "vice_xpet"
+  ],
+  "s": [
+   "vice/xpet"
+  ]
+ },
+ "pico": {
+  "n": "Sega Pico",
+  "l": [
+   "genesisplusgx",
+   "genesisplusgx-wide",
+   "picodrive"
+  ],
+  "s": []
+ },
+ "pico-8": {
+  "n": "Pico-8",
+  "l": [
+   "fake08"
+  ],
+  "s": []
+ },
+ "plug-and-play-tv-games": {
+  "n": "Plug and Play TV Games",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "pokemon-mini": {
+  "n": "Pokemon Mini",
+  "l": [
+   "pokemini"
+  ],
+  "s": []
+ },
+ "ports": {
+  "n": "Ports",
+  "l": [],
+  "s": [
+   "sh"
+  ]
+ },
+ "prboom": {
+  "n": "PrBoom",
+  "l": [
+   "prboom"
+  ],
+  "s": []
+ },
+ "ps2": {
+  "n": "PlayStation 2",
+  "l": [
+   "pcsx2",
+   "play"
+  ],
+  "s": [
+   "pcsx2",
+   "play"
+  ]
+ },
+ "ps3": {
+  "n": "PlayStation 3",
+  "l": [],
+  "s": [
+   "rpcs3"
+  ]
+ },
+ "ps4": {
+  "n": "PlayStation 4",
+  "l": [],
+  "s": [
+   "shadps4"
+  ]
+ },
+ "psp": {
+  "n": "PlayStation Portable",
+  "l": [
+   "ppsspp"
+  ],
+  "s": [
+   "ppsspp"
+  ]
+ },
+ "psvita": {
+  "n": "PlayStation Vita",
+  "l": [],
+  "s": [
+   "vita3k"
+  ]
+ },
+ "psx": {
+  "n": "PlayStation",
+  "l": [
+   "mednafen_psx",
+   "pcsx_rearmed",
+   "swanstation"
+  ],
+  "s": [
+   "duckstation",
+   "duckstation/duckstation-legacy"
+  ]
+ },
+ "pv-1000": {
+  "n": "PV-1000",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "pygame": {
+  "n": "Pygame",
+  "l": [],
+  "s": [
+   "pygame"
+  ]
+ },
+ "pyxel": {
+  "n": "pyxel",
+  "l": [],
+  "s": [
+   "pyxel"
+  ]
+ },
+ "quake-iii": {
+  "n": "Quake III",
+  "l": [],
+  "s": [
+   "ioquake3"
+  ]
+ },
+ "raze": {
+  "n": "Raze",
+  "l": [],
+  "s": [
+   "raze"
+  ]
+ },
+ "reminiscence": {
+  "n": "REminiscence",
+  "l": [
+   "reminiscence"
+  ],
+  "s": []
+ },
+ "rise-of-the-triad": {
+  "n": "Rise of the Triad",
+  "l": [],
+  "s": [
+   "taradino"
+  ]
+ },
+ "samcoupe": {
+  "n": "SAM Coupé",
+  "l": [],
+  "s": [
+   "samcoupe"
+  ]
+ },
+ "satellaview": {
+  "n": "Satellaview",
+  "l": [
+   "mesen-s",
+   "pocketsnes",
+   "snes9x"
+  ],
+  "s": []
+ },
+ "saturn": {
+  "n": "Saturn",
+  "l": [
+   "beetle-saturn",
+   "kronos",
+   "yabasanshiro"
+  ],
+  "s": []
+ },
+ "scummvm": {
+  "n": "ScummVM",
+  "l": [
+   "scummvm"
+  ],
+  "s": [
+   "scummvm"
+  ]
+ },
+ "super-cassette-vision": {
+  "n": "Super Cassette Vision",
+  "l": [
+   "emuscv"
+  ],
+  "s": []
+ },
+ "sdlpop": {
+  "n": "SdlPop",
+  "l": [],
+  "s": [
+   "sdlpop"
+  ]
+ },
+ "sega32x": {
+  "n": "32x",
+  "l": [
+   "picodrive"
+  ],
+  "s": []
+ },
+ "segacd": {
+  "n": "Sega CD",
+  "l": [
+   "genesisplusgx",
+   "picodrive"
+  ],
+  "s": []
+ },
+ "sg1000": {
+  "n": "SG-1000",
+  "l": [
+   "gearsystem",
+   "genesisplusgx"
+  ],
+  "s": []
+ },
+ "sgb": {
+  "n": "Super Game Boy",
+  "l": [
+   "mesen-s",
+   "mgba"
+  ],
+  "s": []
+ },
+ "singe": {
+  "n": "Singe",
+  "l": [],
+  "s": [
+   "hypseus-singe"
+  ]
+ },
+ "snes": {
+  "n": "Super Nintendo Entertainment System",
+  "l": [
+   "bsnes",
+   "bsnes_hd",
+   "mesen-s",
+   "pocketsnes",
+   "snes9x",
+   "snes9x_next"
+  ],
+  "s": []
+ },
+ "super-disc-system-msu1": {
+  "n": "Super Disc System (MSU1)",
+  "l": [
+   "bsnes",
+   "bsnes_hd",
+   "pocketsnes",
+   "snes9x"
+  ],
+  "s": []
+ },
+ "socrates": {
+  "n": "Socrates",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "solarus": {
+  "n": "Solarus",
+  "l": [],
+  "s": [
+   "solarus"
+  ]
+ },
+ "sonic-mania": {
+  "n": "Sonic Mania",
+  "l": [],
+  "s": [
+   "sonic-mania"
+  ]
+ },
+ "sonic-3-a-i-r": {
+  "n": "Sonic 3 A.I.R.",
+  "l": [],
+  "s": [
+   "sonic3-air"
+  ]
+ },
+ "sonic-retro-engine": {
+  "n": "Sonic Retro Engine",
+  "l": [],
+  "s": [
+   "sonic2013",
+   "soniccd"
+  ]
+ },
+ "spectravideo-sv-328": {
+  "n": "Spectravideo SV-328",
+  "l": [
+   "bluemsx"
+  ],
+  "s": [
+   "openmsx"
+  ]
+ },
+ "steam": {
+  "n": "Steam",
+  "l": [],
+  "s": [
+   "steam"
+  ]
+ },
+ "sufami": {
+  "n": "SuFami Turbo",
+  "l": [
+   "snes9x"
+  ],
+  "s": []
+ },
+ "super-mario-war": {
+  "n": "Super Mario War",
+  "l": [
+   "superbroswar"
+  ],
+  "s": []
+ },
+ "supergrafx": {
+  "n": "Supergrafx",
+  "l": [
+   "mednafen_supergrafx"
+  ],
+  "s": []
+ },
+ "supervision": {
+  "n": "Supervision",
+  "l": [
+   "potator"
+  ],
+  "s": []
+ },
+ "super-a-can": {
+  "n": "Super A'Can",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "switch": {
+  "n": "Switch",
+  "l": [],
+  "s": [
+   "ryujinx",
+   "suyu"
+  ]
+ },
+ "segasystemsp": {
+  "n": "Sega System SP",
+  "l": [
+   "flycast"
+  ],
+  "s": [
+   "flycast"
+  ]
+ },
+ "the-force-engine": {
+  "n": "The Force Engine",
+  "l": [],
+  "s": [
+   "theforceengine"
+  ]
+ },
+ "thextech": {
+  "n": "TheXTech",
+  "l": [],
+  "s": [
+   "thextech"
+  ]
+ },
+ "thomson-mo-to-theodore": {
+  "n": "Thomson - MO/TO (Theodore)",
+  "l": [
+   "theodore"
+  ],
+  "s": []
+ },
+ "ti-99": {
+  "n": "TI-99",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "tic-80": {
+  "n": "TIC-80",
+  "l": [
+   "tic80"
+  ],
+  "s": []
+ },
+ "triforce": {
+  "n": "Triforce",
+  "l": [],
+  "s": [
+   "dolphin_triforce"
+  ]
+ },
+ "tutor": {
+  "n": "Tutor",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "tyrian": {
+  "n": "Tyrian",
+  "l": [],
+  "s": [
+   "tyrian"
+  ]
+ },
+ "tyrquake": {
+  "n": "TyrQuake",
+  "l": [
+   "tyrquake"
+  ],
+  "s": []
+ },
+ "ur-quan-masters": {
+  "n": "Ur-Quan Masters",
+  "l": [],
+  "s": [
+   "uqm"
+  ]
+ },
+ "uzebox": {
+  "n": "Uzebox",
+  "l": [
+   "uzem"
+  ],
+  "s": []
+ },
+ "vc-4000": {
+  "n": "VC 4000",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "vectrex": {
+  "n": "Vectrex",
+  "l": [
+   "vecx"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "dreamcast-vmu": {
+  "n": "Dreamcast VMU",
+  "l": [
+   "vemulator"
+  ],
+  "s": []
+ },
+ "video-game-music-player": {
+  "n": "Video Game Music Player",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "videopac-g7400": {
+  "n": "Videopac+ G7400",
+  "l": [
+   "o2em"
+  ],
+  "s": []
+ },
+ "vircon32": {
+  "n": "vircon32",
+  "l": [
+   "vircon32"
+  ],
+  "s": []
+ },
+ "virtualboy": {
+  "n": "Virtual Boy",
+  "l": [
+   "vb"
+  ],
+  "s": []
+ },
+ "tandy-video-information-system": {
+  "n": "Tandy Video Information System",
+  "l": [
+   "mame"
+  ],
+  "s": []
+ },
+ "quake-ii": {
+  "n": "Quake II",
+  "l": [
+   "vitaquake2"
+  ],
+  "s": []
+ },
+ "visual-pinball-x": {
+  "n": "Visual Pinball X",
+  "l": [],
+  "s": [
+   "vpinball"
+  ]
+ },
+ "v-smile": {
+  "n": "V.Smile",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "wasm4": {
+  "n": "wasm4",
+  "l": [
+   "wasm4"
+  ],
+  "s": []
+ },
+ "wii": {
+  "n": "Wii",
+  "l": [
+   "dolphin"
+  ],
+  "s": [
+   "dolphin"
+  ]
+ },
+ "wiiu": {
+  "n": "Wii U",
+  "l": [],
+  "s": [
+   "cemu"
+  ]
+ },
+ "windows": {
+  "n": "Windows",
+  "l": [],
+  "s": [
+   "wine/wine-tkg"
+  ]
+ },
+ "install-a-new-windows-game": {
+  "n": "Install a new Windows game",
+  "l": [],
+  "s": [
+   "wine/wine-tkg"
+  ]
+ },
+ "wonderswan": {
+  "n": "WonderSwan",
+  "l": [
+   "mednafen_wswan"
+  ],
+  "s": []
+ },
+ "wonderswancolor": {
+  "n": "WonderSwan Color",
+  "l": [
+   "mednafen_wswan"
+  ],
+  "s": []
+ },
+ "sharp-x1": {
+  "n": "Sharp X1",
+  "l": [
+   "x1"
+  ],
+  "s": []
+ },
+ "sharp-x68000": {
+  "n": "Sharp X68000",
+  "l": [
+   "px68k"
+  ],
+  "s": []
+ },
+ "half-life-1": {
+  "n": "Half-Life 1",
+  "l": [],
+  "s": [
+   "xash3d_fwgs"
+  ]
+ },
+ "xbox": {
+  "n": "Xbox",
+  "l": [],
+  "s": [
+   "xemu"
+  ]
+ },
+ "xbox360": {
+  "n": "Xbox 360",
+  "l": [],
+  "s": [
+   "xenia",
+   "xenia-canary"
+  ]
+ },
+ "atari-xe-game-system": {
+  "n": "Atari XE Game System",
+  "l": [
+   "mame"
+  ],
+  "s": [
+   "mame"
+  ]
+ },
+ "xrick": {
+  "n": "xrick",
+  "l": [
+   "xrick"
+  ],
+  "s": []
+ },
+ "zelda-classic": {
+  "n": "Zelda Classic",
+  "l": [
+   "zc210"
+  ],
+  "s": []
+ },
+ "zx81": {
+  "n": "ZX81",
+  "l": [
+   "81"
+  ],
+  "s": []
+ },
+ "zxspectrum": {
+  "n": "ZX Spectrum",
+  "l": [
+   "fuse"
+  ],
+  "s": []
+ }
+}
