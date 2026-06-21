@@ -170,7 +170,7 @@ App funcional con ~1700 líneas de backend, ~2870 de frontend. Instalación por 
 
 ---
 
-### `(HEAD)` — feat: group duplicate BIOS entries, accordion on BIOS Faltantes, MD5 validation on upload
+### `5cf5842` — feat: group duplicate BIOS entries, accordion on BIOS Faltantes, MD5 validation on upload
 **Archivos:** `app.py`, `templates/index.html`
 
 **Backend (`_check_bios_grouped()` nueva):**
