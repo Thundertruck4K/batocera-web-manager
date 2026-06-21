@@ -1177,6 +1177,41 @@ def list_custom_systems(settings):
         except Exception: pass
     return systems
 
+def get_custom_system_detail(name, settings):
+    d = Path(settings["es_cfg_dir"])
+    if not d.exists(): return None
+    for f in d.glob("es_systems_*.cfg"):
+        try:
+            for s in ET.parse(f).findall(".//system"):
+                if s.findtext("name","") != name: continue
+                detail = {
+                    "name":        s.findtext("name",""),
+                    "fullname":    s.findtext("fullname",""),
+                    "manufacturer":s.findtext("manufacturer",""),
+                    "release":     s.findtext("release",""),
+                    "hardware":    s.findtext("hardware",""),
+                    "path":        s.findtext("path",""),
+                    "extension":   s.findtext("extension",""),
+                    "platform":    s.findtext("platform",""),
+                    "theme":       s.findtext("theme",""),
+                    "description": s.findtext("description",""),
+                    "file":        str(f), "filename": f.name,
+                }
+                emul = s.find(".//emulator")
+                if emul is not None:
+                    detail["emulator"] = emul.get("name","")
+                    cores = emul.findall(".//core")
+                    core_list = []
+                    for c in cores:
+                        txt = (c.text or "").strip()
+                        if txt: core_list.append(txt)
+                    if core_list:
+                        detail["core"] = core_list[0]
+                        detail["extra_cores"] = ",".join(core_list[1:]) if len(core_list)>1 else ""
+                return detail
+        except Exception: pass
+    return None
+
 
 def list_rom_folder(settings, system, subpath=""):
     """Lista el contenido de una carpeta dentro de un sistema, soportando subcarpetas anidadas.
@@ -2666,6 +2701,11 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             t = next((x for x in all_sys if x["name"]==name), None)
             if t: self.send_json({"ok":True,"system":t})
             else: self.send_json({"ok":False,"error":"No encontrado"})
+        elif len(parts)==4 and parts[:2]==["api","system"] and parts[3]=="detail":
+            name = parts[2]
+            det = get_custom_system_detail(name, s)
+            if det: self.send_json({"ok":True,"system":det})
+            else: self.send_json({"ok":False,"error":"No encontrado"})
         elif len(parts)==4 and parts[:2]==["api","rom-systems"] and parts[3]=="bios":
             name = urllib.parse.unquote(parts[2])
             self.send_json({"ok":True,"system":name,
@@ -2786,6 +2826,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e: self.send_json({"ok":False,"error":str(e)})
         elif path == "/api/create":
             self._create_system(s)
+        elif path == "/api/update":
+            self._update_system(s)
         elif path == "/api/settings":
             data = self.read_json()
             current = load_settings()
@@ -2914,6 +2956,54 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         log.append(f"\n✅ Sistema '{slug}' {'simulado' if dry else 'creado'}.")
         if not dry: log.append("   Reinicia EmulationStation para que aparezca.")
         self.send_json({"ok":True,"log":log,"xml":xml_str,"cfg_path":cfg_path})
+
+    def _update_system(self, s):
+        d    = self.read_json()
+        old  = (d.get("old_name") or "").strip()
+        slug = (d.get("name") or "").strip()
+        log  = []
+        errors = []
+        if not d.get("fullname","").strip():   errors.append("Nombre completo requerido")
+        if not old:                            errors.append("Sistema original requerido")
+        if not slug:                           errors.append("Slug requerido")
+        elif re.search(r'\s', slug):           errors.append("Slug sin espacios")
+        if not d.get("rompath","").strip():    errors.append("Ruta de ROMs requerida")
+        if not d.get("extensions","").strip(): errors.append("Extensiones requeridas")
+        if errors:
+            self.send_json({"ok":False,"errors":errors}); return
+        cfg_dir  = s["es_cfg_dir"]
+        old_cfg  = os.path.join(cfg_dir, f"es_systems_{old}.cfg")
+        new_cfg  = os.path.join(cfg_dir, f"es_systems_{slug}.cfg")
+        if old != slug and os.path.exists(new_cfg):
+            self.send_json({"ok":False,"errors":[f"El slug '{slug}' ya existe"]}); return
+        xml_str = build_xml(d, s)
+        dry = bool(d.get("dry_run"))
+        if dry:
+            log.append(f"[SIMULACIÓN] CFG se {'crearía' if old!=slug else 'reescribiría'} en: {new_cfg}")
+            if old != slug: log.append(f"[SIMULACIÓN] Se eliminaría: {old_cfg}")
+            log.append("[SIMULACIÓN] No se modificó ningún archivo.")
+        else:
+            try:
+                os.makedirs(cfg_dir, exist_ok=True)
+                with open(new_cfg, "w", encoding="utf-8") as f: f.write(xml_str)
+                log.append(f"✔ CFG escrito: {new_cfg}")
+                if old != slug and os.path.exists(old_cfg):
+                    os.remove(old_cfg)
+                    log.append(f"✔ CFG antiguo eliminado: {old_cfg}")
+            except Exception as e:
+                self.send_json({"ok":False,"errors":[str(e)]}); return
+            if d.get("create_roms_dir"):
+                try: os.makedirs(d.get("rompath","").strip(), exist_ok=True); log.append("✔ Dir ROMs creado")
+                except Exception as e: log.append(f"⚠ {e}")
+            if d.get("batocera_conf_entry") and d.get("emulator") and d.get("core"):
+                try:
+                    with open(s["batocera_conf"],"a",encoding="utf-8") as f:
+                        f.write(f"\n# {d.get('fullname','')}\n{slug}.emulator={d.get('emulator')}\n{slug}.core={d.get('core')}\n")
+                    log.append("✔ batocera.conf actualizado")
+                except Exception as e: log.append(f"⚠ {e}")
+        log.append(f"\n✅ Sistema '{slug}' {'simulado' if dry else 'actualizado'}.")
+        if not dry: log.append("   Reinicia EmulationStation para que los cambios tengan efecto.")
+        self.send_json({"ok":True,"log":log,"xml":xml_str,"cfg_path":new_cfg})
 
     def _upload_logo(self, s):
         body = self.read_body()
