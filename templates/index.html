@@ -445,6 +445,28 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .bios-miss-ok{text-align:center;padding:40px;color:var(--green)}
 .bios-miss-ok .icon{font-size:48px;display:block;margin-bottom:12px}
 
+/* ── BIOS Accordion ── */
+.bios-accordion{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.bios-acc-item{border-bottom:1px solid var(--border)}
+.bios-acc-item:last-child{border-bottom:none}
+.bios-acc-header{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;background:var(--bg2);transition:background .15s;user-select:none}
+.bios-acc-header:hover{background:var(--bg3)}
+.bios-acc-arrow{font-size:10px;color:var(--text3);transition:transform .2s;width:14px;text-align:center}
+.bios-acc-name{font-weight:600;font-size:13px;flex:1}
+.bios-acc-summary{font-size:11px;display:flex;gap:6px}
+.bios-sum-ok{color:var(--green)}
+.bios-sum-wrong{color:var(--yellow)}
+.bios-sum-miss{color:var(--red)}
+.bios-acc-body{display:none;overflow-x:auto}
+.bios-acc-table{width:100%;border-collapse:collapse;font-size:12px}
+.bios-acc-table th{padding:6px 10px;text-align:left;font-size:10px;color:var(--text3);background:var(--bg3);border-bottom:1px solid var(--border)}
+.bios-acc-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.bios-acc-file{font-family:var(--mono);font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bios-acc-desc{color:var(--text2);font-size:11px}
+.bios-acc-size{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.bios-acc-footer{padding:10px 14px;font-size:11px;color:var(--text3);background:var(--bg2);border-top:1px solid var(--border);display:flex;gap:8px}
+.btn-xs{padding:2px 6px;font-size:11px}
+
 /* ── Responsive ── */
 @media(max-width:700px){
   .sidebar{display:none}
@@ -1053,6 +1075,8 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         class="btn btn-primary btn-sm" style="flex:1">🎮 ROM individual</button>
       <button id="stab-system" onclick="scraperTab('system')"
         class="btn btn-ghost btn-sm" style="flex:1">📦 Sistema completo</button>
+      <button id="stab-batch" onclick="scraperTab('batch')"
+        class="btn btn-ghost btn-sm" style="flex:1">📦 Lote múltiple</button>
       <button id="stab-config" onclick="scraperTab('config')"
         class="btn btn-ghost btn-sm" style="flex:1">⚙ Configuración</button>
     </div>
@@ -1250,6 +1274,125 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       <div id="sc-sys-result" style="margin-top:12px"></div>
     </div>
 
+    <!-- Tab: Lote múltiple -->
+    <div id="stab-batch-panel" style="display:none">
+      <div class="warn-box" style="margin-bottom:14px">
+        Scrapea múltiples sistemas en segundo plano. Puedes cerrar esta ventana
+        y el proceso continuará. Revisa el progreso desde esta pestaña.
+      </div>
+      <!-- System selection -->
+      <div class="field" style="margin-bottom:10px">
+        <label>Sistemas a scrapear</label>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">
+          <label style="cursor:pointer"><input type="checkbox" id="batch-select-all" onchange="batchToggleAll()" style="accent-color:var(--accent)"> Seleccionar todos</label>
+          <span id="batch-sel-count" style="margin-left:8px">0 seleccionados</span>
+        </div>
+        <div id="batch-system-list" style="max-height:160px;overflow-y:auto;display:grid;
+          grid-template-columns:1fr 1fr;gap:2px;background:var(--bg3);padding:6px;border-radius:var(--radius);
+          border:1px solid var(--border);font-size:12px">
+          <div style="grid-column:1/-1;color:var(--text3);text-align:center;padding:10px">
+            Cargando sistemas…
+          </div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label>Fuente de datos</label>
+        <select id="sc-batch-source" onchange="scraperSourceChanged('batch')">
+          <option value="screenscraper">ScreenScraper.fr</option>
+          <option value="thegamesdb">TheGamesDB</option>
+          <option value="igdb">IGDB (Twitch)</option>
+        </select>
+      </div>
+      <div id="sc-batch-fields-screenscraper">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="field">
+            <label>Usuario ScreenScraper</label>
+            <input type="text" id="sc-batch-user" placeholder="tu_usuario">
+          </div>
+          <div class="field">
+            <label>Contraseña</label>
+            <input type="password" id="sc-batch-pass" placeholder="tu_contraseña">
+          </div>
+          <div class="field">
+            <label>Developer ID</label>
+            <input type="text" id="sc-batch-devid" placeholder="tu_devid">
+          </div>
+          <div class="field">
+            <label>Developer Password</label>
+            <input type="password" id="sc-batch-devpass" placeholder="tu_dev_password">
+          </div>
+          <div class="field">
+            <label>Tipo de imagen</label>
+            <select id="sc-batch-imgtype">
+              <option value="mixrbv1">Mix v1 (recomendado)</option>
+              <option value="mixrbv2">Mix v2</option>
+              <option value="box-2D">Caja 2D</option>
+              <option value="ss">Screenshot</option>
+              <option value="wheel">Logo/Wheel</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Región</label>
+            <select id="sc-batch-region">
+              <option value="wor">Mundial</option>
+              <option value="us">USA</option>
+              <option value="eu">Europa</option>
+              <option value="jp">Japón</option>
+              <option value="es">España</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div id="sc-batch-fields-thegamesdb" style="display:none">
+        <div class="field" style="margin-bottom:14px">
+          <label>API Key de TheGamesDB</label>
+          <input type="text" id="sc-batch-tgdb-key" placeholder="tu_api_key">
+        </div>
+      </div>
+      <div id="sc-batch-fields-igdb" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div class="field">
+            <label>Client ID (Twitch)</label>
+            <input type="text" id="sc-batch-igdb-id" placeholder="tu_client_id">
+          </div>
+          <div class="field">
+            <label>Client Secret (Twitch)</label>
+            <input type="password" id="sc-batch-igdb-secret" placeholder="tu_client_secret">
+          </div>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer">
+        <input type="checkbox" id="sc-batch-missing" checked style="accent-color:var(--accent)">
+        <span style="font-size:13px">Solo ROMs sin imagen (más rápido)</span>
+      </label>
+
+      <!-- Progress -->
+      <div id="sc-batch-progress" style="display:none;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px">
+          <span id="sc-batch-label">Preparando…</span>
+          <span id="sc-batch-pct">0%</span>
+        </div>
+        <div style="height:10px;background:var(--bg3);border-radius:5px;overflow:hidden">
+          <div id="sc-batch-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),#58a6ff);border-radius:5px;transition:width .3s"></div>
+        </div>
+        <div id="sc-batch-stats" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
+      </div>
+
+      <div class="btn-row" id="sc-batch-actions">
+        <button class="btn btn-success" onclick="scraperBatchStart()" id="sc-batch-btn">
+          🚀 Iniciar lote
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="scraperBatchRefresh()" id="sc-batch-refresh-btn" style="display:none">↺ Refrescar</button>
+      </div>
+      <div id="sc-batch-result" style="margin-top:12px"></div>
+
+      <!-- Jobs list -->
+      <div id="sc-batch-jobs" style="margin-top:18px;display:none">
+        <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--text2)">📋 Trabajos recientes</div>
+        <div id="sc-batch-jobs-list"></div>
+      </div>
+    </div>
+
     <!-- Tab: Configuración -->
     <div id="stab-config-panel" style="display:none">
       <div class="info-box" style="margin-bottom:14px">
@@ -1440,6 +1583,9 @@ function openModal(id) {
 }
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
+  if (id === 'modal-scraper' && _batchPollTimer) {
+    clearTimeout(_batchPollTimer); _batchPollTimer = null;
+  }
 }
 
 // ─── Form helpers ─────────────────────────────────────────────
@@ -2215,6 +2361,15 @@ function renderBios(data) {
     </table>`;
 }
 
+function toggleBiosAcc(header) {
+  const body = header.nextElementSibling;
+  const arrow = header.querySelector('.bios-acc-arrow');
+  if (!body || !arrow) return;
+  const expanded = body.style.display === 'block';
+  body.style.display = expanded ? 'none' : 'block';
+  arrow.textContent = expanded ? '▶' : '▼';
+}
+
 // ── Upload ROMs con progreso ──
 function uploadRoms() {
   const input = document.getElementById('rom-upload-file');
@@ -2382,10 +2537,16 @@ function renderMissingBios(data) {
   }
   const systems = data.systems || {};
   const sysNames = Object.keys(systems).sort();
-  let html = '';
+  let html = '<div class="bios-accordion">';
   for (const sys of sysNames) {
     const items = systems[sys] || [];
-    html += `<div class="bios-miss-group"><h3>🎮 ${escHtml(sys)} <span>${items.length} faltante(s)</span></h3>`;
+    html += `<div class="bios-acc-item">
+      <div class="bios-acc-header" onclick="toggleBiosAcc(this)">
+        <span class="bios-acc-arrow">▶</span>
+        <span class="bios-acc-name">🎮 ${escHtml(sys)}</span>
+        <span class="bios-acc-summary"><span class="bios-sum-miss">${items.length} faltante(s)</span></span>
+      </div>
+      <div class="bios-acc-body" style="display:none">`;
     for (const b of items) {
       const md5info = b.md5 ? `<span title="MD5 esperado: ${b.md5}" style="cursor:help">🔑</span>` : '';
       const mandatoryLabel = b.mandatory
@@ -2415,8 +2576,9 @@ function renderMissingBios(data) {
         </div>
       </div>`;
     }
-    html += '</div>';
+    html += '</div></div>';
   }
+  html += '</div>';
   list.innerHTML = html;
 }
 
@@ -2429,9 +2591,10 @@ function uploadSingleBios(input, system, filePath, skipKey) {
   const file = input.files[0];
   const fd = new FormData();
   fd.append('bios', file, filePath.split('/').pop());
-  // Send the subdirectory path
   const dir = filePath.includes('/') ? filePath.substring(0, filePath.lastIndexOf('/')) : '';
   if (dir) fd.append('path', dir);
+  fd.append('system', system);
+  fd.append('file', filePath);
 
   progWrap.classList.add('active');
   progFill.style.width = '0%';
@@ -2450,18 +2613,26 @@ function uploadSingleBios(input, system, filePath, skipKey) {
       try {
         const resp = JSON.parse(xhr.responseText);
         if (resp.ok) {
+          const saved = resp.saved && resp.saved[0];
+          const md5ok = saved && saved.md5_valid;
+          if (saved && saved.md5_valid === true) {
+            progPct.textContent = '✔';
+            toast(`✔ ${filePath} — MD5 correcto`,'ok');
+          } else if (saved && saved.md5_valid === false) {
+            progPct.textContent = '⚠';
+            toast(`⚠ ${filePath} — MD5 no coincide`,'err');
+          } else {
+            progPct.textContent = '✔';
+            toast(`✔ ${filePath} subida`,'ok');
+          }
           progFill.style.width = '100%';
-          progPct.textContent = '✔';
-          progFill.style.background = 'var(--green)';
-          toast(`✔ BIOS ${escHtml(filePath)} subida correctamente`, 'ok');
-          // Remove the item from the list
+          progFill.style.background = saved && saved.md5_valid === false ? 'var(--yellow)' : 'var(--green)';
           const item = document.getElementById(`bmi-${safeId}`);
           if (item) {
             item.style.transition = 'opacity .3s';
             item.style.opacity = '0';
             setTimeout(() => item.remove(), 350);
           }
-          // Update summary
           loadMissingBiosSummary();
         } else {
           progPct.textContent = '✖';
@@ -2590,22 +2761,31 @@ let _scraperGameData       = null;
 let _scraperLastSource     = 'screenscraper';
 
 function scraperTab(tab) {
-  ['single','system','config'].forEach(t => {
+  ['single','system','batch','config'].forEach(t => {
     document.getElementById(`stab-${t}`).className =
       t === tab ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
-    document.getElementById(`stab-${t}-panel`).style.display = t === tab ? '' : 'none';
+    const panel = document.getElementById(`stab-${t}-panel`);
+    if (panel) panel.style.display = t === tab ? '' : 'none';
   });
   document.getElementById(`stab-${tab}`).style.flex = '1';
   document.querySelectorAll('#modal-scraper .btn').forEach(b => b.style.flex = '1');
+  if (tab === 'batch') {
+    batchRenderSystems();
+    loadScraperConfig();
+    scraperBatchRefresh();
+  }
 }
 
 function scraperSourceChanged(scope) {
-  const prefix = scope === 'system' ? 'sc-sys-source' : 'sc-source';
-  const source = document.getElementById(prefix).value;
-  const fieldPrefix = scope === 'system' ? 'sc-sys-fields-' : 'sc-fields-';
+  const prefixMap = { single:'sc-source', system:'sc-sys-source', batch:'sc-batch-source' };
+  const prefix = prefixMap[scope] || 'sc-source';
+  const el = document.getElementById(prefix);
+  if (!el) return;
+  const source = el.value;
+  const fieldPrefix = { single:'sc-fields-', system:'sc-sys-fields-', batch:'sc-batch-fields-' }[scope] || 'sc-fields-';
   ['screenscraper','thegamesdb','igdb'].forEach(s => {
-    const el = document.getElementById(fieldPrefix + s);
-    if (el) el.style.display = (s === source) ? '' : 'none';
+    const el2 = document.getElementById(fieldPrefix + s);
+    if (el2) el2.style.display = (s === source) ? '' : 'none';
   });
 }
 
@@ -2646,6 +2826,13 @@ async function loadScraperConfig() {
   fillIfEmpty('sc-igdb-secret',   cfg.igdb_client_secret||'');
   fillIfEmpty('sc-sys-igdb-id',     cfg.igdb_client_id||'');
   fillIfEmpty('sc-sys-igdb-secret', cfg.igdb_client_secret||'');
+  fillIfEmpty('sc-batch-user',      cfg.ss_user||'');
+  fillIfEmpty('sc-batch-pass',      cfg.ss_password||'');
+  fillIfEmpty('sc-batch-devid',     cfg.ss_devid||'');
+  fillIfEmpty('sc-batch-devpass',   cfg.ss_devpassword||'');
+  fillIfEmpty('sc-batch-tgdb-key',  cfg.tgdb_apikey||'');
+  fillIfEmpty('sc-batch-igdb-id',   cfg.igdb_client_id||'');
+  fillIfEmpty('sc-batch-igdb-secret', cfg.igdb_client_secret||'');
   if (cfg.ss_image_type) {
     ['sc-imgtype','sc-sys-imgtype'].forEach(id => {
       const el = document.getElementById(id);
@@ -2968,6 +3155,222 @@ async function scraperSystem() {
       `<div class="warn-box">Error: ${escHtml(res?.error||'desconocido')}</div>`;
     toast(res?.error||'Error en scraping','err');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SCRAPER BATCH — lote múltiple
+// ═══════════════════════════════════════════════════════════════
+let _batchPollTimer = null;
+let _batchActiveJobId = null;
+
+function batchToggleAll() {
+  const checked = document.getElementById('batch-select-all').checked;
+  document.querySelectorAll('#batch-system-list input[type="checkbox"]').forEach(cb => cb.checked = checked);
+  batchUpdateCount();
+}
+
+function batchUpdateCount() {
+  const n = document.querySelectorAll('#batch-system-list input[type="checkbox"]:checked').length;
+  document.getElementById('batch-sel-count').textContent = n + ' seleccionados';
+  document.getElementById('sc-batch-btn').disabled = (n === 0);
+}
+
+async function batchRenderSystems() {
+  const list = document.getElementById('batch-system-list');
+  let systems = allRomSystems || [];
+  if (!systems.length) {
+    list.innerHTML = '<div style="grid-column:1/-1;color:var(--text3);text-align:center;padding:10px"><div class="spinner" style="margin:0 auto"></div>Cargando sistemas…</div>';
+    const data = await fetchJson('/api/rom-systems');
+    if (data) { allRomSystems = data; systems = data; }
+    if (!systems.length) {
+      list.innerHTML = '<div style="grid-column:1/-1;color:var(--text3);text-align:center;padding:10px">No se encontraron sistemas</div>';
+      return;
+    }
+  }
+  list.innerHTML = systems.map(s => `
+    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:2px 4px;
+      border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+      title="${escHtml(s.name)} (${s.rom_count} ROMs)">
+      <input type="checkbox" value="${escHtml(s.name)}" onchange="batchUpdateCount()" style="accent-color:var(--accent);flex-shrink:0">
+      <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</span>
+    </label>`).join('');
+  document.getElementById('batch-select-all').checked = false;
+  batchUpdateCount();
+}
+
+function getBatchCreds() {
+  const source = document.getElementById('sc-batch-source').value;
+  const g = id => document.getElementById(id)?.value?.trim() || '';
+  if (source === 'thegamesdb') {
+    return { source, tgdb_apikey: g('sc-batch-tgdb-key') };
+  }
+  if (source === 'igdb') {
+    return { source, igdb_client_id: g('sc-batch-igdb-id'), igdb_client_secret: g('sc-batch-igdb-secret') };
+  }
+  return { source,
+    ss_user: g('sc-batch-user'), ss_password: g('sc-batch-pass'),
+    ss_devid: g('sc-batch-devid'), ss_devpassword: g('sc-batch-devpass') };
+}
+
+async function scraperBatchStart() {
+  const creds = getBatchCreds();
+  if (!credsValid(creds)) { toast(`Ingresa credenciales de ${SOURCE_LABELS[creds.source]}`,'err'); return; }
+
+  const systems = [];
+  document.querySelectorAll('#batch-system-list input[type="checkbox"]:checked').forEach(cb => {
+    systems.push(cb.value);
+  });
+  if (!systems.length) { toast('Selecciona al menos un sistema','err'); return; }
+
+  const btn = document.getElementById('sc-batch-btn');
+  btn.disabled = true; btn.textContent = '⏳ Iniciando…';
+  document.getElementById('sc-batch-result').innerHTML = '';
+
+  const res = await fetchJson('/api/scraper/batch', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      systems,
+      ...creds,
+      ss_image_type: document.getElementById('sc-batch-imgtype')?.value || 'mixrbv1',
+      ss_region:     document.getElementById('sc-batch-region')?.value  || 'wor',
+      only_missing:  document.getElementById('sc-batch-missing').checked,
+    }),
+  });
+
+  btn.disabled = false; btn.textContent = '🚀 Iniciar lote';
+
+  if (res?.ok) {
+    _batchActiveJobId = res.job_id;
+    toast(`Lote iniciado: ${systems.length} sistemas`, 'ok');
+    document.getElementById('sc-batch-progress').style.display = '';
+    document.getElementById('sc-batch-label').textContent = 'En cola…';
+    document.getElementById('sc-batch-bar').style.width = '0%';
+    document.getElementById('sc-batch-result').innerHTML =
+      `<div class="success-box">✔ Lote creado (ID: ${res.job_id}) · ${systems.length} sistemas</div>`;
+    document.getElementById('sc-batch-refresh-btn').style.display = '';
+    scraperBatchPoll();
+  } else {
+    document.getElementById('sc-batch-result').innerHTML =
+      `<div class="warn-box">Error: ${escHtml(res?.error||'desconocido')}</div>`;
+    toast(res?.error||'Error','err');
+  }
+}
+
+async function scraperBatchRefresh() {
+  const data = await fetchJson('/api/scraper/batch');
+  if (!data?.ok) return;
+  const jobs = data.jobs || [];
+  const list = document.getElementById('sc-batch-jobs-list');
+  const container = document.getElementById('sc-batch-jobs');
+  if (!jobs.length) { container.style.display = 'none'; return; }
+  container.style.display = '';
+  list.innerHTML = jobs.map(j => {
+    const isActive = j.status === 'running' || j.status === 'pending';
+    const statusIcon = { pending:'⏳', running:'🔄', completed:'✔', cancelled:'✖', failed:'❌' }[j.status] || '❓';
+    const statusColor = { pending:'var(--yellow)', running:'var(--blue)', completed:'var(--green)',
+      cancelled:'var(--text3)', failed:'var(--red)' }[j.status] || 'var(--text3)';
+    const agg = j.aggregated || {};
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;
+      background:var(--bg3);border-radius:var(--radius);border-left:3px solid ${statusColor};
+      font-size:12px">
+      <span style="font-size:14px">${statusIcon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="font-weight:600">${escHtml(j.source)}</span>
+          <span style="color:var(--text3)">${j.systems.length} sist.</span>
+          ${j.current_system ? `<span style="color:var(--accent)">${escHtml(j.current_system)}</span>` : ''}
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          ${isActive ? `Progreso: ${j.progress}% · ${j.systems_done}/${j.systems.length} sist.` : ''}
+          ${j.status === 'completed' ? `✔ ${agg.ok} OK · ${agg.fail} fail · ${agg.total} total` : ''}
+          ${j.status === 'failed' ? `Error: ${escHtml(j.error||'desconocido')}` : ''}
+          ${j.status === 'cancelled' ? 'Cancelado por el usuario' : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        ${isActive ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 6px"
+          onclick="scraperBatchCancel('${j.id}')">✖ Cancelar</button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 6px"
+          onclick="scraperBatchDetail('${j.id}')">🔍</button>
+      </div>
+    </div>`;
+  }).join('');
+  // Poll if any active jobs
+  const active = jobs.some(j => j.status === 'running' || j.status === 'pending');
+  if (active) {
+    if (!_batchPollTimer) _scheduleBatchPoll();
+  } else {
+    if (_batchPollTimer) { clearTimeout(_batchPollTimer); _batchPollTimer = null; }
+  }
+  // Update progress bar for active job
+  const activeJob = jobs.find(j => j.id === _batchActiveJobId);
+  if (activeJob && (activeJob.status === 'running' || activeJob.status === 'pending')) {
+    document.getElementById('sc-batch-progress').style.display = '';
+    document.getElementById('sc-batch-bar').style.width = activeJob.progress + '%';
+    document.getElementById('sc-batch-pct').textContent = activeJob.progress + '%';
+    const agg = activeJob.aggregated || {};
+    const sysWord = activeJob.systems_done === 1 ? 'sistema' : 'sistemas';
+    document.getElementById('sc-batch-stats').textContent =
+      `${activeJob.systems_done}/${activeJob.systems.length} ${sysWord} · ${agg.ok} OK · ${agg.fail} fallos`;
+  } else if (activeJob && activeJob.status === 'completed') {
+    document.getElementById('sc-batch-progress').style.display = '';
+    document.getElementById('sc-batch-bar').style.width = '100%';
+    document.getElementById('sc-batch-pct').textContent = '100%';
+    const agg = activeJob.aggregated || {};
+    document.getElementById('sc-batch-stats').innerHTML =
+      `<span style="color:var(--green)">✔ Completado</span> · ${agg.ok} OK · ${agg.fail} fallos · ${agg.errors.length ? `<span style="color:var(--red);cursor:pointer" onclick="alert(escHtml(agg.errors.join('\\n')))">${agg.errors.length} errores</span>` : ''}`;
+    _batchActiveJobId = null;
+  } else if (activeJob && (activeJob.status === 'cancelled' || activeJob.status === 'failed')) {
+    document.getElementById('sc-batch-progress').style.display = 'none';
+    _batchActiveJobId = null;
+  }
+}
+
+function _scheduleBatchPoll() {
+  _batchPollTimer = setTimeout(() => {
+    scraperBatchRefresh();
+  }, 2000);
+}
+
+function scraperBatchPoll() {
+  scraperBatchRefresh();
+}
+
+async function scraperBatchCancel(jobId) {
+  const res = await fetchJson(`/api/scraper/batch/${jobId}`, { method:'DELETE' });
+  if (res?.ok) {
+    toast('Trabajo cancelado', 'ok');
+    scraperBatchRefresh();
+  } else {
+    toast('Error al cancelar', 'err');
+  }
+}
+
+async function scraperBatchDetail(jobId) {
+  const data = await fetchJson(`/api/scraper/batch/${jobId}`);
+  if (!data?.ok || !data.job) return;
+  const j = data.job;
+  const agg = j.aggregated || {};
+  const sysRes = j.systems_result || {};
+  let html = `<div class="info-box" style="margin-bottom:10px">
+    <strong>${escHtml(j.source)}</strong> · ${j.systems.length} sistemas · Estado: <strong>${j.status}</strong><br>
+    ✔ ${agg.ok} OK · ${agg.fail} fallos · ${agg.total} ROMs totales
+  </div>`;
+  const sysList = j.systems.map(s => {
+    const r = sysRes[s] || {};
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);
+      font-size:12px">
+      <span>${escHtml(s)}</span>
+      <span>✔ ${r.ok||0} · ⚠ ${r.fail||0} · ${r.errors?.length||0} err</span>
+    </div>`;
+  }).join('');
+  html += `<div style="max-height:200px;overflow-y:auto">${sysList}</div>`;
+  if (agg.errors.length) {
+    html += `<div style="margin-top:8px;font-size:11px;color:var(--red);max-height:100px;overflow-y:auto">
+      ${agg.errors.slice(0,20).map(e => `<div>• ${escHtml(e)}</div>`).join('')}
+    </div>`;
+  }
+  document.getElementById('sc-batch-result').innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════════════

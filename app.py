@@ -63,6 +63,11 @@ ROM_EXTENSIONS = {
 FILTER_DIRS  = {"manuals","videos","images"}
 FILTER_FILES = {"_info.txt"}
 # Auto-generated from official batocera-systems script
+# Auto-generated from official batocera-systems script
+# https://github.com/batocera-linux/batocera.linux/blob/master/package/batocera/core/batocera-scripts/scripts/batocera-systems
+# Generado: 108 sistemas con BIOS, 705 entradas, 35 sistemas sin BIOS
+
+
 BIOS_DB = {
     "3do": [
         {"file":"panafz1.bin","md5":"f47264dd47fe30f73ab3c010015c155b","desc":"panafz1","mandatory":True},
@@ -70,19 +75,39 @@ BIOS_DB = {
         {"file":"goldstar.bin","md5":"8639fd5e549bd6238cfee79e3e749114","desc":"goldstar","mandatory":True},
     ],
     "adam": [
-        {"file":"adam.zip","md5":None,"desc":"adam.zip","mandatory":True},
-        {"file":"adam_ddp.zip","md5":None,"desc":"adam_ddp.zip","mandatory":True},
-        {"file":"adam_fdc.zip","md5":None,"desc":"adam_fdc.zip","mandatory":True},
-        {"file":"adam_kb.zip","md5":None,"desc":"adam_kb.zip","mandatory":True},
-        {"file":"adam_prn.zip","md5":None,"desc":"adam_prn.zip","mandatory":True},
+        {"file":"adam.zip","md5":None,"desc":"adam","mandatory":True},
+        {"file":"adam.zip","md5":"01bba3bcd46d8a586dd6ec555accc133","desc":"adam","mandatory":True},
+        {"file":"adam.zip","md5":"feabe33e8f2dab88da1458b4d27f3faa","desc":"adam","mandatory":True},
+        {"file":"adam.zip","md5":"a720bc872a772ed471fac14e36ec8bcb","desc":"adam","mandatory":True},
+        {"file":"adam.zip","md5":"cf10b154f2e006a9740d7653cfc47cab","desc":"adam","mandatory":True},
+        {"file":"adam.zip","md5":"7916bb9635d502366326ec39aea5fc89","desc":"adam","mandatory":True},
+        {"file":"adam.zip","md5":"2c66f5911e5b42b8ebe113403548eee7","desc":"adam","mandatory":True},
+        {"file":"adam.zip","md5":"4fe4f6800076ea3d897d4285653447bd","desc":"adam","mandatory":True},
+        {"file":"adam_ddp.zip","md5":None,"desc":"adam_ddp","mandatory":True},
+        {"file":"adam_ddp.zip","md5":"0423e9e9bf5036aa1e9d656b6a1f842c","desc":"adam_ddp","mandatory":True},
+        {"file":"adam_fdc.zip","md5":None,"desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"ae12d0b83832b059cb6cb43029bbfdb3","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"4c38a7df1e645c8d9f417bf7165c46d0","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"afea14c826f3cfbc89b76725a4a41951","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"976d2a7d85319d9104bc9ec176fbfa9c","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"29569dc029e95e48907b3c81d636987f","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"a121855c20a638429bbfcf0448349515","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"e05ababa16e2d5cb92b678cb6e6e2004","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_fdc.zip","md5":"a1a2a353dea4b8769a2da733822abfdc","desc":"adam_fdc","mandatory":True},
+        {"file":"adam_kb.zip","md5":None,"desc":"adam_kb","mandatory":True},
+        {"file":"adam_kb.zip","md5":"d81e0b2bb6b98999541c5f40b489e88f","desc":"adam_kb","mandatory":True},
+        {"file":"adam_prn.zip","md5":None,"desc":"adam_prn","mandatory":True},
+        {"file":"adam_prn.zip","md5":"3cdf2fe48ac4224b56f26c03f6c68982","desc":"adam_prn","mandatory":True},
     ],
     "advision": [
-        {"file":"advision.zip","md5":None,"desc":"advision.zip","mandatory":True},
+        {"file":"advision.zip","md5":None,"desc":"advision","mandatory":True},
+        {"file":"advision.zip","md5":"5729638bd856c475678467a353bd921c","desc":"advision","mandatory":True},
+        {"file":"advision.zip","md5":"fc5e71445e4947a9d00eedbc66b13a8f","desc":"advision","mandatory":True},
     ],
     "amiga1200": [
-        {"file":"amiga/kick39106.A1200","md5":"b7cc148386aa631136f510cd29e42fc3","desc":"kick39106.A1200","mandatory":True},
-        {"file":"amiga/kick40068.A1200","md5":"646773759326fbac3b2311fd8c8793ee","desc":"kick40068.A1200","mandatory":True},
-        {"file":"amiga/kick40068.A4000","md5":"9bdedde6a4f33555b4a270c8ca53297d","desc":"kick40068.A4000","mandatory":True},
+        {"file":"amiga/kick39106.A1200","md5":"b7cc148386aa631136f510cd29e42fc3","desc":"kick39106","mandatory":True},
+        {"file":"amiga/kick40068.A1200","md5":"646773759326fbac3b2311fd8c8793ee","desc":"kick40068","mandatory":True},
+        {"file":"amiga/kick40068.A4000","md5":"9bdedde6a4f33555b4a270c8ca53297d","desc":"kick40068","mandatory":True},
         {"file":"amiga/amiga-os-300-a1200.rom","md5":"b7cc148386aa631136f510cd29e42fc3","desc":"amiga-os-300-a1200","mandatory":True},
         {"file":"amiga/amiga-os-310-a1200.rom","md5":"646773759326fbac3b2311fd8c8793ee","desc":"amiga-os-310-a1200","mandatory":True},
         {"file":"amiga/amiga-os-310-a3000.rom","md5":"413590e50098a056cfec418d3df0212d","desc":"amiga-os-310-a3000","mandatory":True},
@@ -90,11 +115,11 @@ BIOS_DB = {
         {"file":"amiga/amiga-os-310.rom","md5":"730888fb1bd9a3606d51f772ed136528","desc":"amiga-os-310","mandatory":True},
     ],
     "amiga500": [
-        {"file":"amiga/kick33180.A500","md5":"85ad74194e87c08904327de1a9443b7a","desc":"kick33180.A500","mandatory":True},
-        {"file":"amiga/kick37175.A500","md5":"dc10d7bdd1b6f450773dfb558477c230","desc":"kick37175.A500","mandatory":True},
-        {"file":"amiga/kick34005.A500","md5":"82a21c1890cae844b3df741f2762d48d","desc":"kick34005.A500","mandatory":True},
-        {"file":"amiga/kick37350.A600","md5":"465646c9b6729f77eea5314d1f057951","desc":"kick37350.A600","mandatory":True},
-        {"file":"amiga/kick40063.A600","md5":"e40a5dfb3d017ba8779faba30cbd1c8e","desc":"kick40063.A600","mandatory":True},
+        {"file":"amiga/kick33180.A500","md5":"85ad74194e87c08904327de1a9443b7a","desc":"kick33180","mandatory":True},
+        {"file":"amiga/kick37175.A500","md5":"dc10d7bdd1b6f450773dfb558477c230","desc":"kick37175","mandatory":True},
+        {"file":"amiga/kick34005.A500","md5":"82a21c1890cae844b3df741f2762d48d","desc":"kick34005","mandatory":True},
+        {"file":"amiga/kick37350.A600","md5":"465646c9b6729f77eea5314d1f057951","desc":"kick37350","mandatory":True},
+        {"file":"amiga/kick40063.A600","md5":"e40a5dfb3d017ba8779faba30cbd1c8e","desc":"kick40063","mandatory":True},
         {"file":"amiga/amiga-os-120.rom","md5":"85ad74194e87c08904327de1a9443b7a","desc":"amiga-os-120","mandatory":True},
         {"file":"amiga/amiga-os-130.rom","md5":"82a21c1890cae844b3df741f2762d48d","desc":"amiga-os-130","mandatory":True},
         {"file":"amiga/amiga-os-204.rom","md5":"dc10d7bdd1b6f450773dfb558477c230","desc":"amiga-os-204","mandatory":True},
@@ -102,131 +127,263 @@ BIOS_DB = {
         {"file":"amiga/amiga-os-310-a600.rom","md5":"e40a5dfb3d017ba8779faba30cbd1c8e","desc":"amiga-os-310-a600","mandatory":True},
     ],
     "amigacd32": [
-        {"file":"amiga/kick40060.CD32","md5":"5f8924d013dd57a89cf349f4cdedc6b1","desc":"kick40060.CD32","mandatory":True},
-        {"file":"amiga/kick40060.CD32.ext","md5":"bb72565701b1b6faece07d68ea5da639","desc":"kick40060.CD32.ext","mandatory":True},
+        {"file":"amiga/kick40060.CD32","md5":"5f8924d013dd57a89cf349f4cdedc6b1","desc":"kick40060","mandatory":True},
+        {"file":"amiga/kick40060.CD32.ext","md5":"bb72565701b1b6faece07d68ea5da639","desc":"kick40060.CD32","mandatory":True},
         {"file":"amiga/amiga-os-310-cd32.rom","md5":"5f8924d013dd57a89cf349f4cdedc6b1","desc":"amiga-os-310-cd32","mandatory":True},
         {"file":"amiga/amiga-ext-310-cd32.rom","md5":"bb72565701b1b6faece07d68ea5da639","desc":"amiga-ext-310-cd32","mandatory":True},
     ],
     "amigacdtv": [
-        {"file":"amiga/kick34005.A500","md5":"82a21c1890cae844b3df741f2762d48d","desc":"kick34005.A500","mandatory":True},
-        {"file":"amiga/kick34005.CDTV","md5":"89da1838a24460e4b93f4f0c5d92d48d","desc":"kick34005.CDTV","mandatory":True},
+        {"file":"amiga/kick34005.A500","md5":"82a21c1890cae844b3df741f2762d48d","desc":"kick34005","mandatory":True},
+        {"file":"amiga/kick34005.CDTV","md5":"89da1838a24460e4b93f4f0c5d92d48d","desc":"kick34005","mandatory":True},
         {"file":"amiga/amiga-os-130.rom","md5":"82a21c1890cae844b3df741f2762d48d","desc":"amiga-os-130","mandatory":True},
         {"file":"amiga/amiga-ext-130-cdtv.rom","md5":"89da1838a24460e4b93f4f0c5d92d48d","desc":"amiga-ext-130-cdtv","mandatory":True},
     ],
     "apfm1000": [
-        {"file":"apfm1000.zip","md5":None,"desc":"apfm1000.zip","mandatory":True},
+        {"file":"apfm1000.zip","md5":None,"desc":"apfm1000","mandatory":True},
+        {"file":"apfm1000.zip","md5":"1f4a976350202ee1e32c2b0477c3fc1b","desc":"apfm1000","mandatory":True},
+        {"file":"apfm1000.zip","md5":"b325543b36d37edf3fc20761f00c7a37","desc":"apfm1000","mandatory":True},
+        {"file":"apfm1000.zip","md5":"89a7cfa5469ce24773721d65b28f8544","desc":"apfm1000","mandatory":True},
     ],
     "apple2": [
-        {"file":"apple2e.zip","md5":None,"desc":"apple2e.zip","mandatory":True},
-        {"file":"apple2ee.zip","md5":None,"desc":"apple2ee.zip","mandatory":True},
-        {"file":"apple2p.zip","md5":None,"desc":"apple2p.zip","mandatory":True},
-        {"file":"a2diskiing.zip","md5":None,"desc":"a2diskiing.zip","mandatory":True},
-        {"file":"a2cffa02.zip","md5":None,"desc":"a2cffa02.zip","mandatory":True},
-        {"file":"votrsc01.zip","md5":None,"desc":"votrsc01.zip","mandatory":True},
-        {"file":"votrsc01a.zip","md5":None,"desc":"votrsc01a.zip","mandatory":True},
-        {"file":"d2fdc.zip","md5":None,"desc":"d2fdc.zip","mandatory":True},
+        {"file":"apple2e.zip","md5":None,"desc":"apple2e","mandatory":True},
+        {"file":"apple2e.zip","md5":"4431aea380185e3f509285540d7cb418","desc":"apple2e","mandatory":True},
+        {"file":"apple2e.zip","md5":"e6d453d8738e6df4f73df8c8051df3e8","desc":"apple2e","mandatory":True},
+        {"file":"apple2e.zip","md5":"72924019cf1719765e4fde35e59c1c7d","desc":"apple2e","mandatory":True},
+        {"file":"apple2e.zip","md5":"0b150f4bfa090770a866cc5d214703f4","desc":"apple2e","mandatory":True},
+        {"file":"apple2ee.zip","md5":None,"desc":"apple2ee","mandatory":True},
+        {"file":"apple2ee.zip","md5":"b956c537e7b6b85ffa5c3493b1490d8a","desc":"apple2ee","mandatory":True},
+        {"file":"apple2ee.zip","md5":"9123fff3442c0e688cc6816be88dd4ab","desc":"apple2ee","mandatory":True},
+        {"file":"apple2ee.zip","md5":"6ac9338f6972eea01604f90d9a581f18","desc":"apple2ee","mandatory":True},
+        {"file":"apple2ee.zip","md5":"6b11018a14668a7e3904319d2097dddc","desc":"apple2ee","mandatory":True},
+        {"file":"apple2p.zip","md5":None,"desc":"apple2p","mandatory":True},
+        {"file":"apple2p.zip","md5":"89ca5cd551ffad9a557652a97dcb6627","desc":"apple2p","mandatory":True},
+        {"file":"apple2p.zip","md5":"42333f24cd6e70696b212b042f3166aa","desc":"apple2p","mandatory":True},
+        {"file":"apple2p.zip","md5":"5de50bebc41e59ae4eb27be4c24b6814","desc":"apple2p","mandatory":True},
+        {"file":"apple2p.zip","md5":"56d9bb6730735a3b2bbcc75d1da7a8de","desc":"apple2p","mandatory":True},
+        {"file":"apple2p.zip","md5":"cb63c41c5e72b5fda54feb5490efdefb","desc":"apple2p","mandatory":True},
+        {"file":"apple2p.zip","md5":"8925b695ae0177dd3919dbea2f2f202b","desc":"apple2p","mandatory":True},
+        {"file":"apple2p.zip","md5":"9ac0dc8c4d0002eb45b0b84be0bde5ec","desc":"apple2p","mandatory":True},
+        {"file":"a2diskiing.zip","md5":None,"desc":"a2diskiing","mandatory":True},
+        {"file":"a2diskiing.zip","md5":"2020aa1413ff77fe29353f3ee72dc295","desc":"a2diskiing","mandatory":True},
+        {"file":"a2cffa02.zip","md5":None,"desc":"a2cffa02","mandatory":True},
+        {"file":"a2cffa02.zip","md5":"80adbc2d79f347ec63f4b771ea32984d","desc":"a2cffa02","mandatory":True},
+        {"file":"votrsc01.zip","md5":None,"desc":"votrsc01","mandatory":True},
+        {"file":"votrsc01.zip","md5":"8ccf35a06f5e9a2131b0f42380ee5c15","desc":"votrsc01","mandatory":True},
+        {"file":"votrsc01a.zip","md5":None,"desc":"votrsc01a","mandatory":True},
+        {"file":"votrsc01a.zip","md5":"95b91e4a2fe7d6f13d353ba1827d37f9","desc":"votrsc01a","mandatory":True},
+        {"file":"d2fdc.zip","md5":None,"desc":"d2fdc","mandatory":True},
+        {"file":"d2fdc.zip","md5":"5f1be0c1cdff26f5956eef9643911886","desc":"d2fdc","mandatory":True},
     ],
     "apple2gs": [
-        {"file":"apple2gs.zip","md5":None,"desc":"apple2gs.zip","mandatory":True},
+        {"file":"apple2gs.zip","md5":None,"desc":"apple2gs","mandatory":True},
+        {"file":"apple2gs.zip","md5":"b956c537e7b6b85ffa5c3493b1490d8a","desc":"apple2gs","mandatory":True},
+        {"file":"apple2gs.zip","md5":"b9f94f5d1be27dafcb8fe619ca3f4d15","desc":"apple2gs","mandatory":True},
+        {"file":"apple2gs.zip","md5":"e8e632aa592a61ef373b38af10ed54e1","desc":"apple2gs","mandatory":True},
+        {"file":"apple2gs.zip","md5":"c9e0e059faec0393fc429131a3af4ee9","desc":"apple2gs","mandatory":True},
+        {"file":"apple2gs.zip","md5":"68ff96a624237d233e8d4c701f660dd1","desc":"apple2gs","mandatory":True},
     ],
     "archimedes": [
-        {"file":"aa310.zip","md5":None,"desc":"aa310.zip","mandatory":True},
-        {"file":"archimedes_keyboard.zip","md5":None,"desc":"archimedes_keyboard.zip","mandatory":True},
+        {"file":"aa310.zip","md5":None,"desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"374e4bcaa04cb98aad3b64a1555c3930","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"b0b6a83029b6f85bb044bfc46bf3f0f6","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"bf35bb799aa0278b7ee7719dd32f26bc","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"e41af081535aae930d68ee4cbd672513","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"7ecdccd760557ab0711edb37773faeb6","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"c43bad04862ea03146ff5bf7441a1a24","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"454c1977ad70a206f4f3a0bdca294d85","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"6850da7a70b198eaf6fde5be503fa5cd","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"84d305e248dab48a3a110af161dfb005","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"64d7f085e6afb149ebc2e7f919429a19","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"f7d0a9a4d1dae8eee057aa626b87715f","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"763b015d85c7d9d17e06d5babc0a9d32","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"b8fcd63c6a28d0c7034af2e6c5aff9a8","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"6265551c5d6336f7ddd9f3fc78ceba93","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"ca4379aeab4f7c7640c8ad34b27a9db6","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"358d3c9d2685c076f6a141c26d45520c","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"4ae429fbf23f8aa64ce2002cfb14c527","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"83d0f0738468fdf9f23c13eef22dbeea","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"636e4072c392916d2bf00865fee40984","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"252b1993fdb66cac522a0edbeffc3407","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"591f3bdd0f20a0a3d03c8748f2f75754","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"f77f4a409c78c8495fc3876cd4e7d97c","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"57d3a349407916f55129d6c8c0f56395","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"ee4aa1ea0eebf88c5f6cae6315ed11a1","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"a057124502e533ccd8865dc970cf7017","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"3c40d2821595a7334a46ea3b46a5421d","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"d1d51b8f603bba476d1f63bc5980040e","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"7b096a93cc5ada80bcfb5249bca33768","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"744e80abe4c6a845412f63a0f0b14e48","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"9dac78cba6034c427d00f78fa94ab63d","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"4c0b2e1fb29c8acd84e94d25c953173c","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"f6bf5f8908a19a9aacf733633b1cd5cf","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"eec46f5bd4cdb456b760b3cddf16a33c","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"980e3be0c851a59d0f4602f4a94b2eef","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"971a49d5c2dbb3fc01c17d1d5615781a","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"9ce06a4d2a8331bc5b7fadb967d74f4f","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"c74763f720c98e16dc3c6c421db21485","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"6f564c8917f04594bda7385f6de61061","desc":"aa310","mandatory":True},
+        {"file":"aa310.zip","md5":"232a302efe19278d9df6ecbc8ea3dc6c","desc":"aa310","mandatory":True},
+        {"file":"archimedes_keyboard.zip","md5":None,"desc":"archimedes_keyboard","mandatory":True},
+        {"file":"archimedes_keyboard.zip","md5":"1a8617c1abe3e0729d20ce844e1e12a8","desc":"archimedes_keyboard","mandatory":True},
     ],
     "astrocade": [
-        {"file":"astrocde.zip","md5":None,"desc":"astrocde.zip","mandatory":True},
+        {"file":"astrocde.zip","md5":None,"desc":"astrocde","mandatory":True},
+        {"file":"astrocde.zip","md5":"7d25a26e5c4841b364cfe6b1735eaf03","desc":"astrocde","mandatory":True},
     ],
     "atari5200": [
         {"file":"5200.rom","md5":"281f20ea4320404ec820fb7ec0693b38","desc":"5200","mandatory":True},
     ],
     "atari800": [
-        {"file":"ATARIOSA.ROM","md5":"eb1f32f5d9f382db1bbfb8d7f9cb343a","desc":"ATARIOSA.ROM","mandatory":True},
-        {"file":"ATARIOSB.ROM","md5":"4177f386a3bac989a981d3fe3388cb6c","desc":"ATARIOSB.ROM","mandatory":True},
-        {"file":"ATARIXL.ROM","md5":"06daac977823773a3eea3422fd26a703","desc":"ATARIXL.ROM","mandatory":True},
-        {"file":"ATARIBAS.ROM","md5":"0bac0c6a50104045d902df4503a4c30b","desc":"ATARIBAS.ROM","mandatory":True},
+        {"file":"ATARIOSA.ROM","md5":"eb1f32f5d9f382db1bbfb8d7f9cb343a","desc":"ATARIOSA","mandatory":True},
+        {"file":"ATARIOSB.ROM","md5":"4177f386a3bac989a981d3fe3388cb6c","desc":"ATARIOSB","mandatory":True},
+        {"file":"ATARIXL.ROM","md5":"06daac977823773a3eea3422fd26a703","desc":"ATARIXL","mandatory":True},
+        {"file":"ATARIBAS.ROM","md5":"0bac0c6a50104045d902df4503a4c30b","desc":"ATARIBAS","mandatory":True},
     ],
     "atarist": [
-        {"file":"tos.img","md5":"c1c57ce48e8ee4135885cee9e63a68a2","desc":"tos.img","mandatory":True},
-        {"file":"tos100fr.img","md5":"25789a649faff0a1176dc7d9b98105c0","desc":"tos100fr.img","mandatory":True},
-        {"file":"tos100uk.img","md5":"c87a52c277f7952b41c639fc7bf0a43b","desc":"tos100uk.img","mandatory":True},
-        {"file":"tos100us.img","md5":"d0f682ee6237497004339fb02172638b","desc":"tos100us.img","mandatory":True},
-        {"file":"tos102de.img","md5":"a622cc35d8d78703905592dfaa4d2ccb","desc":"tos102de.img","mandatory":True},
-        {"file":"tos102fr.img","md5":"d6521785627d20c51edc566808a6bf28","desc":"tos102fr.img","mandatory":True},
-        {"file":"tos102uk.img","md5":"b2a8570de2e850c5acf81cb80512d9f6","desc":"tos102uk.img","mandatory":True},
-        {"file":"tos104de.img","md5":"41b7dae4e24735f330b63ad923a0bfbc","desc":"tos104de.img","mandatory":True},
-        {"file":"tos104es.img","md5":"143343f7b8e0b1162af206fe8f46b002","desc":"tos104es.img","mandatory":True},
-        {"file":"tos104fr.img","md5":"0087e2707c57efa2106a0aa7576655c0","desc":"tos104fr.img","mandatory":True},
-        {"file":"tos104uk.img","md5":"036c5ae4f885cbf62c9bed651c6c58a8","desc":"tos104uk.img","mandatory":True},
-        {"file":"tos104us.img","md5":"736adb2dc835df4d323191fdc8926cc9","desc":"tos104us.img","mandatory":True},
-        {"file":"tos106de.img","md5":"992bac38e01633a529121a2a65f0779e","desc":"tos106de.img","mandatory":True},
-        {"file":"tos106es.img","md5":"30f69d70fe7c210300ed83f991b12de9","desc":"tos106es.img","mandatory":True},
-        {"file":"tos106fr.img","md5":"bc7b224d0dc3f0cc14c8897db89c5787","desc":"tos106fr.img","mandatory":True},
-        {"file":"tos106uk.img","md5":"6033f2b9364edfed321c6931a8181fd2","desc":"tos106uk.img","mandatory":True},
-        {"file":"tos106us.img","md5":"a0982e760f9807d82667ff5a69e78f6b","desc":"tos106us.img","mandatory":True},
-        {"file":"tos162de.img","md5":"94a75c1c65408d9f974b0463e15a3b11","desc":"tos162de.img","mandatory":True},
-        {"file":"tos162fr.img","md5":"ed5fbaabe0219092df74c6c14cea3f8e","desc":"tos162fr.img","mandatory":True},
-        {"file":"tos162uk.img","md5":"1cbc4f55295e469fc8cd72b7efdea1da","desc":"tos162uk.img","mandatory":True},
-        {"file":"tos162us.img","md5":"febb00ba8784798293a7ae709a1dafcb","desc":"tos162us.img","mandatory":True},
-        {"file":"tos205de.img","md5":"7aeabdc25f8134590e25643a405210ca","desc":"tos205de.img","mandatory":True},
-        {"file":"tos205es.img","md5":"7449b131681f1dfe62ebed1392847057","desc":"tos205es.img","mandatory":True},
-        {"file":"tos205fr.img","md5":"61b620ad951815a25cb37895c81a947c","desc":"tos205fr.img","mandatory":True},
-        {"file":"tos205it.img","md5":"7e87d8fe7e24e0b4c55ad1b7955beae3","desc":"tos205it.img","mandatory":True},
-        {"file":"tos205us.img","md5":"7cdd45b6aac66a21bfb357d9334e46db","desc":"tos205us.img","mandatory":True},
-        {"file":"tos206de.img","md5":"0604dbb85928f0598d04144a8b554bbe","desc":"tos206de.img","mandatory":True},
-        {"file":"tos206fr.img","md5":"b2873004a408b8db36321f98daafa251","desc":"tos206fr.img","mandatory":True},
-        {"file":"tos206.img","md5":"4a0d4f282c3f2a0196681adf88862dd4","desc":"tos206.img","mandatory":True},
-        {"file":"tos206uk.img","md5":"e690bec90d902024beed549d22150755","desc":"tos206uk.img","mandatory":True},
-        {"file":"tos206us.img","md5":"c9093f27159e7d13ac0d1501a95e53d4","desc":"tos206us.img","mandatory":True},
-        {"file":"tos306de.img","md5":"066f39a7ea5789d5afd59dd7b3104fa6","desc":"tos306de.img","mandatory":True},
-        {"file":"tos306uk.img","md5":"dd1010ec566efbd71047d6c4919feba5","desc":"tos306uk.img","mandatory":True},
-        {"file":"tos400.img","md5":"ed2647936ce4bd283c4d7dfd7ae09d1c","desc":"tos400.img","mandatory":True},
-        {"file":"tos402.img","md5":"9e880168d0a004f7f5e852be758f39e4","desc":"tos402.img","mandatory":True},
-        {"file":"tos404.img","md5":"e5ea0f216fb446f1c4a4f476bc5f03d4","desc":"tos404.img","mandatory":True},
+        {"file":"tos.img","md5":"c1c57ce48e8ee4135885cee9e63a68a2","desc":"tos","mandatory":True},
+        {"file":"tos100fr.img","md5":"25789a649faff0a1176dc7d9b98105c0","desc":"tos100fr","mandatory":True},
+        {"file":"tos100uk.img","md5":"c87a52c277f7952b41c639fc7bf0a43b","desc":"tos100uk","mandatory":True},
+        {"file":"tos100us.img","md5":"d0f682ee6237497004339fb02172638b","desc":"tos100us","mandatory":True},
+        {"file":"tos102de.img","md5":"a622cc35d8d78703905592dfaa4d2ccb","desc":"tos102de","mandatory":True},
+        {"file":"tos102fr.img","md5":"d6521785627d20c51edc566808a6bf28","desc":"tos102fr","mandatory":True},
+        {"file":"tos102uk.img","md5":"b2a8570de2e850c5acf81cb80512d9f6","desc":"tos102uk","mandatory":True},
+        {"file":"tos104de.img","md5":"41b7dae4e24735f330b63ad923a0bfbc","desc":"tos104de","mandatory":True},
+        {"file":"tos104es.img","md5":"143343f7b8e0b1162af206fe8f46b002","desc":"tos104es","mandatory":True},
+        {"file":"tos104fr.img","md5":"0087e2707c57efa2106a0aa7576655c0","desc":"tos104fr","mandatory":True},
+        {"file":"tos104uk.img","md5":"036c5ae4f885cbf62c9bed651c6c58a8","desc":"tos104uk","mandatory":True},
+        {"file":"tos104us.img","md5":"736adb2dc835df4d323191fdc8926cc9","desc":"tos104us","mandatory":True},
+        {"file":"tos106de.img","md5":"992bac38e01633a529121a2a65f0779e","desc":"tos106de","mandatory":True},
+        {"file":"tos106es.img","md5":"30f69d70fe7c210300ed83f991b12de9","desc":"tos106es","mandatory":True},
+        {"file":"tos106fr.img","md5":"bc7b224d0dc3f0cc14c8897db89c5787","desc":"tos106fr","mandatory":True},
+        {"file":"tos106uk.img","md5":"6033f2b9364edfed321c6931a8181fd2","desc":"tos106uk","mandatory":True},
+        {"file":"tos106us.img","md5":"a0982e760f9807d82667ff5a69e78f6b","desc":"tos106us","mandatory":True},
+        {"file":"tos162de.img","md5":"94a75c1c65408d9f974b0463e15a3b11","desc":"tos162de","mandatory":True},
+        {"file":"tos162fr.img","md5":"ed5fbaabe0219092df74c6c14cea3f8e","desc":"tos162fr","mandatory":True},
+        {"file":"tos162uk.img","md5":"1cbc4f55295e469fc8cd72b7efdea1da","desc":"tos162uk","mandatory":True},
+        {"file":"tos162us.img","md5":"febb00ba8784798293a7ae709a1dafcb","desc":"tos162us","mandatory":True},
+        {"file":"tos205de.img","md5":"7aeabdc25f8134590e25643a405210ca","desc":"tos205de","mandatory":True},
+        {"file":"tos205es.img","md5":"7449b131681f1dfe62ebed1392847057","desc":"tos205es","mandatory":True},
+        {"file":"tos205fr.img","md5":"61b620ad951815a25cb37895c81a947c","desc":"tos205fr","mandatory":True},
+        {"file":"tos205it.img","md5":"7e87d8fe7e24e0b4c55ad1b7955beae3","desc":"tos205it","mandatory":True},
+        {"file":"tos205us.img","md5":"7cdd45b6aac66a21bfb357d9334e46db","desc":"tos205us","mandatory":True},
+        {"file":"tos206de.img","md5":"0604dbb85928f0598d04144a8b554bbe","desc":"tos206de","mandatory":True},
+        {"file":"tos206fr.img","md5":"b2873004a408b8db36321f98daafa251","desc":"tos206fr","mandatory":True},
+        {"file":"tos206.img","md5":"4a0d4f282c3f2a0196681adf88862dd4","desc":"tos206","mandatory":True},
+        {"file":"tos206uk.img","md5":"e690bec90d902024beed549d22150755","desc":"tos206uk","mandatory":True},
+        {"file":"tos206us.img","md5":"c9093f27159e7d13ac0d1501a95e53d4","desc":"tos206us","mandatory":True},
+        {"file":"tos306de.img","md5":"066f39a7ea5789d5afd59dd7b3104fa6","desc":"tos306de","mandatory":True},
+        {"file":"tos306uk.img","md5":"dd1010ec566efbd71047d6c4919feba5","desc":"tos306uk","mandatory":True},
+        {"file":"tos400.img","md5":"ed2647936ce4bd283c4d7dfd7ae09d1c","desc":"tos400","mandatory":True},
+        {"file":"tos402.img","md5":"9e880168d0a004f7f5e852be758f39e4","desc":"tos402","mandatory":True},
+        {"file":"tos404.img","md5":"e5ea0f216fb446f1c4a4f476bc5f03d4","desc":"tos404","mandatory":True},
     ],
     "atom": [
-        {"file":"atom.zip","md5":None,"desc":"atom.zip","mandatory":True},
+        {"file":"atom.zip","md5":None,"desc":"atom","mandatory":True},
+        {"file":"atom.zip","md5":"b7b7f8a608339fa39d44a3bcfa2cc3f0","desc":"atom","mandatory":True},
+        {"file":"atom.zip","md5":"baa26f458acf5745388177ffc7368124","desc":"atom","mandatory":True},
+        {"file":"atom.zip","md5":"9627dfb5f8302db8dd5702dbf7c09f72","desc":"atom","mandatory":True},
     ],
     "atomiswave": [
-        {"file":"dc/awbios.zip","md5":"85254fbe320ca82a768ec2c26bb08def","desc":"awbios.zip","mandatory":True},
+        {"file":"dc/awbios.zip","md5":"85254fbe320ca82a768ec2c26bb08def","desc":"awbios","mandatory":True},
     ],
     "bbc": [
-        {"file":"bbcb.zip","md5":None,"desc":"bbcb.zip","mandatory":True},
-        {"file":"bbc_acorn8271.zip","md5":None,"desc":"bbc_acorn8271.zip","mandatory":True},
-        {"file":"saa5050.zip","md5":None,"desc":"saa5050.zip","mandatory":True},
-        {"file":"bbc_tube_80186.zip","md5":None,"desc":"bbc_tube_80186.zip","mandatory":True},
-        {"file":"bbcm.zip","md5":None,"desc":"bbcm.zip","mandatory":True},
-        {"file":"bbcmc.zip","md5":None,"desc":"bbcmc.zip","mandatory":True},
-        {"file":"bbc_bitstik1.zip","md5":None,"desc":"bbc_bitstik1.zip","mandatory":True},
-        {"file":"bbc_bitstik2.zip","md5":None,"desc":"bbc_bitstik2.zip","mandatory":True},
-        {"file":"mame/samples/bbc.zip","md5":None,"desc":"bbc.zip","mandatory":True},
+        {"file":"bbcb.zip","md5":None,"desc":"bbcb","mandatory":True},
+        {"file":"bbcb.zip","md5":"521a197d3623682825f1042c1350feb4","desc":"bbcb","mandatory":True},
+        {"file":"bbcb.zip","md5":"2cc67be4624df4dc66617742571a8e3d","desc":"bbcb","mandatory":True},
+        {"file":"bbcb.zip","md5":"0cad3d0cf0d111aca2b158b9b605913f","desc":"bbcb","mandatory":True},
+        {"file":"bbcb.zip","md5":"46f920a170e88bab7faa96cf80b84324","desc":"bbcb","mandatory":True},
+        {"file":"bbcb.zip","md5":"0199bac73f1dbca291582834a3e61122","desc":"bbcb","mandatory":True},
+        {"file":"bbcb.zip","md5":"0a59a5ba15fe8557b5f7fee32bbd393a","desc":"bbcb","mandatory":True},
+        {"file":"bbcb.zip","md5":"35e9ab10bcf016bd24b4c716add009b9","desc":"bbcb","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":None,"desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"803530149c274994fabc6d28cbe03679","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"5a3ddfae96178e025f27bf1f69bfa629","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"d636ffb7a80fc29b133d32e4250fbab6","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"5daed103918277e2065dd7e8d23e57a5","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"79b31feacab0b1ccddf358be5dfb6241","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"24458ace9566a01d255bca16b46a960d","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"6e9356d0a5e7fbabb386824ec370d6f3","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"990b8a9755af25452c85f23ceb344be4","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"bbc_acorn8271.zip","md5":"1d250b0242e447e9106e8bfd1f27ea84","desc":"bbc_acorn8271","mandatory":True},
+        {"file":"saa5050.zip","md5":None,"desc":"saa5050","mandatory":True},
+        {"file":"saa5050.zip","md5":"8b3c10a2317808ed94d6c6073b5b3327","desc":"saa5050","mandatory":True},
+        {"file":"bbc_tube_80186.zip","md5":None,"desc":"bbc_tube_80186","mandatory":True},
+        {"file":"bbc_tube_80186.zip","md5":"33d097349f12526584fcac21eccf3012","desc":"bbc_tube_80186","mandatory":True},
+        {"file":"bbc_tube_80186.zip","md5":"e6e84221c29b5d31d07055039583c8e7","desc":"bbc_tube_80186","mandatory":True},
+        {"file":"bbcm.zip","md5":None,"desc":"bbcm","mandatory":True},
+        {"file":"bbcm.zip","md5":"b159012f9f301bab33316fd3bf55db79","desc":"bbcm","mandatory":True},
+        {"file":"bbcm.zip","md5":"fed079c5e2c595b354529a8ea703b5fb","desc":"bbcm","mandatory":True},
+        {"file":"bbcm.zip","md5":"ca0527f13f83bc95ef4b6833ee440afa","desc":"bbcm","mandatory":True},
+        {"file":"bbcm.zip","md5":"ee9fc46252b7d7fe341b9c7f92575099","desc":"bbcm","mandatory":True},
+        {"file":"bbcm.zip","md5":"3f3dd4614db30f6e383794731272076a","desc":"bbcm","mandatory":True},
+        {"file":"bbcmc.zip","md5":None,"desc":"bbcmc","mandatory":True},
+        {"file":"bbcmc.zip","md5":"55586a88477505d8fd28edfae646e2e3","desc":"bbcmc","mandatory":True},
+        {"file":"bbcmc.zip","md5":"956bf71da840943050836ade2474ef7b","desc":"bbcmc","mandatory":True},
+        {"file":"bbc_bitstik1.zip","md5":None,"desc":"bbc_bitstik1","mandatory":True},
+        {"file":"bbc_bitstik1.zip","md5":"baf5cb5564ff6e6b4400243e7612f323","desc":"bbc_bitstik1","mandatory":True},
+        {"file":"bbc_bitstik2.zip","md5":None,"desc":"bbc_bitstik2","mandatory":True},
+        {"file":"bbc_bitstik2.zip","md5":"c196c145b3de630f85f625ca762e5504","desc":"bbc_bitstik2","mandatory":True},
+        {"file":"mame/samples/bbc.zip","md5":None,"desc":"bbc","mandatory":True},
+        {"file":"mame/samples/bbc.zip","md5":"9240120e32a59caabc6f5d462f87d683","desc":"bbc","mandatory":True},
+        {"file":"mame/samples/bbc.zip","md5":"9d63bdc91cef4eda5e1a110e75c848fb","desc":"bbc","mandatory":True},
         {"file":"Acorn/basic2.rom","md5":"2cc67be4624df4dc66617742571a8e3d","desc":"basic2","mandatory":True},
         {"file":"BBCMicro/os12.rom","md5":"0a59a5ba15fe8557b5f7fee32bbd393a","desc":"os12","mandatory":True},
         {"file":"BBCMicro/dfs-2.26.rom","md5":"f083f49d6fe66344c650d7e74249cb96","desc":"dfs-2.26","mandatory":True},
     ],
     "beena": [
-        {"file":"beena.zip","md5":None,"desc":"beena.zip","mandatory":True},
+        {"file":"beena.zip","md5":None,"desc":"beena","mandatory":True},
     ],
     "bk": [
-        {"file":"bk/B11M_BOS.ROM","md5":"fe4627d1e3a1535874085050733263e7","desc":"B11M_BOS.ROM","mandatory":True},
-        {"file":"bk/B11M_EXT.ROM","md5":"dc52f365d56fa1951f5d35b1101b9e3f","desc":"B11M_EXT.ROM","mandatory":True},
-        {"file":"bk/BAS11M_0.ROM","md5":"946f6f23ded03c0e26187f0b3ca75993","desc":"BAS11M_0.ROM","mandatory":True},
-        {"file":"bk/BAS11M_1.ROM","md5":"1e6637f32aa7d1de03510030cac40bcf","desc":"BAS11M_1.ROM","mandatory":True},
-        {"file":"bk/DISK_327.ROM","md5":"5015228eeeb238e65da8edcd1b6dfac7","desc":"DISK_327.ROM","mandatory":True},
-        {"file":"bk/BASIC10.ROM","md5":"3fa774326d75410a065659aea80252f0","desc":"BASIC10.ROM","mandatory":True},
-        {"file":"bk/FOCAL10.ROM","md5":"5737f972e8638831ab71e9139abae052","desc":"FOCAL10.ROM","mandatory":True},
-        {"file":"bk/MONIT10.ROM","md5":"95f8c41c6abf7640e35a6a03cecebd01","desc":"MONIT10.ROM","mandatory":True},
-        {"file":"bk0010.zip","md5":None,"desc":"bk0010.zip","mandatory":True},
+        {"file":"bk/B11M_BOS.ROM","md5":"fe4627d1e3a1535874085050733263e7","desc":"B11M_BOS","mandatory":True},
+        {"file":"bk/B11M_EXT.ROM","md5":"dc52f365d56fa1951f5d35b1101b9e3f","desc":"B11M_EXT","mandatory":True},
+        {"file":"bk/BAS11M_0.ROM","md5":"946f6f23ded03c0e26187f0b3ca75993","desc":"BAS11M_0","mandatory":True},
+        {"file":"bk/BAS11M_1.ROM","md5":"1e6637f32aa7d1de03510030cac40bcf","desc":"BAS11M_1","mandatory":True},
+        {"file":"bk/DISK_327.ROM","md5":"5015228eeeb238e65da8edcd1b6dfac7","desc":"DISK_327","mandatory":True},
+        {"file":"bk/BASIC10.ROM","md5":"3fa774326d75410a065659aea80252f0","desc":"BASIC10","mandatory":True},
+        {"file":"bk/FOCAL10.ROM","md5":"5737f972e8638831ab71e9139abae052","desc":"FOCAL10","mandatory":True},
+        {"file":"bk/MONIT10.ROM","md5":"95f8c41c6abf7640e35a6a03cecebd01","desc":"MONIT10","mandatory":True},
+        {"file":"bk0010.zip","md5":None,"desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"95f8c41c6abf7640e35a6a03cecebd01","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"eb9e1cf1c1b36a2dece89624bfc59323","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"93d2776ecf9abf49fb45f58ce3182143","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"4a4530347ee18c547a0563aca73cf43d","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"86fc2f7797a0333300159aa222c3ad3f","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"fb8875a62b9b02a66670dcefc270d441","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"c113a36e51f4557594817bc35a4b63b7","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"823d35a8c98f70d2d378a2c7568c3b23","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"1e6637f32aa7d1de03510030cac40bcf","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"dc52f365d56fa1951f5d35b1101b9e3f","desc":"bk0010","mandatory":True},
+        {"file":"bk0010.zip","md5":"fe4627d1e3a1535874085050733263e7","desc":"bk0010","mandatory":True},
     ],
     "camplynx": [
-        {"file":"lynx48k.zip","md5":None,"desc":"lynx48k.zip","mandatory":True},
-        {"file":"lynx96k.zip","md5":None,"desc":"lynx96k.zip","mandatory":True},
-        {"file":"lynx128k.zip","md5":None,"desc":"lynx128k.zip","mandatory":True},
+        {"file":"lynx48k.zip","md5":None,"desc":"lynx48k","mandatory":True},
+        {"file":"lynx48k.zip","md5":"b0ad5bf3070aea27b637e1998c81fa8c","desc":"lynx48k","mandatory":True},
+        {"file":"lynx48k.zip","md5":"b665e10211bbdbfaf2defb32d5580892","desc":"lynx48k","mandatory":True},
+        {"file":"lynx48k.zip","md5":"bc0760d8bf61c9683270266d259cd2ae","desc":"lynx48k","mandatory":True},
+        {"file":"lynx48k.zip","md5":"dde90a794e5324002a9fd7f79cec3172","desc":"lynx48k","mandatory":True},
+        {"file":"lynx96k.zip","md5":None,"desc":"lynx96k","mandatory":True},
+        {"file":"lynx96k.zip","md5":"a0a8f136f69b5891d33993627a185697","desc":"lynx96k","mandatory":True},
+        {"file":"lynx96k.zip","md5":"fcb706b3ba2ba61f6f7af1c28f420f94","desc":"lynx96k","mandatory":True},
+        {"file":"lynx96k.zip","md5":"815afa653b61cbe70936b01aff700912","desc":"lynx96k","mandatory":True},
+        {"file":"lynx96k.zip","md5":"3ccdb9dfe6018892383fcbb1a9167d76","desc":"lynx96k","mandatory":True},
+        {"file":"lynx96k.zip","md5":"01a9770efdab17f089bbbbe53f5d69fa","desc":"lynx96k","mandatory":True},
+        {"file":"lynx96k.zip","md5":"89ba52f683cd79638646874e965476b6","desc":"lynx96k","mandatory":True},
+        {"file":"lynx128k.zip","md5":None,"desc":"lynx128k","mandatory":True},
+        {"file":"lynx128k.zip","md5":"fcb706b3ba2ba61f6f7af1c28f420f94","desc":"lynx128k","mandatory":True},
+        {"file":"lynx128k.zip","md5":"5017fe3a2ea47038ae61e2aeb4f43d65","desc":"lynx128k","mandatory":True},
+        {"file":"lynx128k.zip","md5":"bf69d9538192f65571dbed43dc4a99bb","desc":"lynx128k","mandatory":True},
+        {"file":"lynx128k.zip","md5":"f9f54913cdedb22bb8f0c549ad121379","desc":"lynx128k","mandatory":True},
     ],
     "cdi": [
-        {"file":"cdimono1.zip","md5":None,"desc":"cdimono1.zip","mandatory":True},
+        {"file":"cdimono1.zip","md5":None,"desc":"cdimono1","mandatory":True},
+        {"file":"cdimono1.zip","md5":"2969341396aa61e0143dc2351aaa6ef6","desc":"cdimono1","mandatory":True},
+        {"file":"cdimono1.zip","md5":"ac80a92c988ce07fbd6a8f21ded34cf1","desc":"cdimono1","mandatory":True},
+        {"file":"cdimono1.zip","md5":"ac0d468be366779c9df633be98da250a","desc":"cdimono1","mandatory":True},
+        {"file":"cdimono1.zip","md5":"3e59b8a9a423d3ecd612a32fe4e2d748","desc":"cdimono1","mandatory":True},
+        {"file":"cdimono1.zip","md5":"3d20cf7550f1b723158b42a1fd5bac62","desc":"cdimono1","mandatory":True},
     ],
     "cgenie": [
-        {"file":"cgenie.zip","md5":None,"desc":"cgenie.zip","mandatory":True},
+        {"file":"cgenie.zip","md5":None,"desc":"cgenie","mandatory":True},
     ],
     "channelf": [
         {"file":"sl31253.bin","md5":"ac9804d4c0e9d07e33472e3726ed15c3","desc":"sl31253","mandatory":True},
@@ -238,12 +395,20 @@ BIOS_DB = {
         {"file":"cerbios.bin","md5":"f23d7e00ae8fbf88908ed1f9165f35eb","desc":"cerbios","mandatory":True},
     ],
     "coco": [
-        {"file":"coco.zip","md5":None,"desc":"coco.zip","mandatory":True},
-        {"file":"coco2.zip","md5":None,"desc":"coco2.zip","mandatory":True},
-        {"file":"coco2b.zip","md5":None,"desc":"coco2b.zip","mandatory":True},
-        {"file":"coco3.zip","md5":None,"desc":"coco3.zip","mandatory":True},
-        {"file":"coco3p.zip","md5":None,"desc":"coco3p.zip","mandatory":True},
-        {"file":"coco_fdc_v11.zip","md5":None,"desc":"coco_fdc_v11.zip","mandatory":True},
+        {"file":"coco.zip","md5":None,"desc":"coco","mandatory":True},
+        {"file":"coco.zip","md5":"a74f3d95b395dad7cdca19d560eeea74","desc":"coco","mandatory":True},
+        {"file":"coco2.zip","md5":None,"desc":"coco2","mandatory":True},
+        {"file":"coco2.zip","md5":"c933316c7d939532a13648850c1c2aa6","desc":"coco2","mandatory":True},
+        {"file":"coco2.zip","md5":"21070aa0496142b886c562bf76d7c113","desc":"coco2","mandatory":True},
+        {"file":"coco2b.zip","md5":None,"desc":"coco2b","mandatory":True},
+        {"file":"coco2b.zip","md5":"c2fc43556eb6b7b25bdf5955bd9df825","desc":"coco2b","mandatory":True},
+        {"file":"coco2.zip","md5":"21070aa0496142b886c562bf76d7c113","desc":"coco2","mandatory":True},
+        {"file":"coco3.zip","md5":None,"desc":"coco3","mandatory":True},
+        {"file":"coco3.zip","md5":"7233c6c429f3ce1c7392f28a933e0b6f","desc":"coco3","mandatory":True},
+        {"file":"coco3p.zip","md5":None,"desc":"coco3p","mandatory":True},
+        {"file":"coco3p.zip","md5":"4ae57e5a8e7494e5485446fefedb580b","desc":"coco3p","mandatory":True},
+        {"file":"coco_fdc_v11.zip","md5":None,"desc":"coco_fdc_v11","mandatory":True},
+        {"file":"coco_fdc_v11.zip","md5":"8cab28f4b7311b8df63c07bb3b59bfd5","desc":"coco_fdc_v11","mandatory":True},
         {"file":"xroar/bas10.rom","md5":"a74f3d95b395dad7cdca19d560eeea74","desc":"bas10","mandatory":True},
         {"file":"xroar/bas12.rom","md5":"c933316c7d939532a13648850c1c2aa6","desc":"bas12","mandatory":True},
         {"file":"xroar/bas13.rom","md5":"c2fc43556eb6b7b25bdf5955bd9df825","desc":"bas13","mandatory":True},
@@ -256,11 +421,15 @@ BIOS_DB = {
         {"file":"colecovision.rom","md5":"2c66f5911e5b42b8ebe113403548eee7","desc":"colecovision","mandatory":True},
     ],
     "crvision": [
-        {"file":"crvision.zip","md5":None,"desc":"crvision.zip","mandatory":True},
+        {"file":"crvision.zip","md5":None,"desc":"crvision","mandatory":True},
+        {"file":"crvision.zip","md5":"3b1ef759d8e3fb4071582efd33dd05f9","desc":"crvision","mandatory":True},
     ],
     "dragon64": [
-        {"file":"dragon64.zip","md5":None,"desc":"dragon64.zip","mandatory":True},
-        {"file":"dragon32.zip","md5":None,"desc":"dragon32.zip","mandatory":True},
+        {"file":"dragon64.zip","md5":None,"desc":"dragon64","mandatory":True},
+        {"file":"dragon64.zip","md5":"5f0bee59710e55f5880e74890912ed78","desc":"dragon64","mandatory":True},
+        {"file":"dragon64.zip","md5":"fd91edce7be5e7c2d88e46b76956a8aa","desc":"dragon64","mandatory":True},
+        {"file":"dragon32.zip","md5":None,"desc":"dragon32","mandatory":True},
+        {"file":"dragon32.zip","md5":None,"desc":"dragon32","mandatory":True},
         {"file":"xroar/d32.rom","md5":"3420b96031078a4ef408cad7bf21a33f","desc":"d32","mandatory":True},
         {"file":"xroar/d64_1.rom","md5":"5f0bee59710e55f5880e74890912ed78","desc":"d64_1","mandatory":True},
         {"file":"xroar/d64_2.rom","md5":"fd91edce7be5e7c2d88e46b76956a8aa","desc":"d64_2","mandatory":True},
@@ -270,10 +439,19 @@ BIOS_DB = {
         {"file":"dc/dc_boot.bin","md5":"e10c53c2f8b90bab96ead2d368858623","desc":"dc_boot","mandatory":True},
     ],
     "electron": [
-        {"file":"electron.zip","md5":None,"desc":"electron.zip","mandatory":True},
-        {"file":"electron64.zip","md5":None,"desc":"electron64.zip","mandatory":True},
-        {"file":"electron_plus1.zip","md5":None,"desc":"electron_plus1.zip","mandatory":True},
-        {"file":"electron_plus3.zip","md5":None,"desc":"electron_plus3.zip","mandatory":True},
+        {"file":"electron.zip","md5":None,"desc":"electron","mandatory":True},
+        {"file":"electron.zip","md5":"4688a93aa298b9431c1788c9b90378c8","desc":"electron","mandatory":True},
+        {"file":"electron64.zip","md5":None,"desc":"electron64","mandatory":True},
+        {"file":"electron64.zip","md5":"2cc67be4624df4dc66617742571a8e3d","desc":"electron64","mandatory":True},
+        {"file":"electron64.zip","md5":"df01cfe5894276de96bbd1c45b7e834c","desc":"electron64","mandatory":True},
+        {"file":"electron_plus1.zip","md5":None,"desc":"electron_plus1","mandatory":True},
+        {"file":"electron_plus1.zip","md5":"f3a39227b401a2ce8cdc7e4b7a860aaf","desc":"electron_plus1","mandatory":True},
+        {"file":"electron_plus3.zip","md5":None,"desc":"electron_plus3","mandatory":True},
+        {"file":"electron_plus3.zip","md5":"9aa334b4e8f6d7565e6323e0f77110de","desc":"electron_plus3","mandatory":True},
+        {"file":"electron_plus3.zip","md5":"83e15ca501899b0d5b2ce3f5ef696069","desc":"electron_plus3","mandatory":True},
+        {"file":"electron_plus3.zip","md5":"b60ee811f4b805638478acd5297b16e0","desc":"electron_plus3","mandatory":True},
+        {"file":"electron_plus3.zip","md5":"62f5e1d3dae3a68d8fe4406a6f603dc3","desc":"electron_plus3","mandatory":True},
+        {"file":"electron_plus3.zip","md5":"5c39baa89fe8a40a5167a53cc5ae7791","desc":"electron_plus3","mandatory":True},
     ],
     "enterprise": [
         {"file":"ep128emu/roms/exos21.rom","md5":"f36f24cbb87745fbd2714e4df881db09","desc":"exos21","mandatory":True},
@@ -288,32 +466,57 @@ BIOS_DB = {
         {"file":"ep128emu/roms/zt19hfnt.rom","md5":"653daaf7b9b29c2c4e577f489580f247","desc":"zt19hfnt","mandatory":True},
         {"file":"ep128emu/roms/brd.rom","md5":"6af0402906944fd134004b85097c8524","desc":"brd","mandatory":True},
         {"file":"ep128emu/roms/zt19uk.rom","md5":"228540b6be83ae2acd7569c8ff0f91d0","desc":"zt19uk","mandatory":True},
-        {"file":"ep64.zip","md5":"5ad3baaad3b5156d6b60b34229a676fb","desc":"ep64.zip","mandatory":True},
-        {"file":"ep128.zip","md5":"f36f24cbb87745fbd2714e4df881db09","desc":"ep128.zip","mandatory":True},
-        {"file":"ep64_exdos.zip","md5":"47258d03aec37bc24df5dbc5d50fc9f8","desc":"ep64_exdos.zip","mandatory":True},
+        {"file":"ep64.zip","md5":"5ad3baaad3b5156d6b60b34229a676fb","desc":"ep64","mandatory":True},
+        {"file":"ep128.zip","md5":"f36f24cbb87745fbd2714e4df881db09","desc":"ep128","mandatory":True},
+        {"file":"ep64_exdos.zip","md5":"47258d03aec37bc24df5dbc5d50fc9f8","desc":"ep64_exdos","mandatory":True},
     ],
     "fds": [
         {"file":"disksys.rom","md5":"ca30b50f880eb660a320674ed365ef7a","desc":"disksys","mandatory":True},
     ],
     "fm7": [
-        {"file":"fm7.zip","md5":None,"desc":"fm7.zip","mandatory":True},
-        {"file":"fm77av.zip","md5":None,"desc":"fm77av.zip","mandatory":True},
+        {"file":"fm7.zip","md5":None,"desc":"fm7","mandatory":True},
+        {"file":"fm7.zip","md5":"9f9b7d5615ecdbde2cd26e9306ffef13","desc":"fm7","mandatory":True},
+        {"file":"fm7.zip","md5":"18a461ccaf7ef4e8ecad58cecd3a24b3","desc":"fm7","mandatory":True},
+        {"file":"fm7.zip","md5":"6a5da0404b7ee338df9002cdcabc3068","desc":"fm7","mandatory":True},
+        {"file":"fm7.zip","md5":"a330817f8f7ced752a7bcc8dfba8fd2e","desc":"fm7","mandatory":True},
+        {"file":"fm7.zip","md5":"d19ed5923aaae2ec43dffe7a0daa80cb","desc":"fm7","mandatory":True},
+        {"file":"fm77av.zip","md5":None,"desc":"fm77av","mandatory":True},
+        {"file":"fm77av.zip","md5":"71c96a45b78e88a39cb94c1aabd23d8a","desc":"fm77av","mandatory":True},
+        {"file":"fm77av.zip","md5":"e0f4c0ebee60aee83e863826e59ae1de","desc":"fm77av","mandatory":True},
+        {"file":"fm77av.zip","md5":"ae945a6dfb642b0a5d0529737e8ee5cd","desc":"fm77av","mandatory":True},
+        {"file":"fm77av.zip","md5":"fb83a1a9725c8432acef0c3ce89492e3","desc":"fm77av","mandatory":True},
+        {"file":"fm77av.zip","md5":"7db27dede3e358017d518101850bccfa","desc":"fm77av","mandatory":True},
     ],
     "fmtowns": [
-        {"file":"fmtowns/FMT_DIC.ROM","md5":"8fa4e553f28cfc0c30a0a1e589799942","desc":"FMT_DIC.ROM","mandatory":True},
-        {"file":"fmtowns/FMT_DOS.ROM","md5":"0585b19930d4a7f4c71bcc8a33746588","desc":"FMT_DOS.ROM","mandatory":True},
-        {"file":"fmtowns/FMT_F20.ROM","md5":"ac0c7021e9bf48ca84b51ab651169a88","desc":"FMT_F20.ROM","mandatory":True},
-        {"file":"fmtowns/FMT_FNT.ROM","md5":"b91300e55b70227ce98b59c5f02fa8dd","desc":"FMT_FNT.ROM","mandatory":True},
-        {"file":"fmtowns/FMT_SYS.ROM","md5":"86fb6f7280689259f0ca839dd3dd6cde","desc":"FMT_SYS.ROM","mandatory":True},
-        {"file":"fmtmarty.zip","md5":None,"desc":"fmtmarty.zip","mandatory":True},
-        {"file":"fmtowns.zip","md5":None,"desc":"fmtowns.zip","mandatory":True},
-        {"file":"fmtownsux.zip","md5":None,"desc":"fmtownsux.zip","mandatory":True},
+        {"file":"fmtowns/FMT_DIC.ROM","md5":"8fa4e553f28cfc0c30a0a1e589799942","desc":"FMT_DIC","mandatory":True},
+        {"file":"fmtowns/FMT_DOS.ROM","md5":"0585b19930d4a7f4c71bcc8a33746588","desc":"FMT_DOS","mandatory":True},
+        {"file":"fmtowns/FMT_F20.ROM","md5":"ac0c7021e9bf48ca84b51ab651169a88","desc":"FMT_F20","mandatory":True},
+        {"file":"fmtowns/FMT_FNT.ROM","md5":"b91300e55b70227ce98b59c5f02fa8dd","desc":"FMT_FNT","mandatory":True},
+        {"file":"fmtowns/FMT_SYS.ROM","md5":"86fb6f7280689259f0ca839dd3dd6cde","desc":"FMT_SYS","mandatory":True},
+        {"file":"fmtmarty.zip","md5":None,"desc":"fmtmarty","mandatory":True},
+        {"file":"fmtmarty.zip","md5":"6618519b2c104cf9b7e71a48381b44a9","desc":"fmtmarty","mandatory":True},
+        {"file":"fmtmarty.zip","md5":"75a5c7afb4bc8221bab8cf24db417950","desc":"fmtmarty","mandatory":True},
+        {"file":"fmtowns.zip","md5":None,"desc":"fmtowns","mandatory":True},
+        {"file":"fmtowns.zip","md5":"34847786d7de94b5d1133c956ab1d75d","desc":"fmtowns","mandatory":True},
+        {"file":"fmtowns.zip","md5":"0585b19930d4a7f4c71bcc8a33746588","desc":"fmtowns","mandatory":True},
+        {"file":"fmtowns.zip","md5":"eb44f2093f51eb7159f03e170b13af76","desc":"fmtowns","mandatory":True},
+        {"file":"fmtowns.zip","md5":"feaf8c5675151e00cfe3ad27673bff29","desc":"fmtowns","mandatory":True},
+        {"file":"fmtownsux.zip","md5":None,"desc":"fmtownsux","mandatory":True},
+        {"file":"fmtownsux.zip","md5":"8fa4e553f28cfc0c30a0a1e589799942","desc":"fmtownsux","mandatory":True},
+        {"file":"fmtownsux.zip","md5":"03c8fac9a5f5f5f35fb5de5a5d0d018f","desc":"fmtownsux","mandatory":True},
+        {"file":"fmtownsux.zip","md5":"b91300e55b70227ce98b59c5f02fa8dd","desc":"fmtownsux","mandatory":True},
+        {"file":"fmtownsux.zip","md5":"90b5e01d42aaa93e8f4503a5e94e120b","desc":"fmtownsux","mandatory":True},
+        {"file":"fmtownsux.zip","md5":"1a15f6c1b58ec7e5f850118610a787a7","desc":"fmtownsux","mandatory":True},
     ],
     "gamate": [
-        {"file":"gamate.zip","md5":None,"desc":"gamate.zip","mandatory":True},
+        {"file":"gamate.zip","md5":None,"desc":"gamate","mandatory":True},
+        {"file":"gamate.zip","md5":"b411167df6dd563111729296f4c547f6","desc":"gamate","mandatory":True},
+        {"file":"gamate.zip","md5":"ef67993a94503c4b7798b5901c7dda52","desc":"gamate","mandatory":True},
     ],
     "gamecom": [
-        {"file":"gamecom.zip","md5":None,"desc":"gamecom.zip","mandatory":True},
+        {"file":"gamecom.zip","md5":None,"desc":"gamecom","mandatory":True},
+        {"file":"gamecom.zip","md5":"813364d4863b1d7b7b8fd6a97a416bcf","desc":"gamecom","mandatory":True},
+        {"file":"gamecom.zip","md5":"f7bcefb6daf923c8e5ea2eb69f619efe","desc":"gamecom","mandatory":True},
     ],
     "gamecube": [
         {"file":"GC/EUR/IPL.bin","md5":"db92574caab77a7ec99d4605fd6f2450","desc":"IPL","mandatory":True},
@@ -321,7 +524,8 @@ BIOS_DB = {
         {"file":"GC/USA/IPL.bin","md5":"b17148254a5799684c7d783206504926","desc":"IPL","mandatory":True},
     ],
     "gamepock": [
-        {"file":"gamepock.zip","md5":None,"desc":"gamepock.zip","mandatory":True},
+        {"file":"gamepock.zip","md5":None,"desc":"gamepock","mandatory":True},
+        {"file":"gamepock.zip","md5":"a0dd595eafb407a6a4b4ed800005a394","desc":"gamepock","mandatory":True},
     ],
     "gba": [
         {"file":"gba_bios.bin","md5":"a860e8c0b6d573d191e4ec7db1b1e4f6","desc":"gba_bios","mandatory":True},
@@ -330,61 +534,100 @@ BIOS_DB = {
         {"file":"sgb_bios.bin","md5":"d574d4f9c12f305074798f54c091a8b4","desc":"sgb_bios","mandatory":True},
     ],
     "gmaster": [
-        {"file":"gmaster.zip","md5":None,"desc":"gmaster.zip","mandatory":True},
+        {"file":"gmaster.zip","md5":None,"desc":"gmaster","mandatory":True},
+        {"file":"gmaster.zip","md5":"6bff08b5e5f96de405cd56d5f04a08f8","desc":"gmaster","mandatory":True},
     ],
     "gp32": [
-        {"file":"gp32.zip","md5":None,"desc":"gp32.zip","mandatory":True},
+        {"file":"gp32.zip","md5":None,"desc":"gp32","mandatory":True},
+        {"file":"gp32.zip","md5":"e64ad881b5e1d86547f2edc3034946d9","desc":"gp32","mandatory":True},
+        {"file":"gp32.zip","md5":"f78092f15f6ffe15975901ee4e92c680","desc":"gp32","mandatory":True},
+        {"file":"gp32.zip","md5":"19021cc891119c0872d46e87fc0ffe35","desc":"gp32","mandatory":True},
+        {"file":"gp32.zip","md5":"1e4d3216719acea231b81dfcf6069aef","desc":"gp32","mandatory":True},
+        {"file":"gp32.zip","md5":"cac4b56c0db80922cae75403faef40af","desc":"gp32","mandatory":True},
+        {"file":"gp32.zip","md5":"d4af2bc352bdaf4972ea40902feda114","desc":"gp32","mandatory":True},
     ],
     "gsplus": [
         {"file":"ROM1","md5":"20a0334c447cb069a040ae5be1d938df","desc":"ROM1","mandatory":True},
     ],
     "hikaru": [
-        {"file":"hikaru.zip","md5":"040f9b37a1f802d450379aaec106ec69","desc":"hikaru.zip","mandatory":True},
-        {"file":"mie.zip","md5":"e95415b161121bef35ade12367138c63","desc":"mie.zip","mandatory":True},
-        {"file":"jvs13551.zip","md5":"ee643e8c7369fe7feca610d4daa4a57c","desc":"jvs13551.zip","mandatory":True},
+        {"file":"hikaru.zip","md5":"040f9b37a1f802d450379aaec106ec69","desc":"hikaru","mandatory":True},
+        {"file":"mie.zip","md5":"e95415b161121bef35ade12367138c63","desc":"mie","mandatory":True},
+        {"file":"jvs13551.zip","md5":"ee643e8c7369fe7feca610d4daa4a57c","desc":"jvs13551","mandatory":True},
     ],
     "intellivision": [
         {"file":"exec.bin","md5":"62e761035cb657903761800f4437b8af","desc":"exec","mandatory":True},
         {"file":"grom.bin","md5":"0cd5946c6473e42e8e4c2137785e427f","desc":"grom","mandatory":True},
     ],
     "laser310": [
-        {"file":"laser310.zip","md5":None,"desc":"laser310.zip","mandatory":True},
+        {"file":"laser310.zip","md5":None,"desc":"laser310","mandatory":True},
+        {"file":"laser310.zip","md5":"42c8f9e6c2133ae0e953b89ccbbdb7e2","desc":"laser310","mandatory":True},
+        {"file":"laser310.zip","md5":"f7e5d9a3eb2b57bf5f4e2a4565318a8f","desc":"laser310","mandatory":True},
     ],
     "loopy": [
-        {"file":"casloopy.zip","md5":"0e1d8dc0110ecf8201c0cef11ef4a858","desc":"casloopy.zip","mandatory":True},
+        {"file":"casloopy.zip","md5":"0e1d8dc0110ecf8201c0cef11ef4a858","desc":"casloopy","mandatory":True},
+        {"file":"casloopy.zip","md5":"d527e3ed1bf9bd0661154c202a65c5bd","desc":"casloopy","mandatory":True},
+        {"file":"casloopy.zip","md5":"c0f1c899c9ca098663d046d60779711d","desc":"casloopy","mandatory":True},
     ],
     "lynx": [
-        {"file":"lynxboot.img","md5":"fcd403db69f54290b51035d82f835e7b","desc":"lynxboot.img","mandatory":True},
+        {"file":"lynxboot.img","md5":"fcd403db69f54290b51035d82f835e7b","desc":"lynxboot","mandatory":True},
     ],
     "macintosh": [
-        {"file":"MacII.ROM","md5":"66223be1497460f1e60885eeb35e03cc","desc":"MacII.ROM","mandatory":True},
-        {"file":"MacIIx.ROM","md5":"2a8a4c7f2a38e0ab0771f59a9a0f1ee4","desc":"MacIIx.ROM","mandatory":True},
-        {"file":"mac128k.zip","md5":None,"desc":"mac128k.zip","mandatory":True},
-        {"file":"mackbd_m0110.zip","md5":None,"desc":"mackbd_m0110.zip","mandatory":True},
-        {"file":"mackbd_m0120.zip","md5":None,"desc":"mackbd_m0120.zip","mandatory":True},
-        {"file":"mac512k.zip","md5":None,"desc":"mac512k.zip","mandatory":True},
-        {"file":"macplus.zip","md5":None,"desc":"macplus.zip","mandatory":True},
-        {"file":"macse.zip","md5":None,"desc":"macse.zip","mandatory":True},
-        {"file":"macclasc.zip","md5":None,"desc":"macclasc.zip","mandatory":True},
-        {"file":"mac2fdhd.zip","md5":None,"desc":"mac2fdhd.zip","mandatory":True},
-        {"file":"nb_mdc824.zip","md5":None,"desc":"nb_mdc824.zip","mandatory":True},
-        {"file":"maciix.zip","md5":None,"desc":"maciix.zip","mandatory":True},
-        {"file":"maclc3.zip","md5":None,"desc":"maclc3.zip","mandatory":True},
-        {"file":"mackbd_m0110a.zip","md5":None,"desc":"mackbd_m0110a.zip","mandatory":True},
-        {"file":"nb_image.zip","md5":None,"desc":"nb_image.zip","mandatory":True},
-        {"file":"egret.zip","md5":None,"desc":"egret.zip","mandatory":True},
-        {"file":"adbmodem.zip","md5":None,"desc":"adbmodem.zip","mandatory":True},
-        {"file":"macos3.img","md5":None,"desc":"macos3.img","mandatory":True},
-        {"file":"macos608.img","md5":None,"desc":"macos608.img","mandatory":True},
-        {"file":"macos701.img","md5":None,"desc":"macos701.img","mandatory":True},
-        {"file":"macos75.img","md5":None,"desc":"macos75.img","mandatory":True},
-        {"file":"mac608.chd","md5":None,"desc":"mac608.chd","mandatory":True},
-        {"file":"mac701.chd","md5":None,"desc":"mac701.chd","mandatory":True},
-        {"file":"mac755.chd","md5":None,"desc":"mac755.chd","mandatory":True},
+        {"file":"MacII.ROM","md5":"66223be1497460f1e60885eeb35e03cc","desc":"MacII","mandatory":True},
+        {"file":"MacIIx.ROM","md5":"2a8a4c7f2a38e0ab0771f59a9a0f1ee4","desc":"MacIIx","mandatory":True},
+        {"file":"mac128k.zip","md5":None,"desc":"mac128k","mandatory":True},
+        {"file":"mac128k.zip","md5":"bc04a4252ee96826c1f41f927c145225","desc":"mac128k","mandatory":True},
+        {"file":"mac128k.zip","md5":"409d8b9a04db15b7bfbbd5fcb931bf2e","desc":"mac128k","mandatory":True},
+        {"file":"mackbd_m0110.zip","md5":None,"desc":"mackbd_m0110","mandatory":True},
+        {"file":"mackbd_m0110.zip","md5":"9d09a9a51c9ef3ea5719e19db22e7901","desc":"mackbd_m0110","mandatory":True},
+        {"file":"mackbd_m0120.zip","md5":None,"desc":"mackbd_m0120","mandatory":True},
+        {"file":"mackbd_m0120.zip","md5":"9d09a9a51c9ef3ea5719e19db22e7901","desc":"mackbd_m0120","mandatory":True},
+        {"file":"mac512k.zip","md5":None,"desc":"mac512k","mandatory":True},
+        {"file":"mac512k.zip","md5":"b4118b89fa68a913a225f0cf9a751fae","desc":"mac512k","mandatory":True},
+        {"file":"mac512k.zip","md5":"ab4e461833e98ef7106f24455a07769d","desc":"mac512k","mandatory":True},
+        {"file":"macplus.zip","md5":None,"desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"1467a42dee57ac265d063b3f351189fc","desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"25b1bf85b3b072d957499cef4d7e313f","desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"cf7c3259844245a8967556fa40d81243","desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"d5584762b43a9b1cb24a981f9b9b4198","desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"f83069fd7ff1fb011958f819cbff4c88","desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"875919e2544644cd628f44b5c11db036","desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"efcefe8f11c10541a503d48a07878201","desc":"macplus","mandatory":True},
+        {"file":"macplus.zip","md5":"f4b06da98500df0747a764dfbf1862b9","desc":"macplus","mandatory":True},
+        {"file":"macse.zip","md5":None,"desc":"macse","mandatory":True},
+        {"file":"macse.zip","md5":"9fb38bdcc0d53d9d380897ee53dc1322","desc":"macse","mandatory":True},
+        {"file":"macclasc.zip","md5":None,"desc":"macclasc","mandatory":True},
+        {"file":"macclasc.zip","md5":"c229bb677cb41b84b780c9e38a09173e","desc":"macclasc","mandatory":True},
+        {"file":"mac2fdhd.zip","md5":None,"desc":"mac2fdhd","mandatory":True},
+        {"file":"mac2fdhd.zip","md5":"2a8a4c7f2a38e0ab0771f59a9a0f1ee4","desc":"mac2fdhd","mandatory":True},
+        {"file":"nb_mdc824.zip","md5":None,"desc":"nb_mdc824","mandatory":True},
+        {"file":"nb_mdc824.zip","md5":"7500a6a958247ee6e092f08715f2fff8","desc":"nb_mdc824","mandatory":True},
+        {"file":"maciix.zip","md5":None,"desc":"maciix","mandatory":True},
+        {"file":"maciix.zip","md5":"2a8a4c7f2a38e0ab0771f59a9a0f1ee4","desc":"maciix","mandatory":True},
+        {"file":"maclc3.zip","md5":None,"desc":"maclc3","mandatory":True},
+        {"file":"maclc3.zip","md5":"fa16d49527c4e6e9c0d9e46904133d39","desc":"maclc3","mandatory":True},
+        {"file":"mackbd_m0110a.zip","md5":None,"desc":"mackbd_m0110a","mandatory":True},
+        {"file":"mackbd_m0110a.zip","md5":"9e8ea1552153c5e0f895e247e7d3ec1c","desc":"mackbd_m0110a","mandatory":True},
+        {"file":"nb_image.zip","md5":None,"desc":"nb_image","mandatory":True},
+        {"file":"nb_image.zip","md5":"93155ac7bad0fec36837252bb1e408f2","desc":"nb_image","mandatory":True},
+        {"file":"egret.zip","md5":None,"desc":"egret","mandatory":True},
+        {"file":"egret.zip","md5":"96665499f5cf2bb5b4aae6fdaf0a9fb5","desc":"egret","mandatory":True},
+        {"file":"egret.zip","md5":"b955ecbdf6d2f979f3683dd1d6884643","desc":"egret","mandatory":True},
+        {"file":"egret.zip","md5":"5035d321c5d5fa1eab5ce6bf986676e4","desc":"egret","mandatory":True},
+        {"file":"adbmodem.zip","md5":None,"desc":"adbmodem","mandatory":True},
+        {"file":"adbmodem.zip","md5":"862b8598cecdbc934658c4cb599a8142","desc":"adbmodem","mandatory":True},
+        {"file":"macos3.img","md5":None,"desc":"macos3","mandatory":True},
+        {"file":"macos608.img","md5":None,"desc":"macos608","mandatory":True},
+        {"file":"macos701.img","md5":None,"desc":"macos701","mandatory":True},
+        {"file":"macos75.img","md5":None,"desc":"macos75","mandatory":True},
+        {"file":"mac608.chd","md5":None,"desc":"mac608","mandatory":True},
+        {"file":"mac701.chd","md5":None,"desc":"mac701","mandatory":True},
+        {"file":"mac755.chd","md5":None,"desc":"mac755","mandatory":True},
     ],
     "mc10": [
-        {"file":"mc10.zip","md5":None,"desc":"mc10.zip","mandatory":True},
-        {"file":"alice.zip","md5":None,"desc":"alice.zip","mandatory":True},
+        {"file":"mc10.zip","md5":None,"desc":"mc10","mandatory":True},
+        {"file":"mc10.zip","md5":"f29e94ff36577ffb6a787959e45bfe85","desc":"mc10","mandatory":True},
+        {"file":"alice.zip","md5":None,"desc":"alice","mandatory":True},
+        {"file":"alice.zip","md5":"78af465c2f31cf4e05dec1efda77da01","desc":"alice","mandatory":True},
         {"file":"xroar/mc10.rom","md5":"f29e94ff36577ffb6a787959e45bfe85","desc":"mc10","mandatory":True},
         {"file":"xroar/alice.rom","md5":"78af465c2f31cf4e05dec1efda77da01","desc":"alice","mandatory":True},
     ],
@@ -394,15 +637,15 @@ BIOS_DB = {
         {"file":"bios_CD_J.bin","md5":"278a9397d192149e84e820ac621a8edd","desc":"bios_CD_J","mandatory":True},
     ],
     "msx": [
-        {"file":"MSX.ROM","md5":"364a1a579fe5cb8dba54519bcfcdac0d","desc":"MSX.ROM","mandatory":True},
+        {"file":"MSX.ROM","md5":"364a1a579fe5cb8dba54519bcfcdac0d","desc":"MSX","mandatory":True},
     ],
     "msx1": [
         {"file":"openmsx/px-7_pbasic.rom","md5":"281809cafe63437fc4bffb3033fbd0db","desc":"px-7_pbasic","mandatory":True},
         {"file":"openmsx/px-7_basic-bios1.rom","md5":"9218f6dd89f7ba01e3090d44721b4260","desc":"px-7_basic-bios1","mandatory":True},
     ],
     "msx2": [
-        {"file":"MSX2.ROM","md5":"ec3a01c91f24fbddcbcab0ad301bc9ef","desc":"MSX2.ROM","mandatory":True},
-        {"file":"MSX2EXT.ROM","md5":"2183c2aff17cf4297bdb496de78c2e8a","desc":"MSX2EXT.ROM","mandatory":True},
+        {"file":"MSX2.ROM","md5":"ec3a01c91f24fbddcbcab0ad301bc9ef","desc":"MSX2","mandatory":True},
+        {"file":"MSX2EXT.ROM","md5":"2183c2aff17cf4297bdb496de78c2e8a","desc":"MSX2EXT","mandatory":True},
     ],
     "msx2+": [
         {"file":"openmsx/fs-a1wsx_kanjifont.rom","md5":"acf53887c2d2783dc059a9b442c86b90","desc":"fs-a1wsx_kanjifont","mandatory":True},
@@ -418,34 +661,70 @@ BIOS_DB = {
     "msxturbor": [
         {"file":"openmsx/fs-a1gt_firmware.rom","md5":"af17a344bcc177b97a4888c4c559f3ae","desc":"fs-a1gt_firmware","mandatory":True},
         {"file":"openmsx/fs-a1gt_kanjifont.rom","md5":"acf53887c2d2783dc059a9b442c86b90","desc":"fs-a1gt_kanjifont","mandatory":True},
-        {"file":"openmsx/ide250.zip","md5":"afa4b5f2944334f84971af814a24bd5a","desc":"ide250.zip","mandatory":True},
+        {"file":"openmsx/ide250.zip","md5":"afa4b5f2944334f84971af814a24bd5a","desc":"ide250","mandatory":True},
         {"file":"openmsx/phc-70fd2_basickun.rom","md5":"2ce20986da024e9a0e271961c6bc9f01","desc":"phc-70fd2_basickun","mandatory":True},
         {"file":"openmsx/yrw801.rom","md5":"42af93619160ef2116416f74a6cb12f2","desc":"yrw801","mandatory":True},
     ],
     "mz2000": [
-        {"file":"mz2000.zip","md5":None,"desc":"mz2000.zip","mandatory":True},
+        {"file":"mz2000.zip","md5":None,"desc":"mz2000","mandatory":True},
+        {"file":"mz2000.zip","md5":"f8b599b75ad6ff3eeaeb58ccc0190684","desc":"mz2000","mandatory":True},
+        {"file":"mz2000.zip","md5":"dea49b39998885631db16de1176e71b9","desc":"mz2000","mandatory":True},
     ],
     "mz2500": [
-        {"file":"mz2500.zip","md5":None,"desc":"mz2500.zip","mandatory":True},
+        {"file":"mz2500.zip","md5":None,"desc":"mz2500","mandatory":True},
+        {"file":"mz2500.zip","md5":"714ddaf418ccf0018e4cc7e31694b3d8","desc":"mz2500","mandatory":True},
+        {"file":"mz2500.zip","md5":"96f2fdff0deba58611ed4d67705b539d","desc":"mz2500","mandatory":True},
+        {"file":"mz2500.zip","md5":"88cd64f7bdd23ca6ea57b173254ead82","desc":"mz2500","mandatory":True},
+        {"file":"mz2500.zip","md5":"3d5d1f6ba9d1f04378891c35663bd3a8","desc":"mz2500","mandatory":True},
+        {"file":"mz2500.zip","md5":"eea42ca607369a225dbd9d11ab48bfd0","desc":"mz2500","mandatory":True},
+        {"file":"mz2500.zip","md5":"04843d14a8e2f69a7fcaff394a8cc012","desc":"mz2500","mandatory":True},
     ],
     "mz700": [
-        {"file":"mz700.zip","md5":None,"desc":"mz700.zip","mandatory":True},
+        {"file":"mz700.zip","md5":None,"desc":"mz700","mandatory":True},
+        {"file":"mz700.zip","md5":"27990ced7cb97dd80356f517aa705010","desc":"mz700","mandatory":True},
+        {"file":"mz700.zip","md5":"e9045d57e8574f3eb3f775c02369fbfe","desc":"mz700","mandatory":True},
     ],
     "mz800": [
-        {"file":"mz800.zip","md5":None,"desc":"mz800.zip","mandatory":True},
+        {"file":"mz800.zip","md5":None,"desc":"mz800","mandatory":True},
+        {"file":"mz800.zip","md5":"7d3909267b3f3e6ce7aa999de0ded226","desc":"mz800","mandatory":True},
     ],
     "mz80k": [
-        {"file":"mz80k.zip","md5":None,"desc":"mz80k.zip","mandatory":True},
-        {"file":"mz80kj.zip","md5":None,"desc":"mz80kj.zip","mandatory":True},
+        {"file":"mz80k.zip","md5":None,"desc":"mz80k","mandatory":True},
+        {"file":"mz80k.zip","md5":"5db7707d120c835751899b0d1df5ad39","desc":"mz80k","mandatory":True},
+        {"file":"mz80k.zip","md5":"3380dff179941e96851cfee7156e31de","desc":"mz80k","mandatory":True},
+        {"file":"mz80kj.zip","md5":None,"desc":"mz80kj","mandatory":True},
+        {"file":"mz80kj.zip","md5":"e5413f1a0d94726156dcae7d63f8f35f","desc":"mz80kj","mandatory":True},
+        {"file":"mz80kj.zip","md5":"4138784bdd2e2cbacd6c55eff195b2ac","desc":"mz80kj","mandatory":True},
     ],
     "n64dd": [
         {"file":"64DD_IPL.bin","md5":"8d3d9f294b6e174bc7b1d2fd1c727530","desc":"64DD_IPL","mandatory":True},
     ],
     "naomi": [
-        {"file":"dc/naomi.zip","md5":"eb4099aeb42ef089cfe94f8fe95e51f6","desc":"naomi.zip","mandatory":True},
+        {"file":"dc/naomi.zip","md5":"eb4099aeb42ef089cfe94f8fe95e51f6","desc":"naomi","mandatory":True},
     ],
     "naomi2": [
-        {"file":"dc/naomi2.zip","md5":None,"desc":"naomi2.zip","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":None,"desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"728bfe038ce280872057e365ebfc0fee","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"baf83367044924067e09856ba164aa6f","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"6f8ad6e3ab04c8ae1cbcaa652b91cf4e","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"f3f39513484df216d9979f6ae7577942","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"ab046e62c51d67fb89eade2b8d5f6a8d","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"096a5217ff6e6c6cafe65a03336760ab","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"659d579ba9aef5b025d87323044e83f4","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"cbe0984d03d73869c23da5a3dd2ce207","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"b624ec7b3b90fdf3be103cdfb1679d1d","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"a9d82db14b823a5a57885bea1a998eb7","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"3b1315be24dc8d17f4fa18f3bfc5fe5c","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"0143cf852cb2a8a41f217bc688f62105","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"8b88c1f5a06e9b560e887c3b9f879237","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"b49702e4fadb3b5f9143a3d20afd04b5","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"ecadb008179ca1e6f4fe3fa091ab5df2","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"edeed38a9795e062a9af28c3eba22040","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"14e6bffff0d4dff6a5a547e7c43680ff","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"689d2228b00fb59781f82af6e8ecdb78","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"8373a11106c1c2fc21ac839f75ea488f","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"7eecfb8e8f82b47ffab92a0c5528100e","desc":"naomi2","mandatory":True},
+        {"file":"dc/naomi2.zip","md5":"960ece0dc22a7c5ff81c812a2993e7cc","desc":"naomi2","mandatory":True},
     ],
     "nds": [
         {"file":"firmware.bin","md5":None,"desc":"firmware","mandatory":True},
@@ -457,7 +736,7 @@ BIOS_DB = {
         {"file":"dsi_nand.bin","md5":None,"desc":"dsi_nand","mandatory":True},
     ],
     "neogeo": [
-        {"file":"neogeo.zip","md5":"dffb72f116d36d025068b23970a4f6df","desc":"neogeo.zip","mandatory":True},
+        {"file":"neogeo.zip","md5":"dffb72f116d36d025068b23970a4f6df","desc":"neogeo","mandatory":True},
     ],
     "neogeocd": [
         {"file":"neocd/neocd_f.rom","md5":"8834880c33164ccbe6476b559f3e37de","desc":"neocd_f","mandatory":True},
@@ -480,51 +759,72 @@ BIOS_DB = {
         {"file":"Oric/colour.rom","md5":"c888b36bf0fc222c3585c3fabe556d21","desc":"colour","mandatory":True},
     ],
     "pc60": [
-        {"file":"pc6001.zip","md5":"2a13a60acf99a659144655b6c9e39b92","desc":"pc6001.zip","mandatory":True},
-        {"file":"pc6001a.zip","md5":"8665e123c7d6b167677153f05a2f9c86","desc":"pc6001a.zip","mandatory":True},
-        {"file":"pc6001mk2.zip","md5":"ec0fced1d7f242a823c6d6ebf9772045","desc":"pc6001mk2.zip","mandatory":True},
-        {"file":"pc6001mk2sr.zip","md5":"bef7865bdc29009350e308935a8b2b17","desc":"pc6001mk2sr.zip","mandatory":True},
+        {"file":"pc6001.zip","md5":"2a13a60acf99a659144655b6c9e39b92","desc":"pc6001","mandatory":True},
+        {"file":"pc6001.zip","md5":"9153f89e83f94f5d1cfe0a4e75d03372","desc":"pc6001","mandatory":True},
+        {"file":"pc6001.zip","md5":"240738391e23f9b0337ab122df8ed7c0","desc":"pc6001","mandatory":True},
+        {"file":"pc6001a.zip","md5":"8665e123c7d6b167677153f05a2f9c86","desc":"pc6001a","mandatory":True},
+        {"file":"pc6001a.zip","md5":"7a740d0745e32e171115122442af909c","desc":"pc6001a","mandatory":True},
+        {"file":"pc6001mk2.zip","md5":"ec0fced1d7f242a823c6d6ebf9772045","desc":"pc6001mk2","mandatory":True},
+        {"file":"pc6001mk2.zip","md5":"808a4172c0e9cf2adf7c44fc8c549151","desc":"pc6001mk2","mandatory":True},
+        {"file":"pc6001mk2.zip","md5":"21f8cf17035d05e3b6b792f43246b1c0","desc":"pc6001mk2","mandatory":True},
+        {"file":"pc6001mk2.zip","md5":"638ea8e59a73fa4d8c6a6153b500dab9","desc":"pc6001mk2","mandatory":True},
+        {"file":"pc6001mk2.zip","md5":"8b2e909ba293170e462057ba932ff57c","desc":"pc6001mk2","mandatory":True},
+        {"file":"pc6001mk2sr.zip","md5":"bef7865bdc29009350e308935a8b2b17","desc":"pc6001mk2sr","mandatory":True},
+        {"file":"pc6001mk2sr.zip","md5":"7eca26109db4c664826018a0d2e1d0d7","desc":"pc6001mk2sr","mandatory":True},
+        {"file":"pc6001mk2sr.zip","md5":"9d61f3cbd47c4a281c5241c4f1d80919","desc":"pc6001mk2sr","mandatory":True},
     ],
     "pc80": [
-        {"file":"pc8001.zip","md5":None,"desc":"pc8001.zip","mandatory":True},
-        {"file":"pc8001mk2sr.zip","md5":None,"desc":"pc8001mk2sr.zip","mandatory":True},
+        {"file":"pc8001.zip","md5":None,"desc":"pc8001","mandatory":True},
+        {"file":"pc8001.zip","md5":"f374db2869f7f44356ede51e94b4c5b6","desc":"pc8001","mandatory":True},
+        {"file":"pc8001.zip","md5":"f1f6109541a89b626d4faf3f92ce5d75","desc":"pc8001","mandatory":True},
+        {"file":"pc8001.zip","md5":"36a73378118eb9a610d50a8b5098c404","desc":"pc8001","mandatory":True},
+        {"file":"pc8001.zip","md5":"cd428f9ee8ff9f84c60beb7a8a0ef628","desc":"pc8001","mandatory":True},
+        {"file":"pc8001mk2sr.zip","md5":None,"desc":"pc8001mk2sr","mandatory":True},
+        {"file":"pc8001mk2sr.zip","md5":"f0f4a4c18bc76134e1fa85ddb91d04ed","desc":"pc8001mk2sr","mandatory":True},
+        {"file":"pc8001mk2sr.zip","md5":"aced63c7fece13a1b075ea2cde93929b","desc":"pc8001mk2sr","mandatory":True},
+        {"file":"pc8001mk2sr.zip","md5":"a1ff399365f5e3aa0607b6f34e313a51","desc":"pc8001mk2sr","mandatory":True},
+        {"file":"pc8001mk2sr.zip","md5":"018073063b1ae83a2e8a3ca127df78e5","desc":"pc8001mk2sr","mandatory":True},
+        {"file":"pc8001mk2sr.zip","md5":"d81c6d5d7ad1a4bbbd6ae22a01257603","desc":"pc8001mk2sr","mandatory":True},
     ],
     "pc88": [
-        {"file":"quasi88/N88.ROM","md5":"4f984e04a99d56c4cfe36115415d6eb8","desc":"N88.ROM","mandatory":True},
-        {"file":"quasi88/N88SUB.ROM","md5":"793f86784e5608352a5d7f03f03e0858","desc":"N88SUB.ROM","mandatory":True},
-        {"file":"quasi88/N88N.ROM","md5":"2ff07b8769367321128e03924af668a0","desc":"N88N.ROM","mandatory":True},
-        {"file":"quasi88/N88KNJ1.ROM","md5":"d81c6d5d7ad1a4bbbd6ae22a01257603","desc":"N88KNJ1.ROM","mandatory":True},
-        {"file":"quasi88/N88EXT0.ROM","md5":"d675a2ca186c6efcd6277b835de4c7e5","desc":"N88EXT0.ROM","mandatory":True},
-        {"file":"quasi88/N88EXT1.ROM","md5":"e844534dfe5744b381444dbe61ef1b66","desc":"N88EXT1.ROM","mandatory":True},
-        {"file":"quasi88/N88EXT2.ROM","md5":"6548fa45061274dee1ea8ae1e9e93910","desc":"N88EXT2.ROM","mandatory":True},
-        {"file":"quasi88/N88EXT3.ROM","md5":"fc4b76a402ba501e6ba6de4b3e8b4273","desc":"N88EXT3.ROM","mandatory":True},
+        {"file":"quasi88/N88.ROM","md5":"4f984e04a99d56c4cfe36115415d6eb8","desc":"N88","mandatory":True},
+        {"file":"quasi88/N88SUB.ROM","md5":"793f86784e5608352a5d7f03f03e0858","desc":"N88SUB","mandatory":True},
+        {"file":"quasi88/N88N.ROM","md5":"2ff07b8769367321128e03924af668a0","desc":"N88N","mandatory":True},
+        {"file":"quasi88/N88KNJ1.ROM","md5":"d81c6d5d7ad1a4bbbd6ae22a01257603","desc":"N88KNJ1","mandatory":True},
+        {"file":"quasi88/N88EXT0.ROM","md5":"d675a2ca186c6efcd6277b835de4c7e5","desc":"N88EXT0","mandatory":True},
+        {"file":"quasi88/N88EXT1.ROM","md5":"e844534dfe5744b381444dbe61ef1b66","desc":"N88EXT1","mandatory":True},
+        {"file":"quasi88/N88EXT2.ROM","md5":"6548fa45061274dee1ea8ae1e9e93910","desc":"N88EXT2","mandatory":True},
+        {"file":"quasi88/N88EXT3.ROM","md5":"fc4b76a402ba501e6ba6de4b3e8b4273","desc":"N88EXT3","mandatory":True},
     ],
     "pc98": [
-        {"file":"np2kai/BIOS.ROM","md5":"e246140dec5124c5e404869a84caefce","desc":"BIOS.ROM","mandatory":True},
-        {"file":"np2kai/FONT.ROM","md5":"2af6179d7de4893ea0b705c00e9a98d6","desc":"FONT.ROM","mandatory":True},
-        {"file":"np2kai/SOUND.ROM","md5":"caf90f22197aed6f14c471c21e64658d","desc":"SOUND.ROM","mandatory":True},
-        {"file":"np2kai/ITF.ROM","md5":"e9fc3890963b12cf15d0a2eea5815b72","desc":"ITF.ROM","mandatory":True},
-        {"file":"np2kai/font.bmp","md5":"7da1e5b7c482d4108d22a5b09631d967","desc":"font.bmp","mandatory":True},
+        {"file":"np2kai/BIOS.ROM","md5":"e246140dec5124c5e404869a84caefce","desc":"BIOS","mandatory":True},
+        {"file":"np2kai/FONT.ROM","md5":"2af6179d7de4893ea0b705c00e9a98d6","desc":"FONT","mandatory":True},
+        {"file":"np2kai/SOUND.ROM","md5":"caf90f22197aed6f14c471c21e64658d","desc":"SOUND","mandatory":True},
+        {"file":"np2kai/ITF.ROM","md5":"e9fc3890963b12cf15d0a2eea5815b72","desc":"ITF","mandatory":True},
+        {"file":"np2kai/font.bmp","md5":"7da1e5b7c482d4108d22a5b09631d967","desc":"font","mandatory":True},
     ],
     "pcengine": [
-        {"file":"syscard3.pce","md5":"38179df8f4ac870017db21ebcbf53114","desc":"syscard3.pce","mandatory":True},
+        {"file":"syscard3.pce","md5":"38179df8f4ac870017db21ebcbf53114","desc":"syscard3","mandatory":True},
     ],
     "pcfx": [
         {"file":"pcfx.rom","md5":"08e36edbea28a017f79f8d4f7ff9b6d7","desc":"pcfx","mandatory":True},
     ],
     "pcw": [
-        {"file":"pcw8256.zip","md5":None,"desc":"pcw8256.zip","mandatory":True},
-        {"file":"pcw9512.zip","md5":None,"desc":"pcw9512.zip","mandatory":True},
+        {"file":"pcw8256.zip","md5":None,"desc":"pcw8256","mandatory":True},
+        {"file":"pcw8256.zip","md5":"a846b928562ca8281bc279f41b475a06","desc":"pcw8256","mandatory":True},
+        {"file":"pcw8256.zip","md5":"cefe4b0b7c701c1a80130e3390b007f5","desc":"pcw8256","mandatory":True},
+        {"file":"pcw9512.zip","md5":None,"desc":"pcw9512","mandatory":True},
+        {"file":"pcw9512.zip","md5":"b664af93987d575b0248832832c61505","desc":"pcw9512","mandatory":True},
     ],
     "ps2": [
         {"file":"ps2/ps2-0230a-20080220.bin","md5":"21038400dc633070a78ad53090c53017","desc":"ps2-0230a-20080220","mandatory":True},
     ],
     "ps3": [
-        {"file":"PS3UPDAT.PUP","md5":"05fe32f5dc8c78acbcd84d36ee7fdc5b","desc":"PS3UPDAT.PUP","mandatory":True},
+        {"file":"PS3UPDAT.PUP","md5":"05fe32f5dc8c78acbcd84d36ee7fdc5b","desc":"PS3UPDAT","mandatory":True},
     ],
     "psvita": [
-        {"file":"psvita/PSP2UPDAT.PUP","md5":"59dcf059d3328fb67be7e51f8aa33418","desc":"PSP2UPDAT.PUP","mandatory":True},
-        {"file":"psvita/PSVUPDAT.PUP","md5":"f2c7b12fe85496ec88a0391b514d6e3b","desc":"PSVUPDAT.PUP","mandatory":True},
+        {"file":"psvita/PSP2UPDAT.PUP","md5":"59dcf059d3328fb67be7e51f8aa33418","desc":"PSP2UPDAT","mandatory":True},
+        {"file":"psvita/PSVUPDAT.PUP","md5":"f2c7b12fe85496ec88a0391b514d6e3b","desc":"PSVUPDAT","mandatory":True},
     ],
     "psx": [
         {"file":"psxonpsp660.bin","md5":"c53ca5908936d412331790f4426c6c33","desc":"psxonpsp660","mandatory":True},
@@ -536,10 +836,11 @@ BIOS_DB = {
         {"file":"scph7001.bin","md5":"1e68c231d0896b7eadcad1d7d8e76129","desc":"scph7001","mandatory":True},
     ],
     "pv2000": [
-        {"file":"pv2000.zip","md5":None,"desc":"pv2000.zip","mandatory":True},
+        {"file":"pv2000.zip","md5":None,"desc":"pv2000","mandatory":True},
     ],
     "rx78": [
-        {"file":"rx78.zip","md5":None,"desc":"rx78.zip","mandatory":True},
+        {"file":"rx78.zip","md5":None,"desc":"rx78","mandatory":True},
+        {"file":"rx78.zip","md5":"f613b15c4b965013e4827d2ad79c7080","desc":"rx78","mandatory":True},
     ],
     "satellaview": [
         {"file":"BS-X.bin","md5":"96cf17bf589fcbfa6f8de2dc84f19fa2","desc":"BS-X","mandatory":True},
@@ -547,19 +848,19 @@ BIOS_DB = {
     "saturn": [
         {"file":"sega_101.bin","md5":"85ec9ca47d8f6807718151cbcca8b964","desc":"sega_101","mandatory":True},
         {"file":"mpr-17933.bin","md5":"3240872c70984b6cbfda1586cab68dbe","desc":"mpr-17933","mandatory":True},
-        {"file":"mpr-18811-mx.ic1","md5":"255113ba943c92a54facd25a10fd780c","desc":"mpr-18811-mx.ic1","mandatory":True},
-        {"file":"mpr-19367-mx.ic1","md5":"1cd19988d1d72a3e7caa0b73234c96b4","desc":"mpr-19367-mx.ic1","mandatory":True},
+        {"file":"mpr-18811-mx.ic1","md5":"255113ba943c92a54facd25a10fd780c","desc":"mpr-18811-mx","mandatory":True},
+        {"file":"mpr-19367-mx.ic1","md5":"1cd19988d1d72a3e7caa0b73234c96b4","desc":"mpr-19367-mx","mandatory":True},
         {"file":"saturn_bios.bin","md5":"af5828fdff51384f99b3c4926be27762","desc":"saturn_bios","mandatory":True},
     ],
     "scummvm": [
-        {"file":"scummvm/extra/MT32_PCM.ROM","md5":"89e42e386e82e0cacb4a2704a03706ca","desc":"MT32_PCM.ROM","mandatory":True},
-        {"file":"scummvm/extra/MT32_CONTROL.ROM","md5":"5626206284b22c2734f3e9efefcd2675","desc":"MT32_CONTROL.ROM","mandatory":True},
+        {"file":"scummvm/extra/MT32_PCM.ROM","md5":"89e42e386e82e0cacb4a2704a03706ca","desc":"MT32_PCM","mandatory":True},
+        {"file":"scummvm/extra/MT32_CONTROL.ROM","md5":"5626206284b22c2734f3e9efefcd2675","desc":"MT32_CONTROL","mandatory":True},
     ],
     "scv": [
-        {"file":"upd7801g.s01","md5":"635a978fd40db9a18ee44eff449fc126","desc":"upd7801g.s01","mandatory":True},
+        {"file":"upd7801g.s01","md5":"635a978fd40db9a18ee44eff449fc126","desc":"upd7801g","mandatory":True},
     ],
     "segaai": [
-        {"file":"segaai.zip","md5":None,"desc":"segaai.zip","mandatory":True},
+        {"file":"segaai.zip","md5":None,"desc":"segaai","mandatory":True},
     ],
     "segacd": [
         {"file":"bios_CD_E.bin","md5":"e66fa1dc5820d254611fdcdba0662372","desc":"bios_CD_E","mandatory":True},
@@ -569,105 +870,165 @@ BIOS_DB = {
     "sgb": [
         {"file":"sgb_boot.bin","md5":"d574d4f9c12f305074798f54c091a8b4","desc":"sgb_boot","mandatory":True},
         {"file":"sgb2_boot.bin","md5":"e0430bca9925fb9882148fd2dc2418c1","desc":"sgb2_boot","mandatory":True},
-        {"file":"SGB1.sfc","md5":"b15ddb15721c657d82c5bab6db982ee9","desc":"SGB1.sfc","mandatory":True},
-        {"file":"SGB2.sfc","md5":"8ecd73eb4edf7ed7e81aef1be80031d5","desc":"SGB2.sfc","mandatory":True},
+        {"file":"SGB1.sfc","md5":"b15ddb15721c657d82c5bab6db982ee9","desc":"SGB1","mandatory":True},
+        {"file":"SGB2.sfc","md5":"8ecd73eb4edf7ed7e81aef1be80031d5","desc":"SGB2","mandatory":True},
     ],
     "socrates": [
-        {"file":"socrates.zip","md5":None,"desc":"socrates.zip","mandatory":True},
+        {"file":"socrates.zip","md5":None,"desc":"socrates","mandatory":True},
+        {"file":"socrates.zip","md5":"0efac0c2cc168c0d495e1c4e04ea9f5a","desc":"socrates","mandatory":True},
+        {"file":"socrates.zip","md5":"99af124aa300ecd44f5dc9d5a2599778","desc":"socrates","mandatory":True},
+        {"file":"socrates.zip","md5":"7046c2b27f51c9a5d33b4d6103f29acf","desc":"socrates","mandatory":True},
+        {"file":"socrates.zip","md5":"6878302c362321eeee7e40d285cf7d30","desc":"socrates","mandatory":True},
+        {"file":"socrates.zip","md5":"31c29c57e3d3e6788ba5817eaaa8b17a","desc":"socrates","mandatory":True},
     ],
     "sufami": [
         {"file":"STBIOS.bin","md5":"d3a44ba7d42a74d3ac58cb9c14c6a5ca","desc":"STBIOS","mandatory":True},
     ],
     "supergrafx": [
-        {"file":"syscard3.pce","md5":"38179df8f4ac870017db21ebcbf53114","desc":"syscard3.pce","mandatory":True},
+        {"file":"syscard3.pce","md5":"38179df8f4ac870017db21ebcbf53114","desc":"syscard3","mandatory":True},
     ],
     "supracan": [
-        {"file":"supracan.zip","md5":"53c4343e062bb3b337370bbb58e64d16","desc":"supracan.zip","mandatory":True},
-        {"file":"umc6650.zip","md5":"da6cebe6b22a91a34a67074adbbec3a3","desc":"umc6650.zip","mandatory":True},
+        {"file":"supracan.zip","md5":"53c4343e062bb3b337370bbb58e64d16","desc":"supracan","mandatory":True},
+        {"file":"umc6650.zip","md5":"da6cebe6b22a91a34a67074adbbec3a3","desc":"umc6650","mandatory":True},
     ],
     "ti99": [
-        {"file":"ti99_4a.zip","md5":None,"desc":"ti99_4a.zip","mandatory":True},
-        {"file":"ti99_speech.zip","md5":None,"desc":"ti99_speech.zip","mandatory":True},
+        {"file":"ti99_4a.zip","md5":None,"desc":"ti99_4a","mandatory":True},
+        {"file":"ti99_4a.zip","md5":"9bb51dfab49b9a7cf832cc1fb6f203e6","desc":"ti99_4a","mandatory":True},
+        {"file":"ti99_4a.zip","md5":"7f1864c3dac31c86e2ae6ce43ccead07","desc":"ti99_4a","mandatory":True},
+        {"file":"ti99_4a.zip","md5":"a1f77a07243a334e13509a89bff944f2","desc":"ti99_4a","mandatory":True},
+        {"file":"ti99_4a.zip","md5":"6f495eef767b3f2821a2ec32d0047891","desc":"ti99_4a","mandatory":True},
+        {"file":"ti99_4a.zip","md5":"0dcb961cf84c69b2171a565427c7c6c7","desc":"ti99_4a","mandatory":True},
+        {"file":"ti99_speech.zip","md5":None,"desc":"ti99_speech","mandatory":True},
+        {"file":"ti99_speech.zip","md5":"491c1195f6345cb6b725096b69d81ec9","desc":"ti99_speech","mandatory":True},
+        {"file":"ti99_speech.zip","md5":"206daf498ac5d0141de1d47d38afd899","desc":"ti99_speech","mandatory":True},
     ],
     "triforce": [
-        {"file":"saves/dolphin-emu/Triforce/segaboot.gcm","md5":"2ef01c0e93f7ee3a0a4b139aa14728b9","desc":"segaboot.gcm","mandatory":True},
+        {"file":"saves/dolphin-emu/Triforce/segaboot.gcm","md5":"2ef01c0e93f7ee3a0a4b139aa14728b9","desc":"segaboot","mandatory":True},
     ],
     "trs80": [
-        {"file":"trs80.zip","md5":None,"desc":"trs80.zip","mandatory":True},
-        {"file":"trs80m3.zip","md5":None,"desc":"trs80m3.zip","mandatory":True},
-        {"file":"trs80m4.zip","md5":None,"desc":"trs80m4.zip","mandatory":True},
-        {"file":"trs80m4p.zip","md5":None,"desc":"trs80m4p.zip","mandatory":True},
+        {"file":"trs80.zip","md5":None,"desc":"trs80","mandatory":True},
+        {"file":"trs80.zip","md5":None,"desc":"trs80","mandatory":True},
+        {"file":"trs80m3.zip","md5":None,"desc":"trs80m3","mandatory":True},
+        {"file":"trs80m4.zip","md5":None,"desc":"trs80m4","mandatory":True},
+        {"file":"trs80m4.zip","md5":None,"desc":"trs80m4","mandatory":True},
+        {"file":"trs80m4p.zip","md5":None,"desc":"trs80m4p","mandatory":True},
     ],
     "tutor": [
-        {"file":"tutor.zip","md5":None,"desc":"tutor.zip","mandatory":True},
+        {"file":"tutor.zip","md5":None,"desc":"tutor","mandatory":True},
+        {"file":"tutor.zip","md5":"196ba41dd1184fe754390534cc273116","desc":"tutor","mandatory":True},
+        {"file":"tutor.zip","md5":"5770834c10946ac2c3617504ba530884","desc":"tutor","mandatory":True},
     ],
     "tvc": [
         {"file":"ep128emu/roms/tvc22_sys.rom","md5":"8c54285f541930cde766069942bad0f2","desc":"tvc22_sys","mandatory":True},
         {"file":"ep128emu/roms/tvc22_ext.rom","md5":"5ce95a26ceed5bec73995d83568da9cf","desc":"tvc22_ext","mandatory":True},
         {"file":"ep128emu/roms/tvcfileio.rom","md5":"a2cf86ba8e7fc58b242137fe59036832","desc":"tvcfileio","mandatory":True},
         {"file":"ep128emu/roms/tvc_dos12d.rom","md5":"88dc7876d584f90e4106f91444ab23b7","desc":"tvc_dos12d","mandatory":True},
-        {"file":"tvc64.zip","md5":None,"desc":"tvc64.zip","mandatory":True},
+        {"file":"tvc64.zip","md5":None,"desc":"tvc64","mandatory":True},
+        {"file":"tvc64.zip","md5":"bed323c85b629e7ccdd318ef8a21904b","desc":"tvc64","mandatory":True},
+        {"file":"tvc64.zip","md5":"be6a66ccdd3bf87992678138f3971090","desc":"tvc64","mandatory":True},
+        {"file":"tvc64.zip","md5":"c451c518138f855257ac05673532e162","desc":"tvc64","mandatory":True},
+        {"file":"tvc64.zip","md5":"d3ea34ee3ed3d0c7ae3001bd0d9a4ae9","desc":"tvc64","mandatory":True},
+        {"file":"tvc64.zip","md5":"198182b80de1f1c54904870ae0639471","desc":"tvc64","mandatory":True},
+        {"file":"tvc64.zip","md5":"5ce95a26ceed5bec73995d83568da9cf","desc":"tvc64","mandatory":True},
     ],
     "vectrex": [
-        {"file":"vectrex.zip","md5":None,"desc":"vectrex.zip","mandatory":True},
+        {"file":"vectrex.zip","md5":None,"desc":"vectrex","mandatory":True},
+        {"file":"vectrex.zip","md5":"ab082fa8c8e632dd68589a8c7741388f","desc":"vectrex","mandatory":True},
+        {"file":"vectrex.zip","md5":"a9c238473229912eb757ff3dfe6f4631","desc":"vectrex","mandatory":True},
     ],
     "vgmplay": [
-        {"file":"qsound.zip","md5":None,"desc":"qsound.zip","mandatory":True},
-        {"file":"ym2413.zip","md5":None,"desc":"ym2413.zip","mandatory":True},
-        {"file":"ym2608.zip","md5":None,"desc":"ym2608.zip","mandatory":True},
+        {"file":"qsound.zip","md5":None,"desc":"qsound","mandatory":True},
+        {"file":"qsound.zip","md5":"108b113a596e800a02fece73f784eeb0","desc":"qsound","mandatory":True},
+        {"file":"ym2413.zip","md5":None,"desc":"ym2413","mandatory":True},
+        {"file":"ym2413.zip","md5":"96c11a92992bdff7f7e9d98a52621e1f","desc":"ym2413","mandatory":True},
+        {"file":"ym2608.zip","md5":None,"desc":"ym2608","mandatory":True},
+        {"file":"ym2608.zip","md5":"8740932cda05e518a9955f1d08d6786f","desc":"ym2608","mandatory":True},
     ],
     "videopacplus": [
         {"file":"g7400.bin","md5":"c500ff71236068e0dc0d0603d265ae76","desc":"g7400","mandatory":True},
         {"file":"jopac.bin","md5":"279008e4a0db2dc5f1c048853b033828","desc":"jopac","mandatory":True},
     ],
     "vis": [
-        {"file":"vis.zip","md5":None,"desc":"vis.zip","mandatory":True},
+        {"file":"vis.zip","md5":None,"desc":"vis","mandatory":True},
+        {"file":"vis.zip","md5":"ebf432d3b09f694db1c62018eb2ab471","desc":"vis","mandatory":True},
+        {"file":"vis.zip","md5":"758f8fec271fbf526bb22b36e88f154b","desc":"vis","mandatory":True},
     ],
     "vsmile": [
-        {"file":"vsmile.zip","md5":None,"desc":"vsmile.zip","mandatory":True},
+        {"file":"vsmile.zip","md5":None,"desc":"vsmile","mandatory":True},
+        {"file":"vsmile.zip","md5":"851ff77a89ec3f4f2793eb4aede30e5f","desc":"vsmile","mandatory":True},
+        {"file":"vsmile.zip","md5":"f41fcc19ebe1e90fa359cd0df6293fab","desc":"vsmile","mandatory":True},
+        {"file":"vsmile.zip","md5":"11e59253c578c8f16ea2375ec398e4e9","desc":"vsmile","mandatory":True},
     ],
     "x1": [
-        {"file":"xmil/IPLROM.X1","md5":"eeeea1cd29c6e0e8b094790ae969bfa7","desc":"IPLROM.X1","mandatory":True},
-        {"file":"xmil/iplrom.x1t","md5":"56c28adcf1f3a2f87cf3d57c378013f5","desc":"iplrom.x1t","mandatory":True},
+        {"file":"xmil/IPLROM.X1","md5":"eeeea1cd29c6e0e8b094790ae969bfa7","desc":"IPLROM","mandatory":True},
+        {"file":"xmil/iplrom.x1t","md5":"56c28adcf1f3a2f87cf3d57c378013f5","desc":"iplrom","mandatory":True},
     ],
     "x68000": [
-        {"file":"keropi/iplrom.dat","md5":"7fd4caabac1d9169e289f0f7bbf71d8e","desc":"iplrom.dat","mandatory":True},
-        {"file":"keropi/cgrom.dat","md5":"cb0a5cfcf7247a7eab74bb2716260269","desc":"cgrom.dat","mandatory":True},
+        {"file":"keropi/iplrom.dat","md5":"7fd4caabac1d9169e289f0f7bbf71d8e","desc":"iplrom","mandatory":True},
+        {"file":"keropi/cgrom.dat","md5":"cb0a5cfcf7247a7eab74bb2716260269","desc":"cgrom","mandatory":True},
     ],
     "xbox": [
         {"file":"mcpx_1.0.bin","md5":"d49c52a4102f6df7bcf8d0617ac475ed","desc":"mcpx_1.0","mandatory":True},
         {"file":"Complex_4627.bin","md5":"39cee882148a87f93cb440b99dde3ceb","desc":"Complex_4627","mandatory":True},
     ],
     "xegs": [
-        {"file":"xegs.zip","md5":None,"desc":"xegs.zip","mandatory":True},
+        {"file":"xegs.zip","md5":None,"desc":"xegs","mandatory":True},
+        {"file":"xegs.zip","md5":"42cbd989802c17d0ac3731d33270d835","desc":"xegs","mandatory":True},
     ],
     "zc210": [
-        {"file":"zc210/zcdata.dat","md5":"033d7392985841027909c4c32b9f2076","desc":"zcdata.dat","mandatory":True},
-        {"file":"zc210/sf2/default.sf2","md5":"39e5bc84ce9aac3a2d297d8aeb2a0d05","desc":"default.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom0.sf2","md5":"e0ba7a8634b12cfee4b6760a6f89051a","desc":"custom0.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom1.sf2","md5":"c1dc781c34cff8f9a023c0192754dc6c","desc":"custom1.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom2.sf2","md5":"144fcdbb6a30f1f916f6963006c2da97","desc":"custom2.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom3.sf2","md5":"134d217fb99c3be1e89cfaf8f28280d8","desc":"custom3.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom4.sf2","md5":"b37366199c6df9ee5316f031755aa821","desc":"custom4.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom5.sf2","md5":"64068b84eb88dc85b75148bbe9b393fb","desc":"custom5.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom6.sf2","md5":"1241986de5b1d00b02d34f1e6651a1d1","desc":"custom6.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom7.sf2","md5":"386db0d538f372a9f1af622d1e934abf","desc":"custom7.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom8.sf2","md5":"6f68e4baf89c8ee4623c19617319184b","desc":"custom8.sf2","mandatory":True},
-        {"file":"zc210/sf2/custom9.sf2","md5":"2010e5b85f9e1d60685ccb3d84a17115","desc":"custom9.sf2","mandatory":True},
-        {"file":"zcsf.sf2","md5":"e0ba7a8634b12cfee4b6760a6f89051a","desc":"zcsf.sf2","mandatory":True},
+        {"file":"zc210/zcdata.dat","md5":"033d7392985841027909c4c32b9f2076","desc":"zcdata","mandatory":True},
+        {"file":"zc210/sf2/default.sf2","md5":"39e5bc84ce9aac3a2d297d8aeb2a0d05","desc":"default","mandatory":True},
+        {"file":"zc210/sf2/custom0.sf2","md5":"e0ba7a8634b12cfee4b6760a6f89051a","desc":"custom0","mandatory":True},
+        {"file":"zc210/sf2/custom1.sf2","md5":"c1dc781c34cff8f9a023c0192754dc6c","desc":"custom1","mandatory":True},
+        {"file":"zc210/sf2/custom2.sf2","md5":"144fcdbb6a30f1f916f6963006c2da97","desc":"custom2","mandatory":True},
+        {"file":"zc210/sf2/custom3.sf2","md5":"134d217fb99c3be1e89cfaf8f28280d8","desc":"custom3","mandatory":True},
+        {"file":"zc210/sf2/custom4.sf2","md5":"b37366199c6df9ee5316f031755aa821","desc":"custom4","mandatory":True},
+        {"file":"zc210/sf2/custom5.sf2","md5":"64068b84eb88dc85b75148bbe9b393fb","desc":"custom5","mandatory":True},
+        {"file":"zc210/sf2/custom6.sf2","md5":"1241986de5b1d00b02d34f1e6651a1d1","desc":"custom6","mandatory":True},
+        {"file":"zc210/sf2/custom7.sf2","md5":"386db0d538f372a9f1af622d1e934abf","desc":"custom7","mandatory":True},
+        {"file":"zc210/sf2/custom8.sf2","md5":"6f68e4baf89c8ee4623c19617319184b","desc":"custom8","mandatory":True},
+        {"file":"zc210/sf2/custom9.sf2","md5":"2010e5b85f9e1d60685ccb3d84a17115","desc":"custom9","mandatory":True},
+        {"file":"zcsf.sf2","md5":"e0ba7a8634b12cfee4b6760a6f89051a","desc":"zcsf","mandatory":True},
     ],
 }
 
-# Batocera platforms that need no BIOS files (explicitly acknowledged
-# so the UI shows "no BIOS required" instead of "unknown system").
+
 NOBIOS_PLATFORMS = {
-    "3ds":[], "amiga":[], "amstradcpc":[], "arcade":[], "atari2600":[],
-    "atari7800":[], "c64":[], "famicom":[], "fba":[], "gamegear":[],
-    "gb":[], "gbc":[], "gc":[], "genesis":[], "jaguar":[], "mame":[],
-    "mastersystem":[], "megacd":[], "megadrive":[], "n64":[], "nes":[],
-    "ngp":[], "pc":[], "pce":[], "psp":[], "sega32x":[], "sg1000":[],
-    "snes":[], "tg16":[], "virtualboy":[], "wii":[], "wiiu":[],
-    "wonderswan":[], "wonderswancolor":[], "zxspectrum":[],
+    "3ds":[],
+    "amiga":[],
+    "amstradcpc":[],
+    "arcade":[],
+    "atari2600":[],
+    "atari7800":[],
+    "c64":[],
+    "famicom":[],
+    "fba":[],
+    "gamegear":[],
+    "gb":[],
+    "gbc":[],
+    "gc":[],
+    "genesis":[],
+    "jaguar":[],
+    "mame":[],
+    "mastersystem":[],
+    "megacd":[],
+    "megadrive":[],
+    "n64":[],
+    "nes":[],
+    "ngp":[],
+    "pc":[],
+    "pce":[],
+    "psp":[],
+    "sega32x":[],
+    "sg1000":[],
+    "snes":[],
+    "tg16":[],
+    "virtualboy":[],
+    "wii":[],
+    "wiiu":[],
+    "wonderswan":[],
+    "wonderswancolor":[],
+    "zxspectrum":[],
 }
 
 # Combined case-insensitive lookup
@@ -1004,31 +1365,52 @@ def get_rom_systems(settings, fast=False):
         })
     return result
 
-def check_bios(system_name, bios_dir):
-    bios_path = Path(bios_dir)
-    entries = _get_bios_entries(system_name)
-    known = _bios_key(system_name) in _BIOS_LOOKUP
-    if not known:
-        return {"known": False, "files": []}
+def _check_bios_grouped(slug, bios_dir):
+    """Helper: returns grouped BIOS info for a single slug, or None if unknown."""
+    raw = _get_bios_entries(slug)
+    if not raw:
+        # slug known but no BIOS entries → system without BIOS
+        if _bios_key(slug) in _BIOS_LOOKUP:
+            return {"known":True,"files":[]}
+        return None
+    by_file = {}
+    for b in raw:
+        fn = b["file"]
+        if fn not in by_file:
+            by_file[fn] = {"desc":b["desc"],"mandatory":b["mandatory"],"md5s":[]}
+        md5 = b.get("md5")
+        if md5:
+            by_file[fn]["md5s"].append(md5)
     results = []
-    for b in entries:
-        fpath  = bios_path / b["file"]
+    for fn, info in by_file.items():
+        fpath = Path(bios_dir) / fn
         exists = fpath.exists()
         md5_ok = None
         actual = None
         if exists:
-            if b.get("md5"):
+            if info["md5s"]:
                 actual = md5_file(fpath)
-                md5_ok = (actual == b["md5"])
+                md5_ok = (actual in info["md5s"])
             else:
                 md5_ok = True
         results.append({
-            "file":b["file"],"desc":b["desc"],"mandatory":b["mandatory"],
+            "file":fn,"desc":info["desc"],"mandatory":info["mandatory"],
             "exists":exists,"md5_ok":md5_ok,
-            "expected_md5":b.get("md5"),"actual_md5":actual,
+            "expected_md5":info["md5s"][0] if info["md5s"] else None,
+            "actual_md5":actual,
             "size":human_size(fpath.stat().st_size) if exists else None,
+            "valid_md5s":info["md5s"],
         })
-    return {"known": True, "files": results}
+    return {"known":True,"files":results}
+
+def check_bios(system_name, bios_dir):
+    info = _check_bios_grouped(system_name, bios_dir)
+    if info is None:
+        return {"known": False, "files": []}
+    # remove valid_md5s from per-system response to keep it clean
+    for f in info["files"]:
+        f.pop("valid_md5s", None)
+    return info
 
 def parse_multipart(environ, data):
     import email.parser, email.policy
@@ -2003,6 +2385,205 @@ def download_image_generic(url, dest_path):
     except Exception as e:
         return False, str(e)
 
+# ─── Scraper standalone helpers (reusable sync + background) ──────
+def save_gamelist_entry(roms_base, meta):
+    """Guarda una entrada completa en gamelist.xml incluyendo imagen."""
+    system   = meta.get("system","")
+    filename = meta.get("filename","")
+    sys_dir  = Path(roms_base) / system
+    gl_path  = sys_dir / "gamelist.xml"
+    if gl_path.exists():
+        try: tree = ET.parse(gl_path); root = tree.getroot()
+        except Exception: root = ET.Element("gameList")
+    else:
+        root = ET.Element("gameList")
+    game = None
+    for g in root.findall("game"):
+        gpath = g.findtext("path","").lstrip("./")
+        if gpath == filename or Path(gpath).name == filename:
+            game = g; break
+    if game is None:
+        game = ET.SubElement(root,"game")
+        ET.SubElement(game,"path").text = f"./{filename}"
+    field_map = {
+        "name":"name","desc":"desc","year":"releasedate",
+        "publisher":"publisher","genre":"genre","rating":"rating",
+        "image_path":"image",
+    }
+    for k, tag in field_map.items():
+        val = meta.get(k,"")
+        if not val: continue
+        if tag == "releasedate" and len(val) == 4:
+            val = val + "0101T000000"
+        el = game.find(tag)
+        if el is None: el = ET.SubElement(game, tag)
+        el.text = val
+    try:
+        rough    = ET.tostring(root, encoding="unicode")
+        reparsed = minidom.parseString(rough)
+        lines    = reparsed.toprettyxml(indent="    ").split("\n")
+        filtered = [l for l in lines if l.strip()]
+        if filtered and filtered[0].startswith("<?xml"): filtered = filtered[1:]
+        xml_out  = '<?xml version="1.0" encoding="UTF-8"?>\n' + "\n".join(filtered)
+        gl_path.write_text(xml_out, encoding="utf-8")
+        invalidate_rom_cache()
+    except Exception:
+        pass
+
+def do_scrape_system(settings, system, source, creds, options, progress_cb=None):
+    """Scrapea todos los ROMs de un sistema. Reusable desde sync y background."""
+    import time as _t
+    all_sys  = get_rom_systems(settings, fast=False)
+    sys_data = next((x for x in all_sys if x["name"]==system), None)
+    if not sys_data:
+        return {"ok":0,"fail":0,"skip":0,"errors":[f"Sistema '{system}' no encontrado"],"total":0,"quota":{}}
+    roms_base = Path(settings["roms_base"])
+    only_missing = options.get("only_missing", True)
+    img_type = options.get("ss_image_type","mixrbv1")
+    roms = [r for r in sys_data["roms"]
+            if r["is_rom"] and r["ext"] not in ("dir",) and r["name"] not in ("images","media","videos")]
+    if only_missing:
+        roms = [r for r in roms if not r["has_image"]]
+    results = {"ok":0,"fail":0,"skip":0,"errors":[],"total":len(roms),"quota":{}}
+    for idx, rom in enumerate(roms):
+        rom_stem = Path(rom["filename"]).stem
+        ok_img   = False
+        meta     = {}
+        err      = None
+        if source == "thegamesdb":
+            game, err = tgdb_search_game(rom["filename"], system, creds.get("tgdb_apikey",""))
+            if game:
+                meta = tgdb_build_meta(game, creds.get("tgdb_apikey",""))
+                img_url, ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
+                if img_url:
+                    dest = roms_base / system / "media" / "images" / (rom_stem + ".png")
+                    ok_img, _ = download_image_generic(img_url, dest)
+                    if ok_img:
+                        meta["image_path"] = f"./media/images/{rom_stem}.png"
+            _t.sleep(0.3)
+        elif source == "igdb":
+            game, err = igdb_search_game(rom["filename"], system,
+                                         creds.get("igdb_client_id",""), creds.get("igdb_client_secret",""))
+            if game:
+                meta = igdb_build_meta(game)
+                img_url = igdb_get_image_url(game)
+                if img_url:
+                    dest = roms_base / system / "media" / "images" / (rom_stem + ".png")
+                    ok_img, _ = download_image_generic(img_url, dest)
+                    if ok_img:
+                        meta["image_path"] = f"./media/images/{rom_stem}.png"
+            _t.sleep(0.3)
+        else:  # screenscraper
+            game, err, sq = ss_search_game(rom["filename"], system,
+                                        creds.get("ss_user",""), creds.get("ss_password",""),
+                                        creds.get("ss_region","wor"), creds.get("ss_lang","es"),
+                                        creds.get("ss_devid",""), creds.get("ss_devpassword",""))
+            if game:
+                meta = ss_build_meta(game, creds.get("ss_region","wor"), creds.get("ss_lang","es"))
+                folder_map = {"mixrbv1":"mixrbv1","mixrbv2":"mixrbv2","ss":"screenshots",
+                             "box-2D":"named_boxarts","wheel":"named_logos","fanart":"fanart"}
+                folder = folder_map.get(img_type, img_type)
+                dest   = roms_base / system / "media" / folder / (rom_stem + ".png")
+                ok_img, _ = ss_download_image(game, img_type, dest)
+                if ok_img:
+                    meta["image_path"] = f"./media/{folder}/{rom_stem}.png"
+            if sq:
+                results["quota"] = sq
+            if "429" in str(err) or "quota" in str(err or "").lower():
+                _t.sleep(5)
+            else:
+                try:
+                    maxthreads = int(sq.get("maxthreads", 1) or 1)
+                    delay = max(1.0 / maxthreads, 0.5)
+                except Exception:
+                    delay = 1.0
+                _t.sleep(delay)
+        if not game:
+            results["fail"] += 1
+            results["errors"].append(f"{rom['name']}: {(err or 'Sin resultados')[:80]}")
+            if progress_cb:
+                progress_cb(system, rom["name"], idx+1, len(roms), results, err)
+            continue
+        meta.update({"system":system,"filename":rom["filename"]})
+        save_gamelist_entry(settings["roms_base"], meta)
+        if ok_img:
+            results["ok"] += 1
+        else:
+            results["fail"] += 1
+            results["errors"].append(f"{rom['name']} (sin imagen)")
+        if progress_cb:
+            progress_cb(system, rom["name"], idx+1, len(roms), results)
+    return results
+
+# ─── Scraper Batch Queue ────────────────────────────────────────────
+import uuid as _uuid
+_scraper_jobs = {}
+_scraper_jobs_lock = threading.Lock()
+_scraper_worker_thread = None
+
+def _start_batch_worker():
+    global _scraper_worker_thread
+    if _scraper_worker_thread and _scraper_worker_thread.is_alive():
+        return
+    def worker():
+        while True:
+            job = None
+            with _scraper_jobs_lock:
+                for j in _scraper_jobs.values():
+                    if j["status"] == "pending":
+                        j["status"] = "running"
+                        job = j
+                        break
+            if job:
+                try:
+                    _process_batch_job(job)
+                except Exception as e:
+                    with _scraper_jobs_lock:
+                        job["status"] = "failed"
+                        job["error"] = str(e)
+            else:
+                time.sleep(1)
+    _scraper_worker_thread = threading.Thread(target=worker, daemon=True)
+    _scraper_worker_thread.start()
+
+def _process_batch_job(job):
+    def progress_cb(system, rom_name, current, total, partial, err=None):
+        with _scraper_jobs_lock:
+            job["current_system"] = system
+            job["current_rom"] = rom_name
+            job["progress_raw"] = (current, total)
+            job["partial"] = partial
+            job["systems_done"] = _sys_done
+    _sys_done = 0
+    total_systems = len(job["systems"])
+    for sys_name in job["systems"]:
+        with _scraper_jobs_lock:
+            if job["status"] == "cancelled":
+                return
+            job["current_system"] = sys_name
+            job["current_rom"] = ""
+        opts = {**job["options"], "missing_only": job["options"].get("only_missing", True)}
+        # Credentials are already in job["creds"] with keys matching do_scrape_system
+        result = do_scrape_system(job["settings"], sys_name, job["source"],
+                                  job["creds"], job["options"], progress_cb)
+        _sys_done += 1
+        with _scraper_jobs_lock:
+            job["systems_result"][sys_name] = result
+            job["systems_done"] = _sys_done
+            if result["quota"]:
+                job["quota"] = result["quota"]
+            # Aggregate
+            agg = job["aggregated"]
+            agg["ok"] += result["ok"]
+            agg["fail"] += result["fail"]
+            agg["skip"] += result.get("skip",0)
+            agg["total"] += result["total"]
+            agg["errors"].extend(result["errors"][:50])  # cap at 50 errors
+            job["progress"] = int(_sys_done / total_systems * 100) if total_systems else 0
+    with _scraper_jobs_lock:
+        job["status"] = "completed"
+        job["progress"] = 100
+
 # ─── HTTP Handler ─────────────────────────────────────────────────
 class BatoceraHandler(http.server.BaseHTTPRequestHandler):
 
@@ -2119,23 +2700,29 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":False,"error":"Faltan parámetros"})
         elif path == "/api/scraper/config":
             self.send_json(get_scraper_config(s))
+        elif path == "/api/scraper/batch":
+            self._scraper_batch_list(s)
+        elif len(parts)==4 and parts[:3]==["api","scraper","batch"]:
+            self._scraper_batch_detail(parts[3], s)
+        elif path == "/api/bios/all":
+            bios_dir = Path(s.get("bios_dir","/userdata/bios"))
+            all_systems = {}
+            for slug in sorted(_BIOS_LOOKUP.keys()):
+                info = _check_bios_grouped(slug, bios_dir)
+                if info is not None:
+                    all_systems[slug] = info
+            self.send_json({"ok":True,"systems":all_systems})
         elif path == "/api/bios/missing":
             bios_dir = Path(s.get("bios_dir","/userdata/bios"))
-            # Only check systems the user actually has (ROM folders)
             user_systems = get_rom_systems_cached(s)
             items = []
             for usys in user_systems:
                 name = usys["name"]
-                entries = _get_bios_entries(name)
-                if not entries:
-                    continue  # no BIOS entries for this system
-                for b in entries:
-                    fpath = bios_dir / b["file"]
-                    exists = fpath.exists()
-                    md5_ok = None
-                    if exists and b.get("md5"):
-                        md5_ok = (md5_file(fpath) == b["md5"])
-                    missing = not exists or md5_ok is False
+                info = _check_bios_grouped(name, bios_dir)
+                if info is None or not info["files"]:
+                    continue
+                for b in info["files"]:
+                    missing = not b["exists"] or b["md5_ok"] is False
                     if not missing:
                         continue
                     skip_key = f"{name}/{b['file']}"
@@ -2146,9 +2733,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                         "file": b["file"],
                         "desc": b["desc"],
                         "mandatory": b["mandatory"],
-                        "md5": b.get("md5"),
-                        "exists": exists,
-                        "md5_ok": md5_ok,
+                        "md5": b.get("expected_md5"),
+                        "exists": b["exists"],
+                        "md5_ok": b["md5_ok"],
                         "skip_key": skip_key,
                     })
             total = len(items)
@@ -2249,6 +2836,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self._scraper_system(s)
         elif path == "/api/scraper/save-config":
             self._scraper_save_config(s)
+        elif path == "/api/scraper/batch":
+            self._scraper_batch_create(s)
         else:
             self.send_json({"error":"Not found"},404)
 
@@ -2281,6 +2870,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 shutil.rmtree(target) if target.is_dir() else target.unlink()
                 self.send_json({"ok":True})
             except Exception as e: self.send_json({"ok":False,"error":str(e)})
+        elif len(parts)==4 and parts[:3]==["api","scraper","batch"]:
+            self._scraper_batch_cancel(parts[3], s)
         else:
             self.send_json({"error":"Not found"},404)
 
@@ -2388,24 +2979,30 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if not files:
             self.send_json({"ok":False,"error":"No se recibió archivo"}); return
         bios_dir = Path(s.get("bios_dir","/userdata/bios"))
-        subpath  = fields.get("path","").strip().strip("/")
-        if subpath:
-            # Security: prevent path traversal
-            dest_base = (bios_dir / subpath).resolve()
-            try:
-                dest_base.relative_to(bios_dir.resolve())
-            except ValueError:
-                self.send_json({"ok":False,"error":"Ruta inválida"}); return
-        else:
-            dest_base = bios_dir
-        dest_base.mkdir(parents=True, exist_ok=True)
+        target_system = fields.get("system","").strip()
+        target_file   = fields.get("file","").strip()
+        bios_dir.mkdir(parents=True, exist_ok=True)
         saved = []
         for fdata in files.values():
-            dest = dest_base / fdata["filename"]
+            dest = bios_dir / fdata["filename"]
             dest.write_bytes(fdata["data"])
-            saved.append({"file":str(dest.relative_to(bios_dir)).replace("\\","/"),
+            md5_val = hashlib.md5(fdata["data"]).hexdigest()
+            entry = {"file":fdata["filename"],
                 "size":human_size(len(fdata["data"])),
-                "md5":hashlib.md5(fdata["data"]).hexdigest()})
+                "md5":md5_val}
+            # Validate MD5 if system + file were provided
+            if target_system and target_file:
+                valid_md5s = []
+                raw = _get_bios_entries(target_system)
+                for b in raw:
+                    if b["file"] == target_file and b.get("md5"):
+                        valid_md5s.append(b["md5"])
+                if valid_md5s:
+                    entry["md5_valid"] = md5_val in valid_md5s
+                    entry["valid_md5s"] = valid_md5s
+                else:
+                    entry["md5_valid"] = None  # no reference to compare
+            saved.append(entry)
         self.send_json({"ok":True,"saved":saved})
 
     def _rename_rom(self, s):
@@ -2555,151 +3152,23 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.send_json({"ok":True,"results":results})
 
     def _save_gamelist_entry(self, s, meta):
-        """Guarda una entrada completa en gamelist.xml incluyendo imagen."""
-        system   = meta.get("system","")
-        filename = meta.get("filename","")
-        sys_dir  = Path(s["roms_base"]) / system
-        gl_path  = sys_dir / "gamelist.xml"
-        if gl_path.exists():
-            try: tree = ET.parse(gl_path); root = tree.getroot()
-            except Exception: root = ET.Element("gameList")
-        else:
-            root = ET.Element("gameList")
-        # Buscar entrada existente
-        game = None
-        for g in root.findall("game"):
-            gpath = g.findtext("path","").lstrip("./")
-            if gpath == filename or Path(gpath).name == filename:
-                game = g; break
-        if game is None:
-            game = ET.SubElement(root,"game")
-            ET.SubElement(game,"path").text = f"./{filename}"
-        field_map = {
-            "name":"name","desc":"desc","year":"releasedate",
-            "publisher":"publisher","genre":"genre","rating":"rating",
-            "image_path":"image",
-        }
-        for k, tag in field_map.items():
-            val = meta.get(k,"")
-            if not val: continue
-            if tag == "releasedate" and len(val) == 4:
-                val = val + "0101T000000"
-            el = game.find(tag)
-            if el is None: el = ET.SubElement(game, tag)
-            el.text = val
-        try:
-            rough    = ET.tostring(root, encoding="unicode")
-            reparsed = minidom.parseString(rough)
-            lines    = reparsed.toprettyxml(indent="    ").split("\n")
-            filtered = [l for l in lines if l.strip()]
-            if filtered and filtered[0].startswith("<?xml"): filtered = filtered[1:]
-            xml_out  = '<?xml version="1.0" encoding="UTF-8"?>\n' + "\n".join(filtered)
-            gl_path.write_text(xml_out, encoding="utf-8")
-            invalidate_rom_cache()
-        except Exception:
-            pass
+        save_gamelist_entry(s["roms_base"], meta)
 
     def _scraper_system(self, s):
-        """Scrapea todos los ROMs de un sistema usando la fuente seleccionada."""
-        import time as _t
-        d        = self.read_json()
-        system   = d.get("system","")
-        source   = d.get("source", "screenscraper")
-        only_missing = d.get("only_missing", True)
-        cfg      = get_scraper_config(s)
+        d = self.read_json()
+        system = d.get("system","")
+        source = d.get("source", "screenscraper")
+        cfg = get_scraper_config(s)
         cfg.update({k:v for k,v in d.items() if k in (
             "ss_user","ss_password","ss_region","ss_lang","ss_image_type","ss_devid","ss_devpassword",
             "tgdb_apikey","igdb_client_id","igdb_client_secret")})
-
-        # Validar credenciales según fuente
         if source == "thegamesdb" and not cfg.get("tgdb_apikey"):
             self.send_json({"ok":False,"error":"Configura tu API Key de TheGamesDB"}); return
         if source == "igdb" and not (cfg.get("igdb_client_id") and cfg.get("igdb_client_secret")):
             self.send_json({"ok":False,"error":"Configura Client ID y Secret de IGDB (Twitch)"}); return
         if source == "screenscraper" and not (cfg.get("ss_user") and cfg.get("ss_password")):
             self.send_json({"ok":False,"error":"Configura usuario y contraseña de ScreenScraper"}); return
-
-        all_sys  = get_rom_systems(s, fast=False)
-        sys_data = next((x for x in all_sys if x["name"]==system), None)
-        if not sys_data:
-            self.send_json({"ok":False,"error":"Sistema no encontrado"}); return
-
-        roms = [r for r in sys_data["roms"]
-                if r["is_rom"] and r["ext"] not in ("dir",) and r["name"] not in ("images","media","videos")]
-        if only_missing:
-            roms = [r for r in roms if not r["has_image"]]
-
-        results   = {"ok":0,"fail":0,"skip":0,"errors":[],"total":len(roms),"quota":{}}
-        roms_base = Path(s["roms_base"]) / system
-        img_type  = cfg.get("ss_image_type","mixrbv1")
-
-        for rom in roms:
-            rom_stem = Path(rom["filename"]).stem
-            ok_img   = False
-            meta     = {}
-            err      = None
-
-            if source == "thegamesdb":
-                game, err = tgdb_search_game(rom["filename"], system, cfg.get("tgdb_apikey",""))
-                if game:
-                    meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
-                    img_url, ierr = tgdb_get_image(game.get("id"), cfg.get("tgdb_apikey",""))
-                    if img_url:
-                        dest = roms_base / "media" / "images" / (rom_stem + ".png")
-                        ok_img, _ = download_image_generic(img_url, dest)
-                        if ok_img: meta["image_path"] = ("." + ("/" + subpath if subpath else "") + f"/media/images/{rom_stem}.png")
-                _t.sleep(0.3)
-
-            elif source == "igdb":
-                game, err = igdb_search_game(rom["filename"], system,
-                                            cfg.get("igdb_client_id",""), cfg.get("igdb_client_secret",""))
-                if game:
-                    meta = igdb_build_meta(game)
-                    img_url = igdb_get_image_url(game)
-                    if img_url:
-                        dest = roms_base / "media" / "images" / (rom_stem + ".png")
-                        ok_img, _ = download_image_generic(img_url, dest)
-                        if ok_img: meta["image_path"] = ("." + ("/" + subpath if subpath else "") + f"/media/images/{rom_stem}.png")
-                _t.sleep(0.3)
-
-            else:  # screenscraper
-                game, err, sq = ss_search_game(rom["filename"], system,
-                                           cfg["ss_user"], cfg["ss_password"],
-                                           cfg["ss_region"], cfg["ss_lang"],
-                                           cfg.get("ss_devid",""), cfg.get("ss_devpassword",""))
-                if game:
-                    meta = ss_build_meta(game, cfg["ss_region"], cfg["ss_lang"])
-                    folder_map = {"mixrbv1":"mixrbv1","mixrbv2":"mixrbv2","ss":"screenshots",
-                                 "box-2D":"named_boxarts","wheel":"named_logos","fanart":"fanart"}
-                    folder = folder_map.get(img_type, img_type)
-                    dest   = roms_base / "media" / folder / (rom_stem + ".png")
-                    ok_img, _ = ss_download_image(game, img_type, dest)
-                    if ok_img: meta["image_path"] = f"./media/{folder}/{rom_stem}.png"
-                if sq:
-                    results["quota"] = sq
-                if "429" in str(err) or "quota" in str(err or "").lower():
-                    _t.sleep(5)
-                else:
-                    try:
-                        maxthreads = int(sq.get("maxthreads", 1) or 1)
-                        delay = max(1.0 / maxthreads, 0.5)
-                    except Exception:
-                        delay = 1.0
-                    _t.sleep(delay)
-
-            if not game:
-                results["fail"] += 1
-                results["errors"].append(f"{rom['name']}: {(err or 'Sin resultados')[:80]}")
-                continue
-
-            meta.update({"system":system,"filename":rom["filename"]})
-            self._save_gamelist_entry(s, meta)
-            if ok_img:
-                results["ok"] += 1
-            else:
-                results["fail"] += 1
-                results["errors"].append(f"{rom['name']} (sin imagen)")
-
+        results = do_scrape_system(s, system, source, cfg, d)
         self.send_json({"ok":True,"results":results})
 
 
@@ -2726,6 +3195,99 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok":True})
         except Exception as e:
             self.send_json({"ok":False,"error":str(e)})
+
+    # ── Scraper batch ─────────────────────────────────────────────
+    def _scraper_batch_create(self, s):
+        d = self.read_json()
+        systems = d.get("systems", [])
+        if not systems:
+            self.send_json({"ok":False,"error":"Selecciona al menos un sistema"}); return
+        source = d.get("source", "screenscraper")
+        creds = {k:v for k,v in d.items() if k in (
+            "ss_user","ss_password","ss_region","ss_lang","ss_image_type","ss_devid","ss_devpassword",
+            "tgdb_apikey","igdb_client_id","igdb_client_secret")}
+        # Validate
+        if source == "thegamesdb" and not creds.get("tgdb_apikey"):
+            self.send_json({"ok":False,"error":"Configura tu API Key de TheGamesDB"}); return
+        if source == "igdb" and not (creds.get("igdb_client_id") and creds.get("igdb_client_secret")):
+            self.send_json({"ok":False,"error":"Configura Client ID y Secret de IGDB"}); return
+        if source == "screenscraper" and not (creds.get("ss_user") and creds.get("ss_password")):
+            self.send_json({"ok":False,"error":"Configura usuario y contraseña de ScreenScraper"}); return
+        job_id = str(_uuid.uuid4())[:8]
+        job = {
+            "id": job_id,
+            "systems": systems,
+            "source": source,
+            "creds": creds,
+            "options": {k:v for k,v in d.items() if k in ("only_missing","ss_image_type","ss_region","ss_lang")},
+            "settings": s,
+            "status": "pending",
+            "progress": 0,
+            "current_system": "",
+            "current_rom": "",
+            "systems_done": 0,
+            "systems_result": {},
+            "aggregated": {"ok":0,"fail":0,"skip":0,"total":0,"errors":[]},
+            "quota": {},
+            "created_at": time.time(),
+            "error": None,
+        }
+        with _scraper_jobs_lock:
+            _scraper_jobs[job_id] = job
+        _start_batch_worker()
+        self.send_json({"ok":True,"job_id":job_id})
+
+    def _scraper_batch_list(self, s):
+        with _scraper_jobs_lock:
+            jobs = []
+            for jid, j in sorted(_scraper_jobs.items(),
+                                 key=lambda x: x[1].get("created_at",0), reverse=True):
+                jobs.append({
+                    "id": j["id"],
+                    "systems": j["systems"],
+                    "source": j["source"],
+                    "status": j["status"],
+                    "progress": j["progress"],
+                    "current_system": j["current_system"],
+                    "current_rom": j["current_rom"],
+                    "systems_done": j["systems_done"],
+                    "aggregated": j["aggregated"],
+                    "created_at": j["created_at"],
+                    "error": j.get("error"),
+                })
+        self.send_json({"ok":True,"jobs":jobs})
+
+    def _scraper_batch_detail(self, job_id, s):
+        with _scraper_jobs_lock:
+            j = _scraper_jobs.get(job_id)
+            if not j:
+                self.send_json({"ok":False,"error":"Job no encontrado"}); return
+            detail = {
+                "id": j["id"],
+                "systems": j["systems"],
+                "source": j["source"],
+                "status": j["status"],
+                "progress": j["progress"],
+                "current_system": j["current_system"],
+                "current_rom": j["current_rom"],
+                "systems_done": j["systems_done"],
+                "systems_result": j["systems_result"],
+                "aggregated": j["aggregated"],
+                "quota": j["quota"],
+                "created_at": j["created_at"],
+                "error": j.get("error"),
+                "options": j["options"],
+            }
+        self.send_json({"ok":True,"job":detail})
+
+    def _scraper_batch_cancel(self, job_id, s):
+        with _scraper_jobs_lock:
+            j = _scraper_jobs.get(job_id)
+            if not j:
+                self.send_json({"ok":False,"error":"Job no encontrado"}); return
+            if j["status"] in ("pending","running"):
+                j["status"] = "cancelled"
+        self.send_json({"ok":True})
 
     def _serve_rom_image(self, system, rom_filename, s):
         """Sirve imagen de un ROM leyendo la ruta real del gamelist.xml.

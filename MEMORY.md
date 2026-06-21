@@ -108,6 +108,36 @@ App funcional con ~1700 líneas de backend, ~2870 de frontend. Instalación por 
 
 ---
 
+### `feat(HEAD)` — scraping batch, BIOS_DB regenerator, tests, MEMORY update
+
+**Archivos nuevos:** `generate_bios_db.py`, `tests/bios_validator.py`
+
+**Scraping batch programable:**
+- Sistema de jobs en background (thread daemon) con cola FIFO
+- Endpoints REST: creación, listado, detalle, cancelación
+- `do_scrape_system()` extraída como función standalone reusable
+- `save_gamelist_entry()` extraída para eliminar dependencia del handler
+- UI: tab "Lote múltiple" en modal de scraping, checkboxes por sistema,
+  barra de progreso, listado de jobs activos/completados, polling cada 2s
+- Backward compatible: endpoint original `/api/scraper/scrape-system` sin cambios
+
+**Script generador BIOS_DB (`generate_bios_db.py`):**
+- Descarga `batocera-systems` desde GitHub upstream
+- Parsea con `ast` (no regex) para robustez
+- Genera `BIOS_DB` y `NOBIOS_PLATFORMS` como código Python ready-to-replace
+
+**BIOS_DB actualizado:**
+- De 376 entradas a **705 entradas upstream** (108 sistemas)
+- Se regeneró ejecutando `generate_bios_db.py` y reemplazando en `app.py`
+- Muchos sistemas ahora tienen MD5s específicos en vez de `None`
+
+**Tests (`tests/bios_validator.py`):**
+- `bios_validator.py` compara BIOS_DB local contra upstream
+- Reporta sistemas faltantes, entradas extra, diferencias de MD5
+- Útil para detectar cuándo regenerar BIOS_DB
+
+---
+
 ### `e0f34e2` — fix: case-insensitive BIOS lookup + acknowledge 35 no-BIOS platforms
 **Archivos:** `app.py`
 
@@ -137,6 +167,28 @@ App funcional con ~1700 líneas de backend, ~2870 de frontend. Instalación por 
 | GPU | NVIDIA GeForce RTX 2050 (4 GB) |
 | SO | Batocera 43acu.1 |
 | IP | 192.168.1.88 |
+
+---
+
+### `(HEAD)` — feat: group duplicate BIOS entries, accordion on BIOS Faltantes, MD5 validation on upload
+**Archivos:** `app.py`, `templates/index.html`
+
+**Backend (`_check_bios_grouped()` nueva):**
+- Agrupa entradas BIOS por filename: un archivo con 8 MD5s → 1 fila en vez de 8
+- `check_bios()`: soporta compatibilidad hacia atrás (elimina `valid_md5s` interno de la respuesta)
+- `/api/bios/all`: endpoint completo (para uso futuro)
+- `_upload_bios()`: acepta `system` + `file`, calcula MD5 del subido, lo compara contra BIOS_DB, retorna `md5_valid` + `valid_md5s`
+
+**Frontend — ROM & BIOS (sin cambios visuales):**
+- `openBiosPanel()` y `renderBios()` mantienen comportamiento original: verifican solo el sistema actual, tabla plana sin acordeón
+- Botón "⬆ Subir BIOS" genérico restaurado debajo de la tabla
+
+**Frontend — BIOS Faltantes (acordeón):**
+- `renderMissingBios()` ahora renderiza acordeón colapsable por sistema (▶/▼)
+- Misma estructura de acordeón que el resto: header clickeable, body expandible
+- `uploadSingleBios()` envía `system` + `file` para validación MD5
+- Toast indica si MD5 es correcto (✔), incorrecto (⚠) o sin referencia
+- Barra de progreso se pinta amarilla si MD5 falla
 
 ---
 
