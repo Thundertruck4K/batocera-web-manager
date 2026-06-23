@@ -3343,14 +3343,10 @@ async function scraperDownload() {
       const romIdx = currentRoms.findIndex(r => r.filename === _scraperCurrentRom.filename);
       if (romIdx >= 0) {
         currentRoms[romIdx].has_image = r.images.length > 0;
-        // Refrescar imagen en modal-rom si está abierto
-        if (!document.getElementById('modal-rom').classList.contains('open')) return;
-        _editingRomIdx = romIdx;
-        const img = document.getElementById('rom-modal-img');
-        const subQ2 = _scraperCurrentSubpath ? ('&subpath=' + encodeURIComponent(_scraperCurrentSubpath)) : '';
-        img.src = `/api/rom-image/${encodeURIComponent(_scraperCurrentSystem)}/${encodeURIComponent(_scraperCurrentRom.filename)}?t=${Date.now()}${subQ2}`;
-        img.style.display = '';
-        document.getElementById('rom-modal-img-placeholder').style.display = 'none';
+        // Si el modal de ROM está abierto, refrescarlo
+        if (document.getElementById('modal-rom').classList.contains('open')) {
+          showRomDetail(romIdx);
+        }
       }
     }
     toast('Scraping completado', 'ok');

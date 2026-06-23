@@ -22,9 +22,10 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ```
 batocera_web/
-├── app.py                 # ~2800 líneas — servidor HTTP + API REST + scraper + dashboard
+├── app.py                 # ~3580 líneas — servidor HTTP + API REST + scraper + dashboard
 ├── templates/
-│   └── index.html         # ~3120 líneas — SPA con todo el CSS/JS inline (l10n: es)
+│   └── index.html         # ~3980 líneas — SPA con todo el CSS/JS inline (l10n: es)
+├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
 ├── AGENTS.md              # Guía operativa para asistentes de IA
 ├── install.sh             # Script de instalación (heredado de v1.0)
 ├── LICENSE                # MIT
@@ -189,6 +190,42 @@ App funcional con ~1700 líneas de backend, ~2870 de frontend. Instalación por 
 - `uploadSingleBios()` envía `system` + `file` para validación MD5
 - Toast indica si MD5 es correcto (✔), incorrecto (⚠) o sin referencia
 - Barra de progreso se pinta amarilla si MD5 falla
+
+---
+
+### `current` — edit custom systems, dynamic emulator/core selector, batocera_systems.json, scraper paths fixed
+**Archivos:** `app.py`, `templates/index.html`, `batocera_systems.json` (nuevo)
+
+**Edición de sistemas personalizados:**
+- `POST /api/update` → `_update_system()`: renombra `.cfg` si cambia el slug (mueve el archivo)
+- `GET /api/system/<name>/detail` → `get_custom_system_detail()`: retorna datos + emuladores disponibles
+- Botón "✏ Editar" en cada tarjeta de sistema, formulario reutilizado con toggle crear/editar
+- Variable global `_editingSystem` trackea el slug original para `old_name` en update
+
+**Base de datos oficial de Batocera:**
+- `batocera_systems.json`: 220 sistemas con emuladores y cores, extraído de `table_cache.json` (sitio de compatibilidad oficial de Batocera)
+- `GET /api/batocera-systems` sirve el JSON al frontend
+- `load_batocera_systems()` carga al inicio, estructura: `{slug: {name, emulators: [{name, libretro, cores, extras}]}}`
+
+**Selector dinámico de emulador/core:**
+- Dropdown de sistema referencia (220 opciones) auto-completa nombre, slug, ruta ROM, theme
+- Emulador se filtra por sistema seleccionado
+- Si el emulador es `libretro`: muestra selects de core y cores adicionales (multi-select tag)
+- Si es standalone (dolphin, pcsx2, model2, etc.): campos core/extra se ocultan automáticamente
+- `onEmulatorChange()`, `populateCores()`, `applyRefSystem()` en frontend
+
+**Scraper — imágenes en carpeta plana del sistema:**
+- `_scraper_download()`: todos los sources (SS, TGDB, IGDB) guardan en `roms_base/<rom_stem>.png` (sin subcarpeta `media/`)
+- `meta["image_path"]` = `"./<rom_stem>.png"` en los tres sources
+
+**`save_gamelist_entry()` con `ET.indent()`:**
+- Reemplazado `minidom.parseString().toprettyxml()` por `ET.indent()` (Python 3.9+)
+- Evita caracteres escapados incorrectamente y pérdida de datos por round-trip frágil
+- Soporta campos `year` → `releasedate`, omite valores `None`
+
+**Frontend — refresh ROM tras scrape:**
+- `scraperDownload()` actualiza `currentRoms[].has_image` en memoria
+- Si el modal ROM está abierto, re-ejecuta `showRomDetail(romIdx)` para reflejar cambios inmediatamente
 
 ---
 

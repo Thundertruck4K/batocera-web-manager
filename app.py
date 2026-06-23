@@ -2455,19 +2455,16 @@ def save_gamelist_entry(roms_base, meta):
     }
     for k, tag in field_map.items():
         val = meta.get(k,"")
+        if val is None: val = ""
         if not val: continue
         if tag == "releasedate" and len(val) == 4:
             val = val + "0101T000000"
         el = game.find(tag)
         if el is None: el = ET.SubElement(game, tag)
         el.text = val
+    ET.indent(root, space="    ")
+    xml_out = '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
     try:
-        rough    = ET.tostring(root, encoding="unicode")
-        reparsed = minidom.parseString(rough)
-        lines    = reparsed.toprettyxml(indent="    ").split("\n")
-        filtered = [l for l in lines if l.strip()]
-        if filtered and filtered[0].startswith("<?xml"): filtered = filtered[1:]
-        xml_out  = '<?xml version="1.0" encoding="UTF-8"?>\n' + "\n".join(filtered)
         gl_path.write_text(xml_out, encoding="utf-8")
         invalidate_rom_cache()
     except Exception:
@@ -2499,10 +2496,10 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                 meta = tgdb_build_meta(game, creds.get("tgdb_apikey",""))
                 img_url, ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
                 if img_url:
-                    dest = roms_base / system / "media" / "images" / (rom_stem + ".png")
+                    dest = roms_base / system / (rom_stem + ".png")
                     ok_img, _ = download_image_generic(img_url, dest)
                     if ok_img:
-                        meta["image_path"] = f"./media/images/{rom_stem}.png"
+                        meta["image_path"] = f"./{rom_stem}.png"
             _t.sleep(0.3)
         elif source == "igdb":
             game, err = igdb_search_game(rom["filename"], system,
@@ -2511,10 +2508,10 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                 meta = igdb_build_meta(game)
                 img_url = igdb_get_image_url(game)
                 if img_url:
-                    dest = roms_base / system / "media" / "images" / (rom_stem + ".png")
+                    dest = roms_base / system / (rom_stem + ".png")
                     ok_img, _ = download_image_generic(img_url, dest)
                     if ok_img:
-                        meta["image_path"] = f"./media/images/{rom_stem}.png"
+                        meta["image_path"] = f"./{rom_stem}.png"
             _t.sleep(0.3)
         else:  # screenscraper
             game, err, sq = ss_search_game(rom["filename"], system,
@@ -2523,13 +2520,10 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                                         creds.get("ss_devid",""), creds.get("ss_devpassword",""))
             if game:
                 meta = ss_build_meta(game, creds.get("ss_region","wor"), creds.get("ss_lang","es"))
-                folder_map = {"mixrbv1":"mixrbv1","mixrbv2":"mixrbv2","ss":"screenshots",
-                             "box-2D":"named_boxarts","wheel":"named_logos","fanart":"fanart"}
-                folder = folder_map.get(img_type, img_type)
-                dest   = roms_base / system / "media" / folder / (rom_stem + ".png")
+                dest   = roms_base / system / (rom_stem + ".png")
                 ok_img, _ = ss_download_image(game, img_type, dest)
                 if ok_img:
-                    meta["image_path"] = f"./media/{folder}/{rom_stem}.png"
+                    meta["image_path"] = f"./{rom_stem}.png"
             if sq:
                 results["quota"] = sq
             if "429" in str(err) or "quota" in str(err or "").lower():
@@ -3197,7 +3191,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             game_id = game.get("id")
             img_url, err = tgdb_get_image(game_id, cfg.get("tgdb_apikey","")) if game_id else (None,"Sin ID de juego")
             if img_url:
-                dest = roms_base / "media" / "images" / (rom_stem + ".png")
+                dest = roms_base / (rom_stem + ".png")
                 ok, msg = download_image_generic(img_url, dest)
                 if ok: results["images"].append({"type":"boxart","path":str(dest)})
                 else:  results["errors"].append(f"Imagen: {msg}")
@@ -3207,14 +3201,14 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
                 meta.update({"system":system,"subpath":subpath,"filename":filename})
                 if results["images"]:
-                    meta["image_path"] = "./media/images/" + rom_stem + ".png"
+                    meta["image_path"] = f"./{rom_stem}.png"
                 self._save_gamelist_entry(s, meta)
                 results["meta"] = True
 
         elif source == "igdb":
             img_url = igdb_get_image_url(game)
             if img_url:
-                dest = roms_base / "media" / "images" / (rom_stem + ".png")
+                dest = roms_base / (rom_stem + ".png")
                 ok, msg = download_image_generic(img_url, dest)
                 if ok: results["images"].append({"type":"cover","path":str(dest)})
                 else:  results["errors"].append(f"Imagen: {msg}")
@@ -3224,7 +3218,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 meta = igdb_build_meta(game)
                 meta.update({"system":system,"subpath":subpath,"filename":filename})
                 if results["images"]:
-                    meta["image_path"] = "./media/images/" + rom_stem + ".png"
+                    meta["image_path"] = f"./{rom_stem}.png"
                 self._save_gamelist_entry(s, meta)
                 results["meta"] = True
 
@@ -3232,11 +3226,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             img_types = d.get("img_types", [cfg.get("ss_image_type","mixrbv1")])
             if isinstance(img_types, str): img_types = [img_types]
             for itype in img_types:
-                folder_map = {"mixrbv1":"mixrbv1","mixrbv2":"mixrbv2",
-                              "ss":"screenshots","screenshot":"screenshots",
-                              "box-2D":"named_boxarts","wheel":"named_logos","fanart":"fanart"}
-                folder = folder_map.get(itype, itype)
-                dest   = roms_base / "media" / folder / (rom_stem + ".png")
+                dest   = roms_base / (rom_stem + ".png")
                 ok, msg = ss_download_image(game, itype, dest)
                 if ok: results["images"].append({"type":itype,"path":str(dest)})
                 else:  results["errors"].append(f"Imagen {itype}: {msg}")
@@ -3244,8 +3234,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 meta = ss_build_meta(game, cfg["ss_region"], cfg["ss_lang"])
                 meta.update({"system":system,"subpath":subpath,"filename":filename})
                 if results["images"]:
-                    first_img = results["images"][0]["path"]
-                    meta["image_path"] = "./media/" + "/".join(Path(first_img).parts[-2:])
+                    meta["image_path"] = f"./{rom_stem}.png"
                 self._save_gamelist_entry(s, meta)
                 results["meta"] = True
 
