@@ -229,7 +229,7 @@ App funcional con ~1700 líneas de backend, ~2870 de frontend. Instalación por 
 
 ---
 
-### `uncommitted` — feat: fan monitor in dashboard (hwmon RPM + animated SVG + failure alerts)
+### `95243de` — feat: fan monitor in dashboard (hwmon RPM + animated SVG + failure alerts)
 
 **Archivos:** `app.py`, `templates/index.html`, `README.md`
 
@@ -250,7 +250,7 @@ App funcional con ~1700 líneas de backend, ~2870 de frontend. Instalación por 
 
 ---
 
-### `uncommitted` — feat: braille graphs (btop style) in dashboard, dashboard as default panel
+### `95243de` — feat: braille graphs (btop style) in dashboard, dashboard as default panel
 
 **Archivos:** `templates/index.html` (dashboard Fila 3 reescrita)
 
@@ -279,7 +279,7 @@ color verde/amarillo/rojo según pct
 
 ---
 
-### `uncommitted` — Roms & BIOS overhaul: rutas Batocera, devid opcional, validación de subidas
+### `95243de` — Roms & BIOS overhaul: rutas Batocera, devid opcional, validación de subidas
 
 **Archivos:** `app.py`, `templates/index.html`, `README.md`
 
