@@ -22,9 +22,9 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ```
 batocera_web/
-├── app.py                 # ~3580 líneas — servidor HTTP + API REST + scraper + dashboard
+├── app.py                 # ~4085 líneas — servidor HTTP + API REST + scraper + dashboard
 ├── templates/
-│   └── index.html         # ~3980 líneas — SPA con todo el CSS/JS inline (l10n: es)
+│   └── index.html         # ~4440 líneas — SPA con todo el CSS/JS inline (l10n: es)
 ├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
 ├── AGENTS.md              # Guía operativa para asistentes de IA
 ├── install.sh             # Script de instalación (heredado de v1.0)
@@ -229,11 +229,95 @@ App funcional con ~1700 líneas de backend, ~2870 de frontend. Instalación por 
 
 ---
 
+### `uncommitted` — feat: fan monitor in dashboard (hwmon RPM + animated SVG + failure alerts)
+
+**Archivos:** `app.py`, `templates/index.html`, `README.md`
+
+**Backend:**
+- `get_fans()`: escanea `/sys/class/hwmon/hwmon*/fan*_input`, extrae RPM, label, min, flags fault/alarm
+  y deriva estado: `ok` / `stopped` (RPM=0 o RPM < min) / `fault` (flag fan*_fault=1)
+- Endpoint nuevo `GET /api/fans`
+- `get_dashboard()` incluye `fans` en el payload
+
+**Frontend:**
+- Fila "Ventiladores" en el dashboard con tarjetas por ventilador
+- SVG animado (3 aspas) cuya velocidad de giro escala con las RPM; se pausa si está parado/falla
+- RPM en vivo, badge de estado OK/FALLO/DETENIDO con color (verde/rojo/amarillo)
+- Banner de alerta superior si hay fallo o ventilador detenido
+- Toast de notificación al transicionar ok → fault/stopped (una sola vez por fan)
+- Polling independiente cada 1s (`_fanTimer`) mientras el panel dashboard está activo;
+  se limpia al cambiar de panel
+
+---
+
+### `uncommitted` — feat: braille graphs (btop style) in dashboard, dashboard as default panel
+
+**Archivos:** `templates/index.html` (dashboard Fila 3 reescrita)
+
+**Gráficos braille (estilo btop):**
+- `brailleGraph(values, height)`: dibuja línea de valores sobre grid braille Unicode
+  (U+2800..U+28FF), conectando puntos, 2 muestras por carácter
+- `collectHist()`: acumula historial en el frontend — disco (`pct` por mount, 40 muestras),
+  red (delta de `rx_raw`/`tx_raw` → bytes/s, 40 muestras), procesos (CPU% por pid, 30 muestras)
+
+**Almacenamiento:** barra sólida reemplazada por línea braille del historial de uso,
+color verde/amarillo/rojo según pct
+
+**Red:** texto de totales reemplazado por tasa viva (`fmtRate`) + 2 gráficos braille dinámicos
+(↓ verde, ↑ accent) por interfaz
+
+**Procesos:** sparkline braille de CPU% por proceso con color por nivel (rojo>50 / amarillo>20)
+
+**Efectos:** `.braille` con `text-shadow: currentColor` (glow) y `@keyframes brailleGlow`
+(pulso de brillo en cada actualización)
+
+**Dashboard como panel inicial:**
+- `panel-dashboard` y nav "Dashboard" ahora tienen `active` (antes `panel-add`)
+- `init()` llama a `initDashboard()` al arrancar (carga datos + timer de ventiladores)
+- Topbar por defecto: "📊 Dashboard / Estado del sistema en tiempo real — Batocera"
+- GPU: solo tarjeta NVIDIA, deduplicada por vendor (descarta duplicados DRM y AMD)
+
+---
+
+### `uncommitted` — Roms & BIOS overhaul: rutas Batocera, devid opcional, validación de subidas
+
+**Archivos:** `app.py`, `templates/index.html`, `README.md`
+
+**Scraper ScreenScraper (replicando Batocera exacto):**
+- `SS_API` → `https://api.screenscraper.fr/apiv2` (antes `www.screenscraper.fr/api2`)
+- `SS_SYSTEMS` reemplazado por mapa completo de `screenscraper_platformid_map` (c64=66, lynx=28, sg1000=109, snes=4…)
+- `ss_search_game()` reescrita: `jeuInfos.php` con `md5`/`crc`/`romtaille`/`systemeid`/`romtype=rom` (hash solo si archivo ≤128 MB), fallback `jeuRecherche.php` por nombre limpio
+- Exige `devid`/`devpassword` reales (con cuenta normal SS responde 403); mensaje amigable si faltan
+- `get_scraper_config()`: lee `global.scrapper.devid`/`devpassword`, normaliza región (`world`→`wor`)
+
+**Imágenes estilo Batocera (`getSaveAsPath` de batocera-emulationstation):**
+- `SS_MEDIA_LAYOUT`: mapea tipo→(carpeta,sufijo) — `mixrbv1/ss/box-2D→images/-image`, `box-3D→-box`, `box-2D-back→-boxback`, `wheel→-wheel`, `marquee→-marquee`, `fanart→-fanart`, `video→videos/-video`, `manual→manuals/-manual`
+- `batocera_media_path()`: devuelve `(dest, "./images/<stem>-<sufijo>.<ext>")`
+- `ss_media_url()`: preferencia de región (region→wor→us→eu→jp), extensión real del medio
+- `do_scrape_system()` y `_scraper_download()` guardan cada tipo en su ruta/sufijo sin sobreescribirse
+- `download_image_generic()` con cabecera `Referer` para medios de ScreenScraper
+- `save_gamelist_entry()`: soporta `subpath` (ROMs en subcarpetas → `./sub/file.ext`)
+- `_serve_rom_image` + `/api/rom-image-info`: fallbacks a sufijos Batocera (`-image`, `-thumb`, `-box`…) en `images/`
+
+**Subidas seguras:**
+- `get_system_extensions()`: lee extensiones por sistema de `/usr/share/emulationstation/es_systems.cfg` + `es_systems_*.cfg` custom
+- `_upload_rom()`: rechaza extensiones no permitidas (lista en la respuesta)
+- `_upload_bios()`: respeta subcarpetas de `file` (`neocd/neocd_f.rom`) + guard de path traversal
+
+**Frontend:**
+- Campos `devid`/`devpassword` opcionales en Config y tabs single/system/batch del scraper
+- `batchRenderSystems()`: nombre con `min-width:0` + conteo de ROMs por sistema
+- Helpers backend nuevos: `crc32_file()`, `_ss_fetch_json()`, `_ss_quota()`, `_ss_parse_jeu()`
+
+**Verificado en máquina (192.168.1.91):** SS sin devid→error amigable, IGDB funciona end-to-end (imagen en `images/Aladdin (Spain)-image.jpg` + gamelist correcto), rechazo de `.txt` para snes, subida BIOS a `neocd/` y guard traversal OK.
+
+---
+
 ## Issues conocidos
 
 1. **Sin tests/linting/typechecking** — No existe infraestructura de pruebas
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
-3. **Scraper necesita credenciales** — ScreenScraper.fr requiere user/pass en `batocera.conf`; TheGamesDB/IGDB requieren API key
+3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
 5. **Settings sin cache** — Se lee el JSON en cada request
 6. **Sin autenticación** — El servidor expone toda la API sin protección

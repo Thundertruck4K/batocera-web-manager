@@ -4,7 +4,7 @@ Batocera System Manager Web — v1.2
 Servidor HTTP puro (stdlib) — sin dependencias externas.
 """
 
-import http.server, json, re, os, io, shutil, urllib.parse, hashlib
+import http.server, json, re, os, io, shutil, time, urllib.parse, hashlib, zlib
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from pathlib import Path
@@ -1106,6 +1106,76 @@ def md5_file(path):
     except Exception:
         return None
 
+def crc32_file(path):
+    """CRC-32 de un archivo (formato SS: 8 dígitos hexadecimales en mayúsculas)."""
+    h = 0
+    try:
+        with open(path,"rb") as f:
+            while chunk := f.read(65536):
+                h = zlib.crc32(chunk, h)
+        return format(h & 0xffffffff, "08X")
+    except Exception:
+        return None
+
+# Mapeo tipo de imagen (UI / ScreenScraper) -> (carpeta, sufijo) según Batocera
+# (equivale a getSaveAsPath() de batocera-emulationstation)
+SS_MEDIA_LAYOUT = {
+    "image":       ("images", "-image"),
+    "images":      ("images", "-image"),
+    "ss":          ("images", "-image"),
+    "screenshot":  ("images", "-image"),
+    "mixrbv1":     ("images", "-image"),
+    "mixrbv2":     ("images", "-image"),
+    "box-2D":      ("images", "-image"),
+    "box-3D":      ("images", "-box"),
+    "box-2D-back": ("images", "-boxback"),
+    "wheel":       ("images", "-wheel"),
+    "marquee":     ("images", "-marquee"),
+    "fanart":      ("images", "-fanart"),
+    "titleshot":   ("images", "-titleshot"),
+    "maps":        ("images", "-map"),
+    "map":         ("images", "-map"),
+    "cartridge":   ("images", "-cartridge"),
+    "video":       ("videos", "-video"),
+    "manuel":      ("manuals", "-manual"),
+    "manual":      ("manuals", "-manual"),
+}
+
+def batocera_media_path(system_dir, rom_stem, media_type, ext=".png"):
+    """Devuelve (ruta_destino, ruta_relativa_gamelist) estilo Batocera.
+    Ej: images/Game-name-image.png  →  ./images/Game-name-image.png
+    """
+    folder, suffix = SS_MEDIA_LAYOUT.get(media_type, ("images","-image"))
+    if ext and not ext.startswith("."):
+        ext = "." + ext
+    rel  = f"{folder}/{rom_stem}{suffix}{ext}"
+    return Path(system_dir) / rel, "./" + rel
+
+def get_system_extensions(system, settings):
+    """Extensiones permitidas para un sistema según es_systems.cfg
+    (integradas /usr/share/emulationstation + custom es_systems_*.cfg)."""
+    exts = set()
+    builtin = Path("/usr/share/emulationstation/es_systems.cfg")
+    for p in ([builtin] if builtin.is_file() else []):
+        try:
+            for s in ET.parse(p).findall(".//system"):
+                if s.findtext("name","") == system:
+                    ext = (s.findtext("extension","") or "").strip()
+                    exts |= {e.strip().lower() for e in ext.split() if e.strip()}
+        except Exception:
+            pass
+    cfg_dir = Path(settings.get("es_cfg_dir","/userdata/system/configs/emulationstation"))
+    if cfg_dir.is_dir():
+        try:
+            for f in sorted(cfg_dir.glob("es_systems_*.cfg")):
+                for s in ET.parse(f).findall(".//system"):
+                    if s.findtext("name","") == system:
+                        ext = (s.findtext("extension","") or "").strip()
+                        exts |= {e.strip().lower() for e in ext.split() if e.strip()}
+        except Exception:
+            pass
+    return exts
+
 def prettify_xml(elem):
     rough    = ET.tostring(elem, encoding="unicode")
     reparsed = minidom.parseString(rough)
@@ -1575,6 +1645,48 @@ def get_cpu_temp():
         except Exception: pass
     return None, "N/A"
 
+def get_fans():
+    """Lee ventiladores desde sysfs hwmon (fan*_input).
+
+    Retorna una lista de ventiladores con RPM, label, flags de fallo/alarma
+    y estado derivado: ok / stopped / fault.
+    """
+    fans = []
+    for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
+        hw_name = _read_file(hwmon / "name")
+        for fanf in sorted(hwmon.glob("fan*_input")):
+            base = fanf.name.replace("_input", "")   # p.ej. fan1
+            m = re.search(r"fan(\d+)", base)
+            idx = m.group(1) if m else base.replace("fan", "")
+            try:
+                rpm = int(fanf.read_text().strip())
+            except Exception:
+                rpm = 0
+            label = _read_file(hwmon / (base + "_label")) or (hw_name and f"{hw_name} #{idx}") or f"Ventilador {idx}"
+            fault = _read_file(hwmon / (base + "_fault"), "0")
+            alarm = _read_file(hwmon / (base + "_alarm"), "0")
+            mn    = _read_file(hwmon / (base + "_min"), None)
+            min_rpm = int(mn) if mn else None
+
+            if fault and fault != "0":
+                status = "fault"
+            elif rpm == 0 or (min_rpm and rpm < min_rpm):
+                status = "stopped"
+            else:
+                status = "ok"
+
+            fans.append({
+                "name":   hw_name,
+                "index":  idx,
+                "label":  label,
+                "rpm":    rpm,
+                "min":    min_rpm,
+                "fault":  bool(fault and fault != "0"),
+                "alarm":  bool(alarm and alarm != "0"),
+                "status": status,
+            })
+    return fans
+
 def _gpu_from_drm(card):
     """Extrae info de una GPU desde una entrada /sys/class/drm/cardN."""
     dev = card / "device"
@@ -1755,17 +1867,20 @@ def get_memory():
         "swap_used_mb":  kb2mb(swap_total - swap_free),
     }
 
-def get_disk():
+_disk_cache = {"data": [], "day": None, "updated": None}
+
+def _compute_disk():
     partitions = []
+    skip_fs = ("tmpfs", "none", "overlay", "devtmpfs", "squashfs")
     try:
         out = _run("df -k 2>/dev/null")
         for line in out.splitlines()[1:]:
             parts = line.split()
             if len(parts) < 6: continue
             fs, size, used, avail, pct, mount = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
-            # Solo particiones relevantes de Batocera
-            if not any(m in mount for m in ["/userdata","/boot","/","/media","/share"]):
-                if mount not in ["/","/boot"]: continue
+            # Solo particiones reales: excluye pseudo-fs (tmpfs/overlay/loop)
+            if fs in skip_fs: continue
+            if fs.startswith("/dev/loop"): continue
             try:
                 partitions.append({
                     "fs":     fs,
@@ -1778,6 +1893,246 @@ def get_disk():
             except Exception: pass
     except Exception: pass
     return partitions
+
+def get_disk():
+    """Devuelve el estado del disco actualizado una sola vez al día (a las 18:00).
+
+    Antes de las 18:00 sirve los datos de ayer a las 18:00; después de las 18:00
+    recalcula y cachea para el resto del día.
+    """
+    now_ts = time.time()
+    lt     = time.localtime(now_ts)
+    today_1800 = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, 18, 0, 0, 0, 0, -1))
+    target = today_1800 if now_ts >= today_1800 else today_1800 - 86400
+    day    = time.strftime("%Y-%m-%d", time.localtime(target))
+    if _disk_cache["day"] != day:
+        _disk_cache["data"]    = _compute_disk()
+        _disk_cache["day"]     = day
+        _disk_cache["updated"] = time.strftime("%Y-%m-%d %H:%M", time.localtime())
+    return _disk_cache["data"]
+
+_skip_diskio = ("loop", "ram", "fd", "sr", "zram", "dm-", "md")
+
+def _read_diskstats():
+    """Lee contadores de I/O de /proc/diskstats por dispositivo."""
+    stats = {}
+    try:
+        for line in Path("/proc/diskstats").read_text().splitlines():
+            f = line.split()
+            if len(f) < 14: continue
+            name = f[2]
+            if name.startswith(_skip_diskio): continue
+            stats[name] = {
+                "reads":  int(f[3]), "rsect": int(f[5]), "rms": int(f[6]),
+                "writes": int(f[7]), "wsect": int(f[9]), "wms": int(f[10]),
+                "busy":   int(f[12]),
+            }
+    except Exception: pass
+    return stats
+
+_diskio_cache = {"prev": {}, "ts": None}
+
+def get_disk_io():
+    """Tasas de I/O de disco en vivo (KB/s lect/esc y % busy) por dispositivo."""
+    now = time.time()
+    cur = _read_diskstats()
+    out = []
+    prev, prev_ts = _diskio_cache["prev"], _diskio_cache["ts"]
+    if prev and prev_ts:
+        dt = max(0.001, now - prev_ts)
+        for name, c in cur.items():
+            p = prev.get(name)
+            if not p: continue
+            r_kbs = max(0, (c["rsect"] - p["rsect"]) * 512 / 1024 / dt)
+            w_kbs = max(0, (c["wsect"] - p["wsect"]) * 512 / 1024 / dt)
+            busy  = min(100, max(0, (c["busy"] - p["busy"]) / (dt * 1000) * 100))
+            out.append({"device": name, "r_kbs": round(r_kbs, 1),
+                        "w_kbs": round(w_kbs, 1), "busy": round(busy, 1)})
+        out.sort(key=lambda x: x["r_kbs"] + x["w_kbs"], reverse=True)
+    _diskio_cache["prev"] = cur
+    _diskio_cache["ts"]   = now
+    return out
+
+def get_battery():
+    """Estado de batería y alimentación (laptop) desde /sys/class/power_supply."""
+    out = {"available": False, "ac": False}
+    try:
+        for d in Path("/sys/class/power_supply").iterdir():
+            if _read_file(d / "type") == "Mains":
+                out["ac"] = _read_file(d / "online") == "1"
+        for d in Path("/sys/class/power_supply").iterdir():
+            if _read_file(d / "type") != "Battery":
+                continue
+            def num(f):
+                try: return int(_read_file(d / f))
+                except Exception: return None
+            cap  = num("capacity") or 0
+            vnow = num("voltage_now") or 0
+            v    = vnow / 1e6  # V
+            enow, efull, edes = num("energy_now"), num("energy_full"), num("energy_full_design")
+            cnow, cfull, cdes = num("charge_now"), num("charge_full"), num("charge_full_design")
+            pnow, cur = num("power_now"), num("current_now")
+            # Energía en Wh: energy_* µWh; si falta, charge_* µAh * voltaje
+            enow_wh  = enow / 1e6 if enow is not None else (cnow * v / 1000 if cnow is not None else None)
+            efull_wh = efull / 1e6 if efull is not None else (cfull * v / 1000 if cfull is not None else None)
+            edes_wh  = edes / 1e6 if edes is not None else (cdes * v / 1000 if cdes is not None else None)
+            # Potencia en W: power_now µW; si falta, current_now µA * voltaje
+            pw = pnow / 1e6 if pnow is not None else (cur * v / 1e6 if cur is not None else None)
+            out.update({
+                "available": True,
+                "name": d.name,
+                "capacity": cap,
+                "status": _read_file(d / "status"),
+                "energy_now_wh": round(enow_wh, 1) if enow_wh is not None else None,
+                "energy_full_wh": round(efull_wh, 1) if efull_wh is not None else None,
+                "design_wh": round(edes_wh, 1) if edes_wh is not None else None,
+                "power_w": round(pw, 1) if pw is not None else None,
+                "voltage_v": round(v, 1) if v else None,
+                "cycle": num("cycle_count"),
+            })
+            p, e = out.get("power_w"), out.get("energy_now_wh")
+            if p and e:
+                st = out.get("status")
+                if st == "Discharging":
+                    h = e / p
+                    out["time_left"] = f"{int(h)}h {int((h % 1) * 60)}m"
+                elif st == "Charging" and out.get("energy_full_wh"):
+                    h = max(0, out["energy_full_wh"] - e) / p
+                    out["time_full"] = f"{int(h)}h {int((h % 1) * 60)}m"
+    except Exception:
+        pass
+    return out
+
+# ── Noticias de emulación (RSS, portal en español) ──
+import urllib.request as _nreq
+
+NEWS_FEEDS = [
+    {"name": "HobbyConsolas", "url": "https://www.hobbyconsolas.com/rss/", "filter": True},
+    {"name": "Eurogamer.es",  "url": "https://www.eurogamer.es/feed",     "filter": False},
+]
+# Filtro de relevancia: emulación / retro / videojuegos en español
+NEWS_KEYWORDS = (
+    "emula", "emulación", "emulador", "rom", "roms", "retro", "mame", "arcade",
+    "homebrew", "nintendo", "playstation", "xbox", "sega", "steam", "switch",
+    "game boy", "gameboy", "consola", "consolas", "videojuego", "videojuegos",
+    "juego", "juegos", "remake", "remaster", "retroarch", "gamer", "gaming",
+    "indie", "pcsx", "dolphin", "cemu", "rpcs3", "yuzu", "ryujinx", "recreativa",
+    "wii", "gamecube", "n64", "snes", "megadrive", "genesis",
+)
+_news_cache = {"ts": 0, "data": []}
+
+def _news_strip_html(raw):
+    try:
+        text = re.sub(r"<[^>]+>", " ", raw)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:160] + ("…" if len(text) > 160 else "")
+    except Exception:
+        return ""
+
+def _news_parse_date(raw):
+    try:
+        import email.utils
+        dt = email.utils.parsedate_to_datetime(raw)
+        return int(dt.timestamp())
+    except Exception:
+        return 0
+
+def _fetch_feed(url, timeout=8):
+    req = _nreq.Request(url, headers={"User-Agent": "Mozilla/5.0 (BatoceraManager; en emulacion)"})
+    with _nreq.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+def _parse_rss_feed(data, source):
+    items = []
+    try:
+        root = ET.fromstring(data)
+    except Exception:
+        return items
+    ns  = {"media": "http://search.yahoo.com/mrss/"}
+    ch  = root.find("channel")
+    src = ch if ch is not None else root
+    for it in src.iterfind("item"):
+        try:
+            title = (it.findtext("title") or "").strip()
+            link  = (it.findtext("link") or "").strip()
+            if not title or not link:
+                continue
+            desc  = _news_strip_html(it.findtext("description") or "")
+            pub   = _news_parse_date(it.findtext("pubDate") or "")
+            img   = ""
+            enc   = it.find("enclosure")
+            if enc is not None and (enc.get("type") or "").startswith("image"):
+                img = enc.get("url") or ""
+            if not img:
+                mc = it.find("media:content", namespaces=ns)
+                if mc is None:
+                    mc = it.find("media:thumbnail", namespaces=ns)
+                if mc is not None:
+                    img = mc.get("url") or mc.get("medium") or ""
+            if img.startswith("//"):
+                img = "https:" + img
+            items.append({"title": title, "link": link, "desc": desc,
+                          "img": img, "src": source, "ts": pub})
+        except Exception:
+            continue
+    return items
+
+def get_news():
+    """Noticias RSS de portales de emulación en español, cacheadas 30 min."""
+    now = time.time()
+    if now - _news_cache["ts"] > 1800:
+        items, seen_url = [], set()
+        for f in NEWS_FEEDS:
+            try:
+                for it in _parse_rss_feed(_fetch_feed(f["url"]), f["name"]):
+                    key = (it["link"] or "").split("#")[0].rstrip("/").lower()
+                    if key and key not in seen_url:
+                        seen_url.add(key)
+                        items.append(it)
+            except Exception:
+                continue
+        # Dedup adicional por título normalizado (mismo artículo, distinta URL)
+        seen_title, dedup = set(), []
+        for it in items:
+            tk = re.sub(r"[^a-z0-9]+", "", (it["title"] or "").lower())
+            if tk in seen_title: continue
+            seen_title.add(tk)
+            dedup.append(it)
+        # Filtro de relevancia solo en feeds mixtos (HobbyConsolas mezcla cine/series)
+        NEG = ("capítulo", "capitulo", "temporada", "película", "pelicula",
+               "episodio", "cine", "crítica", "critica", "serie", "televisión")
+        STRONG = ("emula", "retro", "rom", "nintendo", "playstation", "xbox", "sega",
+                  "steam", "switch", "gameboy", "game boy", "consola", "videojuego",
+                  "remake", "remaster", "retroarch", "arcade", "wii", "gamecube",
+                  "n64", "snes", "megadrive", "genesis", "indie", "mame", "homebrew",
+                  "gamer", "gaming", "dolphin", "cemu", "rpcs3", "yuzu", "ryujinx")
+        WEAK = ("juego", "juegos", "ofertas", "análisis", "analisis", "lanzamiento",
+                "tráiler", "trailer", "demo", "gratis", "ps5", "ps4")
+        def relevant(it, filtrado):
+            if not filtrado: return True
+            tl = ((it["title"] or "") + " " + (it["desc"] or "")).lower()
+            if any(k in tl for k in STRONG): return True
+            if any(k in tl for k in NEG): return False
+            return any(k in tl for k in WEAK)
+        dedup = [it for it in dedup if relevant(it, (it["src"] == "HobbyConsolas"))]
+        # Balance por fuente: máx 5 de HobbyConsolas + 4 de Eurogamer, entrelazados
+        per = {}
+        for it in dedup:
+            per.setdefault(it["src"], []).append(it)
+        for src in per:
+            per[src].sort(key=lambda x: x["ts"], reverse=True)
+        cap = {"HobbyConsolas": 5, "Eurogamer.es": 4}
+        out, idx, srcs = [], {}, [s for s in per if s in cap]
+        for s in srcs: idx[s] = 0
+        while len(out) < 9:
+            placed = False
+            for s in srcs:
+                if idx[s] < min(cap[s], len(per[s])):
+                    out.append(per[s][idx[s]]); idx[s] += 1; placed = True
+            if not placed: break
+        _news_cache["data"] = out[:9]
+        _news_cache["ts"]   = now
+    return _news_cache["data"]
 
 def get_uptime():
     try:
@@ -1856,11 +2211,15 @@ def get_dashboard():
             "temp":     cpu_temp,
             "temp_src": temp_label,
         },
-        "gpu":    get_gpu_info(),
+"gpu":    get_gpu_info(),
         "memory": get_memory(),
         "disk":   get_disk(),
+        "disk_updated": _disk_cache.get("updated"),
+        "disk_io": get_disk_io(),
+        "battery": get_battery(),
         "network":get_network(),
         "processes": get_top_processes(),
+        "fans":   get_fans(),
     }
 
 
@@ -1981,14 +2340,15 @@ import urllib.request as _ureq
 import urllib.parse   as _uparse
 import re as _re
 
-SS_API   = "https://www.screenscraper.fr/api2"
+SS_API   = "https://api.screenscraper.fr/apiv2"
 SS_SOFTNAME = "batocera_manager"
 
 def get_scraper_config(settings):
     """Lee credenciales de ScreenScraper desde batocera.conf."""
     conf_path = Path(settings.get("batocera_conf", "/userdata/system/batocera.conf"))
-    cfg = {"ss_user":"","ss_password":"","ss_region":"wor","ss_lang":"es",
-           "ss_image_type":"mixrbv1","ss_devid":"","ss_devpassword":"",
+    cfg = {"ss_user":"","ss_password":"","ss_devid":"","ss_devpassword":"",
+           "ss_region":"wor","ss_lang":"es",
+           "ss_image_type":"mixrbv1",
            "tgdb_apikey":"","igdb_client_id":"","igdb_client_secret":"",
            "scraper_source":"screenscraper"}
     if not conf_path.exists():
@@ -2000,12 +2360,14 @@ def get_scraper_config(settings):
                 continue
             k, _, v = line.partition("=")
             k, v = k.strip(), v.strip()
-            if k == "global.scrapper.user":       cfg["ss_user"]       = v
-            if k == "global.scrapper.password":   cfg["ss_password"]   = v
-            if k == "global.scrapper.region":     cfg["ss_region"]     = v
+            if k == "global.scrapper.user":        cfg["ss_user"]        = v
+            if k == "global.scrapper.password":    cfg["ss_password"]    = v
+            if k == "global.scrapper.devid":       cfg["ss_devid"]       = v
+            if k == "global.scrapper.devpassword": cfg["ss_devpassword"] = v
+            if k == "global.scrapper.region":
+                cfg["ss_region"] = {"world":"wor","mundial":"wor","europa":"eu",
+                                    "usa":"us","japon":"jp"}.get(v.strip().lower(), v)
             if k == "global.scrapper.lang":       cfg["ss_lang"]       = v
-            if k == "global.scrapper.devid":      cfg["ss_devid"]      = v
-            if k == "global.scrapper.devpassword":cfg["ss_devpassword"]= v
             if k == "global.tgdb.apikey":          cfg["tgdb_apikey"]        = v
             if k == "global.igdb.clientid":         cfg["igdb_client_id"]     = v
             if k == "global.igdb.clientsecret":     cfg["igdb_client_secret"] = v
@@ -2015,76 +2377,44 @@ def get_scraper_config(settings):
         pass
     return cfg
 
-def ss_search_game(rom_filename, system_name, ss_user, ss_pass, region="wor", lang="es", devid="", devpassword=""):
-    """Busca un juego en ScreenScraper.fr por nombre de archivo."""
-    if not ss_user or not ss_pass:
-        return None, "Sin credenciales de ScreenScraper", {}
+# Mapeo sistema Batocera → systemeid ScreenScraper
+# (basado en screenscraper_platformid_map de batocera-emulationstation)
+SS_SYSTEMS = {
+    "3do":29,"amiga":64,"amiga500":64,"amiga1200":64,"amigacd32":130,
+    "amstradcpc":65,"apple2":86,"arcade":75,"mame":75,
+    "atari2600":26,"atari5200":40,"atari7800":41,"atari800":43,"atarixe":43,
+    "atarist":42,"atarijaguar":27,"atarijaguarcd":171,"lynx":28,
+    "bbc":37,"bbcmicro":37,"colecovision":48,"c64":66,"commodore64":66,"vic20":73,
+    "plus4":99,"c16":99,"intellivision":115,"xbox":32,"xbox360":33,
+    "msx":113,"msx2":116,"msx2plus":117,"msxturbor":118,
+    "neogeo":142,"neogeocd":70,"neogeopocket":25,"ngp":25,
+    "neogeopocketcolor":82,"ngpc":82,
+    "3ds":17,"n64":14,"nds":15,"fds":106,"famicom":3,"nes":3,"snes":4,
+    "gb":9,"gba":12,"gbc":10,"gamecube":13,"gc":13,"wii":16,"wiiu":18,
+    "virtualboy":11,"gameandwatch":52,"pc":135,"scummvm":123,
+    "sega32x":19,"segacd":20,"megacd":20,"dreamcast":23,"gamegear":21,
+    "genesis":1,"megadrive":1,"mastersystem":2,"saturn":22,"sg1000":109,
+    "x68000":79,"pc88":221,"pc98":208,
+    "psx":57,"ps2":58,"ps3":59,"ps4":60,"psp":61,"psvita":62,
+    "tg16":31,"pcengine":31,"tgcd":114,"supergrafx":105,
+    "wonderswan":45,"wonderswancolor":46,"zxspectrum":76,
+    "odyssey2":104,"videopac":104,"vectrex":102,"coco":144,"tandy":144,
+    "dragon32":91,"gp32":101,"atomiswave":53,"naomi":56,"naomi2":56,
+    "pcfx":72,"model3":55,"daphne":49,"pico8":234,"supergb":127,
+    "satellaview":107,"sufami":108,"zx81":77,"ti99":205,"watara":207,
+    "pokemini":211,"gx4000":87,"cdi":133,"philipscdi":133,
+    "scv":67,"cassettevision":300,"triforce":0,"sonic":0,
+}
 
-    import re as _re
-    rom_stem = Path(rom_filename).stem
-    # Quitar paréntesis, corchetes y su contenido
-    clean_name = _re.sub(r"[([{][^)\]{}]*[)\]}]", "", rom_stem)
-    # Separar CamelCase: "VirtuaFighter4Evo" => "Virtua Fighter 4 Evo"
-    clean_name = _re.sub(r"([a-z])([A-Z])",   r"\1 \2", clean_name)
-    clean_name = _re.sub(r"([A-Za-z])([0-9])",r"\1 \2", clean_name)
-    clean_name = _re.sub(r"([0-9])([A-Za-z])",r"\1 \2", clean_name)
-    clean_name = clean_name.replace("_"," ").replace("-"," ").replace("."," ")
-    clean_name = _re.sub(r"\s+", " ", clean_name).strip()
-
-    # Mapeo sistema Batocera → systemeid ScreenScraper
-    SS_SYSTEMS = {
-        "snes":9,"nes":3,"n64":14,"gba":12,"gb":9,"gbc":10,"nds":15,
-        "megadrive":1,"genesis":1,"segacd":20,"sega32x":19,
-        "psx":57,"ps2":58,"psp":61,"dreamcast":23,"saturn":22,
-        "mame":75,"arcade":75,"atomiswave":53,"naomi":56,"naomi2":56,
-        "neogeo":142,"neogeocd":70,
-        "atari2600":26,"atari7800":43,"atari5200":40,"lynx":61,
-        "pcengine":31,"amiga500":64,"amiga1200":64,"amigacd32":64,"c64":16,
-        "gamecube":13,"wii":16,"wiiu":18,"3ds":17,"nds":15,
-        "mastersystem":2,"gamegear":21,"sg1000":6,
-        "xbox":32,"xbox360":33,"ps3":59,"ps4":60,"psp":61,
-        "cps1":6,"cps2":7,"cps3":8,
-    }
-    sys_id = SS_SYSTEMS.get(system_name.lower(), 0)
-
-    # Usar las credenciales del usuario como devid también
-    # (cuenta personal puede actuar como dev para uso personal)
-    params = {
-        "devid":      devid      or "batocera_manager",
-        "devpassword":devpassword or "batocera_manager",
-        "softname":   SS_SOFTNAME,
-        "output":     "json",
-        "ssid":       ss_user,
-        "sspassword": ss_pass,
-        "systemeid":  str(sys_id),
-        "romtype":    "rom",
-        "romnom":     rom_filename,
-        "recherche":  clean_name,
-    }
-    url = f"{SS_API}/jeuInfos.php?" + _uparse.urlencode(params)
+def _ss_fetch_json(url, timeout=20):
+    """GET JSON a ScreenScraper devolviendo (data, error_msg, quota)."""
     try:
         req = _ureq.Request(url, headers={
-            "User-Agent": f"BatoceraManager/1.2 ({ss_user})"
+            "User-Agent": "BatoceraManager/1.2",
+            "Accept": "application/json",
         })
-        with _ureq.urlopen(req, timeout=15) as r:
-            raw  = r.read()
-            data = json.loads(raw)
-            hdr  = data.get("header",{})
-            if hdr.get("success") == "true":
-                jeu = data.get("response",{}).get("jeu")
-                ssuser = data.get("response",{}).get("ssuser",{})
-                quota  = {
-                    "requeststoday":  ssuser.get("requeststoday",""),
-                    "maxrequestsperday": ssuser.get("maxrequestsperday",""),
-                    "maxthreads":     ssuser.get("maxthreads",""),
-                    "level":          ssuser.get("niveau",""),
-                }
-                if jeu:
-                    return jeu, None, quota
-                return None, "Sin resultados para este ROM", quota
-            else:
-                msg = hdr.get("message","") or hdr.get("error","Sin resultados")
-                return None, msg, {}
+        with _ureq.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read()), None, {}
     except _ureq.HTTPError as e:
         body = ""
         try: body = e.read().decode(errors="replace")[:200]
@@ -2093,44 +2423,136 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass, region="wor", la
     except Exception as e:
         return None, str(e), {}
 
-def ss_download_image(game_data, image_type, dest_path):
-    """Descarga una imagen de ScreenScraper y la guarda."""
-    # Mapeo tipo imagen a región de SS
-    type_map = {
-        "mixrbv1":"mixrbv1","mixrbv2":"mixrbv2",
-        "images":"ss","screenshots":"ss",
-        "boxart":"box-2D","named_boxarts":"box-2D",
-        "named_logos":"wheel","wheels":"wheel",
-        "fanart":"fanart",
+def _ss_quota(data):
+    """Extrae la cuota del usuario de una respuesta SS."""
+    ssuser = (data or {}).get("response",{}).get("ssuser",{}) or {}
+    return {
+        "requeststoday":    ssuser.get("requeststoday",""),
+        "maxrequestsperday":ssuser.get("maxrequestsperday",""),
+        "maxthreads":       ssuser.get("maxthreads",""),
+        "level":            ssuser.get("niveau",""),
     }
-    ss_region = type_map.get(image_type, "ss")
 
-    medias = game_data.get("medias", [])
-    # Buscar imagen del tipo solicitado
-    url = None
-    for media in medias:
-        mtype = media.get("type","")
-        if mtype == ss_region or (ss_region in mtype):
-            url = media.get("url","")
-            break
-    # Fallback: screenshot
-    if not url:
-        for media in medias:
-            if media.get("type","") in ("ss","screenshot"):
-                url = media.get("url","")
+def _ss_parse_jeu(data):
+    """Devuelve el primer 'jeu' de una respuesta SS o None."""
+    resp = (data or {}).get("response",{}) or {}
+    jeu = resp.get("jeu")
+    if jeu:
+        return jeu
+    if isinstance(resp.get("jeux"), list) and resp["jeux"]:
+        return resp["jeux"][0]
+    return None
+
+def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
+                   region="wor", lang="es", rom_path=None,
+                   devid="", devpassword=""):
+    """Busca un juego en ScreenScraper.fr replicando el formato de Batocera:
+    jeuInfos.php + md5/crc/romtaille/systemeid, con fallback a jeuRecherche.php."""
+    if not ss_user or not ss_pass:
+        return None, "Sin credenciales de ScreenScraper", {}
+    if not devid or not devpassword:
+        return None, ("ScreenScraper necesita devid/devpassword de desarrollador "
+                      "(campos opcionales en la pestaña Configuración del scraper)"), {}
+
+    sys_id = SS_SYSTEMS.get(system_name.lower(), 0)
+    base = {
+        "devid":       devid,
+        "devpassword": devpassword,
+        "softname":    SS_SOFTNAME,
+        "output":      "json",
+        "ssid":        ss_user,
+        "sspassword":  ss_pass,
+        "systemeid":   str(sys_id),
+    }
+
+    # Hash/tamaño igual que Batocera: md5+crc si el archivo es <= 128 MB, tamaño siempre
+    size = 0
+    md5v = crcv = None
+    if rom_path:
+        try:
+            size = Path(rom_path).stat().st_size
+        except Exception:
+            size = 0
+        if 0 < size <= 131072 * 1024:
+            md5v = md5_file(rom_path)
+            crcv = crc32_file(rom_path)
+
+    params = dict(base)
+    params["romtype"]   = "rom"
+    params["romnom"]    = rom_filename
+    params["romtaille"] = str(size)
+    if md5v:
+        params["md5"] = md5v.upper()
+    if crcv:
+        params["crc"] = crcv
+
+    data, err, _ = _ss_fetch_json(f"{SS_API}/jeuInfos.php?" + _uparse.urlencode(params))
+    if data is None:
+        return None, err, {}
+    hdr = data.get("header",{}) or {}
+    quota = _ss_quota(data)
+    if hdr.get("success") == "true":
+        jeu = _ss_parse_jeu(data)
+        if jeu:
+            return jeu, None, quota
+    elif hdr.get("success") is False:
+        msg = hdr.get("message","") or hdr.get("error","Sin resultados")
+        return None, msg, quota
+
+    # Fallback por nombre limpio (jeuRecherche.php)
+    clean = _clean_rom_name(rom_filename)
+    if not clean:
+        return None, "Sin resultados para este ROM", quota
+    p2 = {k:v for k,v in base.items()}
+    p2["recherche"]  = clean
+    p2["systemeid"]  = str(sys_id)
+    data2, err, _ = _ss_fetch_json(f"{SS_API}/jeuRecherche.php?" + _uparse.urlencode(p2))
+    if data2 is None:
+        return None, err, quota
+    hdr2 = data2.get("header",{}) or {}
+    quota2 = _ss_quota(data2)
+    if hdr2.get("success") == "true":
+        jeu = _ss_parse_jeu(data2)
+        if jeu:
+            return jeu, None, quota2
+        return None, "Sin resultados para este ROM", quota2
+    msg2 = hdr2.get("message","") or hdr2.get("error","Sin resultados")
+    return None, msg2, quota2
+
+def ss_media_url(game_data, image_type, region="wor"):
+    """Devuelve (url, extension) del mejor medio SS para el tipo solicitado,
+    replicando la preferencia de región de Batocera (region → wor → us → eu → jp)."""
+    ss_region = SS_MEDIA_LAYOUT.get(image_type, image_type)
+    medias = game_data.get("medias", []) or []
+    cands  = [m for m in medias if m.get("type","") == ss_region]
+    if not cands:
+        cands = [m for m in medias if ss_region in m.get("type","")]
+    if not cands:
+        return None, None
+    region = (region or "wor").lower()
+    chosen = None
+    for reg in [region, "wor", "us", "eu", "jp", "ss", "cus", ""]:
+        for m in cands:
+            if (m.get("region","") or "").lower() == reg:
+                chosen = m
                 break
+        if chosen:
+            break
+    if not chosen:
+        chosen = cands[0]
+    url = (chosen.get("url","") or "").replace("#screenscraper#", "https://www.screenscraper.fr/")
+    ext = (chosen.get("format","") or "").lstrip(".").lower()
+    if ext == "jpeg":
+        ext = "jpg"
+    return url, ("." + ext if ext else "")
+
+def ss_download_image(game_data, image_type, dest_path, region="wor"):
+    """Descarga una imagen de ScreenScraper y la guarda."""
+    url, _ext = ss_media_url(game_data, image_type, region)
     if not url:
         return False, "Sin imagen disponible en ScreenScraper"
-    try:
-        req = _ureq.Request(url, headers={"User-Agent":"BatoceraManager/1.0"})
-        with _ureq.urlopen(req, timeout=15) as r:
-            img_data = r.read()
-        dest_path = Path(dest_path)
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-        dest_path.write_bytes(img_data)
-        return True, str(dest_path)
-    except Exception as e:
-        return False, str(e)
+    ok, msg = download_image_generic(url, dest_path, referer_for=url)
+    return ok, msg
 
 def ss_build_meta(game_data, region="wor", lang="es"):
     """Extrae metadatos de la respuesta de ScreenScraper."""
@@ -2415,11 +2837,15 @@ def _clean_rom_name(rom_filename):
     clean = clean.replace("_"," ").replace("-"," ").replace("."," ")
     return _re.sub(r"\s+", " ", clean).strip()
 
-def download_image_generic(url, dest_path):
-    """Descarga cualquier imagen desde una URL y la guarda."""
+def download_image_generic(url, dest_path, referer_for=None):
+    """Descarga cualquier imagen desde una URL y la guarda.
+    referer_for: URL origen para enviar cabecera Referer (requerido por ScreenScraper)."""
     try:
-        req = _ureq.Request(url, headers={"User-Agent":"BatoceraManager/1.0"})
-        with _ureq.urlopen(req, timeout=15) as r:
+        headers = {"User-Agent":"BatoceraManager/1.0"}
+        if referer_for and "screenscraper" in str(referer_for):
+            headers["Referer"] = "https://www.screenscraper.fr/gameinfos.php"
+        req = _ureq.Request(url, headers=headers)
+        with _ureq.urlopen(req, timeout=20) as r:
             data = r.read()
         dest_path = Path(dest_path)
         dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2430,11 +2856,14 @@ def download_image_generic(url, dest_path):
 
 # ─── Scraper standalone helpers (reusable sync + background) ──────
 def save_gamelist_entry(roms_base, meta):
-    """Guarda una entrada completa en gamelist.xml incluyendo imagen."""
+    """Guarda una entrada completa en gamelist.xml incluyendo imagen.
+    Soporta ROMs en subcarpetas (meta['subpath'])."""
     system   = meta.get("system","")
     filename = meta.get("filename","")
+    subpath  = str(meta.get("subpath","") or "").strip("/")
     sys_dir  = Path(roms_base) / system
     gl_path  = sys_dir / "gamelist.xml"
+    rom_relpath = f"{subpath}/{filename}" if subpath else filename
     if gl_path.exists():
         try: tree = ET.parse(gl_path); root = tree.getroot()
         except Exception: root = ET.Element("gameList")
@@ -2443,11 +2872,11 @@ def save_gamelist_entry(roms_base, meta):
     game = None
     for g in root.findall("game"):
         gpath = g.findtext("path","").lstrip("./")
-        if gpath == filename or Path(gpath).name == filename:
+        if gpath == rom_relpath or Path(gpath).name == filename:
             game = g; break
     if game is None:
         game = ET.SubElement(root,"game")
-        ET.SubElement(game,"path").text = f"./{filename}"
+        ET.SubElement(game,"path").text = f"./{rom_relpath}"
     field_map = {
         "name":"name","desc":"desc","year":"releasedate",
         "publisher":"publisher","genre":"genre","rating":"rating",
@@ -2478,15 +2907,20 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
     if not sys_data:
         return {"ok":0,"fail":0,"skip":0,"errors":[f"Sistema '{system}' no encontrado"],"total":0,"quota":{}}
     roms_base = Path(settings["roms_base"])
+    sys_root  = roms_base / system
     only_missing = options.get("only_missing", True)
     img_type = options.get("ss_image_type","mixrbv1")
+    region   = creds.get("ss_region","wor")
+    lang     = creds.get("ss_lang","es")
     roms = [r for r in sys_data["roms"]
-            if r["is_rom"] and r["ext"] not in ("dir",) and r["name"] not in ("images","media","videos")]
+            if r["is_rom"] and r["ext"] not in ("dir",)
+            and r["name"] not in ("images","media","videos","manuals")]
     if only_missing:
         roms = [r for r in roms if not r["has_image"]]
     results = {"ok":0,"fail":0,"skip":0,"errors":[],"total":len(roms),"quota":{}}
     for idx, rom in enumerate(roms):
         rom_stem = Path(rom["filename"]).stem
+        rom_abspath = sys_root / rom["filename"]
         ok_img   = False
         meta     = {}
         err      = None
@@ -2496,10 +2930,10 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                 meta = tgdb_build_meta(game, creds.get("tgdb_apikey",""))
                 img_url, ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
                 if img_url:
-                    dest = roms_base / system / (rom_stem + ".png")
+                    dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
                     ok_img, _ = download_image_generic(img_url, dest)
                     if ok_img:
-                        meta["image_path"] = f"./{rom_stem}.png"
+                        meta["image_path"] = rel
             _t.sleep(0.3)
         elif source == "igdb":
             game, err = igdb_search_game(rom["filename"], system,
@@ -2508,22 +2942,25 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                 meta = igdb_build_meta(game)
                 img_url = igdb_get_image_url(game)
                 if img_url:
-                    dest = roms_base / system / (rom_stem + ".png")
+                    dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
                     ok_img, _ = download_image_generic(img_url, dest)
                     if ok_img:
-                        meta["image_path"] = f"./{rom_stem}.png"
+                        meta["image_path"] = rel
             _t.sleep(0.3)
         else:  # screenscraper
             game, err, sq = ss_search_game(rom["filename"], system,
                                         creds.get("ss_user",""), creds.get("ss_password",""),
-                                        creds.get("ss_region","wor"), creds.get("ss_lang","es"),
-                                        creds.get("ss_devid",""), creds.get("ss_devpassword",""))
+                                        region, lang, rom_path=str(rom_abspath),
+                                        devid=creds.get("ss_devid",""),
+                                        devpassword=creds.get("ss_devpassword",""))
             if game:
-                meta = ss_build_meta(game, creds.get("ss_region","wor"), creds.get("ss_lang","es"))
-                dest   = roms_base / system / (rom_stem + ".png")
-                ok_img, _ = ss_download_image(game, img_type, dest)
-                if ok_img:
-                    meta["image_path"] = f"./{rom_stem}.png"
+                meta = ss_build_meta(game, region, lang)
+                url, ext = ss_media_url(game, img_type, region)
+                if url:
+                    dest, rel = batocera_media_path(sys_root, rom_stem, img_type, ext)
+                    ok_img, _ = download_image_generic(url, dest, referer_for=url)
+                    if ok_img:
+                        meta["image_path"] = rel
             if sq:
                 results["quota"] = sq
             if "429" in str(err) or "quota" in str(err or "").lower():
@@ -2640,6 +3077,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         body = html.encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type","text/html; charset=utf-8")
+        self.send_header("Cache-Control","no-cache, no-store, must-revalidate")
+        self.send_header("Pragma","no-cache")
+        self.send_header("Expires","0")
         self.send_header("Content-Length",len(body))
         self.end_headers(); self.wfile.write(body)
 
@@ -2725,6 +3165,10 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":True,"folder":folder})
         elif path == "/api/dashboard":
             self.send_json(get_dashboard())
+        elif path == "/api/fans":
+            self.send_json({"ok": True, "ts": time.time(), "fans": get_fans()})
+        elif path == "/api/news":
+            self.send_json({"ok": True, "ts": time.time(), "news": get_news()})
         elif path == "/api/rom-image-info":
             # Devuelve qué imágenes disponibles tiene un ROM
             if len(parts) >= 4:
@@ -2733,12 +3177,18 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 roms_base= Path(s["roms_base"]) / sys_name
                 rom_stem = Path(rom_fn).stem
                 found = []
+                bato_suffixes = ["-image","-thumb","-box","-wheel","-marquee","-fanart",
+                                 "-boxback","-titleshot","-map","-cartridge","-bezel"]
                 for mdir in ["images","named_boxarts","named_logos","screenshots",
                              "wheels","marquees","boxart","fanart","mixrbv1","mixrbv2"]:
                     for ext in [".png",".jpg",".jpeg",".webp"]:
                         p = roms_base / "media" / mdir / (rom_stem + ext)
                         if p.exists():
                             found.append({"dir":mdir,"file":p.name,"size":human_size(p.stat().st_size)})
+                        for suf in bato_suffixes:
+                            p = roms_base / mdir / (rom_stem + suf + ext)
+                            if p.exists():
+                                found.append({"dir":mdir,"file":p.name,"size":human_size(p.stat().st_size)})
                 self.send_json({"ok":True,"images":found,"rom":rom_fn})
             else:
                 self.send_json({"ok":False,"error":"Faltan parámetros"})
@@ -3057,6 +3507,21 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             dest_dir.resolve().relative_to(roms_base.resolve())
         except ValueError:
             self.send_json({"ok":False,"error":"Ruta inválida"}); return
+        # Validar extensiones soportadas por el sistema (si las conocemos)
+        allowed = get_system_extensions(system, s)
+        rejected = []
+        if allowed:
+            kept = {}
+            for k, fdata in files.items():
+                ext = Path(fdata["filename"]).suffix.lower()
+                if ext in allowed:
+                    kept[k] = fdata
+                else:
+                    rejected.append({"file":fdata["filename"],
+                                     "error":f"Extensión no permitida para {system} (permitidas: {', '.join(sorted(allowed))})"})
+            files = kept
+        if rejected:
+            self.send_json({"ok":False,"error":"Archivos rechazados","rejected":rejected}); return
         dest_dir.mkdir(parents=True, exist_ok=True)
         saved = []
         for fdata in files.values():
@@ -3076,12 +3541,25 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         target_system = fields.get("system","").strip()
         target_file   = fields.get("file","").strip()
         bios_dir.mkdir(parents=True, exist_ok=True)
+        # La referencia 'file' de la BD incluye subcarpetas (neocd/neocd_f.rom...)
+        # → se respeta para dejar el BIOS donde Batocera lo espera.
+        if target_file:
+            target = Path(target_file)
+            try:
+                (bios_dir / target).resolve().relative_to(bios_dir.resolve())
+            except ValueError:
+                self.send_json({"ok":False,"error":"Ruta BIOS inválida"}); return
         saved = []
         for fdata in files.values():
-            dest = bios_dir / fdata["filename"]
+            if target_file:
+                dest = bios_dir / Path(target_file)
+            else:
+                dest = bios_dir / fdata["filename"]
+            dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(fdata["data"])
             md5_val = hashlib.md5(fdata["data"]).hexdigest()
             entry = {"file":fdata["filename"],
+                "dest":str(dest),
                 "size":human_size(len(fdata["data"])),
                 "md5":md5_val}
             # Validate MD5 if system + file were provided
@@ -3129,7 +3607,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         source   = d.get("source", "screenscraper")
         cfg      = get_scraper_config(s)
         cfg.update({k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_region","ss_lang","ss_devid","ss_devpassword",
+            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang",
             "tgdb_apikey","igdb_client_id","igdb_client_secret")})
 
         if source == "thegamesdb":
@@ -3153,10 +3631,19 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":False,"error":err or "Sin resultados"})
 
         else:  # screenscraper (default)
+            rom_path = None
+            try:
+                p = Path(s["roms_base"]) / system
+                if subpath: p = p / subpath
+                rom_path = str(p / filename)
+            except Exception:
+                rom_path = None
             game, err, quota = ss_search_game(filename, system,
                                        cfg["ss_user"], cfg["ss_password"],
                                        cfg["ss_region"], cfg["ss_lang"],
-                                       cfg.get("ss_devid",""), cfg.get("ss_devpassword",""))
+                                       rom_path=rom_path,
+                                       devid=cfg.get("ss_devid",""),
+                                       devpassword=cfg.get("ss_devpassword",""))
             if game:
                 meta    = ss_build_meta(game, cfg["ss_region"], cfg["ss_lang"])
                 medias  = game.get("medias",[])
@@ -3179,46 +3666,51 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         source   = d.get("source", "screenscraper")
         cfg      = get_scraper_config(s)
         cfg.update({k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_region","ss_lang","ss_image_type","ss_devid","ss_devpassword",
+            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang","ss_image_type",
             "tgdb_apikey","igdb_client_id","igdb_client_secret")})
 
         results   = {"images":[],"meta":False,"errors":[]}
         sys_root  = Path(s["roms_base"]) / system
         roms_base = (sys_root / subpath) if subpath else sys_root
         rom_stem  = Path(filename).stem
+        image_rel = None
 
         if source == "thegamesdb":
             game_id = game.get("id")
             img_url, err = tgdb_get_image(game_id, cfg.get("tgdb_apikey","")) if game_id else (None,"Sin ID de juego")
             if img_url:
-                dest = roms_base / (rom_stem + ".png")
+                dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
                 ok, msg = download_image_generic(img_url, dest)
-                if ok: results["images"].append({"type":"boxart","path":str(dest)})
+                if ok:
+                    results["images"].append({"type":"boxart","path":str(dest)})
+                    image_rel = rel
                 else:  results["errors"].append(f"Imagen: {msg}")
             else:
                 results["errors"].append(f"Imagen: {err}")
             if d.get("save_meta", True):
                 meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
                 meta.update({"system":system,"subpath":subpath,"filename":filename})
-                if results["images"]:
-                    meta["image_path"] = f"./{rom_stem}.png"
+                if image_rel:
+                    meta["image_path"] = image_rel
                 self._save_gamelist_entry(s, meta)
                 results["meta"] = True
 
         elif source == "igdb":
             img_url = igdb_get_image_url(game)
             if img_url:
-                dest = roms_base / (rom_stem + ".png")
+                dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
                 ok, msg = download_image_generic(img_url, dest)
-                if ok: results["images"].append({"type":"cover","path":str(dest)})
+                if ok:
+                    results["images"].append({"type":"cover","path":str(dest)})
+                    image_rel = rel
                 else:  results["errors"].append(f"Imagen: {msg}")
             else:
                 results["errors"].append("Sin imagen de portada en IGDB")
             if d.get("save_meta", True):
                 meta = igdb_build_meta(game)
                 meta.update({"system":system,"subpath":subpath,"filename":filename})
-                if results["images"]:
-                    meta["image_path"] = f"./{rom_stem}.png"
+                if image_rel:
+                    meta["image_path"] = image_rel
                 self._save_gamelist_entry(s, meta)
                 results["meta"] = True
 
@@ -3226,15 +3718,23 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             img_types = d.get("img_types", [cfg.get("ss_image_type","mixrbv1")])
             if isinstance(img_types, str): img_types = [img_types]
             for itype in img_types:
-                dest   = roms_base / (rom_stem + ".png")
-                ok, msg = ss_download_image(game, itype, dest)
-                if ok: results["images"].append({"type":itype,"path":str(dest)})
-                else:  results["errors"].append(f"Imagen {itype}: {msg}")
+                url, ext = ss_media_url(game, itype, cfg.get("ss_region","wor"))
+                if not url:
+                    results["errors"].append(f"Imagen {itype}: sin disponibilidad en ScreenScraper")
+                    continue
+                dest, rel = batocera_media_path(sys_root, rom_stem, itype, ext or ".png")
+                ok, msg = download_image_generic(url, dest, referer_for=url)
+                if ok:
+                    results["images"].append({"type":itype,"path":str(dest)})
+                    if itype == "image" or image_rel is None:
+                        image_rel = rel
+                else:
+                    results["errors"].append(f"Imagen {itype}: {msg}")
             if d.get("save_meta", True) and game:
                 meta = ss_build_meta(game, cfg["ss_region"], cfg["ss_lang"])
                 meta.update({"system":system,"subpath":subpath,"filename":filename})
-                if results["images"]:
-                    meta["image_path"] = f"./{rom_stem}.png"
+                if image_rel:
+                    meta["image_path"] = image_rel
                 self._save_gamelist_entry(s, meta)
                 results["meta"] = True
 
@@ -3249,7 +3749,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         source = d.get("source", "screenscraper")
         cfg = get_scraper_config(s)
         cfg.update({k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_region","ss_lang","ss_image_type","ss_devid","ss_devpassword",
+            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang","ss_image_type",
             "tgdb_apikey","igdb_client_id","igdb_client_secret")})
         if source == "thegamesdb" and not cfg.get("tgdb_apikey"):
             self.send_json({"ok":False,"error":"Configura tu API Key de TheGamesDB"}); return
@@ -3293,7 +3793,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok":False,"error":"Selecciona al menos un sistema"}); return
         source = d.get("source", "screenscraper")
         creds = {k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_region","ss_lang","ss_image_type","ss_devid","ss_devpassword",
+            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang","ss_image_type",
             "tgdb_apikey","igdb_client_id","igdb_client_secret")}
         # Validate
         if source == "thegamesdb" and not creds.get("tgdb_apikey"):
@@ -3418,15 +3918,22 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 pass
 
         # 2. Fallback: buscar por stem en carpetas de media, tanto en la raíz como en la subcarpeta
+        #    (media/<dir>/<stem>.<ext> estilo antiguo + Batocera: images/<stem>-<sufijo>.<ext>)
         media_dirs = ["images","named_boxarts","named_logos","screenshots",
                       "wheels","marquees","boxart","fanart","mixrbv1","mixrbv2"]
         img_exts   = [".png",".jpg",".jpeg",".webp",".gif"]
+        bato_suffixes = ["-image","-thumb","-box","-wheel","-marquee","-fanart",
+                         "-boxback","-titleshot","-map","-cartridge","-bezel"]
         for search_base in ([base_dir, roms_base] if subpath else [roms_base]):
             for mdir in media_dirs:
                 for ext in img_exts:
                     p = search_base / "media" / mdir / (rom_stem + ext)
                     if p.exists():
                         candidates.append(p)
+                    for suf in bato_suffixes:
+                        p = search_base / mdir / (rom_stem + suf + ext)
+                        if p.exists():
+                            candidates.append(p)
 
         # 3. Servir la primera imagen encontrada
         for img_path in candidates:

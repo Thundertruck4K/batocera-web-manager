@@ -18,7 +18,9 @@ Accede desde cualquier navegador en tu red local (PC, celular, tablet).
 ## ✨ Características
 
 - **🕹️ Gestor de sistemas** — Crear, editar y eliminar sistemas personalizados para EmulationStation con formulario completo
-- **🔍 Scraper multi-fuente** — ScreenScraper.fr, TheGamesDB, IGDB (Twitch)
+- **🔍 Scraper multi-fuente** — ScreenScraper.fr (devid opcional), TheGamesDB, IGDB (Twitch)
+- **🖼️ Scraping estilo Batocera** — Imágenes guardadas en `images/<rom>-image|box|wheel|fanart…` como EmulationStation espera
+- **🔐 Subidas seguras** — Validación de extensión por sistema (es_systems.cfg) y BIOS en subcarpetas correctas
 - **📊 Dashboard** — Monitor en vivo de CPU, GPU, RAM, disco, red, temperatura, procesos
 - **📁 Explorador de ROMs** — Navegar, buscar, renombrar, subir y eliminar ROMs
 - **🔬 Verificación de BIOS** — Chequea integridad MD5 de tus BIOS
@@ -123,6 +125,8 @@ batocera_web/
 | `POST` | `/api/settings` | Guardar configuración |
 | `GET` | `/api/rom-systems` | Lista sistemas con ROMs |
 | `GET` | `/api/dashboard` | Dashboard completo |
+| `GET` | `/api/fans` | Estado de ventiladores (RPM, fallos) desde hwmon |
+| `GET` | `/api/news` | Noticias RSS de emulación en español (cache 30 min) |
 | `POST` | `/api/create` | Crear sistema (soporta dry-run) |
 | `DELETE` | `/api/system/<slug>` | Eliminar sistema |
 | `POST` | `/api/scraper/search` | Buscar juego en scraper |
@@ -130,6 +134,12 @@ batocera_web/
 | `POST` | `/api/scraper/scrape-system` | Scrapear sistema completo |
 
 Respuestas en JSON. Ver `app.py` para documentación detallada de endpoints.
+
+### Notas del scraper ScreenScraper.fr
+
+ScreenScraper exige un **Dev ID / Dev Password** de desarrollador en todas las llamadas a su API v2 (la cuenta normal no sirve). Batocera incrusta los suyos en el binario; este gestor permite añadir los tuyos (opcionales) en `Configuración → Scraper`. Sin ellos, se recomienda usar **TheGamesDB** o **IGDB** (ambas ya funcionan).
+
+Las imágenes se guardan siguiendo el layout de Batocera (`images/<rom>-image.png`, `-box`, `-wheel`, `-marquee`, `-fanart`, `videos/<rom>-video`, etc.) y el gamelist.xml apunta con rutas relativas `./images/...`.
 
 ---
 

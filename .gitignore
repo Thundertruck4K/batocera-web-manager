@@ -17,3 +17,8 @@ Thumbs.db
 
 # Project
 static/
+*.log
+
+# Backups
+*.bak
+*.bak-*

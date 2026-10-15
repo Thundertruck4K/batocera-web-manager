@@ -386,12 +386,73 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .proc-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);font-family:var(--mono)}
 .proc-table tr:last-child td{border-bottom:none}
 .temp-ok{color:var(--green)} .temp-warn{color:var(--yellow)} .temp-hot{color:var(--red)}
-.net-iface{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.net-iface{display:flex;flex-direction:column;align-items:stretch;padding:8px 0;border-bottom:1px solid var(--border)}
 .net-iface:last-child{border-bottom:none}
 .disk-item{margin-bottom:12px}
 .disk-item:last-child{margin-bottom:0}
 .pulse{animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── Ventiladores ── */
+@keyframes fanSpin{to{transform:rotate(360deg)}}
+.fan-blades{animation:fanSpin linear infinite;transform-box:view-box;transform-origin:40px 40px}
+.fan-blades.paused{animation-play-state:paused}
+.fan-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px}
+.fan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent2))}
+.fan-card.fan-fault{border-color:var(--red)}
+.fan-card.fan-stopped{border-color:var(--yellow)}
+.fan-rpm{font-size:26px;font-weight:800;line-height:1;font-family:var(--mono)}
+.fan-sub{font-size:11px;color:var(--text3);text-align:center;line-height:1.4}
+.fan-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+.fan-status.fan-ok{color:var(--green);background:rgba(63,185,80,.12)}
+.fan-status.fan-fault{color:var(--red);background:rgba(248,81,73,.12)}
+.fan-status.fan-stopped{color:var(--yellow);background:rgba(210,153,34,.12)}
+.fan-alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--radius2);background:rgba(248,81,73,.12);border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:600;margin-bottom:14px}
+.fan-alert.warn{background:rgba(210,153,34,.12);border-color:var(--yellow);color:var(--yellow)}
+
+/* ── Braille graphs (btop style) ── */
+.braille{font-family:var(--mono);font-size:11px;line-height:1.2;letter-spacing:2px;margin:3px 0;white-space:pre;text-shadow:0 0 5px currentColor}
+.net-iface .braille{width:100%}
+.net-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.net-graph{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin:5px 0;position:relative;overflow:hidden}
+.net-graph::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.025) 3px 4px)}
+.net-graph.rx{border-color:rgba(63,185,80,.45);box-shadow:inset 0 0 12px rgba(63,185,80,.08)}
+.net-graph.tx{border-color:rgba(88,166,255,.45);box-shadow:inset 0 0 12px rgba(88,166,255,.08)}
+.net-tag{font-size:13px;flex-shrink:0;filter:drop-shadow(0 0 4px currentColor)}
+.net-big{font-size:21px;line-height:1.08;letter-spacing:0;margin:0;text-shadow:0 0 7px currentColor}
+
+/* ── Tanque de almacenamiento (líquido animado) ── */
+.tank-item{display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.tank-item:last-child{border-bottom:none}
+.tank-gauge{flex-shrink:0}
+@keyframes tankWave{to{transform:translateX(-25px)}}
+.tank-mount{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.tank-sub{font-size:10px;color:var(--text3);margin:2px 0 7px}
+.tank-usage{font-size:12px;font-family:var(--mono);color:var(--text)}
+.tank-free{font-size:11px;color:var(--text3);margin-top:2px}
+.tacho{margin:2px auto 2px}
+.tacho svg{filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
+.needle{transition:transform .6s cubic-bezier(.3,.8,.35,1);transform-box:view-box;transform-origin:100px 98px}
+.tacho-info{margin-top:6px;display:flex;flex-direction:column;gap:4px;padding-top:6px;border-top:1px solid var(--border)}
+.batt{display:flex;align-items:center;gap:2px;margin:4px 0 2px}
+.batt-body{flex:1;position:relative;height:30px;border:2px solid var(--border);border-radius:7px;background:var(--bg);overflow:hidden}
+.batt-fill{position:absolute;inset:1px auto 1px 1px;height:calc(100% - 2px);border-radius:4px;transition:width .8s ease}
+.batt-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;text-shadow:0 0 4px rgba(0,0,0,.8)}
+.batt-bolt{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:14px;filter:drop-shadow(0 0 4px var(--yellow))}
+.batt-tip{width:5px;height:14px;border:2px solid var(--border);border-left:none;border-radius:0 4px 4px 0;background:var(--bg)}
+.batt-stats{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.batt-stats > div{display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono)}
+.batt-l{color:var(--text3)}
+.batt-v{color:var(--text2);font-weight:600}
+.news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.news-card{display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color .15s,transform .15s,box-shadow .15s}
+.news-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.news-img{aspect-ratio:16/9;background:var(--bg);overflow:hidden}
+.news-img img{width:100%;height:100%;object-fit:cover;display:block}
+.news-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:5px}
+.news-title{font-size:13px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.news-title:hover{color:var(--accent)}
+.news-meta{font-size:10px;color:var(--text3);letter-spacing:.3px}
 
 /* ── Service Manager ── */
 .service-status-box{
@@ -487,10 +548,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
     </div>
     <nav class="nav">
       <div class="nav-section-label">Principal</div>
-      <button class="nav-item" onclick="showPanel('dashboard',this)">
+      <button class="nav-item active" onclick="showPanel('dashboard',this)">
         <span class="icon">📊</span> Dashboard
       </button>
-      <button class="nav-item active" onclick="showPanel('add',this)">
+      <button class="nav-item" onclick="showPanel('add',this)">
         <span class="icon">➕</span> Agregar Sistema
       </button>
       <button class="nav-item" onclick="showPanel('list',this)">
@@ -528,8 +589,8 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   <div class="main">
     <div class="topbar">
       <div>
-        <div class="topbar-title" id="topbar-title">➕ Agregar Sistema</div>
-        <div class="topbar-sub" id="topbar-sub">Configura y genera el cfg para un nuevo sistema en EmulationStation</div>
+        <div class="topbar-title" id="topbar-title">📊 Dashboard</div>
+        <div class="topbar-sub" id="topbar-sub">Estado del sistema en tiempo real — Batocera</div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="window.location.reload()">↺ Recargar</button>
     </div>
@@ -539,7 +600,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       <!-- ═══════════════════════════════════════════════
            PANEL: DASHBOARD
            ═══════════════════════════════════════════════ -->
-      <div class="panel" id="panel-dashboard">
+      <div class="panel active" id="panel-dashboard">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
           <div>
             <h2 style="font-size:18px;font-weight:700">System Dashboard</h2>
@@ -559,14 +620,36 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <!-- Fila 2: CPU + RAM + GPU -->
         <div class="dash-grid" id="dash-row2" style="grid-template-columns:1fr 1fr 1fr"></div>
 
-        <!-- Fila 3: Disco + Red + Procesos -->
-        <div class="dash-grid" id="dash-row3" style="grid-template-columns:1.2fr 1fr 1.4fr"></div>
+        <!-- Fila Ventiladores -->
+        <div class="dash-card" style="--card-accent:#0d9488;margin-bottom:14px">
+          <h3><span class="icon">🌀</span>Ventiladores</h3>
+          <div id="fan-alert"></div>
+          <div class="dash-grid" id="dash-row-fans" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:0"></div>
+        </div>
+
+        <!-- Fila 3: Almacenamiento (diario 18:00) -->
+        <div class="dash-card" style="--card-accent:#3fb950;margin-bottom:14px">
+          <h3><span class="icon">💾</span>Almacenamiento</h3>
+          <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:24px;align-items:start">
+            <div id="dash-storage"></div>
+            <div id="dash-power"></div>
+          </div>
+        </div>
+
+        <!-- Noticias de emulación (RSS español) -->
+        <div class="dash-card" style="--card-accent:#d29922;margin-bottom:14px">
+          <h3><span class="icon">📰</span>Noticias de emulación <span style="font-size:11px;color:var(--text3);font-weight:400">· RSS en español · actualiza 5 min</span></h3>
+          <div id="dash-news"></div>
+        </div>
+
+        <!-- Fila 4: Red + Procesos -->
+        <div class="dash-grid" id="dash-row3" style="grid-template-columns:1fr 1.4fr"></div>
       </div>
 
       <!-- ═══════════════════════════════════════════════
            PANEL: AGREGAR SISTEMA
            ═══════════════════════════════════════════════ -->
-      <div class="panel active" id="panel-add">
+      <div class="panel" id="panel-add">
 
         <!-- Batocera Reference -->
         <div class="card">
@@ -1124,14 +1207,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <label>Contraseña</label>
           <input type="password" id="sc-pass" placeholder="tu_contraseña">
         </div>
-        <div class="field">
-          <label>Developer ID</label>
-          <input type="text" id="sc-devid" placeholder="tu_devid">
-        </div>
-        <div class="field">
-          <label>Developer Password</label>
-          <input type="password" id="sc-devpass" placeholder="tu_dev_password">
-        </div>
         <div class="field" style="grid-column:1/-1">
           <label>Tipo de imagen</label>
           <select id="sc-imgtype">
@@ -1144,6 +1219,19 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           </select>
         </div>
       </div>
+      <details style="margin-bottom:10px;font-size:11px">
+        <summary style="cursor:pointer;color:var(--text3)">Dev ID / Dev Password (solo desarrolladores, opcional)</summary>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+          <div class="field">
+            <label>Dev ID</label>
+            <input type="text" id="sc-devid" placeholder="devid_screenscraper">
+          </div>
+          <div class="field">
+            <label>Dev Password</label>
+            <input type="password" id="sc-devpass" placeholder="devpassword_screenscraper">
+          </div>
+        </div>
+      </details>
       </div>
       <div id="sc-fields-thegamesdb" style="display:none">
         <div class="field" style="margin-bottom:14px">
@@ -1223,14 +1311,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             <input type="password" id="sc-sys-pass" placeholder="tu_contraseña">
           </div>
           <div class="field">
-            <label>Developer ID</label>
-            <input type="text" id="sc-sys-devid" placeholder="tu_devid">
-          </div>
-          <div class="field">
-            <label>Developer Password</label>
-            <input type="password" id="sc-sys-devpass" placeholder="tu_dev_password">
-          </div>
-          <div class="field">
             <label>Tipo de imagen</label>
             <select id="sc-sys-imgtype">
               <option value="mixrbv1">Mix v1 (recomendado)</option>
@@ -1251,6 +1331,19 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             </select>
           </div>
         </div>
+        <details style="margin:4px 0 10px;font-size:11px">
+          <summary style="cursor:pointer;color:var(--text3)">Dev ID / Dev Password (solo desarrolladores, opcional)</summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+            <div class="field">
+              <label>Dev ID</label>
+              <input type="text" id="sc-sys-devid" placeholder="devid_screenscraper">
+            </div>
+            <div class="field">
+              <label>Dev Password</label>
+              <input type="password" id="sc-sys-devpass" placeholder="devpassword_screenscraper">
+            </div>
+          </div>
+        </details>
       </div>
       <div id="sc-sys-fields-thegamesdb" style="display:none">
         <div class="field" style="margin-bottom:14px">
@@ -1335,14 +1428,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             <input type="password" id="sc-batch-pass" placeholder="tu_contraseña">
           </div>
           <div class="field">
-            <label>Developer ID</label>
-            <input type="text" id="sc-batch-devid" placeholder="tu_devid">
-          </div>
-          <div class="field">
-            <label>Developer Password</label>
-            <input type="password" id="sc-batch-devpass" placeholder="tu_dev_password">
-          </div>
-          <div class="field">
             <label>Tipo de imagen</label>
             <select id="sc-batch-imgtype">
               <option value="mixrbv1">Mix v1 (recomendado)</option>
@@ -1363,6 +1448,19 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             </select>
           </div>
         </div>
+        <details style="margin:-6px 0 14px;font-size:11px">
+          <summary style="cursor:pointer;color:var(--text3)">Dev ID / Dev Password (solo desarrolladores, opcional)</summary>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+            <div class="field">
+              <label>Dev ID</label>
+              <input type="text" id="sc-batch-devid" placeholder="devid_screenscraper">
+            </div>
+            <div class="field">
+              <label>Dev Password</label>
+              <input type="password" id="sc-batch-devpass" placeholder="devpassword_screenscraper">
+            </div>
+          </div>
+        </details>
       </div>
       <div id="sc-batch-fields-thegamesdb" style="display:none">
         <div class="field" style="margin-bottom:14px">
@@ -1420,10 +1518,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         Las credenciales se guardan en <code>/userdata/system/batocera.conf</code>.<br><br>
         <strong>ScreenScraper.fr</strong> — cuenta gratis en
         <a href="https://www.screenscraper.fr" target="_blank" style="color:var(--accent)">screenscraper.fr</a>.
-        El Developer ID <strong style="color:var(--yellow)">no es autoservicio</strong>:
-        debes publicar un mensaje presentando la app en
-        <a href="https://www.screenscraper.fr/forumsujets.php?forum=12" target="_blank" style="color:var(--accent)">este foro</a>
-        y el equipo te asigna devid/devpassword manualmente (puede tardar días).
         Tu cuota de requests/min y requests/día depende de tu nivel de contribución —
         revisa la <a href="https://www.screenscraper.fr/faq.php" target="_blank" style="color:var(--accent)">FAQ</a>.<br><br>
         <strong>TheGamesDB</strong> — API key instantánea sin aprobación en
@@ -1552,6 +1646,8 @@ async function init() {
   }
   loadSettings();
   loadMissingBios();
+  initDashboard();
+  initNews();
 }
 
 // ─── Navigation ──────────────────────────────────────────────
@@ -1576,7 +1672,7 @@ function showPanel(name, btn) {
   document.getElementById('topbar-sub').textContent = meta.sub || '';
   if (name === 'list') loadSystems();
   // Limpiar auto-refresh al salir del dashboard
-  if (name !== 'dashboard') { clearInterval(_dashTimer); _dashTimer = null; }
+  if (name !== 'dashboard') { clearInterval(_dashTimer); _dashTimer = null; clearInterval(_fanTimer); _fanTimer = null; }
   if (name === 'themes')    loadThemes();
   if (name === 'dashboard') initDashboard();
   if (name === 'settings')  checkServiceStatus();
@@ -3052,8 +3148,8 @@ async function loadScraperConfig() {
   cont.innerHTML = [
     { key:'ss_user',           label:'ScreenScraper — Usuario',       type:'text'     },
     { key:'ss_password',       label:'ScreenScraper — Contraseña',    type:'password' },
-    { key:'ss_devid',          label:'ScreenScraper — Developer ID',  type:'text',     ph:'tu_devid'       },
-    { key:'ss_devpassword',    label:'ScreenScraper — Developer Pass',type:'password', ph:'tu_dev_password' },
+    { key:'ss_devid',          label:'ScreenScraper — Dev ID (opcional)', type:'text', ph:'solo desarrolladores' },
+    { key:'ss_devpassword',    label:'ScreenScraper — Dev Password (opcional)', type:'password' },
     { key:'ss_region',         label:'ScreenScraper — Región',        type:'text',     ph:'wor' },
     { key:'ss_lang',           label:'ScreenScraper — Idioma',        type:'text',     ph:'es'  },
     { key:'ss_image_type',     label:'ScreenScraper — Tipo imagen',   type:'text',     ph:'mixrbv1' },
@@ -3070,12 +3166,8 @@ async function loadScraperConfig() {
   const fillIfEmpty = (id, val) => { const el=document.getElementById(id); if(el&&!el.value&&val) el.value=val; };
   fillIfEmpty('sc-user',          cfg.ss_user||'');
   fillIfEmpty('sc-pass',          cfg.ss_password||'');
-  fillIfEmpty('sc-devid',         cfg.ss_devid||'');
-  fillIfEmpty('sc-devpass',       cfg.ss_devpassword||'');
   fillIfEmpty('sc-sys-user',      cfg.ss_user||'');
   fillIfEmpty('sc-sys-pass',      cfg.ss_password||'');
-  fillIfEmpty('sc-sys-devid',     cfg.ss_devid||'');
-  fillIfEmpty('sc-sys-devpass',   cfg.ss_devpassword||'');
   fillIfEmpty('sc-tgdb-key',      cfg.tgdb_apikey||'');
   fillIfEmpty('sc-sys-tgdb-key',  cfg.tgdb_apikey||'');
   fillIfEmpty('sc-igdb-id',       cfg.igdb_client_id||'');
@@ -3084,11 +3176,15 @@ async function loadScraperConfig() {
   fillIfEmpty('sc-sys-igdb-secret', cfg.igdb_client_secret||'');
   fillIfEmpty('sc-batch-user',      cfg.ss_user||'');
   fillIfEmpty('sc-batch-pass',      cfg.ss_password||'');
-  fillIfEmpty('sc-batch-devid',     cfg.ss_devid||'');
-  fillIfEmpty('sc-batch-devpass',   cfg.ss_devpassword||'');
   fillIfEmpty('sc-batch-tgdb-key',  cfg.tgdb_apikey||'');
   fillIfEmpty('sc-batch-igdb-id',   cfg.igdb_client_id||'');
   fillIfEmpty('sc-batch-igdb-secret', cfg.igdb_client_secret||'');
+  fillIfEmpty('sc-devid',         cfg.ss_devid||'');
+  fillIfEmpty('sc-devpass',       cfg.ss_devpassword||'');
+  fillIfEmpty('sc-sys-devid',     cfg.ss_devid||'');
+  fillIfEmpty('sc-sys-devpass',   cfg.ss_devpassword||'');
+  fillIfEmpty('sc-batch-devid',   cfg.ss_devid||'');
+  fillIfEmpty('sc-batch-devpass', cfg.ss_devpassword||'');
   if (cfg.ss_image_type) {
     ['sc-imgtype','sc-sys-imgtype'].forEach(id => {
       const el = document.getElementById(id);
@@ -3440,11 +3536,13 @@ async function batchRenderSystems() {
     }
   }
   list.innerHTML = systems.map(s => `
-    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:2px 4px;
-      border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 5px;
+      border-radius:3px"
       title="${escHtml(s.name)} (${s.rom_count} ROMs)">
-      <input type="checkbox" value="${escHtml(s.name)}" onchange="batchUpdateCount()" style="accent-color:var(--accent);flex-shrink:0">
-      <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</span>
+      <input type="checkbox" value="${escHtml(s.name)}" onchange="batchUpdateCount()"
+        style="accent-color:var(--accent);flex-shrink:0;width:13px;height:13px">
+      <span style="font-size:12px;line-height:1.2;min-width:0;word-break:break-word;color:var(--text2)">${escHtml(s.name)}</span>
+      <span style="font-size:10px;color:var(--text3);flex-shrink:0;margin-left:auto">(${s.rom_count||0})</span>
     </label>`).join('');
   document.getElementById('batch-select-all').checked = false;
   batchUpdateCount();
@@ -3738,6 +3836,9 @@ async function restartService() {
 // ═══════════════════════════════════════════════════════════════
 let _dashTimer = null;
 let _dashData  = null;
+let _fanTimer  = null;
+let _fanPrev   = {};
+let _fanSig    = '';
 
 function toggleDashAuto() {
   const on = document.getElementById('dash-auto').checked;
@@ -3747,6 +3848,8 @@ function toggleDashAuto() {
 
 function initDashboard() {
   loadDashboard();
+  clearInterval(_fanTimer);
+  _fanTimer = setInterval(loadFans, 1000);
   if (document.getElementById('dash-auto').checked) {
     clearInterval(_dashTimer);
     _dashTimer = setInterval(loadDashboard, 5000);
@@ -3765,7 +3868,10 @@ async function loadDashboard() {
 function renderDashboard(d) {
   renderRow1(d);
   renderRow2(d);
+  renderStorage(d);
+  renderPower(d);
   renderRow3(d);
+  renderFans(d.fans);
 }
 
 // ── Fila 1: Batocera info + ES status + Uptime ──────────────────
@@ -3799,168 +3905,210 @@ function renderRow1(d) {
   `;
 }
 
-// ── Fila 2: CPU + RAM + GPU ──────────────────────────────────────
-function renderRow2(d) {
-  const cpu  = d.cpu  || {};
-  const mem  = d.memory || {};
-  const gpu  = d.gpu  || {};
+// ── Fila 2: CPU + RAM + GPU (tacómetros estilo Yaris Cross) ─────────
+let _tachos = {};
 
-  // CPU gauge
-  const cpuPct  = cpu.usage || 0;
-  const cpuTemp = cpu.temp;
-  const tempCls = !cpuTemp ? '' : cpuTemp < 60 ? 'temp-ok' : cpuTemp < 80 ? 'temp-warn' : 'temp-hot';
-  const tempStr = cpuTemp ? `${cpuTemp.toFixed(1)}°C` : 'N/D';
-
-  // RAM bar
-  const ramPct  = mem.used_pct || 0;
-  const ramColor= ramPct < 60 ? '#3fb950' : ramPct < 80 ? '#d29922' : '#f85149';
-
-  // GPU
-  let gpuHtml = '';
-  const gpuList = gpu.gpus && gpu.gpus.length ? gpu.gpus : (gpu.available ? [gpu] : []);
-  if (gpuList.length) {
-    gpuHtml = gpuList.map(g => {
-      const gTemp = parseFloat(g.temp) || 0;
-      const gCls  = gTemp < 60 ? 'temp-ok' : gTemp < 80 ? 'temp-warn' : 'temp-hot';
-      const gUtil = parseFloat(g.util) || 0;
-      const accent = g.is_nvidia ? '#76b900' : g.vendor === 'AMD' ? '#ff6900' : '#bc8cff';
-      const label = gpuList.length > 1 ? `GPU: ${escHtml(g.name||'')}` : 'GPU';
-      return `
-      <div class="dash-card" style="--card-accent:${accent}">
-        <h3><span class="icon">🎨</span>${label}</h3>
-        <div style="font-size:12px;font-weight:600;margin-bottom:12px;color:var(--text2)">${escHtml(g.name||'')}</div>
-        ${g.util !== undefined && g.util !== null ? `
-        <div class="bar-row">
-          <span class="bar-label">Uso</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${gUtil}%;background:${accent}"></div></div>
-          <span class="bar-val">${gUtil}%</span>
-        </div>` : ''}
-        ${g.temp !== undefined && g.temp !== null ? `
-        <div class="bar-row">
-          <span class="bar-label">Temperatura</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.min(gTemp,100)}%;background:${gTemp<60?'#3fb950':gTemp<80?'#d29922':'#f85149'}"></div></div>
-          <span class="bar-val ${gCls}">${gTemp}°C</span>
-        </div>` : ''}
-        ${g.mem_used || g.mem_total ? `
-        <div class="kv-row" style="margin-top:8px">
-          <span class="kv-key">VRAM</span>
-          <span class="kv-val">${escHtml(g.mem_used||'?')} / ${escHtml(g.mem_total||'?')}</span>
-        </div>` : ''}
-        ${g.power ? `<div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val">${escHtml(g.power)}</span></div>` : ''}
-      </div>`;
-    }).join('');
-  } else {
-    gpuHtml = `
-      <div class="dash-card" style="--card-accent:#484f58">
-        <h3><span class="icon">🎨</span>GPU</h3>
-        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">
-          No detectada<br><span style="font-size:11px">nvidia-smi no disponible</span>
-        </div>
-      </div>`;
-  }
-
-  document.getElementById('dash-row2').innerHTML = `
-    <div class="dash-card" style="--card-accent:#f0883e">
-      <h3><span class="icon">⚙</span>CPU</h3>
-      ${gaugeHtml(cpuPct, cpuPct < 60 ? '#3fb950' : cpuPct < 80 ? '#d29922' : '#f85149', `${cpuPct}%`)}
-      <div style="text-align:center;margin-bottom:12px">
-        <span class="kv-key">Temperatura: </span>
-        <span class="kv-val ${tempCls}">${tempStr}</span>
-        <span style="font-size:10px;color:var(--text3)"> (${escHtml(cpu.temp_src||'')})</span>
-      </div>
-      <div class="bar-row">
-        <span class="bar-label">Uso actual</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${cpuPct}%;background:#f0883e"></div></div>
-        <span class="bar-val">${cpuPct}%</span>
-      </div>
-    </div>
-    <div class="dash-card" style="--card-accent:#58a6ff">
-      <h3><span class="icon">🧠</span>Memoria RAM</h3>
-      ${gaugeHtml(ramPct, ramColor, `${ramPct}%`)}
-      <div class="bar-row">
-        <span class="bar-label">Usada</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${ramPct}%;background:${ramColor}"></div></div>
-        <span class="bar-val">${mem.used_mb||0} MB</span>
-      </div>
-      <div class="kv-row">
-        <span class="kv-key">Total</span><span class="kv-val">${mem.total_mb||0} MB</span>
-      </div>
-      <div class="kv-row">
-        <span class="kv-key">Libre</span><span class="kv-val">${mem.free_mb||0} MB</span>
-      </div>
-      ${mem.swap_total_mb>0?`<div class="kv-row"><span class="kv-key">Swap</span><span class="kv-val">${mem.swap_used_mb}/${mem.swap_total_mb} MB</span></div>`:''}
-    </div>
-    ${gpuHtml}
-  `;
+function tachoArcPath(cx, cy, r, v1, v2) {
+  const t1 = Math.PI * v1 / 100, t2 = Math.PI * v2 / 100;
+  const x1 = cx + r * Math.cos(t1), y1 = cy - r * Math.sin(t1);
+  const x2 = cx + r * Math.cos(t2), y2 = cy - r * Math.sin(t2);
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
 }
 
-function gaugeHtml(pct, color, label) {
-  // SVG semicírculo
-  const r  = 45, cx = 60, cy = 55;
-  const circ = Math.PI * r;  // semicircle
-  const dash = circ;
-  const offset = circ * (1 - pct / 100);
-  return `<svg viewBox="0 0 120 65" width="120" height="65" style="display:block;margin:0 auto 8px">
-    <path d="M 15 55 A ${r} ${r} 0 0 1 105 55" fill="none" stroke="var(--bg3)" stroke-width="10" stroke-linecap="round"/>
-    <path d="M 15 55 A ${r} ${r} 0 0 1 105 55" fill="none" stroke="${color}" stroke-width="10"
-      stroke-linecap="round" stroke-dasharray="${dash}" stroke-dashoffset="${offset}"
-      style="transition:stroke-dashoffset .6s ease,stroke .4s"/>
-    <text x="60" y="52" text-anchor="middle" font-size="16" font-weight="700" fill="${color}">${label}</text>
+function tachoInit(id, accent, opts) {
+  opts = opts || {};
+  const gy  = opts.gy  !== undefined ? opts.gy  : 60;   // verde → amarillo
+  const rd  = opts.rd  !== undefined ? opts.rd  : 85;   // amarillo → rojo
+  const maxW = opts.maxW || 220;
+  const cx = 100, cy = 98, r = 80;
+  let ticks = '';
+  for (let v = 0; v <= 100; v += 5) {
+    const major = v % 25 === 0;
+    const t = Math.PI * v / 100;
+    const r1 = 80, r2 = major ? 68 : 74;
+    ticks += `<line x1="${(cx + r1 * Math.cos(t)).toFixed(2)}" y1="${(cy - r1 * Math.sin(t)).toFixed(2)}" x2="${(cx + r2 * Math.cos(t)).toFixed(2)}" y2="${(cy - r2 * Math.sin(t)).toFixed(2)}" stroke="var(--text3)" stroke-width="${major ? 2 : 1}" opacity="${major ? 0.85 : 0.4}"/>`;
+  }
+  const zones =
+    `<path d="${tachoArcPath(cx, cy, 66, 0, gy)}" fill="none" stroke="rgba(63,185,80,.8)" stroke-width="8" stroke-linecap="round"/>` +
+    `<path d="${tachoArcPath(cx, cy, 66, gy, rd)}" fill="none" stroke="rgba(210,153,34,.8)" stroke-width="8" stroke-linecap="round"/>` +
+    `<path d="${tachoArcPath(cx, cy, 66, rd, 100)}" fill="none" stroke="rgba(248,81,73,.85)" stroke-width="8" stroke-linecap="round"/>`;
+  const needle = `<polygon class="needle" id="needle-${id}" points="100,98 100,93.6 158,98 100,102.4" fill="${accent}"/>`;
+  const svg = `<svg viewBox="0 0 200 142" width="100%" style="display:block;max-width:${maxW}px;margin:0 auto">
+    ${ticks}
+    ${zones}
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="3"/>
+    ${needle}
+    <circle id="hub-${id}" cx="${cx}" cy="${cy}" r="6" fill="${accent}"/>
+    <text x="${cx}" y="${cy - 24}" text-anchor="middle" font-size="20" font-weight="800" fill="var(--text)" id="tacho-val-${id}"></text>
+    <text x="${cx}" y="${cy + 32}" text-anchor="middle" font-size="9" fill="var(--text3)" id="tacho-sub-${id}">0%</text>
   </svg>`;
+  const el = document.getElementById('tacho-' + id);
+  if (!el) return null;
+  el.innerHTML = svg;
+  return {
+    needle: document.getElementById('needle-' + id),
+    hub:    document.getElementById('hub-' + id),
+    val:    document.getElementById('tacho-val-' + id),
+    sub:    document.getElementById('tacho-sub-' + id),
+  };
+}
+
+function tachoSet(t, value, color, label, sub) {
+  if (!t) return;
+  const v = Math.max(0, Math.min(100, value || 0));
+  t.needle.style.transform = `rotate(${-v * 1.8}deg)`;
+  t.needle.setAttribute('fill', color);
+  t.hub.setAttribute('fill', color);
+  t.val.textContent = label !== undefined ? label : `${v}%`;
+  t.val.setAttribute('fill', color);
+  if (sub !== undefined) t.sub.textContent = sub;
+}
+
+function renderRow2(d) {
+  const cpu  = d.cpu   || {};
+  const mem  = d.memory|| {};
+  const gpu  = d.gpu   || {};
+  const cpuPct = cpu.usage || 0;
+  const ramPct = mem.used_pct || 0;
+
+  const gpuList = (gpu.gpus && gpu.gpus.length ? gpu.gpus : (gpu.available ? [gpu] : []))
+    .filter(g => g.is_nvidia)
+    .filter((g, i, arr) => arr.findIndex(x => x.vendor === g.vendor) === i);
+  const g0    = gpuList[0] || null;
+  const gUtil = g0 ? (parseFloat(g0.util) || 0) : 0;
+  const accentG = g0 && g0.is_nvidia ? '#76b900' : (g0 && g0.vendor === 'AMD' ? '#ff6900' : '#bc8cff');
+
+  const cpuColor = cpuPct < 60 ? '#3fb950' : cpuPct < 80 ? '#d29922' : '#f85149';
+  const ramColor = ramPct < 60 ? '#3fb950' : ramPct < 80 ? '#d29922' : '#f85149';
+  const gColor   = gUtil < 60 ? '#3fb950' : gUtil < 80 ? '#d29922' : '#f85149';
+
+  const cpuTemp  = cpu.temp;
+
+  const row = document.getElementById('dash-row2');
+  if (!_tachos.init) {
+    row.innerHTML = `
+      <div class="dash-card" style="--card-accent:#f0883e">
+        <h3><span class="icon">⚙</span>CPU</h3>
+        <div style="font-size:10px;color:var(--text3);text-align:center;margin-bottom:2px;letter-spacing:.4px">USO</div>
+        <div class="tacho" id="tacho-cpu"></div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px;letter-spacing:.4px">TEMPERATURA</div>
+        <div class="tacho" id="tacho-cpu-temp" style="margin-top:-2px"></div>
+        <div class="tacho-info">
+          <div class="kv-row"><span class="kv-key">Núcleos</span><span class="kv-val" id="cpu-cores">—</span></div>
+          <div class="kv-row"><span class="kv-key">Fuente Tº</span><span class="kv-val" id="cpu-tempsrc">—</span></div>
+        </div>
+      </div>
+      <div class="dash-card" style="--card-accent:#58a6ff">
+        <h3><span class="icon">🧠</span>Memoria RAM</h3>
+        <div class="tacho" id="tacho-ram"></div>
+        <div class="tacho-info">
+          <div class="kv-row"><span class="kv-key">Usada</span><span class="kv-val" id="ram-used">—</span></div>
+          <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="ram-total">—</span></div>
+          <div class="kv-row"><span class="kv-key">Libre</span><span class="kv-val" id="ram-free">—</span></div>
+          <div class="kv-row" id="ram-swap-row" style="display:none"><span class="kv-key">Swap</span><span class="kv-val" id="ram-swap">—</span></div>
+        </div>
+      </div>
+      ${g0 ? `
+      <div class="dash-card" style="--card-accent:${accentG}">
+        <h3><span class="icon">🎨</span>GPU</h3>
+        <div style="font-size:11px;font-weight:600;margin-bottom:6px;color:var(--text2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g0.name||'')}</div>
+        <div class="tacho" id="tacho-gpu"></div>
+        <div class="tacho-info">
+          <div class="kv-row"><span class="kv-key">Temperatura</span><span class="kv-val" id="gpu-temp">—</span></div>
+          <div class="kv-row"><span class="kv-key">VRAM</span><span class="kv-val" id="gpu-vram">—</span></div>
+          <div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val" id="gpu-power">—</span></div>
+        </div>
+      </div>` : `
+      <div class="dash-card" style="--card-accent:#484f58">
+        <h3><span class="icon">🎨</span>GPU</h3>
+        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">No detectada<br><span style="font-size:11px">nvidia-smi no disponible</span></div>
+      </div>`}
+    `;
+    _tachos.init = true;
+    _tachos.cpu  = tachoInit('cpu', '#f0883e');
+    _tachos.cpuT = tachoInit('cpu-temp', '#f0883e', {gy: 60, rd: 80, maxW: 170});
+    _tachos.ram  = tachoInit('ram', '#58a6ff');
+    _tachos.gpu  = g0 ? tachoInit('gpu', accentG) : null;
+  }
+
+  // Actualizar tacómetros en su sitio (aguja animada)
+  tachoSet(_tachos.cpu, cpuPct, cpuColor, `${cpuPct}%`, 'CPU');
+  if (_tachos.cpuT) {
+    const cTemp = (cpuTemp != null && !isNaN(cpuTemp)) ? cpuTemp : 0;
+    const tColor = cpuTemp == null ? '#f0883e' : cTemp < 60 ? '#3fb950' : cTemp < 80 ? '#d29922' : '#f85149';
+    tachoSet(_tachos.cpuT, cTemp, tColor, cpuTemp != null ? `${Math.round(cTemp)}°C` : 'N/D', 'Tº CPU');
+  }
+  tachoSet(_tachos.ram, ramPct, ramColor, `${ramPct}%`, 'RAM');
+  if (g0 && _tachos.gpu) tachoSet(_tachos.gpu, gUtil, gColor, `${gUtil}%`, 'GPU');
+
+  // Info de CPU
+  const cpuC = document.getElementById('cpu-cores');
+  const cpuS = document.getElementById('cpu-tempsrc');
+  if (cpuC) cpuC.textContent = (cpu.cores || '?');
+  if (cpuS) cpuS.textContent = cpu.temp_src ? escHtml(cpu.temp_src) : '—';
+
+  // Info de RAM
+  const ru = document.getElementById('ram-used'), rt = document.getElementById('ram-total'),
+        rf = document.getElementById('ram-free'), rsw = document.getElementById('ram-swap'),
+        rswRow = document.getElementById('ram-swap-row');
+  if (ru) ru.textContent = `${mem.used_mb||0} MB`;
+  if (rt) rt.textContent = `${mem.total_mb||0} MB`;
+  if (rf) rf.textContent = `${mem.free_mb||0} MB`;
+  if (rswRow) rswRow.style.display = mem.swap_total_mb > 0 ? '' : 'none';
+  if (rsw) rsw.textContent = `${mem.swap_used_mb||0}/${mem.swap_total_mb||0} MB`;
+
+  // Info de GPU
+  if (g0) {
+    const gt = document.getElementById('gpu-temp'), gv = document.getElementById('gpu-vram'), gp = document.getElementById('gpu-power');
+    if (gt) { gt.textContent = g0.temp != null ? `${g0.temp}°C` : '—'; gt.className = 'kv-val ' + ((parseFloat(g0.temp)||0) < 60 ? 'temp-ok' : (parseFloat(g0.temp)||0) < 80 ? 'temp-warn' : 'temp-hot'); }
+    if (gv) gv.textContent = g0.mem_used || g0.mem_total ? `${g0.mem_used||'?'} / ${g0.mem_total||'?'}` : '—';
+    if (gp) gp.textContent = g0.power || '—';
+  }
 }
 
 // ── Fila 3: Disco + Red + Procesos ──────────────────────────────
 function renderRow3(d) {
-  const disk = d.disk    || [];
+  collectHist(d);
   const net  = d.network || [];
   const proc = d.processes || [];
 
-  // Disco
-  const diskHtml = disk.length ? disk.map(p => {
-    const pct   = p.pct || 0;
-    const color = pct < 70 ? '#3fb950' : pct < 85 ? '#d29922' : '#f85149';
-    return `<div class="disk-item">
-      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:12px;font-weight:600">${escHtml(p.mount)}</span>
-        <span style="font-size:11px;color:var(--text3)">${p.used_gb}/${p.size_gb} GB</span>
+  // Red — braille rx/tx dinámico (pixeles grandes estilo btop)
+  const netHtml = net.length ? net.map(n => {
+    const h     = _netHist[n.iface] || {rx:[0], tx:[0]};
+    const rxNow = fmtRate(h.rx[h.rx.length-1] || 0);
+    const txNow = fmtRate(h.tx[h.tx.length-1] || 0);
+    return `<div class="net-iface">
+      <div class="net-head">
+        <span style="font-size:13px;font-weight:600">${escHtml(n.iface)}</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">↓ <b style="color:var(--green)">${rxNow}</b> · ↑ <b style="color:var(--accent)">${txNow}</b></span>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div class="bar-track" style="flex:1;height:10px">
-          <div class="bar-fill" style="width:${pct}%;background:${color}"></div>
-        </div>
-        <span style="font-size:11px;color:${color};font-weight:700;width:35px">${pct}%</span>
+      <div class="net-graph rx">
+        <span class="net-tag" style="color:var(--green)">▼</span>
+        <pre class="braille net-big" style="color:var(--green)">${brailleGraph(h.rx, 3)}</pre>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:2px">${escHtml(p.fs)} — ${p.free_gb} GB libres</div>
+      <div class="net-graph tx">
+        <span class="net-tag" style="color:var(--accent)">▲</span>
+        <pre class="braille net-big" style="color:var(--accent)">${brailleGraph(h.tx, 3)}</pre>
+      </div>
     </div>`;
-  }).join('') : '<div style="color:var(--text3);font-size:12px">Sin datos de disco</div>';
-
-  // Red
-  const netHtml = net.length ? net.map(n => `
-    <div class="net-iface">
-      <div>
-        <div style="font-size:13px;font-weight:600">${escHtml(n.iface)}</div>
-      </div>
-      <div style="text-align:right;font-size:11px;font-family:var(--mono)">
-        <div style="color:var(--green)">↓ ${escHtml(n.rx)}</div>
-        <div style="color:var(--accent)">↑ ${escHtml(n.tx)}</div>
-      </div>
-    </div>`).join('')
+  }).join('')
   : '<div style="color:var(--text3);font-size:12px">Sin interfaces de red</div>';
 
-  // Procesos
-  const procRows = proc.map((p,i) => `
-    <tr>
+  // Procesos — braille sparkline de CPU por proceso
+  const procRows = proc.map(p => {
+    const cpu   = parseFloat(p.cpu) || 0;
+    const color = cpu > 50 ? 'var(--red)' : cpu > 20 ? 'var(--yellow)' : 'var(--text2)';
+    const g     = brailleGraph(_procHist[p.pid || p.cmd] || [cpu], 1);
+    return `<tr>
       <td>${escHtml(p.cmd)}</td>
-      <td style="color:${parseFloat(p.cpu)>50?'var(--red)':parseFloat(p.cpu)>20?'var(--yellow)':'var(--text2)'}">${p.cpu}%</td>
+      <td style="color:${color};font-weight:600">${p.cpu}%</td>
+      <td><pre class="braille" style="color:${color};margin:0;font-size:10px;letter-spacing:1px">${g}</pre></td>
       <td>${p.mem}%</td>
       <td style="color:var(--text3)">${p.pid}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   document.getElementById('dash-row3').innerHTML = `
-    <div class="dash-card" style="--card-accent:#3fb950">
-      <h3><span class="icon">💾</span>Almacenamiento</h3>
-      ${diskHtml}
-    </div>
     <div class="dash-card" style="--card-accent:#58a6ff">
       <h3><span class="icon">🌐</span>Red</h3>
       ${netHtml}
@@ -3968,11 +4116,337 @@ function renderRow3(d) {
     <div class="dash-card" style="--card-accent:#d29922">
       <h3><span class="icon">📋</span>Procesos (top CPU)</h3>
       <table class="proc-table">
-        <thead><tr><th>Proceso</th><th>CPU</th><th>MEM</th><th>PID</th></tr></thead>
+        <thead><tr><th>Proceso</th><th>CPU</th><th>CPU↦</th><th>MEM</th><th>PID</th></tr></thead>
         <tbody>${procRows}</tbody>
       </table>
     </div>
   `;
+}
+
+// ── Almacenamiento (diario 18:00, se reconstruye solo cuando cambia) ──
+let _storageSig = '';
+function renderStorage(d) {
+  const box = document.getElementById('dash-storage');
+  if (!box) return;
+  const sig = d.disk_updated || 'init';
+  const disk = d.disk || [];
+  if (sig === _storageSig && box.firstChild) return;
+  _storageSig = sig;
+  const html = disk.length ? disk.map((p, i) => {
+    const pct   = p.pct || 0;
+    const color = pct < 70 ? '#3fb950' : pct < 85 ? '#d29922' : '#f85149';
+    return `<div class="tank-item">
+      <div class="tank-gauge">${tankGauge(pct, i)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="tank-mount">${escHtml(p.mount)}
+          <span style="font-size:10px;color:${color};border:1px solid ${color};border-radius:20px;padding:0 6px;font-weight:700">${pct}%</span>
+        </div>
+        <div class="tank-sub">${escHtml(p.fs)}</div>
+        <div class="tank-usage">${p.used_gb} / ${p.size_gb} GB usados</div>
+        <div class="tank-free">${p.free_gb} GB libres</div>
+      </div>
+    </div>`;
+  }).join('') : '<div style="color:var(--text3);font-size:12px">Sin datos de disco</div>';
+  box.innerHTML = `<div style="font-size:10px;color:var(--text3);margin:-6px 0 4px">Actualizado: ${escHtml(d.disk_updated||'—')} · diario 18:00</div>${html}`;
+}
+
+// ── Batería y energía (laptop, se actualiza cada poll) ──
+let _powerHist = [];
+function renderPower(d) {
+  const box = document.getElementById('dash-power');
+  if (!box) return;
+  const b = d.battery || {};
+  if (!b.available) {
+    box.innerHTML = '<div style="font-size:11px;color:var(--text3)">🔌 Sin batería detectada (escritorio)</div>';
+    return;
+  }
+  const pct   = Math.max(0, Math.min(100, b.capacity || 0));
+  const color = pct > 50 ? 'var(--green)' : pct > 20 ? 'var(--yellow)' : 'var(--red)';
+  const stMap = {Charging:'Cargando', Discharging:'En uso (batería)', Full:'Completa', 'Not charging':'No carga', Unknown:'Desconocido'};
+  const st    = stMap[b.status] || b.status || '';
+  const isCh  = b.status === 'Charging' || b.status === 'Full';
+  if (b.power_w != null) {
+    _powerHist.push(b.power_w);
+    if (_powerHist.length > 40) _powerHist.shift();
+  }
+  const timeLine = b.time_left ? `⏱ Restante: <b>${b.time_left}</b>` : b.time_full ? `⏱ Hasta completa: <b>${b.time_full}</b>` : '';
+  const acHtml  = `<span style="color:${b.ac ? 'var(--green)' : 'var(--red)'}">${b.ac ? '🔌 Conectado' : '🔋 Sin corriente'}</span>`;
+  box.innerHTML = `
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px;letter-spacing:.4px">🔋 Batería y energía <span style="color:var(--text3)">(5s)</span></div>
+    <div class="batt">
+      <div class="batt-body">
+        <div class="batt-fill" style="width:${pct}%;background:${color}"></div>
+        <div class="batt-pct">${pct}%</div>
+        ${isCh ? '<div class="batt-bolt">⚡</div>' : ''}
+      </div>
+      <div class="batt-tip"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px">
+      <span style="color:${color};font-weight:700">${st}</span>
+      ${acHtml}
+    </div>
+    <div class="batt-stats">
+      ${b.power_w != null ? `<div><span class="batt-l">Consumo</span><span class="batt-v">⚡ ${b.power_w} W</span></div>` : ''}
+      ${b.voltage_v != null ? `<div><span class="batt-l">Voltaje</span><span class="batt-v">${b.voltage_v} V</span></div>` : ''}
+      ${b.energy_now_wh != null ? `<div><span class="batt-l">Energía</span><span class="batt-v">${b.energy_now_wh} Wh</span></div>` : ''}
+      ${b.energy_full_wh != null ? `<div><span class="batt-l">Capacidad</span><span class="batt-v">${b.energy_full_wh} Wh${b.design_wh ? ' / ' + b.design_wh : ''}</span></div>` : ''}
+      ${b.cycle != null ? `<div><span class="batt-l">Ciclos</span><span class="batt-v">${b.cycle}</span></div>` : ''}
+      ${timeLine ? `<div><span class="batt-l">Tiempo</span><span class="batt-v">${timeLine.replace(/<[^>]+>/g,'')}</span></div>` : ''}
+    </div>
+    ${_powerHist.length > 1 ? `<pre class="braille" style="color:var(--accent);margin:6px 0 0;font-size:12px">${brailleGraph(_powerHist, 1)}</pre>
+    <div style="font-size:10px;color:var(--text3);margin-top:2px">consumo W (últimas ${_powerHist.length} muestras)</div>` : ''}`;
+}
+
+// ── Noticias de emulación (RSS) ──
+function relTime(ts) {
+  if (!ts) return '';
+  const d = Math.floor((Date.now()/1000 - ts) / 60);
+  if (d < 1) return 'ahora';
+  if (d < 60) return `hace ${d} min`;
+  const h = Math.floor(d / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.floor(h/24)} d`;
+}
+
+function renderNews(items) {
+  const box = document.getElementById('dash-news');
+  if (!box) return;
+  if (!items || !items.length) {
+    box.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0">Sin noticias (revisa conexión a internet)</div>';
+    return;
+  }
+  box.innerHTML = `<div class="news-grid">${items.map(it => {
+    const imgHtml = it.img
+      ? `<div class="news-img"><img loading="lazy" src="${escHtml(it.img)}" alt="" onerror="this.parentNode.style.display='none'"></div>`
+      : '';
+    return `<a class="news-card" href="${escHtml(it.link)}" target="_blank" rel="noopener">
+      ${imgHtml}
+      <div class="news-body">
+        <div class="news-title">${escHtml(it.title)}</div>
+        <div class="news-meta"><span style="color:var(--accent)">${escHtml(it.src)}</span> · ${relTime(it.ts)}</div>
+      </div>
+    </a>`;
+  }).join('')}</div>`;
+}
+
+let _newsTimer = null;
+function initNews() {
+  clearInterval(_newsTimer);
+  _newsTimer = setInterval(async () => {
+    try {
+      const data = await fetchJson('/api/news');
+      if (data.ok) renderNews(data.news);
+    } catch (e) {}
+  }, 5 * 60 * 1000);
+  (async () => {
+    try {
+      const data = await fetchJson('/api/news');
+      if (data.ok) renderNews(data.news);
+    } catch (e) {}
+  })();
+}
+
+// ── Historial + gráficos braille (estilo btop) ────────────────
+let _netHist  = {};
+let _netRaw   = {};
+let _netTs    = null;
+let _procHist = {};
+
+// Tanque de almacenamiento: líquido con olas animadas y nivel = pct
+function tankGauge(pct, idx) {
+  const level = Math.max(6, Math.min(94, 100 - pct));   // superficie del líquido
+  const Y     = level;
+  const id    = idx;
+  const isOk  = pct < 70, isWarn = pct < 85;
+  const cTop  = isOk ? '#57d9a3' : isWarn ? '#e3b341' : '#f87171';
+  const cBot  = isOk ? '#1e7a44' : isWarn ? '#8a5a12' : '#a11c14';
+  const wave  = `M0 ${Y} Q 6.25 ${Y-4} 12.5 ${Y} T 25 ${Y} T 37.5 ${Y} T 50 ${Y} T 62.5 ${Y} T 75 ${Y} T 87.5 ${Y} T 100 ${Y} T 112.5 ${Y} T 125 ${Y} L 125 112 L 0 112 Z`;
+  return `
+  <svg viewBox="0 0 100 100" width="88" height="88" style="display:block;filter:drop-shadow(0 0 6px ${isOk?'rgba(63,185,80,.45)':isWarn?'rgba(210,153,34,.45)':'rgba(248,81,73,.5)'})">
+    <defs>
+      <linearGradient id="tg-${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${cTop}"/>
+        <stop offset="1" stop-color="${cBot}"/>
+      </linearGradient>
+      <clipPath id="tankClip-${id}"><rect x="6" y="6" width="88" height="88" rx="22"/></clipPath>
+    </defs>
+    <rect x="6" y="6" width="88" height="88" rx="22" fill="rgba(255,255,255,.03)" stroke="var(--border)" stroke-width="2"/>
+    <g clip-path="url(#tankClip-${id})">
+      <rect x="6" y="${level}" width="88" height="${100-level}" fill="url(#tg-${id})"/>
+      <g style="transform-box:view-box;animation:tankWave 2.4s linear infinite">
+        <path d="${wave}" fill="rgba(255,255,255,.25)"/>
+      </g>
+      <g style="transform-box:view-box;animation:tankWave 3.6s linear infinite">
+        <path d="${wave}" fill="rgba(255,255,255,.12)"/>
+      </g>
+    </g>
+    <circle cx="50" cy="50" r="17" fill="rgba(0,0,0,.35)"/>
+    <text x="50" y="55" text-anchor="middle" font-size="17" font-weight="800" fill="#fff">${pct}%</text>
+  </svg>`;
+}
+
+function fmtRate(bps) {
+  if (bps > 1048576) return (bps/1048576).toFixed(2) + ' MB/s';
+  if (bps > 1024)    return (bps/1024).toFixed(1) + ' KB/s';
+  return Math.round(bps) + ' B/s';
+}
+
+function brailleGraph(values, height) {
+  if (!values || !values.length) return '';
+  const cols = Math.max(2, Math.ceil(values.length / 2));
+  const W = cols * 2, H = height * 4;
+  const max = Math.max(...values, 0.001);
+  const grid = Array.from({length: W}, () => new Array(H).fill(0));
+  for (let i = 0; i < values.length; i++) {
+    const px = Math.min(W - 1, i);
+    const y  = Math.max(0, Math.min(H - 1, Math.round((1 - values[i] / max) * (H - 1))));
+    grid[px][y] = 1;
+    if (i > 0) {
+      const yp = Math.max(0, Math.min(H - 1, Math.round((1 - values[i-1] / max) * (H - 1))));
+      for (let yy = Math.min(yp, y); yy <= Math.max(yp, y); yy++) grid[px][yy] = 1;
+    }
+  }
+  const bits = [[0,0,0x01],[0,1,0x02],[0,2,0x04],[0,3,0x40],[1,0,0x08],[1,1,0x10],[1,2,0x20],[1,3,0x80]];
+  const out = [];
+  for (let cy = 0; cy < H / 4; cy++) {
+    let row = '';
+    for (let cx = 0; cx < W / 2; cx++) {
+      let code = 0x2800;
+      for (const [dx, dy, bit] of bits) if (grid[cx*2+dx][cy*4+dy]) code |= bit;
+      row += String.fromCharCode(code);
+    }
+    out.push(row);
+  }
+  return out.join('\n');
+}
+
+function collectHist(d) {
+  const now = Date.now();
+  const dt = _netTs ? (now - _netTs) / 1000 : 5;
+  (d.network || []).forEach(n => {
+    if (!_netHist[n.iface]) _netHist[n.iface] = {rx: [], tx: []};
+    const h = _netHist[n.iface];
+    const prev = _netRaw[n.iface];
+    if (prev && dt > 0) {
+      h.rx.push(Math.max(0, (n.rx_raw - prev.rx) / dt));
+      h.tx.push(Math.max(0, (n.tx_raw - prev.tx) / dt));
+    } else { h.rx.push(0); h.tx.push(0); }
+    if (h.rx.length > 60) { h.rx.shift(); h.tx.shift(); }
+    _netRaw[n.iface] = {rx: n.rx_raw, tx: n.tx_raw};
+  });
+  _netTs = now;
+  (d.processes || []).forEach(p => {
+    const key = p.pid || p.cmd;
+    if (!_procHist[key]) _procHist[key] = [];
+    const h = _procHist[key];
+    h.push(parseFloat(p.cpu) || 0);
+    if (h.length > 30) h.shift();
+  });
+}
+
+// ── Ventiladores ─────────────────────────────────────────────
+function fanStatusMeta(st) {
+  if (st === 'fault')   return { dot:'dot-red',    label:'FALLO',    cls:'fan-fault',   color:'var(--red)'    };
+  if (st === 'stopped') return { dot:'dot-yellow', label:'DETENIDO', cls:'fan-stopped', color:'var(--yellow)' };
+  return { dot:'dot-green', label:'OK', cls:'', color:'var(--green)' };
+}
+
+function fanSvg(rpm, status) {
+  const stopped = status !== 'ok';
+  const dur     = stopped ? 60 : Math.round(Math.max(0.25, Math.min(2.2, 2.2 - rpm / 2500)) * 100) / 100;
+  const paused  = stopped ? 'paused' : '';
+  const blade   = '<path d="M40 44 C45 35 47 25 43 15 C41 9 36 9 34 16 C30 25 34 34 40 44 Z" fill="#c7d2e0" stroke="#9fb2c7" stroke-width="1"/>';
+  return `
+  <svg viewBox="0 0 80 80" width="84" height="84" style="display:block">
+    <circle cx="40" cy="40" r="35" fill="rgba(255,255,255,.04)" stroke="var(--border)" stroke-width="2"/>
+    <circle cx="40" cy="40" r="31" fill="none" stroke="rgba(255,255,255,.05)" stroke-dasharray="3 5"/>
+    <g class="fan-blades ${paused}" style="animation-duration:${dur}s">
+      ${blade}
+      ${blade.replace('<path ', '<path transform="rotate(120 40 40)" ')}
+      ${blade.replace('<path ', '<path transform="rotate(240 40 40)" ')}
+    </g>
+    <circle cx="40" cy="40" r="7" fill="var(--text3)"/>
+    <circle cx="40" cy="40" r="3" fill="var(--bg2)"/>
+  </svg>`;
+}
+
+function renderFans(fans) {
+  const alertEl = document.getElementById('fan-alert');
+  const gridEl  = document.getElementById('dash-row-fans');
+  if (!gridEl) return;
+
+  if (!fans || !fans.length) {
+    gridEl.innerHTML = '<div style="color:var(--text3);font-size:12px;grid-column:1/-1;text-align:center;padding:12px 0">No se detectaron ventiladores (hwmon)</div>';
+    if (alertEl) alertEl.innerHTML = '';
+    return;
+  }
+
+  const faults  = fans.filter(f => f.status === 'fault');
+  const stopped = fans.filter(f => f.status === 'stopped');
+  let alert = '';
+  if (faults.length) {
+    alert = `<div class="fan-alert">⚠️ FALLO DETECTADO: ${escHtml(faults.map(f=>f.label).join(', '))} — revisa los ventiladores</div>`;
+  } else if (stopped.length) {
+    alert = `<div class="fan-alert warn">⚠️ Ventilador(es) detenido(s): ${escHtml(stopped.map(f=>f.label).join(', '))}</div>`;
+  }
+  if (alertEl) alertEl.innerHTML = alert;
+
+  fans.forEach(f => {
+    const key  = (f.name||'') + '#' + f.index;
+    const prev = _fanPrev[key];
+    if (prev === 'ok' && f.status !== 'ok') {
+      toast(`⚠️ Ventilador ${f.label} ${f.status==='fault'?'con falla':'detenido'}`, 'err');
+    }
+    _fanPrev[key] = f.status;
+  });
+
+  // Reconstruir tarjetas solo si cambió el conjunto de ventiladores;
+  // si no, actualizar RPM/estado en su sitio para que las aspas no reinicien.
+  const sig = fans.map(f => `${f.name}#${f.index}`).join('|');
+  if (sig !== _fanSig) {
+    _fanSig = sig;
+    gridEl.innerHTML = fans.map((f, i) => {
+      const meta  = fanStatusMeta(f.status);
+      const rpmStr = f.status === 'fault' ? '—' : `${f.rpm} RPM`;
+      return `
+      <div class="fan-card ${meta.cls}" data-idx="${i}">
+        ${fanSvg(f.rpm, f.status)}
+        <div style="font-size:12px;font-weight:700;text-align:center">${escHtml(f.label)}</div>
+        <div class="fan-rpm" style="color:${meta.color}">${rpmStr}</div>
+        <div class="fan-sub">${escHtml(f.name||'')} · fan${escHtml(f.index||'')}</div>
+        <div class="fan-status ${f.status==='ok'?'fan-ok':f.status==='fault'?'fan-fault':'fan-stopped'}">
+          <span class="status-dot ${meta.dot}"></span>${meta.label}
+        </div>
+      </div>`;
+    }).join('');
+    return;
+  }
+
+  fans.forEach((f, i) => {
+    const card = gridEl.querySelector(`.fan-card[data-idx="${i}"]`);
+    if (!card) return;
+    const meta  = fanStatusMeta(f.status);
+    card.className = 'fan-card ' + meta.cls;
+    const rpmEl  = card.querySelector('.fan-rpm');
+    if (rpmEl) { rpmEl.textContent = f.status === 'fault' ? '—' : `${f.rpm} RPM`; rpmEl.style.color = meta.color; }
+    const blades = card.querySelector('.fan-blades');
+    if (blades) {
+      const dur = f.status !== 'ok' ? 60 : Math.round(Math.max(0.25, Math.min(2.2, 2.2 - f.rpm / 2500)) * 100) / 100;
+      blades.style.animationDuration = dur + 's';
+      blades.classList.toggle('paused', f.status !== 'ok');
+    }
+    const badge = card.querySelector('.fan-status');
+    if (badge) {
+      badge.className = `fan-status ${f.status==='ok'?'fan-ok':f.status==='fault'?'fan-fault':'fan-stopped'}`;
+      badge.innerHTML = `<span class="status-dot ${meta.dot}"></span>${meta.label}`;
+    }
+  });
+}
+
+async function loadFans() {
+  const data = await fetchJson('/api/fans');
+  if (!data || !data.fans) return;
+  renderFans(data.fans);
 }
 
 // Enter en modal rename
