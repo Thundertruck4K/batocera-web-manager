@@ -4,11 +4,20 @@ Batocera System Manager Web — v1.2
 Servidor HTTP puro (stdlib) — sin dependencias externas.
 """
 
-import http.server, json, re, os, io, shutil, time, urllib.parse, hashlib, zlib
+import hashlib
+import http.server
+import io
+import json
+import os
+import re
+import shlex
+import shutil
+import time
+import urllib.parse
 import xml.etree.ElementTree as ET
-from xml.dom import minidom
+import zlib
 from pathlib import Path
-from http import HTTPStatus
+from xml.dom import minidom
 
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -1053,7 +1062,8 @@ def _get_bios_entries(slug):
     return _BIOS_LOOKUP.get(_bios_key(slug), [])
 
 # ─── Cache ───────────────────────────────────────────────────────
-import threading, time
+import threading
+
 _rom_cache        = {}   # {roms_base: (timestamp, data)}
 _rom_cache_lock   = threading.Lock()
 ROM_CACHE_TTL     = 60   # segundos
@@ -1151,6 +1161,14 @@ def batocera_media_path(system_dir, rom_stem, media_type, ext=".png"):
     rel  = f"{folder}/{rom_stem}{suffix}{ext}"
     return Path(system_dir) / rel, "./" + rel
 
+def is_gamelist_image_type(media_type):
+    """True si el tipo produce el arte principal (`images/<stem>-image`).
+
+    EmulationStation muestra `<image>` del gamelist; solo los tipos cuyo sufijo
+    es `-image` (box-2D, ss, mixrbv…) deben rellenarlo, nunca wheel/fanart/video.
+    """
+    return SS_MEDIA_LAYOUT.get(media_type, ("images", "-image"))[1] == "-image"
+
 def get_system_extensions(system, settings):
     """Extensiones permitidas para un sistema según es_systems.cfg
     (integradas /usr/share/emulationstation + custom es_systems_*.cfg)."""
@@ -1227,6 +1245,30 @@ def detect_active_theme(settings):
             except Exception: pass
     return "es-theme-carbon"
 
+def find_system_logo(settings, system, theme=None):
+    """Ruta del logo de un sistema en el tema activo (usuario o sistema), o None.
+
+    Busca en temas de usuario (/userdata/themes) y de sistema
+    (/usr/share/emulationstation/themes) y confina el resultado a esas raíces
+    para evitar path traversal vía `system`.
+    """
+    if theme is None:
+        theme = detect_active_theme(settings)
+    for base in (settings.get("themes_user"), settings.get("themes_sys")):
+        if not base:
+            continue
+        base_r = Path(base).resolve()
+        for cand in (base_r / theme / system / "art" / "logo.png",
+                     base_r / theme / system / "logo.png"):
+            try:
+                cand_r = cand.resolve()
+                cand_r.relative_to(base_r)   # rechaza `..` fuera de la raíz
+                if cand_r.exists():
+                    return cand_r
+            except Exception:
+                continue
+    return None
+
 def list_themes(settings):
     themes = []
     for base in [settings["themes_user"], settings["themes_sys"]]:
@@ -1291,20 +1333,106 @@ def get_custom_system_detail(name, settings):
     return None
 
 
+# ─── Seguridad: validación de rutas y valores ──────────────────────
+_CONF_VALUE_RE = re.compile(r"^[A-Za-z0-9._+-]+$")
+
+
+def is_safe_component(name):
+    """True si `name` es un único componente de ruta seguro.
+
+    Rechaza vacío, ".", "..", separadores ("/", chr(92)) y NUL, de modo que al
+    unirlo a un directorio no pueda escapar de él.
+    """
+    if not name or name in (".", ".."):
+        return False
+    return not ("/" in name or chr(92) in name or chr(0) in name)
+
+
+def safe_path_under(base, *parts):
+    """Une `parts` a `base` garantizando que el resultado queda dentro de `base`.
+
+    Lanza ValueError si algún componente intenta salir (path traversal).
+    """
+    base_r = Path(base).resolve()
+    target_r = base_r.joinpath(*parts).resolve()
+    try:
+        target_r.relative_to(base_r)
+    except ValueError:
+        raise ValueError("ruta fuera del directorio permitido")
+    return target_r
+
+
+def system_dir(settings, system):
+    """Devuelve <roms_base>/<system> validando que `system` sea un componente seguro."""
+    if not is_safe_component(system):
+        raise ValueError("nombre de sistema inválido")
+    return safe_path_under(settings["roms_base"], system)
+
+
+def confine_to_base(base, candidate):
+    """Resuelve `candidate` (absoluto, o relativo a `base`) y exige que quede dentro de `base`.
+
+    Lanza ValueError si la ruta resultante sale de `base` (path traversal).
+    """
+    base_r = Path(base).resolve()
+    cand = Path(candidate)
+    target = cand if cand.is_absolute() else base_r / cand
+    target_r = target.resolve()
+    try:
+        target_r.relative_to(base_r)
+    except ValueError:
+        raise ValueError("ruta fuera de la base permitida")
+    return target_r
+
+
+def sanitize_conf_value(value):
+    """Valida un valor de batocera.conf (emulator/core).
+
+    Rechaza saltos de línea, espacios y metacaracteres para impedir la inyección
+    de directivas en el fichero de configuración.
+    """
+    value = (value or "").strip()
+    if not value or not _CONF_VALUE_RE.match(value):
+        raise ValueError("valor de configuración inválido")
+    return value
+
+
+def sanitize_comment_text(value):
+    """Colapsa espacios y saltos de línea para insertar texto seguro en un comentario."""
+    return " ".join((value or "").split())
+
+
+def xml_looks_safe(text):
+    """True si `text` (str o bytes) no contiene DOCTYPE ni ENTITY (mitiga XXE / billion laughs)."""
+    if isinstance(text, (bytes, bytearray)):
+        low = bytes(text).lower()
+        return b"<!doctype" not in low and b"<!entity" not in low
+    low = (text or "").lower()
+    return "<!doctype" not in low and "<!entity" not in low
+
+
+def parse_content_length(value):
+    """Convierte el header Content-Length a entero no negativo (0 si ausente o inválido)."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, n)
+
+
+# Límite del cuerpo HTTP aceptado (subidas de ROM/BIOS): 512 MiB
+MAX_BODY_BYTES = 512 * 1024 * 1024
+
+
 def list_rom_folder(settings, system, subpath=""):
     """Lista el contenido de una carpeta dentro de un sistema, soportando subcarpetas anidadas.
     subpath es relativo a la raíz del sistema, ej: 'CPS1' o 'CPS1/bootlegs'.
     """
-    roms_base = Path(settings["roms_base"]) / system
-    target    = (roms_base / subpath) if subpath else roms_base
-    target    = target.resolve()
-    roms_base_resolved = roms_base.resolve()
-
-    # Seguridad: evitar path traversal fuera del sistema
     try:
-        target.relative_to(roms_base_resolved)
+        roms_base = system_dir(settings, system)
+        target    = safe_path_under(roms_base, subpath) if subpath else roms_base
     except ValueError:
-        return None  # intento de escape fuera del directorio del sistema
+        return None  # sistema o subruta inválidos (path traversal)
 
     if not target.exists() or not target.is_dir():
         return None
@@ -1463,16 +1591,14 @@ def get_rom_systems(settings, fast=False):
                     meta = gdata.get(rom["filename"], gdata.get(rom["name"], {}))
                     if meta: rom.update(meta)
             except Exception: pass
-        theme_dir = Path(settings["themes_user"]) / active_theme / name
-        logo_paths = [theme_dir / "art" / "logo.png", theme_dir / "logo.png"]
-        has_logo = any(p.exists() for p in logo_paths)
+        has_logo = find_system_logo(settings, name, active_theme) is not None
         result.append({
             "name":name,"path":str(sys_dir),
             "rom_count":len(roms),"media_count":media_count,
             "total_size":total_size,"size_human":human_size(total_size),
             "has_gamelist":gl.exists(),"roms":roms,
             "is_empty":len(roms)==0,
-            "has_bios":_bios_key(name) in _BIOS_LOOKUP,
+            "has_bios":bool(_get_bios_entries(name)),
             "bios_count":len(_get_bios_entries(name)),
             "has_logo": has_logo,
         })
@@ -1526,7 +1652,8 @@ def check_bios(system_name, bios_dir):
     return info
 
 def parse_multipart(environ, data):
-    import email.parser, email.policy
+    import email.parser
+    import email.policy
     ct = environ.get("CONTENT_TYPE","")
     if "boundary=" not in ct: return {}, {}
     raw = b"Content-Type: " + ct.encode() + b"\r\n\r\n" + data
@@ -1566,7 +1693,8 @@ def make_placeholder_png(text):
 # ═══════════════════════════════════════════════════════════════
 #  MÓDULO: DASHBOARD — System Monitor
 # ═══════════════════════════════════════════════════════════════
-import subprocess, struct, fcntl, socket as _socket
+import subprocess
+
 
 def _read_file(path, default=""):
     try: return Path(path).read_text().strip()
@@ -1645,14 +1773,15 @@ def get_cpu_temp():
         except Exception: pass
     return None, "N/A"
 
-def get_fans():
+def get_fans(hwmon_root=None):
     """Lee ventiladores desde sysfs hwmon (fan*_input).
 
     Retorna una lista de ventiladores con RPM, label, flags de fallo/alarma
     y estado derivado: ok / stopped / fault.
     """
     fans = []
-    for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
+    root = Path(hwmon_root) if hwmon_root else Path("/sys/class/hwmon")
+    for hwmon in sorted(root.glob("hwmon*")):
         hw_name = _read_file(hwmon / "name")
         for fanf in sorted(hwmon.glob("fan*_input")):
             base = fanf.name.replace("_input", "")   # p.ej. fan1
@@ -1666,7 +1795,10 @@ def get_fans():
             fault = _read_file(hwmon / (base + "_fault"), "0")
             alarm = _read_file(hwmon / (base + "_alarm"), "0")
             mn    = _read_file(hwmon / (base + "_min"), None)
-            min_rpm = int(mn) if mn else None
+            try:
+                min_rpm = int(mn) if mn else None
+            except (TypeError, ValueError):
+                min_rpm = None
 
             if fault and fault != "0":
                 status = "fault"
@@ -1751,7 +1883,7 @@ def _gpu_from_nvidia_smi():
             parts = [p.strip() for p in line.split(",")]
             if len(parts) < 7:
                 continue
-            idx, gname, gtemp, gutil, gmem_used, gmem_total, gpower = parts[:7]
+            _idx, gname, gtemp, gutil, gmem_used, gmem_total, gpower = parts[:7]
             try:
                 temp_val = round(float(gtemp), 1) if gtemp else None
             except Exception:
@@ -1761,11 +1893,11 @@ def _gpu_from_nvidia_smi():
             except Exception:
                 util_val = None
             try:
-                mem_used_str = f"{int(gmem_used)//1024} MB" if gmem_used else None
+                mem_used_str = f"{int(gmem_used)} MB" if gmem_used else None
             except Exception:
                 mem_used_str = None
             try:
-                mem_total_str = f"{int(gmem_total)//1024} MB" if gmem_total else None
+                mem_total_str = f"{int(gmem_total)} MB" if gmem_total else None
             except Exception:
                 mem_total_str = None
             try:
@@ -1787,7 +1919,7 @@ def _gpu_from_nvidia_smi():
         return None
 
 
-def get_gpu_info():
+def get_gpu_info(drm_root=None):
     """Detecta todas las GPUs del sistema (iGPU + dGPU NVIDIA/AMD).
     Para NVIDIA intenta nvidia-smi primero, fallback a sysfs.
     """
@@ -1800,18 +1932,21 @@ def get_gpu_info():
 
     # 1. nvidia-smi (datos más completos para NVIDIA)
     nv_gpus = _gpu_from_nvidia_smi()
+    has_nvidia = bool(nv_gpus)
     if nv_gpus:
         for g in nv_gpus:
             gpus.append(g)
             seen_names.add(g["name"])
 
     # 2. DRM sysfs (para AMD/Intel y NVIDIA si no se detectó via smi)
-    drm = Path("/sys/class/drm")
+    drm = Path(drm_root) if drm_root else Path("/sys/class/drm")
     if drm.exists():
         for card in sorted(drm.glob("card[0-9]")):
             try:
                 g = _gpu_from_drm(card)
-                # Evitar duplicados si nvidia-smi ya lo encontró
+                # Evitar duplicados si nvidia-smi ya la encontró
+                if g.get("is_nvidia") and has_nvidia:
+                    continue
                 if g["name"] in seen_names:
                     continue
                 # Completar power desde hwmon general (solo si no lo trajo smi)
@@ -1844,16 +1979,21 @@ def get_gpu_info():
     result["power"] = primary.get("power")
     return result
 
-def get_memory():
+def get_memory(meminfo_path=None):
     info = {}
+    src = Path(meminfo_path) if meminfo_path else Path("/proc/meminfo")
     try:
-        for line in Path("/proc/meminfo").read_text().splitlines():
+        lines = src.read_text().splitlines()
+    except Exception:
+        return {}
+    for line in lines:
+        try:
             k, v = line.split(":")[0].strip(), line.split(":")[1].strip().split()[0]
             info[k] = int(v)
-    except Exception: return {}
+        except Exception:
+            continue
     total = info.get("MemTotal", 0)
     avail = info.get("MemAvailable", 0)
-    free  = info.get("MemFree", 0)
     used  = total - avail
     swap_total = info.get("SwapTotal", 0)
     swap_free  = info.get("SwapFree", 0)
@@ -1953,17 +2093,18 @@ def get_disk_io():
     _diskio_cache["ts"]   = now
     return out
 
-def get_battery():
+def get_battery(power_supply_root=None):
     """Estado de batería y alimentación (laptop) desde /sys/class/power_supply."""
     out = {"available": False, "ac": False}
+    root = Path(power_supply_root) if power_supply_root else Path("/sys/class/power_supply")
     try:
-        for d in Path("/sys/class/power_supply").iterdir():
+        for d in root.iterdir():
             if _read_file(d / "type") == "Mains":
                 out["ac"] = _read_file(d / "online") == "1"
-        for d in Path("/sys/class/power_supply").iterdir():
+        for d in root.iterdir():
             if _read_file(d / "type") != "Battery":
                 continue
-            def num(f):
+            def num(f, d=d):
                 try: return int(_read_file(d / f))
                 except Exception: return None
             cap  = num("capacity") or 0
@@ -1972,10 +2113,10 @@ def get_battery():
             enow, efull, edes = num("energy_now"), num("energy_full"), num("energy_full_design")
             cnow, cfull, cdes = num("charge_now"), num("charge_full"), num("charge_full_design")
             pnow, cur = num("power_now"), num("current_now")
-            # Energía en Wh: energy_* µWh; si falta, charge_* µAh * voltaje
-            enow_wh  = enow / 1e6 if enow is not None else (cnow * v / 1000 if cnow is not None else None)
-            efull_wh = efull / 1e6 if efull is not None else (cfull * v / 1000 if cfull is not None else None)
-            edes_wh  = edes / 1e6 if edes is not None else (cdes * v / 1000 if cdes is not None else None)
+            # Energía en Wh: energy_* µWh; si falta, charge_* µAh * voltaje(V) / 1e6
+            enow_wh  = enow / 1e6 if enow is not None else (cnow * v / 1e6 if cnow is not None else None)
+            efull_wh = efull / 1e6 if efull is not None else (cfull * v / 1e6 if cfull is not None else None)
+            edes_wh  = edes / 1e6 if edes is not None else (cdes * v / 1e6 if cdes is not None else None)
             # Potencia en W: power_now µW; si falta, current_now µA * voltaje
             pw = pnow / 1e6 if pnow is not None else (cur * v / 1e6 if cur is not None else None)
             out.update({
@@ -2044,6 +2185,8 @@ def _fetch_feed(url, timeout=8):
 
 def _parse_rss_feed(data, source):
     items = []
+    if not xml_looks_safe(data):
+        return items
     try:
         root = ET.fromstring(data)
     except Exception:
@@ -2119,8 +2262,8 @@ def get_news():
         per = {}
         for it in dedup:
             per.setdefault(it["src"], []).append(it)
-        for src in per:
-            per[src].sort(key=lambda x: x["ts"], reverse=True)
+        for src, items in per.items():
+            items.sort(key=lambda x: x["ts"], reverse=True)
         cap = {"HobbyConsolas": 5, "Eurogamer.es": 4}
         out, idx, srcs = [], {}, [s for s in per if s in cap]
         for s in srcs: idx[s] = 0
@@ -2174,7 +2317,8 @@ def get_network():
     return ifaces
 
 def get_es_status():
-    pid = _run("pgrep -n emulationstation 2>/dev/null")
+    # `comm` se trunca a 15 chars ("emulationstatio"), por eso -f (cmdline completa)
+    pid = _run("pgrep -f -n emulationstation 2>/dev/null")
     if pid:
         return {"running": True, "pid": pid}
     return {"running": False}
@@ -2232,10 +2376,15 @@ SERVICE_MARKER  = "# [batocera-manager]"
 SERVICE_TAG_END = "# [/batocera-manager]"
 
 def get_service_cmd(settings):
-    """Genera el comando de inicio según la ruta real del app.py."""
-    app_path = Path(settings.get("app_path", "/userdata/system/batocera_web/app.py"))
-    port     = settings.get("server_port", 5000)
-    return f"python3 {app_path} --port {port}"
+    """Genera el comando de inicio según la ruta real del app.py (seguro para shell)."""
+    app_path = str(settings.get("app_path", "/userdata/system/batocera_web/app.py"))
+    try:
+        port = int(settings.get("server_port", 5000))
+    except (TypeError, ValueError):
+        port = 5000
+    if not (1 <= port <= 65535):
+        port = 5000
+    return f"python3 {shlex.quote(app_path)} --port {port}"
 
 def get_autostart_status(settings):
     """Lee custom.sh y detecta si el servicio está registrado."""
@@ -2336,9 +2485,9 @@ def kill_service():
 # ═══════════════════════════════════════════════════════════════
 #  MÓDULO: SCRAPER — ScreenScraper.fr API
 # ═══════════════════════════════════════════════════════════════
-import urllib.request as _ureq
-import urllib.parse   as _uparse
 import re as _re
+import urllib.parse as _uparse
+import urllib.request as _ureq
 
 SS_API   = "https://api.screenscraper.fr/apiv2"
 SS_SOFTNAME = "batocera_manager"
@@ -2522,7 +2671,7 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
 def ss_media_url(game_data, image_type, region="wor"):
     """Devuelve (url, extension) del mejor medio SS para el tipo solicitado,
     replicando la preferencia de región de Batocera (region → wor → us → eu → jp)."""
-    ss_region = SS_MEDIA_LAYOUT.get(image_type, image_type)
+    ss_region = image_type
     medias = game_data.get("medias", []) or []
     cands  = [m for m in medias if m.get("type","") == ss_region]
     if not cands:
@@ -2556,22 +2705,26 @@ def ss_download_image(game_data, image_type, dest_path, region="wor"):
 
 def ss_build_meta(game_data, region="wor", lang="es"):
     """Extrae metadatos de la respuesta de ScreenScraper."""
-    def get_text(lst, preferred_region="wor", preferred_lang="es"):
+    def get_text(lst, preferred_region="wor", preferred_lang="es", key="langue"):
+        """Extrae `text` del primer elemento cuyo `key` coincide con el preferido.
+
+        `synopsis`/`genres` indexan por `langue`; `noms` indexa por `region`.
+        """
         if not lst: return ""
         if isinstance(lst, str): return lst
-        # Buscar por idioma preferido
+        preferred = preferred_lang if key == "langue" else preferred_region
         for item in lst:
-            if isinstance(item, dict):
-                if item.get("langue") == preferred_lang: return item.get("text","")
-        # Fallback inglés o primero
+            if isinstance(item, dict) and item.get(key) == preferred:
+                return item.get("text","")
+        # Fallback: inglés, región mundial o vacío
         for item in lst:
-            if isinstance(item, dict):
-                if item.get("langue") in ("en","","wor"): return item.get("text","")
+            if isinstance(item, dict) and item.get(key) in ("en","","wor","us"):
+                return item.get("text","")
         if isinstance(lst[0], dict): return lst[0].get("text","")
         return str(lst[0])
 
     noms   = game_data.get("noms",[])
-    name   = get_text(noms, region, lang) or game_data.get("romnom","")
+    name   = get_text(noms, region, lang, key="region") or game_data.get("romnom","")
     synops = game_data.get("synopsis",[])
     desc   = get_text(synops, region, lang)
     genres = game_data.get("genres",[])
@@ -2589,7 +2742,7 @@ def ss_build_meta(game_data, region="wor", lang="es"):
     publisher = editeur.get("text","") if isinstance(editeur,dict) else str(editeur)
     rating_val = game_data.get("note","")
     try:    rating = str(round(float(rating_val)/20, 2)) if rating_val else ""
-    except: rating = ""
+    except (TypeError, ValueError): rating = ""
     return {
         "name":      name,
         "desc":      desc,
@@ -2794,7 +2947,7 @@ def igdb_build_meta(game):
     year = ""
     ts = game.get("first_release_date")
     if ts:
-        try: year = str(_dt.datetime.utcfromtimestamp(ts).year)
+        try: year = str(_dt.datetime.fromtimestamp(ts, _dt.timezone.utc).year)
         except Exception: pass
     genres = game.get("genres", [])
     genre  = ", ".join(g.get("name","") for g in genres[:2]) if genres else ""
@@ -2896,8 +3049,10 @@ def save_gamelist_entry(roms_base, meta):
     try:
         gl_path.write_text(xml_out, encoding="utf-8")
         invalidate_rom_cache()
-    except Exception:
-        pass
+    except Exception as e:
+        log_message = f"Error guardando gamelist: {e}"
+        print(f"  {log_message}")
+        raise
 
 def do_scrape_system(settings, system, source, creds, options, progress_cb=None):
     """Scrapea todos los ROMs de un sistema. Reusable desde sync y background."""
@@ -2928,7 +3083,7 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
             game, err = tgdb_search_game(rom["filename"], system, creds.get("tgdb_apikey",""))
             if game:
                 meta = tgdb_build_meta(game, creds.get("tgdb_apikey",""))
-                img_url, ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
+                img_url, _ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
                 if img_url:
                     dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
                     ok_img, _ = download_image_generic(img_url, dest)
@@ -2991,6 +3146,7 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
 
 # ─── Scraper Batch Queue ────────────────────────────────────────────
 import uuid as _uuid
+
 _scraper_jobs = {}
 _scraper_jobs_lock = threading.Lock()
 _scraper_worker_thread = None
@@ -3036,7 +3192,6 @@ def _process_batch_job(job):
                 return
             job["current_system"] = sys_name
             job["current_rom"] = ""
-        opts = {**job["options"], "missing_only": job["options"].get("only_missing", True)}
         # Credentials are already in job["creds"] with keys matching do_scrape_system
         result = do_scrape_system(job["settings"], sys_name, job["source"],
                                   job["creds"], job["options"], progress_cb)
@@ -3084,8 +3239,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers(); self.wfile.write(body)
 
     def read_body(self):
-        n = int(self.headers.get("Content-Length",0))
-        return self.rfile.read(n) if n else b""
+        n = parse_content_length(self.headers.get("Content-Length", 0))
+        if n <= 0:
+            return b""
+        if n > MAX_BODY_BYTES:
+            return b""   # rechazar cuerpos desmesurados (evita agotar memoria)
+        return self.rfile.read(n)
 
     def read_json(self):
         return json.loads(self.read_body() or b"{}")
@@ -3237,12 +3396,6 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             for it in items:
                 systems.setdefault(it["system"], []).append(it)
             self.send_json({"ok":True,"total_missing":total,"items":items,"systems":systems})
-        elif path == "/api/bios/missing/skip":
-            d = self.read_json()
-            key = d.get("skip_key","")
-            if key:
-                _missing_bios_skipped.add(key)
-            self.send_json({"ok":True})
         elif path == "/api/service/read-sh":
             try:
                 txt = CUSTOM_SH.read_text(errors="replace") if CUSTOM_SH.exists() else "(no existe)"
@@ -3295,6 +3448,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self._upload_rom(system, s)
         elif path == "/api/bios/upload":
             self._upload_bios(s)
+        elif path == "/api/bios/missing/skip":
+            d = self.read_json()
+            key = d.get("skip_key","")
+            if key:
+                _missing_bios_skipped.add(key)
+            self.send_json({"ok":True})
         elif path == "/api/rom/rename":
             self._rename_rom(s)
         elif path == "/api/service/install":
@@ -3312,13 +3471,13 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             ok = kill_service()
             self.send_json({"ok":True,"killed":ok})
         elif path == "/api/service/restart":
-            import subprocess as _sp, sys as _sys
+            import subprocess as _sp
             kill_service()
             import time as _time; _time.sleep(1)
             d    = self.read_json()
             cmd  = d.get("cmd", get_service_cmd(load_settings()))
             try:
-                _sp.Popen(cmd.split(), close_fds=True)
+                _sp.Popen(shlex.split(cmd), close_fds=True)
                 self.send_json({"ok":True, "cmd":cmd})
             except Exception as e:
                 self.send_json({"ok":False,"error":str(e)})
@@ -3379,7 +3538,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         errors = []
         if not d.get("fullname","").strip():   errors.append("Nombre completo requerido")
         if not slug:                           errors.append("Slug requerido")
-        elif re.search(r'\s', slug):           errors.append("Slug sin espacios")
+        elif not is_safe_component(slug):      errors.append("Slug inválido (sin espacios ni separadores)")
         if not d.get("rompath","").strip():    errors.append("Ruta de ROMs requerida")
         if not d.get("extensions","").strip(): errors.append("Extensiones requeridas")
         if errors:
@@ -3399,13 +3558,20 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_json({"ok":False,"errors":[str(e)]}); return
             if d.get("create_roms_dir"):
-                try: os.makedirs(d.get("rompath","").strip(), exist_ok=True); log.append("✔ Dir ROMs creado")
+                try:
+                    os.makedirs(confine_to_base(s["roms_base"], d.get("rompath","").strip()), exist_ok=True)
+                    log.append("✔ Dir ROMs creado")
+                except ValueError: log.append("⚠ Ruta de ROMs fuera de la base permitida; no se creó")
                 except Exception as e: log.append(f"⚠ {e}")
             if d.get("batocera_conf_entry") and d.get("emulator") and d.get("core"):
                 try:
+                    emu     = sanitize_conf_value(d.get("emulator"))
+                    core    = sanitize_conf_value(d.get("core"))
+                    comment = sanitize_comment_text(d.get("fullname",""))
                     with open(s["batocera_conf"],"a",encoding="utf-8") as f:
-                        f.write(f"\n# {d.get('fullname','')}\n{slug}.emulator={d.get('emulator')}\n{slug}.core={d.get('core')}\n")
+                        f.write(f"\n# {comment}\n{slug}.emulator={emu}\n{slug}.core={core}\n")
                     log.append("✔ batocera.conf actualizado")
+                except ValueError as e: log.append(f"⚠ Valor inválido para batocera.conf: {e}")
                 except Exception as e: log.append(f"⚠ {e}")
         log.append(f"\n✅ Sistema '{slug}' {'simulado' if dry else 'creado'}.")
         if not dry: log.append("   Reinicia EmulationStation para que aparezca.")
@@ -3420,7 +3586,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if not d.get("fullname","").strip():   errors.append("Nombre completo requerido")
         if not old:                            errors.append("Sistema original requerido")
         if not slug:                           errors.append("Slug requerido")
-        elif re.search(r'\s', slug):           errors.append("Slug sin espacios")
+        elif not is_safe_component(slug):      errors.append("Slug inválido (sin espacios ni separadores)")
+        if old and not is_safe_component(old): errors.append("Sistema original inválido")
         if not d.get("rompath","").strip():    errors.append("Ruta de ROMs requerida")
         if not d.get("extensions","").strip(): errors.append("Extensiones requeridas")
         if errors:
@@ -3447,13 +3614,20 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_json({"ok":False,"errors":[str(e)]}); return
             if d.get("create_roms_dir"):
-                try: os.makedirs(d.get("rompath","").strip(), exist_ok=True); log.append("✔ Dir ROMs creado")
+                try:
+                    os.makedirs(confine_to_base(s["roms_base"], d.get("rompath","").strip()), exist_ok=True)
+                    log.append("✔ Dir ROMs creado")
+                except ValueError: log.append("⚠ Ruta de ROMs fuera de la base permitida; no se creó")
                 except Exception as e: log.append(f"⚠ {e}")
             if d.get("batocera_conf_entry") and d.get("emulator") and d.get("core"):
                 try:
+                    emu     = sanitize_conf_value(d.get("emulator"))
+                    core    = sanitize_conf_value(d.get("core"))
+                    comment = sanitize_comment_text(d.get("fullname",""))
                     with open(s["batocera_conf"],"a",encoding="utf-8") as f:
-                        f.write(f"\n# {d.get('fullname','')}\n{slug}.emulator={d.get('emulator')}\n{slug}.core={d.get('core')}\n")
+                        f.write(f"\n# {comment}\n{slug}.emulator={emu}\n{slug}.core={core}\n")
                     log.append("✔ batocera.conf actualizado")
+                except ValueError as e: log.append(f"⚠ Valor inválido para batocera.conf: {e}")
                 except Exception as e: log.append(f"⚠ {e}")
         log.append(f"\n✅ Sistema '{slug}' {'simulado' if dry else 'actualizado'}.")
         if not dry: log.append("   Reinicia EmulationStation para que los cambios tengan efecto.")
@@ -3464,27 +3638,33 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         ct   = self.headers.get("Content-Type","")
         if "application/json" in ct:
             d    = json.loads(body or b"{}")
-            slug = d.get("slug","unknown").strip()
+            slug = (d.get("slug") or "").strip()
+            if not is_safe_component(slug):
+                self.send_json({"ok":False,"error":"Slug inválido"}); return
             if not HAS_PIL:
                 self.send_json({"ok":False,"error":"PIL no disponible"}); return
-            theme    = detect_active_theme(s)
-            dest_dir = Path(s["themes_user"]) / theme / slug / "art"
-            dest_file= dest_dir / "logo.png"
             try:
-                dest_dir.mkdir(parents=True, exist_ok=True)
+                dest_file = safe_path_under(s["themes_user"], detect_active_theme(s), slug, "art", "logo.png")
+            except ValueError:
+                self.send_json({"ok":False,"error":"Ruta inválida"}); return
+            try:
+                dest_file.parent.mkdir(parents=True, exist_ok=True)
                 dest_file.write_bytes(make_placeholder_png(slug.upper()))
                 self.send_json({"ok":True,"path":str(dest_file),"placeholder":True})
             except Exception as e: self.send_json({"ok":False,"error":str(e)})
             return
         fields, files = parse_multipart({"CONTENT_TYPE":ct}, body)
-        slug  = fields.get("slug","unknown").strip()
-        theme = detect_active_theme(s)
-        dest_dir  = Path(s["themes_user"]) / theme / slug / "art"
-        dest_file = dest_dir / "logo.png"
+        slug  = (fields.get("slug") or "").strip()
+        if not is_safe_component(slug):
+            self.send_json({"ok":False,"error":"Slug inválido"}); return
+        try:
+            dest_file = safe_path_under(s["themes_user"], detect_active_theme(s), slug, "art", "logo.png")
+        except ValueError:
+            self.send_json({"ok":False,"error":"Ruta inválida"}); return
         if "logo" not in files:
             self.send_json({"ok":False,"error":"No se recibió archivo"}); return
         try:
-            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest_file.parent.mkdir(parents=True, exist_ok=True)
             img_data = files["logo"]["data"]
             if HAS_PIL:
                 img = Image.open(io.BytesIO(img_data)).convert("RGBA")
@@ -3500,11 +3680,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if not files:
             self.send_json({"ok":False,"error":"No se recibió archivo"}); return
         subpath  = fields.get("subpath","").strip().strip("/")
-        roms_base= Path(s["roms_base"]) / system
-        dest_dir = (roms_base / subpath) if subpath else roms_base
-        # Seguridad: evitar path traversal
         try:
-            dest_dir.resolve().relative_to(roms_base.resolve())
+            roms_base = system_dir(s, system)
+            dest_dir  = safe_path_under(roms_base, subpath) if subpath else roms_base
         except ValueError:
             self.send_json({"ok":False,"error":"Ruta inválida"}); return
         # Validar extensiones soportadas por el sistema (si las conocemos)
@@ -3522,6 +3700,11 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             files = kept
         if rejected:
             self.send_json({"ok":False,"error":"Archivos rechazados","rejected":rejected}); return
+        # Validar nombres de archivo (sin separadores ni "..")
+        bad = [f["filename"] for f in files.values() if not is_safe_component(f["filename"])]
+        if bad:
+            self.send_json({"ok":False,"error":"Nombre de archivo inválido",
+                            "rejected":[{"file":b,"error":"nombre inseguro"} for b in bad]}); return
         dest_dir.mkdir(parents=True, exist_ok=True)
         saved = []
         for fdata in files.values():
@@ -3544,16 +3727,17 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         # La referencia 'file' de la BD incluye subcarpetas (neocd/neocd_f.rom...)
         # → se respeta para dejar el BIOS donde Batocera lo espera.
         if target_file:
-            target = Path(target_file)
             try:
-                (bios_dir / target).resolve().relative_to(bios_dir.resolve())
+                safe_path_under(bios_dir, target_file)
             except ValueError:
                 self.send_json({"ok":False,"error":"Ruta BIOS inválida"}); return
         saved = []
         for fdata in files.values():
             if target_file:
-                dest = bios_dir / Path(target_file)
+                dest = bios_dir / target_file
             else:
+                if not is_safe_component(fdata["filename"]):
+                    self.send_json({"ok":False,"error":"Nombre de archivo inválido"}); return
                 dest = bios_dir / fdata["filename"]
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(fdata["data"])
@@ -3585,8 +3769,13 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         new_name = d.get("new_name","").strip()
         if not all([system, old_name, new_name]):
             self.send_json({"ok":False,"error":"Faltan parámetros"}); return
-        roms_base = Path(s["roms_base"]) / system
-        base_dir  = (roms_base / subpath) if subpath else roms_base
+        if not (is_safe_component(old_name) and is_safe_component(new_name)):
+            self.send_json({"ok":False,"error":"Nombre inválido"}); return
+        try:
+            roms_base = system_dir(s, system)
+            base_dir  = safe_path_under(roms_base, subpath) if subpath else roms_base
+        except ValueError:
+            self.send_json({"ok":False,"error":"Ruta inválida"}); return
         src  = base_dir / old_name
         dest = base_dir / new_name
         if not src.exists():
@@ -3670,8 +3859,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             "tgdb_apikey","igdb_client_id","igdb_client_secret")})
 
         results   = {"images":[],"meta":False,"errors":[]}
-        sys_root  = Path(s["roms_base"]) / system
-        roms_base = (sys_root / subpath) if subpath else sys_root
+        if not (is_safe_component(system) and is_safe_component(filename)):
+            self.send_json({"ok":False,"error":"Nombre inválido"}); return
+        try:
+            sys_root  = system_dir(s, system)
+        except ValueError:
+            self.send_json({"ok":False,"error":"Ruta inválida"}); return
         rom_stem  = Path(filename).stem
         image_rel = None
 
@@ -3726,7 +3919,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 ok, msg = download_image_generic(url, dest, referer_for=url)
                 if ok:
                     results["images"].append({"type":itype,"path":str(dest)})
-                    if itype == "image" or image_rel is None:
+                    if is_gamelist_image_type(itype) and image_rel is None:
                         image_rel = rel
                 else:
                     results["errors"].append(f"Imagen {itype}: {msg}")
@@ -3772,11 +3965,16 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             for item in lines:
                 key, val = item.get("key",""), item.get("val","")
                 if not key: continue
+                # Solo claves conocidas y válidas para evitar escribir basura
+                if key not in ("ss_user", "ss_password", "ss_devid", "ss_devpassword",
+                               "ss_lang", "ss_region", "ss_media_url"):
+                    continue
                 replaced = False
                 for i, line in enumerate(ex_lines):
                     if line.strip().startswith(key + "=") or line.strip() == key + "=":
                         ex_lines[i] = f"{key}={val}"
-                        replaced = True; break
+                        replaced = True
+                        break
                 if not replaced:
                     ex_lines.append(f"{key}={val}")
             conf.parent.mkdir(parents=True, exist_ok=True)
@@ -3884,10 +4082,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         """
         query   = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         subpath = urllib.parse.unquote(query.get("subpath",[""])[0]).strip("/")
-        roms_base = Path(s["roms_base"]) / system
-        base_dir  = (roms_base / subpath) if subpath else roms_base
         try:
-            base_dir.resolve().relative_to(roms_base.resolve())
+            roms_base = system_dir(s, system)
+            base_dir  = safe_path_under(roms_base, subpath) if subpath else roms_base
         except ValueError:
             self.send_json({"error":"Acceso denegado"},403)
             return
@@ -3957,27 +4154,19 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.send_json({"error":"Sin imagen"},404)
 
     def _serve_system_logo(self, system, s):
-        """Sirve el logo de un sistema desde el tema activo."""
-        theme = detect_active_theme(s)
-        logo_paths = [
-            Path(s["themes_user"]) / theme / system / "art" / "logo.png",
-            Path(s["themes_user"]) / theme / system / "logo.png",
-        ]
-        for p in logo_paths:
+        """Sirve el logo de un sistema desde el tema activo (usuario o sistema)."""
+        p = find_system_logo(s, system)
+        if p is not None:
             try:
-                p = p.resolve()
-                base = Path(s["themes_user"]).resolve()
-                p.relative_to(base)
-                if p.exists():
-                    self.send_response(200)
-                    self.send_header("Content-Type","image/png")
-                    self.send_header("Content-Length",p.stat().st_size)
-                    self.send_header("Cache-Control","max-age=86400")
-                    self.end_headers()
-                    self.wfile.write(p.read_bytes())
-                    return
+                self.send_response(200)
+                self.send_header("Content-Type","image/png")
+                self.send_header("Content-Length",p.stat().st_size)
+                self.send_header("Cache-Control","max-age=86400")
+                self.end_headers()
+                self.wfile.write(p.read_bytes())
+                return
             except Exception:
-                continue
+                pass
         self.send_response(204)
         self.end_headers()
 
@@ -3991,9 +4180,14 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         filename = d.get("filename","")
         if not system or not filename:
             self.send_json({"ok":False,"error":"Faltan parámetros"}); return
+        if not (is_safe_component(system) and is_safe_component(filename)):
+            self.send_json({"ok":False,"error":"Nombre inválido"}); return
 
+        try:
+            sys_dir = system_dir(s, system)
+        except ValueError:
+            self.send_json({"ok":False,"error":"Sistema inválido"}); return
         rom_relpath = f"{subpath}/{filename}" if subpath else filename
-        sys_dir  = Path(s["roms_base"]) / system
         gl_path  = sys_dir / "gamelist.xml"
 
         # Leer o crear gamelist (siempre uno solo en la raíz del sistema)
@@ -4066,7 +4260,8 @@ def render_index():
 
 # ─── Entry point ──────────────────────────────────────────────────
 if __name__ == "__main__":
-    import socket, sys as _sys
+    import socket
+    import sys as _sys
     # Soporte --port <N>
     if "--port" in _sys.argv:
         idx = _sys.argv.index("--port")

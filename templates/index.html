@@ -1709,7 +1709,8 @@ function clearLog() {
   document.getElementById('log-box').innerHTML = '';
 }
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function openModal(id) {
   document.getElementById(id).classList.add('open');
@@ -2274,6 +2275,15 @@ function renderRomSystems(systems) {
     console:'#1f6feb',portable:'#2d5a27',computer:'#6b3fa0',
     arcade:'#8b2020',engine:'#6b5a00',fantasy:'#1a5a6b',other:'#444'
   };
+  // /api/rom-systems no expone 'hardware': usamos un color estable derivado del nombre.
+  const namePalette = ['#1f6feb','#2d5a27','#6b3fa0','#8b2020','#6b5a00','#1a5a6b','#3a3f46'];
+  const cardColor = (s) => {
+    if (s.hardware && hwColors[s.hardware]) return hwColors[s.hardware];
+    const nm = s.name || '';
+    let h = 0;
+    for (let i = 0; i < nm.length; i++) h = (h * 31 + nm.charCodeAt(i)) >>> 0;
+    return namePalette[h % namePalette.length];
+  };
   const grid = document.getElementById('roms-systems-grid');
   if (!systems.length) {
     grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);grid-column:1/-1">Sin sistemas encontrados</div>';
@@ -2292,9 +2302,9 @@ function renderRomSystems(systems) {
       : `<span>🕹</span>`;
     return `
     <div class="system-card" style="flex-direction:column;align-items:stretch;gap:10px;cursor:pointer;padding:14px"
-         onclick="openSystem('${s.name}')">
+         onclick="openSystem(this.dataset.system)" data-system="${escHtml(s.name)}">
       <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:8px;background:${hwColors[s.hardware]||'#333'};
+        <div style="width:36px;height:36px;border-radius:8px;background:${cardColor(s)};
           display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">
           ${logoHtml}
         </div>
@@ -2429,7 +2439,8 @@ function renderRoms(roms) {
       const subdirIcon = rom.has_subdirs ? ' 📁' : '';
       const newSubpath = currentSubpath ? `${currentSubpath}/${rom.filename}` : rom.filename;
       return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s"
-                 onclick="navigateToFolder('${escHtml(newSubpath)}')"
+                 data-subpath="${escHtml(newSubpath)}"
+                 onclick="navigateToFolder(this.dataset.subpath)"
                  onmouseover="this.style.background='var(--bg3)'"
                  onmouseout="this.style.background=''">
         <td style="padding:9px 14px;color:var(--text3);font-size:11px">${i+1}</td>
@@ -2468,11 +2479,14 @@ function renderRoms(roms) {
       <td style="padding:9px 14px;text-align:center">
         <div style="display:flex;gap:4px;justify-content:center">
           <button class="btn btn-ghost btn-sm btn-icon" title="Ver detalles"
-            onclick="showRomDetail(${i})" style="padding:4px 7px">👁</button>
+            data-filename="${escHtml(rom.filename)}"
+            onclick="showRomDetail(this.dataset.filename)" style="padding:4px 7px">👁</button>
           <button class="btn btn-ghost btn-sm btn-icon" title="Renombrar"
-            onclick="renameRom('${escHtml(rom.filename)}')" style="padding:4px 7px">✏</button>
+            data-filename="${escHtml(rom.filename)}"
+            onclick="renameRom(this.dataset.filename)" style="padding:4px 7px">✏</button>
           <button class="btn btn-danger btn-sm btn-icon" title="Eliminar"
-            onclick="deleteRom('${escHtml(rom.filename)}')" style="padding:4px 7px">🗑</button>
+            data-filename="${escHtml(rom.filename)}"
+            onclick="deleteRom(this.dataset.filename)" style="padding:4px 7px">🗑</button>
         </div>
       </td>
     </tr>`;
@@ -2507,7 +2521,9 @@ function backToSystems() {
 let _editingRomIdx = null;
 let _editingRomOriginal = {};
 
-function showRomDetail(idx) {
+function showRomDetail(filename) {
+  const idx = currentRoms.findIndex(r => r.filename === filename);
+  if (idx < 0) return;
   const rom = currentRoms[idx];
   if (!rom) return;
   _editingRomIdx      = idx;
@@ -3496,7 +3512,7 @@ async function scraperSystem() {
           ${r.errors.map(e=>`<div>• ${escHtml(e)}</div>`).join('')}</div>` : ''}
         ${quotaHtml}
       </div>`;
-    toast(`Scraping: ${r.ok} OK, ${r.fail} fallos`, r.fail ? 'ok' : 'ok');
+    toast(`Scraping: ${r.ok} OK, ${r.fail} fallos`, r.fail ? 'err' : 'ok');
     currentSystem = _scraperCurrentSystem; currentSubpath = _scraperCurrentSubpath; loadFolder();
   } else {
     document.getElementById('sc-sys-result').innerHTML =
@@ -3667,8 +3683,9 @@ async function scraperBatchRefresh() {
     document.getElementById('sc-batch-bar').style.width = '100%';
     document.getElementById('sc-batch-pct').textContent = '100%';
     const agg = activeJob.aggregated || {};
+    window._batchErrorsText = (agg.errors || []).join('\n');
     document.getElementById('sc-batch-stats').innerHTML =
-      `<span style="color:var(--green)">✔ Completado</span> · ${agg.ok} OK · ${agg.fail} fallos · ${agg.errors.length ? `<span style="color:var(--red);cursor:pointer" onclick="alert(escHtml(agg.errors.join('\\n')))">${agg.errors.length} errores</span>` : ''}`;
+      `<span style="color:var(--green)">✔ Completado</span> · ${agg.ok} OK · ${agg.fail} fallos · ${agg.errors.length ? `<span style="color:var(--red);cursor:pointer" onclick="alert(escHtml(window._batchErrorsText))">${agg.errors.length} errores</span>` : ''}`;
     _batchActiveJobId = null;
   } else if (activeJob && (activeJob.status === 'cancelled' || activeJob.status === 'failed')) {
     document.getElementById('sc-batch-progress').style.display = 'none';
