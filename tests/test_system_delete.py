@@ -75,5 +75,5 @@ def test_delete_unknown_system_is_safe(appmod, tmp_path):
 def test_delete_is_idempotent(appmod, tmp_path):
     d = _cfg_dir(tmp_path, _SINGLE)
     appmod.delete_custom_system("gameboy", {"es_cfg_dir": str(d)})
-    ok, info = appmod.delete_custom_system("gameboy", {"es_cfg_dir": str(d)})
+    ok, _info = appmod.delete_custom_system("gameboy", {"es_cfg_dir": str(d)})
     assert ok is False
