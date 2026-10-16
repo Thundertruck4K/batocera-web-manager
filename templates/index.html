@@ -592,9 +592,60 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   .content{padding:14px}
   .grid-2{grid-template-columns:1fr}
 }
+
+/* ── Landing (overlay de bienvenida) ── */
+.landing{
+  position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(1200px 600px at 50% -10%,rgba(110,168,254,.18),transparent),var(--bg);
+  transition:opacity .35s ease;
+}
+.landing.hidden{opacity:0;pointer-events:none}
+.landing-inner{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:24px}
+.landing-logo{position:relative;width:120px;height:120px;color:var(--accent)}
+.landing-logo svg{width:120px;height:120px;stroke-width:3}
+.landing-ring{stroke-dasharray:290;stroke-dashoffset:290;animation:landing-draw 1.6s ease forwards}
+.landing-ring2{animation-delay:.25s;opacity:.55}
+.landing-glyph{stroke-dasharray:120;stroke-dashoffset:120;animation:landing-draw 1s ease .4s forwards}
+.landing-pulse{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(110,168,254,.45);animation:landing-pulse 2s ease-out infinite}
+@keyframes landing-draw{to{stroke-dashoffset:0}}
+@keyframes landing-pulse{to{box-shadow:0 0 0 34px rgba(110,168,254,0)}}
+@keyframes landing-blink{50%{opacity:.4}}
+.landing-inner h1{font-size:24px;font-weight:800;margin:6px 0 0}
+.landing-tagline{font-size:13px;color:var(--text2);margin:0}
+.landing-facts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px;min-height:28px}
+.landing-fact{font-size:12px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 12px}
+.skeleton-pill{width:90px;height:24px;border-radius:20px;background:var(--bg3);animation:landing-blink 1.2s ease-in-out infinite}
+.landing-enter{margin-top:8px}
+.landing-skip{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;margin-top:6px}
+@media (prefers-reduced-motion: reduce){
+  .landing-ring,.landing-ring2,.landing-glyph,.landing-pulse,.skeleton-pill{animation:none;stroke-dashoffset:0}
+}
 </style>
 </head>
 <body>
+
+<!-- ── LANDING (overlay de bienvenida) ── -->
+<div class="landing" id="landing">
+  <div class="landing-inner">
+    <div class="landing-logo">
+      <svg viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle class="landing-ring" cx="60" cy="60" r="46"/>
+        <circle class="landing-ring landing-ring2" cx="60" cy="60" r="34"/>
+        <path class="landing-glyph" d="M40 74 L40 50 a8 8 0 0 1 16 0 v24 M64 74 L64 50 M64 62 h16 M80 50 v24"/>
+      </svg>
+      <div class="landing-pulse"></div>
+    </div>
+    <h1>Batocera Manager</h1>
+    <p class="landing-tagline">Tu centro de mando para EmulationStation</p>
+    <div class="landing-facts" id="landing-facts">
+      <span class="landing-fact skeleton-pill"></span>
+      <span class="landing-fact skeleton-pill"></span>
+      <span class="landing-fact skeleton-pill"></span>
+    </div>
+    <button class="btn btn-primary btn-lg landing-enter" id="landing-enter" onclick="dismissLanding()">Entrar ▸</button>
+    <label class="landing-skip"><input type="checkbox" id="landing-never"> No volver a mostrar</label>
+  </div>
+</div>
 
 <div class="app">
   <!-- ── SIDEBAR ── -->
@@ -4814,15 +4865,56 @@ async function loadFans() {
   renderFans(data.fans);
 }
 
+// ─── Landing (overlay de bienvenida) ────────────────────────────
+const LANDING_KEY = 'bcm_landing_skip';
+
+function initLanding() {
+  const el = document.getElementById('landing');
+  if (!el) return;
+  if (localStorage.getItem(LANDING_KEY) === '1') { el.classList.add('hidden'); return; }
+  loadLandingFacts();
+  setTimeout(() => { if (!el.classList.contains('hidden')) dismissLanding(); }, 2200);
+}
+
+function dismissLanding() {
+  const el = document.getElementById('landing');
+  if (!el) return;
+  const never = document.getElementById('landing-never');
+  if (never && never.checked) localStorage.setItem(LANDING_KEY, '1');
+  el.classList.add('hidden');
+}
+
+async function loadLandingFacts() {
+  const box = document.getElementById('landing-facts');
+  if (!box) return;
+  const [info, dash, bios] = await Promise.all([
+    fetchJson('/api/info'), fetchJson('/api/dashboard'), fetchJson('/api/bios/missing'),
+  ]);
+  const facts = [];
+  if (dash && dash.batocera_version) facts.push(`Batocera ${dash.batocera_version}`);
+  if (info && typeof info.systems_count === 'number') facts.push(`${info.systems_count} sistemas`);
+  if (dash && dash.es && dash.es.running) facts.push('ES en marcha');
+  if (bios && typeof bios.total_missing === 'number')
+    facts.push(bios.total_missing > 0 ? `${bios.total_missing} BIOS por subsanar` : 'BIOS al día');
+  box.innerHTML = facts.map(f => `<span class="landing-fact">${escHtml(f)}</span>`).join('')
+    || '<span class="landing-fact">Bienvenido</span>';
+}
+
 // Enter en modal rename
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('rename-new')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') confirmRename();
     if (e.key === 'Escape') closeModal('modal-rename');
   });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const el = document.getElementById('landing');
+    if (el && !el.classList.contains('hidden')) dismissLanding();
+  });
 });
 
 // ─── Boot ────────────────────────────────────────────────────────
+initLanding();   // overlay opcional; NO bloquea la app
 init();
 pollEsStatus();
 setInterval(pollEsStatus, 15000);
