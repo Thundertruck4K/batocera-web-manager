@@ -419,9 +419,45 @@ contradictorio ("conectado" + dashboard vacío sin explicación).
 
 ---
 
+### Fix — el progreso del batch se quedaba clavado en 0%
+
+**Bug reportado:** en el scraper batch se veía que estaba trabajando (el ROM
+actual iba cambiando) pero el `%` no pasaba de 0 y saltaba a 100 al terminar.
+
+**Causa raíz (reproducida en el dispositivo):** `job["progress"]` se calculaba
+como `int(_sys_done / total_systems * 100)`, es decir **solo al completar un
+sistema entero**. Con un único sistema la barra quedaba en 0% durante todo el
+scrape (26 s en la reproducción: `0%…0% → 100%`). El worker **ya** rastreaba el
+avance por ROM (`progress_raw`, `partial`) pero la API no lo exponía y la UI no
+lo pintaba.
+
+**Arreglo (TDD):**
+- `_batch_progress(systems_done, total_systems, current, total)`: combina los
+  sistemas terminados con la fracción del sistema en curso (tope 99 hasta que el
+  job finaliza; el 100 se reserva para "completado").
+- `progress_cb` recalcula `job["progress"]` en **cada ROM** y guarda
+  `progress_raw=[actual,total]` y `partial={ok,fail,skip}` (contadores en vivo,
+  sin la lista de errores).
+- `_scraper_batch_list` / `_scraper_batch_detail` exponen `progress_raw` y `partial`.
+- UI (`scraperBatchRefresh`): la barra avanza ROM a ROM; etiqueta
+  `Scrapeando <sistema> → <ROM>` (o `Escaneando <sistema>…` mientras escanea) y
+  contadores OK/fallos en vivo; la fila del job muestra el ROM actual.
+- Tests nuevos: `tests/test_batch_progress.py` (unidad + integración del job).
+- Tests: 170 → **175**.
+
+Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 100`.
+
+**Observado, no incluido (fuera del alcance del fix):**
+- La pestaña "Por sistema" del scraper es **síncrona** (pinta 5% y salta a 100%,
+  sin progreso real).
+- Sistemas sin mapear a ScreenScraper (`SS_SYSTEMS` con valor `0`, p. ej.
+  `triforce`) fallan con `HTTP 400: Champ systemeid obligatoire si aucun CRC`.
+
+---
+
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 170 tests (`pytest`, `tests/`) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 175 tests (`pytest`, `tests/`) sin linting ni typechecking
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
 3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
