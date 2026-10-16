@@ -218,3 +218,39 @@ def test_ra_endpoints_declared():
     assert "get_retroachievements(" in src
 
 
+# ─── Tarea 4: tarjeta de Ajustes ───────────────────────────────────────
+
+def _html():
+    return HTML.read_text(encoding="utf-8")
+
+
+def test_settings_card_markup():
+    h = _html()
+    for anchor in ('id="set-ra-user"', 'id="set-ra-api-key"', 'id="set-ra-enabled"',
+                   'id="ra-test-result"', 'onclick="saveRASettings()"',
+                   'onclick="testRA()"', "RetroAchievements",
+                   "retroachievements.org/settings"):
+        assert anchor in h, f"falta {anchor}"
+
+
+def test_settings_js_functions():
+    h = _html()
+    for fn in ("function loadRASettings(", "function saveRASettings(", "function testRA("):
+        assert fn in h, f"falta {fn}"
+    assert "/api/retroachievements/test" in h
+    assert "loadRASettings();" in h, "loadSettings debe llamar a loadRASettings"
+
+
+# ─── Tarea 5: tarjeta del Dashboard ────────────────────────────────────
+
+def test_dashboard_retro_card_markup():
+    h = _html()
+    assert 'id="dash-retro"' in h
+    assert 'id="dash-retro-body"' in h
+    assert "function loadRetro(" in h
+    assert "function renderRetro(" in h
+    assert "/api/retroachievements" in h
+    assert "loadRetro();" in h, "initDashboard debe llamar a loadRetro"
+
+
+

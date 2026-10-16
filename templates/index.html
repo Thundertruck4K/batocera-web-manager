@@ -1284,6 +1284,38 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             <button class="btn btn-ghost" onclick="loadSettings()">↺ Recargar</button>
           </div>
         </div>
+        <!-- ── RetroAchievements ── -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🏆</span>RetroAchievements — récords personales</div>
+          <div class="warn-box" style="margin-bottom:16px">
+            ℹ Opcional. Usa tu <strong>usuario</strong> y tu <strong>Web API Key</strong>
+            (no tu contraseña). La key se saca de
+            <a href="https://retroachievements.org/settings" target="_blank" rel="noopener">retroachievements.org/settings</a>
+            y se guarda solo en este equipo.
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Usuario de RetroAchievements</label>
+            <div style="display:flex;gap:8px">
+              <input id="set-ra-user" type="text" placeholder="tu usuario" autocomplete="off" style="flex:1">
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Web API Key</label>
+            <div style="display:flex;gap:8px">
+              <input id="set-ra-api-key" type="password" placeholder="••••••••" autocomplete="off" style="flex:1">
+              <button class="btn btn-ghost btn-sm" type="button" onclick="toggleRAKey()">👁</button>
+            </div>
+          </div>
+          <label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px;margin-bottom:16px">
+            <input type="checkbox" id="set-ra-enabled"> Mostrar mis récords en el Dashboard
+          </label>
+          <div class="btn-row">
+            <button class="btn btn-success" onclick="saveRASettings()">💾 Guardar</button>
+            <button class="btn btn-ghost" onclick="testRA()">🔌 Probar conexión</button>
+          </div>
+          <div id="ra-test-result" style="margin-top:12px;font-size:12px;color:var(--text3)"></div>
+        </div>
+
         <div class="card">
           <div class="card-title"><span class="icon">🚀</span>Instrucciones de uso</div>
           <div style="font-size:13px;color:var(--text2);line-height:2">
@@ -2470,6 +2502,53 @@ async function loadSettings() {
       <span class="hint">${meta.hint}</span>
     </div>
   `).join('');
+  loadRASettings();
+}
+
+// ─── RetroAchievements (ajustes) ─────────────────────────────────
+function toggleRAKey() {
+  const el = document.getElementById('set-ra-api-key');
+  if (el) el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+async function loadRASettings() {
+  const data = await fetchJson('/api/settings');
+  if (!data) return;
+  const u = document.getElementById('set-ra-user');
+  const k = document.getElementById('set-ra-api-key');
+  const e = document.getElementById('set-ra-enabled');
+  if (u) u.value = data.ra_user || '';
+  if (k) k.value = data.ra_api_key || '';
+  if (e) e.checked = !!data.ra_enabled;
+}
+
+async function saveRASettings() {
+  const payload = {
+    ra_user: (document.getElementById('set-ra-user')?.value || '').trim(),
+    ra_api_key: (document.getElementById('set-ra-api-key')?.value || '').trim(),
+    ra_enabled: !!document.getElementById('set-ra-enabled')?.checked,
+  };
+  const res = await fetchJson('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (res && res.ok) {
+    toast('✔ RetroAchievements guardado', 'ok');
+    loadRetro();
+  } else {
+    toast('Error guardando RetroAchievements', 'err');
+  }
+}
+
+async function testRA() {
+  const box = document.getElementById('ra-test-result');
+  if (box) box.textContent = 'Probando…';
+  const res = await fetchJson('/api/retroachievements/test');
+  if (!box) return;
+  if (res && res.ok) box.textContent = `✔ Conectado como ${res.user}`;
+  else if (res && res.configured) box.textContent = '✖ No se pudo conectar (revisa usuario y key)';
+  else box.textContent = 'Configura usuario y Web API Key, guarda y vuelve a probar.';
 }
 
 async function saveSettings() {
