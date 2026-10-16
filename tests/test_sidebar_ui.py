@@ -69,3 +69,11 @@ def test_active_item_uses_accent_gradient_and_border():
     assert m, "falta la regla .nav-item.active"
     body = m.group(1)
     assert "gradient" in body and "border" in body, "Variante C: gradiente + borde acento"
+
+
+def test_active_item_icon_takes_accent():
+    css = HTML.read_text(encoding="utf-8")
+    m = re.search(r"\.nav-item\.active\s+svg\s*\{([^}]*)\}", css, re.S)
+    assert m, "falta la regla .nav-item.active svg (Variante C: icono en acento)"
+    body = m.group(1)
+    assert "var(--accent)" in body and "stroke" in body, "el icono activo debe tomar el acento"

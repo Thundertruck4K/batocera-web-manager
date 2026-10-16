@@ -337,7 +337,7 @@ Notas:
 
 ---
 
-### `39fcbb6..d879251` — Sidebar rediseñado + paleta a WCAG AA (TDD, 95 → 106 tests)
+### `39fcbb6..d879251` — Sidebar rediseñado + paleta a WCAG AA (TDD, 95 → 107 tests)
 
 Objetivo: dashboard "más atractivo, útil y ágil". Fase 1: sidebar + paleta app-wide. Sin dependencias nuevas.
 
@@ -346,7 +346,7 @@ Objetivo: dashboard "más atractivo, útil y ágil". Fase 1: sidebar + paleta ap
 | 1 | Paleta `:root` a WCAG AA: `--text3` `#6b7394` → `#868fb2` (contraste 4.05 → 5.5 sobre `--bg`; 3.42 → 5.0 sobre `--panel`) | `39fcbb6` |
 | 2 | Sidebar: emojis → iconos SVG inline (Lucide), logo SVG, item activo "Variante C" (gradiente tenue + borde acento + glow), separadores de sección con `::after` | `d879251` |
 
-- Tests nuevos: `test_theme_contrast.py` (contraste WCAG sobre `:root`), `test_sidebar_ui.py` (estructura del sidebar). Total **106**.
+- Tests nuevos: `test_theme_contrast.py` (contraste WCAG sobre `:root`), `test_sidebar_ui.py` (estructura del sidebar). Total **107**.
 - Verificado sobre la app real servida (computed styles): 8 `.nav-item`, 9 `<svg>`, 0 `<span class="icon">`, item activo con `linear-gradient` + borde acento + glow, y **uno solo** tras cambiar de panel.
 - Referencia visual: `docs/superpowers/specs/2026-10-16-sidebar-mockup.html`.
 
@@ -354,7 +354,7 @@ Objetivo: dashboard "más atractivo, útil y ágil". Fase 1: sidebar + paleta ap
 
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 106 tests (`pytest`, `tests/`) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 107 tests (`pytest`, `tests/`) sin linting ni typechecking
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
 3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
