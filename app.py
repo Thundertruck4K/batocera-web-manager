@@ -2695,8 +2695,45 @@ import re as _re
 import urllib.parse as _uparse
 import urllib.request as _ureq
 
-SS_API   = "https://api.screenscraper.fr/apiv2"
+# Endpoint correcto: el host de ScreenScraper expone `api2` (con `apiv2` -> 404).
+SS_API   = "https://api.screenscraper.fr/api2"
 SS_SOFTNAME = "batocera_manager"
+
+# ScreenScraper exige credenciales de desarrollador (devid/devpassword) en cada
+# petición. Batocera NO las guarda en batocera.conf: van incrustadas en el
+# binario de EmulationStation. Se detectan de ahí y, como último recurso, se
+# usan las oficiales que Batocera distribuye.
+SS_DEV_FALLBACK = ("batoceralinux", "omvIrirRPuY")
+ES_BINARY_CANDIDATES = (
+    "/usr/bin/emulationstation",
+    "/usr/bin/batocera-es-launcher",
+)
+
+def _find_es_marker(data: bytes, name: bytes) -> str:
+    """Extrae el valor de `name=<valor>` dentro de un binario (p.ej. b'devid')."""
+    m = _re.search(name + rb"=([A-Za-z0-9_.\-]+)", data)
+    return m.group(1).decode("ascii", "ignore") if m else ""
+
+def detect_ss_dev_credentials(paths=None, settings=None):
+    """Devuelve (devid, devpassword) leídos del binario de EmulationStation.
+
+    Solo detecta: si no encuentra los marcadores devuelve ("", ""). La ruta del
+    binario puede indicarse en `settings["es_binary"]`.
+    """
+    if paths is None:
+        configured = (settings or {}).get("es_binary")
+        paths = [configured] if configured else list(ES_BINARY_CANDIDATES)
+    devid = devpassword = ""
+    for p in paths:
+        try:
+            data = Path(p).read_bytes()
+        except Exception:
+            continue
+        devid       = devid or _find_es_marker(data, b"devid")
+        devpassword = devpassword or _find_es_marker(data, b"devpassword")
+        if devid and devpassword:
+            break
+    return devid, devpassword
 
 def get_scraper_config(settings):
     """Lee credenciales de ScreenScraper desde batocera.conf."""
@@ -2707,7 +2744,7 @@ def get_scraper_config(settings):
            "tgdb_apikey":"","igdb_client_id":"","igdb_client_secret":"",
            "scraper_source":"screenscraper"}
     if not conf_path.exists():
-        return cfg
+        return _apply_ss_dev_credentials(cfg, settings)
     try:
         for line in conf_path.read_text(errors="replace").splitlines():
             line = line.strip()
@@ -2730,7 +2767,78 @@ def get_scraper_config(settings):
             if k == "global.scrapper.imageSource":cfg["ss_image_type"] = v
     except Exception:
         pass
+    return _apply_ss_dev_credentials(cfg, settings)
+
+def _apply_ss_dev_credentials(cfg, settings):
+    """Rellena devid/devpassword si falta alguno.
+
+    Orden: batocera.conf -> binario de EmulationStation -> oficiales de Batocera.
+    """
+    if not (cfg["ss_devid"] and cfg["ss_devpassword"]):
+        det_id, det_pass = detect_ss_dev_credentials(settings=settings)
+        cfg["ss_devid"]       = cfg["ss_devid"] or det_id
+        cfg["ss_devpassword"] = cfg["ss_devpassword"] or det_pass
+    if not cfg["ss_devid"]:
+        cfg["ss_devid"], cfg["ss_devpassword"] = SS_DEV_FALLBACK
+    elif not cfg["ss_devpassword"]:
+        cfg["ss_devpassword"] = SS_DEV_FALLBACK[1]
     return cfg
+
+# Claves de batocera.conf que el scraper puede escribir. El front-end envía
+# justo estas (`global.scrapper.*`), que es lo que lee `get_scraper_config`.
+SCRAPER_CONF_KEYS = (
+    "global.scrapper.user", "global.scrapper.password",
+    "global.scrapper.devid", "global.scrapper.devpassword",
+    "global.scrapper.region", "global.scrapper.lang",
+    "global.scrapper.imageSource", "global.scrapper.style",
+    "global.scraper.source",
+    "global.tgdb.apikey",
+    "global.igdb.clientid", "global.igdb.clientsecret",
+)
+
+def resolve_scraper_creds(settings, client_data):
+    """Credenciales efectivas: config del servidor como base, cliente por encima.
+
+    Así el devid detectado en el servidor llega al scrape aunque el formulario
+    del navegador no lo traiga.
+    """
+    cfg = get_scraper_config(settings)
+    for k in ("ss_user", "ss_password", "ss_devid", "ss_devpassword",
+              "ss_region", "ss_lang", "ss_image_type",
+              "tgdb_apikey", "igdb_client_id", "igdb_client_secret"):
+        val = (client_data or {}).get(k)
+        if val:
+            cfg[k] = val
+    return cfg
+
+def save_scraper_config(conf_path, lines):
+    """Escribe credenciales del scraper en batocera.conf. Devuelve (ok, error).
+
+    Solo acepta claves de SCRAPER_CONF_KEYS para no escribir basura.
+    """
+    conf_path = Path(conf_path)
+    try:
+        text = conf_path.read_text(errors="replace") if conf_path.exists() else ""
+        conf_lines = text.splitlines()
+        for item in lines or []:
+            key = (item or {}).get("key", "")
+            val = (item or {}).get("val", "")
+            if not key or key not in SCRAPER_CONF_KEYS:
+                continue
+            replaced = False
+            for i, line in enumerate(conf_lines):
+                stripped = line.strip()
+                if stripped.startswith(key + "=") or stripped == key + "=":
+                    conf_lines[i] = f"{key}={val}"
+                    replaced = True
+                    break
+            if not replaced:
+                conf_lines.append(f"{key}={val}")
+        conf_path.parent.mkdir(parents=True, exist_ok=True)
+        conf_path.write_text("\n".join(conf_lines) + "\n", encoding="utf-8")
+        return True, ""
+    except Exception as e:
+        return False, str(e)
 
 # Mapeo sistema Batocera → systemeid ScreenScraper
 # (basado en screenscraper_platformid_map de batocera-emulationstation)
@@ -4018,10 +4126,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         system   = d.get("system","")
         subpath  = d.get("subpath","").strip().strip("/")
         source   = d.get("source", "screenscraper")
-        cfg      = get_scraper_config(s)
-        cfg.update({k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang",
-            "tgdb_apikey","igdb_client_id","igdb_client_secret")})
+        cfg      = resolve_scraper_creds(s, d)
 
         if source == "thegamesdb":
             game, err = tgdb_search_game(filename, system, cfg.get("tgdb_apikey",""))
@@ -4077,10 +4182,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         filename = d.get("filename","")
         game     = d.get("game",{})
         source   = d.get("source", "screenscraper")
-        cfg      = get_scraper_config(s)
-        cfg.update({k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang","ss_image_type",
-            "tgdb_apikey","igdb_client_id","igdb_client_secret")})
+        cfg      = resolve_scraper_creds(s, d)
 
         results   = {"images":[],"meta":False,"errors":[]}
         if not (is_safe_component(system) and is_safe_component(filename)):
@@ -4164,10 +4266,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         d = self.read_json()
         system = d.get("system","")
         source = d.get("source", "screenscraper")
-        cfg = get_scraper_config(s)
-        cfg.update({k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang","ss_image_type",
-            "tgdb_apikey","igdb_client_id","igdb_client_secret")})
+        cfg = resolve_scraper_creds(s, d)
         if source == "thegamesdb" and not cfg.get("tgdb_apikey"):
             self.send_json({"ok":False,"error":"Configura tu API Key de TheGamesDB"}); return
         if source == "igdb" and not (cfg.get("igdb_client_id") and cfg.get("igdb_client_secret")):
@@ -4183,29 +4282,11 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         d     = self.read_json()
         lines = d.get("lines", [])  # [{key, val}, ...]
         conf  = Path(s.get("batocera_conf","/userdata/system/batocera.conf"))
-        try:
-            existing = conf.read_text(errors="replace") if conf.exists() else ""
-            ex_lines = existing.splitlines()
-            for item in lines:
-                key, val = item.get("key",""), item.get("val","")
-                if not key: continue
-                # Solo claves conocidas y válidas para evitar escribir basura
-                if key not in ("ss_user", "ss_password", "ss_devid", "ss_devpassword",
-                               "ss_lang", "ss_region", "ss_media_url"):
-                    continue
-                replaced = False
-                for i, line in enumerate(ex_lines):
-                    if line.strip().startswith(key + "=") or line.strip() == key + "=":
-                        ex_lines[i] = f"{key}={val}"
-                        replaced = True
-                        break
-                if not replaced:
-                    ex_lines.append(f"{key}={val}")
-            conf.parent.mkdir(parents=True, exist_ok=True)
-            conf.write_text("\n".join(ex_lines) + "\n", encoding="utf-8")
+        ok, err = save_scraper_config(conf, lines)
+        if ok:
             self.send_json({"ok":True})
-        except Exception as e:
-            self.send_json({"ok":False,"error":str(e)})
+        else:
+            self.send_json({"ok":False,"error":err})
 
     # ── Scraper batch ─────────────────────────────────────────────
     def _scraper_batch_create(self, s):
@@ -4214,9 +4295,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if not systems:
             self.send_json({"ok":False,"error":"Selecciona al menos un sistema"}); return
         source = d.get("source", "screenscraper")
-        creds = {k:v for k,v in d.items() if k in (
-            "ss_user","ss_password","ss_devid","ss_devpassword","ss_region","ss_lang","ss_image_type",
-            "tgdb_apikey","igdb_client_id","igdb_client_secret")}
+        creds = resolve_scraper_creds(s, d)
         # Validate
         if source == "thegamesdb" and not creds.get("tgdb_apikey"):
             self.send_json({"ok":False,"error":"Configura tu API Key de TheGamesDB"}); return
