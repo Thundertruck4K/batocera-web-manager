@@ -593,6 +593,33 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   .grid-2{grid-template-columns:1fr}
 }
 
+/* ── Hero + juego al azar + actividad ── */
+.dash-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  background:linear-gradient(120deg,rgba(110,168,254,.14),rgba(177,140,240,.10) 60%,transparent);
+  border:1px solid var(--border);border-radius:var(--radius2);padding:20px 22px;margin-bottom:14px}
+.dash-hero-hello{font-size:20px;font-weight:800}
+.dash-hero-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.dash-hero-stats{display:flex;gap:22px;flex-wrap:wrap}
+.hero-stat-v{font-size:20px;font-weight:800;line-height:1.1}
+.hero-stat-k{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.dash-random{margin-bottom:14px}
+.dash-random-body{display:grid;grid-template-columns:minmax(160px,240px) 1fr;gap:16px;align-items:center}
+.dash-random-img{background-size:cover;background-position:center;aspect-ratio:16/9;border-radius:10px;
+  background-color:var(--bg3);border:1px solid var(--border)}
+.dash-random-name{font-size:16px;font-weight:700}
+.dash-random-sys{font-size:12px;color:var(--text3);text-transform:capitalize}
+#dash-playstats{margin-bottom:14px}
+.dash-playstats-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.ps-sub{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.ps-row{display:grid;grid-template-columns:1fr 90px 28px;gap:8px;align-items:center;font-size:12px;margin-bottom:7px}
+.ps-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ps-bar{background:var(--bg3);border-radius:4px;height:8px;overflow:hidden}
+.ps-bar i{display:block;height:100%;background:var(--accent)}
+.ps-val{text-align:right;color:var(--text2)}
+.ps-empty{font-size:12px;color:var(--text3)}
+.ps-spark{width:100%;height:80px}
+@media (max-width:760px){.dash-playstats-grid{grid-template-columns:1fr}.dash-random-body{grid-template-columns:1fr}}
+
 /* ── Landing (overlay de bienvenida) ── */
 .landing{
   position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;
@@ -719,6 +746,46 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               <input type="checkbox" id="dash-auto" checked onchange="toggleDashAuto()"> Auto-refresh 5s
             </label>
             <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↺ Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Hero -->
+        <div class="dash-hero" id="dash-hero">
+          <div class="dash-hero-main">
+            <div class="dash-hero-hello" id="dash-hero-hello">Hola 👋</div>
+            <div class="dash-hero-sub" id="dash-hero-sub">Cargando estado…</div>
+          </div>
+          <div class="dash-hero-stats" id="dash-hero-stats"></div>
+        </div>
+
+        <!-- Juego al azar -->
+        <div class="dash-card dash-random" id="dash-random-game" style="--card-accent:var(--accent)">
+          <h3><span class="icon">🎲</span>Juego al azar
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="loadRandomGame()">↻ Otro</button>
+          </h3>
+          <div class="dash-random-body" id="dash-random-body">
+            <div class="dash-random-img" id="dash-random-img"></div>
+            <div class="dash-random-info">
+              <div class="dash-random-name" id="dash-random-name">Buscando…</div>
+              <div class="dash-random-sys" id="dash-random-sys"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actividad de juego -->
+        <div class="dash-card" id="dash-playstats" style="--card-accent:var(--purple2)">
+          <h3><span class="icon">📈</span>Actividad de juego
+            <span style="font-size:11px;color:var(--text3);font-weight:400" id="dash-playstats-note"></span>
+          </h3>
+          <div class="dash-playstats-grid">
+            <div>
+              <div class="ps-sub">Más jugados</div>
+              <div id="dash-top-games"></div>
+            </div>
+            <div>
+              <div class="ps-sub" id="dash-activity-label">Últimos 30 días</div>
+              <svg class="ps-spark" id="dash-activity" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
+            </div>
           </div>
         </div>
 
@@ -4074,6 +4141,12 @@ function initDashboard() {
     clearInterval(_dashTimer);
     _dashTimer = setInterval(loadDashboard, 5000);
   }
+  if (!_heroInfo) fetchJson('/api/info').then(i => {
+    _heroInfo = i;
+    if (_dashData) renderHero(_dashData);
+  });
+  loadRandomGame();
+  loadPlayStats();
 }
 
 async function loadDashboard() {
@@ -4086,6 +4159,7 @@ async function loadDashboard() {
 }
 
 function renderDashboard(d) {
+  renderHero(d);
   renderKpis(d);
   renderRow1(d);
   renderRow2(d);
@@ -4093,6 +4167,93 @@ function renderDashboard(d) {
   renderPower(d);
   renderRow3(d);
   renderFans(d.fans);
+}
+
+// ── Hero + juego al azar + actividad de juego ───────────────────
+let _heroInfo = null;
+let _heroStats = null;
+
+function renderHero(d) {
+  const hello = document.getElementById('dash-hero-hello');
+  const sub   = document.getElementById('dash-hero-sub');
+  const stats = document.getElementById('dash-hero-stats');
+  if (!hello || !stats) return;
+  const h = new Date().getHours();
+  const greet = h < 6 ? 'Buenas noches' : h < 12 ? 'Buenos días'
+              : h < 20 ? 'Buenas tardes' : 'Buenas noches';
+  hello.textContent = `${greet} 👋`;
+  const ver = (d && d.batocera_version) || '—';
+  const upt = (d && d.uptime) || '—';
+  if (sub) sub.textContent = `Batocera ${ver} · en marcha ${upt}`;
+  const es = !!(d && d.es && d.es.running);
+  const sysCount = _heroInfo && typeof _heroInfo.systems_count === 'number'
+    ? _heroInfo.systems_count : '—';
+  const played = _heroStats && _heroStats.ok ? _heroStats.totals.playcount : '—';
+  const hours  = _heroStats && _heroStats.ok && _heroStats.has_playtime
+    ? (_heroStats.totals.playtime_s / 3600).toFixed(1) : '—';
+  const cells = [['Sistemas', sysCount], ['EmulationStation', es ? 'En marcha' : 'Detenido'],
+                 ['Partidas', played], ['Horas', hours]];
+  stats.innerHTML = cells.map(([k, v]) =>
+    `<div class="hero-stat"><div class="hero-stat-v">${escHtml(String(v))}</div>` +
+    `<div class="hero-stat-k">${escHtml(k)}</div></div>`).join('');
+}
+
+async function loadRandomGame() {
+  const res = await fetchJson('/api/random-game');
+  renderRandomGame(res && res.game);
+}
+
+function renderRandomGame(g) {
+  const img  = document.getElementById('dash-random-img');
+  const name = document.getElementById('dash-random-name');
+  const sys  = document.getElementById('dash-random-sys');
+  if (!img || !name || !sys) return;
+  if (!g) {
+    img.style.backgroundImage = '';
+    name.textContent = 'Sin juegos con arte todavía';
+    sys.textContent = '';
+    return;
+  }
+  const q = g.subpath ? `?subpath=${encodeURIComponent(g.subpath)}` : '';
+  img.style.backgroundImage =
+    `url('/api/rom-image/${encodeURIComponent(g.system)}/${encodeURIComponent(g.filename)}${q}')`;
+  name.textContent = g.name || g.filename;
+  sys.textContent = g.system;
+}
+
+async function loadPlayStats() {
+  const s = await fetchJson('/api/game-stats');
+  if (!s) return;
+  _heroStats = s;
+  renderPlayStats(s);
+  if (_dashData) renderHero(_dashData);
+}
+
+function renderPlayStats(s) {
+  const note  = document.getElementById('dash-playstats-note');
+  const top   = document.getElementById('dash-top-games');
+  const spark = document.getElementById('dash-activity');
+  if (!note || !top || !spark) return;
+  if (!s || !s.ok) { note.textContent = ''; return; }
+  note.textContent = s.has_playtime
+    ? `· ${(s.totals.playtime_s / 3600).toFixed(1)} h registradas`
+    : '· tiempo no registrado (solo partidas)';
+  const games = (s.top_games || []).slice(0, 5);
+  const max = Math.max(1, ...games.map(g => g.playcount));
+  top.innerHTML = games.map(g => `
+    <div class="ps-row">
+      <span class="ps-name" title="${escHtml(g.name)}">${escHtml(g.name)}</span>
+      <span class="ps-bar"><i style="width:${Math.round(g.playcount / max * 100)}%"></i></span>
+      <span class="ps-val">${g.playcount}</span>
+    </div>`).join('') || '<div class="ps-empty">Sin partidas registradas</div>';
+  const counts = (s.activity || []).map(a => a.count);
+  const maxc = Math.max(1, ...counts);
+  const step = counts.length > 1 ? 300 / (counts.length - 1) : 0;
+  const pts = counts.map((c, i) =>
+    `${(i * step).toFixed(1)},${(78 - (c / maxc) * 70).toFixed(1)}`).join(' ');
+  spark.innerHTML = counts.length
+    ? `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>`
+    : '';
 }
 
 // ── Fila 0: KPIs de hardware (6 tarjetas, vista rápida) ─────────

@@ -60,3 +60,47 @@ def test_boot_calls_init_landing_without_blocking():
     assert "initLanding();" in h
     assert h.index("initLanding();") < h.index("init();")
 
+
+# ─── C1: hero ──────────────────────────────────────────────────────────
+
+def test_dashboard_hero_markup():
+    h = _html()
+    assert 'id="dash-hero"' in h
+    assert 'id="dash-hero-stats"' in h
+    assert "function renderHero(" in h
+
+
+# ─── C2: juego al azar ─────────────────────────────────────────────────
+
+def test_random_game_card_markup():
+    h = _html()
+    assert 'id="dash-random-game"' in h
+    assert "function loadRandomGame(" in h
+    assert "function renderRandomGame(" in h
+    assert "/api/random-game" in h
+
+
+# ─── C3: analítica ─────────────────────────────────────────────────────
+
+def test_playstats_markup():
+    h = _html()
+    assert 'id="dash-playstats"' in h
+    assert 'id="dash-activity"' in h
+    assert "function renderPlayStats(" in h
+
+
+def test_activity_svg_path():
+    h = _html()
+    assert "polyline points=" in h
+
+
+# ─── C4: monitoreo técnico conservado ──────────────────────────────────
+
+def test_tecnico_conservado():
+    h = _html()
+    for anchor in ('id="dash-kpis"', 'id="dash-row1"', 'id="dash-row2"',
+                   'id="dash-row-fans"', 'id="dash-storage"', 'id="dash-news"',
+                   'id="dash-row3"'):
+        assert anchor in h, f"falta {anchor}"
+
+
