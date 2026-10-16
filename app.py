@@ -2290,8 +2290,29 @@ def get_uptime():
         return " ".join(parts)
     except Exception: return "N/A"
 
+def _ipv4_map():
+    """Mapa {interfaz: IPv4} leyendo todas las interfaces en una sola llamada.
+
+    Usa `ip -4 -o addr show` (iproute2). Devuelve {} si `ip` no está
+    disponible (p. ej. fuera de Linux) o no hay direcciones.
+    """
+    out = _run("ip -4 -o addr show 2>/dev/null")
+    result = {}
+    for line in out.splitlines():
+        parts = line.split()
+        if "inet" not in parts:
+            continue
+        i = parts.index("inet")
+        # formato: "2: eth0    inet 192.168.1.5/24 brd ... scope global eth0"
+        if i < 2 or i + 1 >= len(parts):
+            continue
+        result.setdefault(parts[1], parts[i + 1].split("/")[0])
+    return result
+
+
 def get_network():
     ifaces = []
+    ip_map = _ipv4_map()
     try:
         lines = Path("/proc/net/dev").read_text().splitlines()[2:]
         for line in lines:
@@ -2308,6 +2329,7 @@ def get_network():
                 return f"{b} B"
             ifaces.append({
                 "iface":  iface,
+                "ip":     ip_map.get(iface),
                 "rx":     fmt(rx_bytes),
                 "tx":     fmt(tx_bytes),
                 "rx_raw": rx_bytes,
@@ -2316,12 +2338,57 @@ def get_network():
     except Exception: pass
     return ifaces
 
+def _es_listen_port(pid):
+    """Puerto TCP (el mayor) que está en LISTEN el proceso `pid`.
+
+    Lee `/proc/net/tcp{,6}` y los descriptores de `/proc/<pid>/fd` de forma
+    directa, sin invocar subprocesos. Devuelve None si no hay dato
+    (sin `/proc`, sin permisos o sin socket de servicio escuchando).
+    """
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return None
+    inode_port = {}
+    for proc_file in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            lines = Path(proc_file).read_text().splitlines()[1:]
+        except Exception:
+            continue
+        for line in lines:
+            parts = line.split()
+            # 0A = TCP_LISTEN · col.1 = "IP:puerto" en hex · col.9 = inode
+            if len(parts) < 10 or parts[3] != "0A":
+                continue
+            try:
+                inode_port[int(parts[9])] = int(parts[1].rsplit(":", 1)[1], 16)
+            except (ValueError, IndexError):
+                continue
+    if not inode_port:
+        return None
+    ports = set()
+    try:
+        for fd in Path(f"/proc/{pid}/fd").iterdir():
+            try:
+                target = os.readlink(str(fd))
+            except OSError:
+                continue
+            m = re.match(r"socket:\[(\d+)\]", target)
+            if m:
+                port = inode_port.get(int(m.group(1)))
+                if port:
+                    ports.add(port)
+    except OSError:
+        return None
+    return max(ports) if ports else None
+
+
 def get_es_status():
     # `comm` se trunca a 15 chars ("emulationstatio"), por eso -f (cmdline completa)
     pid = _run("pgrep -f -n emulationstation 2>/dev/null")
     if pid:
-        return {"running": True, "pid": pid}
-    return {"running": False}
+        return {"running": True, "pid": pid, "port": _es_listen_port(pid)}
+    return {"running": False, "port": None}
 
 def get_top_processes():
     procs = []

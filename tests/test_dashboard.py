@@ -145,3 +145,51 @@ def test_es_status_uses_full_cmdline_pattern(appmod, monkeypatch):
 
     assert st["running"] is True
     assert "-f" in seen["cmd"]
+
+
+def test_es_status_includes_port_key(appmod, monkeypatch):
+    """El KPI de ES expone `port` (None si no se puede detectar)."""
+    monkeypatch.setattr(appmod, "_run", lambda *a, **k: "4242")
+
+    st = appmod.get_es_status()
+
+    assert st["running"] is True
+    assert "port" in st
+
+
+def test_es_status_not_running_has_port_none(appmod, monkeypatch):
+    monkeypatch.setattr(appmod, "_run", lambda *a, **k: "")
+
+    st = appmod.get_es_status()
+
+    assert st["running"] is False
+    assert st["port"] is None
+
+
+def test_es_listen_port_tolerates_bad_pid(appmod):
+    """Un pid vacío/no numérico no debe lanzar; devuelve None."""
+    assert appmod._es_listen_port(None) is None
+    assert appmod._es_listen_port("") is None
+    assert appmod._es_listen_port("no-numerico") is None
+
+
+# ── Red / IP ──────────────────────────────────────────────────────────
+def test_ipv4_map_parses_ip_output(appmod, monkeypatch):
+    """`ip -4 -o addr show` → mapa {interfaz: IPv4} sin la máscara."""
+    sample = (
+        "2: eth0    inet 192.168.1.5/24 brd 192.168.1.255 scope global eth0\n"
+        "3: wlan0    inet 10.0.0.7/24 brd 10.0.0.255 scope global wlan0\n"
+    )
+    monkeypatch.setattr(appmod, "_run", lambda *a, **k: sample)
+
+    mapping = appmod._ipv4_map()
+
+    assert mapping["eth0"] == "192.168.1.5"
+    assert mapping["wlan0"] == "10.0.0.7"
+
+
+def test_ipv4_map_empty_without_ip_command(appmod, monkeypatch):
+    """Sin `ip` (p. ej. fuera de Linux) el mapa es vacío, sin excepciones."""
+    monkeypatch.setattr(appmod, "_run", lambda *a, **k: "")
+
+    assert appmod._ipv4_map() == {}
