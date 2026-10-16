@@ -1365,6 +1365,45 @@ def list_custom_systems(settings):
         except Exception: pass
     return systems
 
+def delete_custom_system(name, settings):
+    """Elimina SOLO el `<system>` `name` de sus `es_systems_*.cfg`.
+
+    Un .cfg puede contener varios sistemas: antes se borraba el fichero entero
+    y se perdían los demás. Si tras la operación no queda ningún sistema, el
+    fichero sí se elimina.
+
+    Devuelve (ok, info) donde info puede contener "error", "file_deleted" y
+    "removed_systems".
+    """
+    systems = list_custom_systems(settings)
+    t = next((x for x in systems if x["name"] == name), None)
+    if not t:
+        return False, {"error": "No encontrado"}
+    cfg_path = Path(t["file"])
+    try:
+        tree = ET.parse(cfg_path)
+        root = tree.getroot()
+        removed = 0
+        for parent in root.iter():
+            for child in list(parent):
+                if child.tag == "system" and child.findtext("name", "") == name:
+                    parent.remove(child)
+                    removed += 1
+        if not removed:
+            return False, {"error": "No encontrado"}
+        if root.findall(".//system"):
+            cfg_path.write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n' + prettify_xml(root),
+                encoding="utf-8",
+            )
+            mark_es_restart_pending()
+            return True, {"file_deleted": False, "removed_systems": removed}
+        cfg_path.unlink()
+        mark_es_restart_pending()
+        return True, {"file_deleted": True, "removed_systems": removed}
+    except Exception as e:
+        return False, {"error": str(e)}
+
 def get_custom_system_detail(name, settings):
     d = Path(settings["es_cfg_dir"])
     if not d.exists(): return None
@@ -3679,13 +3718,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         parts = [p for p in path.split("/") if p]
         s     = load_settings()
         if len(parts)==3 and parts[:2]==["api","system"]:
-            name    = parts[2]
-            systems = list_custom_systems(s)
-            t = next((x for x in systems if x["name"]==name),None)
-            if t:
-                try: os.remove(t["file"]); self.send_json({"ok":True})
-                except Exception as e: self.send_json({"ok":False,"error":str(e)})
-            else: self.send_json({"ok":False,"error":"No encontrado"})
+            name = urllib.parse.unquote(parts[2])
+            ok, info = delete_custom_system(name, s)
+            self.send_json({"ok": ok, **info})
         elif len(parts)>=3 and parts[:2]==["api","rom"]:
             system   = parts[2]
             filename = urllib.parse.unquote("/".join(parts[3:])) if len(parts)>3 else ""
