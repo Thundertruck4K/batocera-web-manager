@@ -69,6 +69,7 @@ a{color:var(--accent);text-decoration:none}
   color:var(--accent);letter-spacing:-0.3px;
   display:flex;align-items:center;gap:8px;
 }
+.sidebar-logo h1 svg{width:18px;height:18px;stroke-width:2;flex:none}
 .sidebar-logo p{font-size:11px;color:var(--text3);margin-top:4px}
 .sidebar-badge{
   display:inline-block;
@@ -79,9 +80,14 @@ a{color:var(--accent);text-decoration:none}
 }
 .nav{padding:12px 8px;flex:1}
 .nav-section-label{
+  display:flex;align-items:center;gap:8px;
   font-size:10px;font-weight:600;text-transform:uppercase;
   letter-spacing:.8px;color:var(--text3);
   padding:8px 12px 4px;
+}
+.nav-section-label::after{
+  content:"";flex:1;height:1px;
+  background:linear-gradient(90deg,var(--border),transparent);
 }
 .nav-item{
   display:flex;align-items:center;gap:10px;
@@ -90,11 +96,15 @@ a{color:var(--accent);text-decoration:none}
   font-size:13px;font-weight:500;
   transition:all var(--transition);
   margin-bottom:2px;
-  border:none;background:none;width:100%;text-align:left;
+  border:1px solid transparent;background:none;width:100%;text-align:left;
 }
 .nav-item:hover{background:var(--bg3);color:var(--text)}
-.nav-item.active{background:var(--accent2);color:#fff}
-.nav-item .icon{font-size:16px;width:20px;text-align:center}
+.nav-item.active{
+  background:linear-gradient(135deg,rgba(110,168,254,.18),rgba(74,118,212,.06));
+  color:#fff;border:1px solid rgba(110,168,254,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 16px -8px rgba(110,168,254,.6);
+}
+.nav-item svg{width:17px;height:17px;flex:none;stroke-width:2;opacity:.92}
 .nav-badge{
   margin-left:auto;background:var(--bg3);
   font-size:10px;padding:2px 6px;
@@ -568,41 +578,41 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   <!-- ── SIDEBAR ── -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <h1>🕹️ Batocera Manager</h1>
+      <h1><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg> Batocera Manager</h1>
       <p>Sistema Manager Web v1.0</p>
       <div class="sidebar-badge">Batocera v43+</div>
     </div>
     <nav class="nav">
       <div class="nav-section-label">Principal</div>
       <button class="nav-item active" onclick="showPanel('dashboard',this)">
-        <span class="icon">📊</span> Dashboard
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Dashboard
       </button>
       <button class="nav-item" onclick="showPanel('add',this)">
-        <span class="icon">➕</span> Agregar Sistema
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Agregar Sistema
       </button>
       <button class="nav-item" onclick="showPanel('list',this)">
-        <span class="icon">📋</span> Sistemas Creados
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Sistemas Creados
         <span class="nav-badge" id="badge-count">…</span>
       </button>
       <div class="nav-section-label">Visual</div>
       <button class="nav-item" onclick="showPanel('themes',this)">
-        <span class="icon">🎨</span> Temas & Assets
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2a10 10 0 1 0 0 20c1.7 0 2.5-1.2 2.5-2.5 0-.6-.2-1.1-.6-1.5-.4-.4-.6-.9-.6-1.5 0-1.4 1.1-2.5 2.5-2.5H18a4 4 0 0 0 4-4c0-5-4.5-8-10-8z"/></svg> Temas &amp; Assets
       </button>
       <button class="nav-item" onclick="showPanel('preview',this)">
-        <span class="icon">👁</span> Vista Previa XML
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Vista Previa XML
       </button>
       <div class="nav-section-label">Contenido</div>
       <button class="nav-item" onclick="showPanel('roms',this)">
-        <span class="icon">🎮</span> ROMs & BIOS
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg> ROMs &amp; BIOS
         <span class="nav-badge" id="badge-roms">…</span>
       </button>
       <div class="nav-section-label">Sistema</div>
       <button class="nav-item" onclick="showPanel('biosmissing',this)">
-        <span class="icon">🧩</span> BIOS Faltante
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14v2a2 2 0 0 1-2 2h-1v3h-2v-3H10v3H8v-3H7a2 2 0 0 1-2-2v-1H2v-2h3V10H2V8h3V7a2 2 0 0 1 2-2h1V2h2v3h2V2h2v3h1a2 2 0 0 1 2 2v1h3v2h-3v4z"/></svg> BIOS Faltante
         <span class="nav-badge" id="badge-biosmissing" style="display:none">0</span>
       </button>
       <button class="nav-item" onclick="showPanel('settings',this)">
-        <span class="icon">⚙</span> Configuración
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración
       </button>
     </nav>
     <div class="sidebar-footer">
