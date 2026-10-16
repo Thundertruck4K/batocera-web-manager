@@ -1962,6 +1962,65 @@ def check_bios(system_name, bios_dir):
         f.pop("valid_md5s", None)
     return info
 
+
+# ─── Asistente de BIOS faltantes (legal-primero) ───────────────────────
+MAX_BIOS_DOWNLOAD = 64 * 1024 * 1024  # 64 MiB
+
+
+def _bios_urlopen(url, timeout=30):
+    """Indirección sobre urllib para poder simular la red en los tests."""
+    import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": "BatoceraManager/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read(MAX_BIOS_DOWNLOAD + 1)
+
+
+def github_bios_search_url(filename):
+    """URL de búsqueda de código en GitHub para localizar un archivo BIOS.
+
+    La app solo enlaza a la búsqueda; no descarga ni aloja nada por su cuenta.
+    """
+    q = urllib.parse.quote(str(filename))
+    return f"https://github.com/search?q={q}&type=code"
+
+
+def download_bios_from_url(bios_dir, filename, url, expected_md5s=None, timeout=30):
+    """Descarga un BIOS desde una URL que EL USUARIO proporciona.
+
+    Solo `http`/`https`; valida la ruta con `safe_path_under` (respeta
+    subcarpetas) y limita el tamaño a MAX_BIOS_DOWNLOAD. Nunca lanza.
+    Devuelve {ok, error?, dest, size, md5, md5_valid}.
+    """
+    filename = (filename or "").strip()
+    url = (url or "").strip()
+    if not filename or not url:
+        return {"ok": False, "error": "Faltan 'file' o 'url'"}
+    if urllib.parse.urlparse(url).scheme not in ("http", "https"):
+        return {"ok": False, "error": "Solo se permiten URLs http/https"}
+    try:
+        dest = safe_path_under(Path(bios_dir), filename)
+    except ValueError:
+        return {"ok": False, "error": "Ruta de BIOS inválida"}
+    try:
+        data = _bios_urlopen(url, timeout)
+    except Exception as e:
+        return {"ok": False, "error": f"No se pudo descargar: {e}"}
+    if len(data) > MAX_BIOS_DOWNLOAD:
+        return {"ok": False, "error": "Archivo demasiado grande"}
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+    except Exception as e:
+        return {"ok": False, "error": f"No se pudo guardar: {e}"}
+    md5_val = hashlib.md5(data).hexdigest()
+    return {
+        "ok": True,
+        "dest": str(dest),
+        "size": human_size(len(data)),
+        "md5": md5_val,
+        "md5_valid": (md5_val in expected_md5s) if expected_md5s else None,
+    }
+
 def parse_multipart(environ, data):
     import email.parser
     import email.policy
@@ -4188,6 +4247,18 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self._upload_rom(system, s)
         elif path == "/api/bios/upload":
             self._upload_bios(s)
+        elif path == "/api/bios/fetch":
+            d = self.read_json()
+            fname  = (d.get("file") or "").strip()
+            url    = (d.get("url") or "").strip()
+            system = (d.get("system") or "").strip()
+            if not fname or not url:
+                self.send_json({"ok": False, "error": "Faltan 'file' o 'url'"}); return
+            expected = [b["md5"] for b in _get_bios_entries(system)
+                        if b.get("file") == fname and b.get("md5")]
+            result = download_bios_from_url(
+                s.get("bios_dir", "/userdata/bios"), fname, url, expected)
+            self.send_json(result)
         elif path == "/api/bios/missing/skip":
             d = self.read_json()
             key = d.get("skip_key","")
