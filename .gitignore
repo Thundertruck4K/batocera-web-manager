@@ -31,3 +31,4 @@ _peek.py
 find_rom.py
 _stage.py
 _verify_history.py
+_deploy.py
