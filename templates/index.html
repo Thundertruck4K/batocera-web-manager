@@ -562,6 +562,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .bios-miss-group h3 span{font-size:11px;font-weight:400;color:var(--text3);margin-left:8px}
 .bios-miss-ok{text-align:center;padding:40px;color:var(--green)}
 .bios-miss-ok .icon{font-size:48px;display:block;margin-bottom:12px}
+.legal-note{margin-top:14px;padding:10px 12px;font-size:11px;line-height:1.5;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--yellow);border-radius:var(--radius)}
 
 /* ── BIOS Accordion ── */
 .bios-accordion{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
@@ -3273,6 +3274,8 @@ function renderMissingBios(data) {
             <div class="fill" id="upf-${b.skip_key.replace(/[^a-zA-Z0-9_-]/g,'_')}"></div>
             <div class="pct" id="upp-${b.skip_key.replace(/[^a-zA-Z0-9_-]/g,'_')}">0%</div>
           </div>
+          <a class="btn btn-ghost btn-sm" href="${biosGhUrl(b.file)}" target="_blank" rel="noopener" title="Buscar este archivo en GitHub">🔎 GitHub</a>
+          <button class="btn btn-ghost btn-sm" onclick="fetchBios('${escHtml(b.system)}','${escHtml(b.file)}')" title="Descargar desde una URL que tú indiques">⬇ URL</button>
           <label class="btn btn-primary btn-sm" style="cursor:pointer" title="Subir BIOS">
             ⬆ Subir
             <input type="file" style="display:none" onchange="uploadSingleBios(this,'${escHtml(b.system)}','${escHtml(b.file)}','${b.skip_key.replace(/'/g,"\\'")}')">
@@ -3284,7 +3287,32 @@ function renderMissingBios(data) {
     html += '</div></div>';
   }
   html += '</div>';
+  html += '<div class="legal-note">⚖ Esta app <strong>no incluye ni sugiere fuentes de BIOS</strong>. Descarga solo desde orígenes que tengas derecho a usar; la responsabilidad de lo que descargues es tuya.</div>';
   list.innerHTML = html;
+}
+
+// URL de búsqueda en GitHub para localizar un BIOS (la app solo enlaza, no descarga).
+function biosGhUrl(file) {
+  return 'https://github.com/search?q=' + encodeURIComponent(file) + '&type=code';
+}
+
+// Descarga un BIOS desde una URL que el usuario proporciona (solo http/https).
+async function fetchBios(system, file) {
+  const url = prompt(`URL para descargar "${file}" (solo http/https).\n\nDescarga solo desde fuentes que tengas derecho a usar.`);
+  if (!url) return;
+  const res = await fetchJson('/api/bios/fetch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ system, file, url }),
+  });
+  if (res && res.ok) {
+    const md5msg = res.md5_valid === false ? ' · ⚠ el MD5 no coincide'
+                 : (res.md5_valid ? ' · ✔ MD5 verificado' : '');
+    toast(`✔ ${file} descargado${md5msg}`, res.md5_valid === false ? 'err' : 'ok');
+    loadMissingBios();
+  } else {
+    toast(`✖ ${(res && res.error) || 'no se pudo descargar'}`, 'err');
+  }
 }
 
 function uploadSingleBios(input, system, filePath, skipKey) {
