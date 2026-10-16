@@ -4024,7 +4024,7 @@ async function scraperBatchRefresh() {
           ${j.current_system ? `<span style="color:var(--accent)">${escHtml(j.current_system)}</span>` : ''}
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:2px">
-          ${isActive ? `Progreso: ${j.progress}% · ${j.systems_done}/${j.systems.length} sist.` : ''}
+          ${isActive ? `Progreso: ${j.progress}% · ${j.systems_done}/${j.systems.length} sist.${j.current_rom ? ` · <span style="color:var(--text2)">${escHtml(j.current_rom)}</span>` : ''}` : ''}
           ${j.status === 'completed' ? `✔ ${agg.ok} OK · ${agg.fail} fail · ${agg.total} total` : ''}
           ${j.status === 'failed' ? `Error: ${escHtml(j.error||'desconocido')}` : ''}
           ${j.status === 'cancelled' ? 'Cancelado por el usuario' : ''}
@@ -4048,13 +4048,22 @@ async function scraperBatchRefresh() {
   // Update progress bar for active job
   const activeJob = jobs.find(j => j.id === _batchActiveJobId);
   if (activeJob && (activeJob.status === 'running' || activeJob.status === 'pending')) {
+    const raw  = activeJob.progress_raw || [0, 0];
+    const part = activeJob.partial || {};
+    const sysName = activeJob.current_system || '';
+    const rom  = activeJob.current_rom || '';
     document.getElementById('sc-batch-progress').style.display = '';
     document.getElementById('sc-batch-bar').style.width = activeJob.progress + '%';
     document.getElementById('sc-batch-pct').textContent = activeJob.progress + '%';
-    const agg = activeJob.aggregated || {};
-    const sysWord = activeJob.systems_done === 1 ? 'sistema' : 'sistemas';
+    document.getElementById('sc-batch-label').textContent =
+      rom ? `Scrapeando ${sysName} → ${rom}`
+          : (sysName ? `Escaneando ${sysName}…` : 'Preparando…');
+    const agg  = activeJob.aggregated || {};
+    const ok   = (agg.ok || 0) + (part.ok || 0);
+    const fail = (agg.fail || 0) + (part.fail || 0);
+    const romPart = raw[1] ? ` · ROM ${raw[0]}/${raw[1]}` : '';
     document.getElementById('sc-batch-stats').textContent =
-      `${activeJob.systems_done}/${activeJob.systems.length} ${sysWord} · ${agg.ok} OK · ${agg.fail} fallos`;
+      `${activeJob.systems_done}/${activeJob.systems.length} sistemas${romPart} · ${ok} OK · ${fail} fallos`;
   } else if (activeJob && activeJob.status === 'completed') {
     document.getElementById('sc-batch-progress').style.display = '';
     document.getElementById('sc-batch-bar').style.width = '100%';

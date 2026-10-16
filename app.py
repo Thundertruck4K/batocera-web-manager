@@ -3979,14 +3979,38 @@ def _start_batch_worker():
         _scraper_worker_thread.start()
         return _scraper_worker_thread
 
+def _batch_progress(systems_done, total_systems, current, total):
+    """Porcentaje global del lote.
+
+    Combina los sistemas ya terminados con la fracción del sistema en curso,
+    para que la barra avance ROM a ROM en vez de saltar de 0 a 100 al cerrar
+    cada sistema. Se limita a 99 mientras queden sistemas: el 100 se reserva
+    para "completado".
+    """
+    if total_systems <= 0:
+        return 0
+    frac = (current / total) if total else 0.0
+    done = min(systems_done + frac, total_systems)
+    return min(99, int(done / total_systems * 100))
+
+
+def _partial_counts(partial):
+    """Solo los contadores del sistema en curso (sin la lista de errores)."""
+    if not partial:
+        return {}
+    return {"ok": partial.get("ok", 0), "fail": partial.get("fail", 0),
+            "skip": partial.get("skip", 0)}
+
+
 def _process_batch_job(job):
     def progress_cb(system, rom_name, current, total, partial, err=None):
         with _scraper_jobs_lock:
             job["current_system"] = system
             job["current_rom"] = rom_name
-            job["progress_raw"] = (current, total)
-            job["partial"] = partial
+            job["progress_raw"] = [current, total]
+            job["partial"] = _partial_counts(partial)
             job["systems_done"] = _sys_done
+            job["progress"] = _batch_progress(_sys_done, total_systems, current, total)
     _sys_done = 0
     total_systems = len(job["systems"])
     for sys_name in job["systems"]:
@@ -3995,6 +4019,8 @@ def _process_batch_job(job):
                 return
             job["current_system"] = sys_name
             job["current_rom"] = ""
+            job["progress_raw"] = [0, 0]
+            job["partial"] = {}
         # Credentials are already in job["creds"] with keys matching do_scrape_system
         result = do_scrape_system(job["settings"], sys_name, job["source"],
                                   job["creds"], job["options"], progress_cb)
@@ -4002,6 +4028,8 @@ def _process_batch_job(job):
         with _scraper_jobs_lock:
             job["systems_result"][sys_name] = result
             job["systems_done"] = _sys_done
+            job["progress_raw"] = [0, 0]
+            job["partial"] = {}
             if result["quota"]:
                 job["quota"] = result["quota"]
             # Aggregate
@@ -4011,7 +4039,7 @@ def _process_batch_job(job):
             agg["skip"] += result.get("skip",0)
             agg["total"] += result["total"]
             agg["errors"].extend(result["errors"][:50])  # cap at 50 errors
-            job["progress"] = int(_sys_done / total_systems * 100) if total_systems else 0
+            job["progress"] = _batch_progress(_sys_done, total_systems, 0, 0)
     with _scraper_jobs_lock:
         job["status"] = "completed"
         job["progress"] = 100
@@ -4819,6 +4847,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             "progress": 0,
             "current_system": "",
             "current_rom": "",
+            "progress_raw": [0, 0],
+            "partial": {},
             "systems_done": 0,
             "systems_result": {},
             "aggregated": {"ok":0,"fail":0,"skip":0,"total":0,"errors":[]},
@@ -4844,6 +4874,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     "progress": j["progress"],
                     "current_system": j["current_system"],
                     "current_rom": j["current_rom"],
+                    "progress_raw": j.get("progress_raw", [0, 0]),
+                    "partial": j.get("partial", {}),
                     "systems_done": j["systems_done"],
                     "aggregated": j["aggregated"],
                     "created_at": j["created_at"],
@@ -4864,6 +4896,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "progress": j["progress"],
                 "current_system": j["current_system"],
                 "current_rom": j["current_rom"],
+                "progress_raw": j.get("progress_raw", [0, 0]),
+                "partial": j.get("partial", {}),
                 "systems_done": j["systems_done"],
                 "systems_result": j["systems_result"],
                 "aggregated": j["aggregated"],
