@@ -22,3 +22,10 @@ static/
 # Backups
 *.bak
 *.bak-*
+
+# Scratch / herramienta temporal de desarrollo (no versionar)
+.superpowers/
+_extracted.js
+_jscheck.py
+_peek.py
+find_rom.py
