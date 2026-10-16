@@ -2626,6 +2626,102 @@ def _ra_get(settings, endpoint, params=None, timeout=10):
         return None
 
 
+def _ra_absolute(path):
+    """Convierte un path relativo de RA ('/Badge/x.png') en URL absoluta."""
+    if not path:
+        return ""
+    path = str(path)
+    if path.startswith("http"):
+        return path
+    return "https://retroachievements.org" + path
+
+
+def ra_profile(settings):
+    """Perfil del usuario (o None si no está disponible)."""
+    data = _ra_get(settings, "API_GetUserProfile.php")
+    if not isinstance(data, dict) or not data:
+        return None
+    return {
+        "user": data.get("User") or settings.get("ra_user", ""),
+        "avatar": _ra_absolute(data.get("UserPic")),
+        "points": data.get("TotalPoints", 0),
+        "true_points": data.get("TotalTruePoints", 0),
+        "softcore_points": data.get("TotalSoftcorePoints", 0),
+        "member_since": data.get("MemberSince") or "",
+        "motto": data.get("Motto") or "",
+        "rich_presence": data.get("RichPresenceMsg") or "",
+        "last_game_id": data.get("LastGameID"),
+    }
+
+
+def ra_recent_achievements(settings, minutes=10080, limit=12):
+    """Logros recientes (por defecto 7 días). Lista (posiblemente vacía)."""
+    data = _ra_get(settings, "API_GetUserRecentAchievements.php", {"m": minutes})
+    if not isinstance(data, list):
+        return []
+    out = []
+    for a in data[:limit]:
+        if not isinstance(a, dict):
+            continue
+        badge = a.get("BadgeURL") or (
+            f"/Badge/{a['BadgeName']}.png" if a.get("BadgeName") else "")
+        out.append({
+            "title": a.get("Title") or "",
+            "desc": a.get("Description") or "",
+            "points": a.get("Points", 0),
+            "true_ratio": a.get("TrueRatio", 0),
+            "hardcore": bool(a.get("HardcoreMode")),
+            "game": a.get("GameTitle") or "",
+            "game_id": a.get("GameID"),
+            "console": a.get("ConsoleName") or "",
+            "date": a.get("Date") or "",
+            "badge": _ra_absolute(badge),
+        })
+    return out
+
+
+def ra_completion(settings, count=20):
+    """Progreso de finalización por juego (lista, posiblemente vacía)."""
+    data = _ra_get(settings, "API_GetUserCompletionProgress.php", {"c": count})
+    if not isinstance(data, dict):
+        return []
+    out = []
+    for g in (data.get("Results") or []):
+        if not isinstance(g, dict):
+            continue
+        maxp = g.get("MaxPossible") or 0
+        num  = g.get("NumAwarded") or 0
+        out.append({
+            "game_id": g.get("GameID"),
+            "title": g.get("Title") or "",
+            "console": g.get("ConsoleName") or "",
+            "icon": _ra_absolute(g.get("ImageIcon")),
+            "num_awarded": num,
+            "max_possible": maxp,
+            "hardcore": bool(g.get("NumAwardedHardcore")),
+            "percent": round(num / maxp * 100, 1) if maxp else 0.0,
+            "award_kind": g.get("HighestAwardKind") or "",
+            "award_date": g.get("HighestAwardDate") or "",
+        })
+    return out
+
+
+def ra_awards(settings):
+    """Resumen de premios (o None si no está disponible)."""
+    data = _ra_get(settings, "API_GetUserAwards.php")
+    if not isinstance(data, dict) or not data:
+        return None
+    return {
+        "total": data.get("TotalAwardsCount", 0),
+        "mastery": data.get("MasteryAwardsCount", 0),
+        "completion": data.get("CompletionAwardsCount", 0),
+        "beaten_hardcore": data.get("BeatenHardcoreAwardsCount", 0),
+        "beaten_softcore": data.get("BeatenSoftcoreAwardsCount", 0),
+        "events": data.get("EventAwardsCount", 0),
+    }
+
+
+
 def get_uptime():
     try:
         secs = float(Path("/proc/uptime").read_text().split()[0])
