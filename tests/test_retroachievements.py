@@ -198,10 +198,46 @@ def test_get_retroachievements_unconfigured_makes_no_request(appmod, monkeypatch
     monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: called.append(1))
 
     r = appmod.get_retroachievements({"ra_user": "", "ra_api_key": "", "ra_enabled": True})
-    assert r["configured"] is False and r["ok"] is False
-    r2 = appmod.get_retroachievements({"ra_user": "u", "ra_api_key": "k", "ra_enabled": False})
-    assert r2["configured"] is False
+    assert r["configured"] is False and r["ok"] is False and r["enabled"] is False
     assert called == [], "no debe llamar a la red"
+
+
+def test_default_settings_ra_enabled_is_true(appmod):
+    # Configurar credenciales implica querer ver los récords: el interruptor
+    # debe nacer activo (el default apagado fue la causa del bug reportado).
+    assert appmod.DEFAULT_SETTINGS["ra_enabled"] is True
+
+
+def test_get_retroachievements_configured_but_disabled_makes_no_request(appmod, monkeypatch):
+    appmod._ra_cache["data"] = None
+    called = []
+    monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: called.append(1))
+
+    r = appmod.get_retroachievements({"ra_user": "u", "ra_api_key": "k", "ra_enabled": False})
+
+    assert r["configured"] is True, "las credenciales están puestas"
+    assert r["enabled"] is False
+    assert r["ok"] is False and r["profile"] is None
+    assert called == [], "desactivado no debe tocar la red"
+
+
+def test_get_retroachievements_reports_enabled(appmod, monkeypatch):
+    appmod._ra_cache["data"] = None
+    monkeypatch.setattr(appmod, "_ra_get", _fake_ra_get([]))
+    r = appmod.get_retroachievements(_creds())
+    assert r["configured"] is True and r["enabled"] is True and r["ok"] is True
+    appmod._ra_cache["data"] = None
+
+
+def test_ra_test_reports_state(appmod, monkeypatch):
+    # La prueba de conexión debe informar también si el interruptor está apagado.
+    monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: PROFILE)
+    t = appmod.ra_test({"ra_user": "u", "ra_api_key": "k", "ra_enabled": False})
+    assert t == {"ok": True, "configured": True, "enabled": False, "user": "tester"}
+
+    monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: None)
+    t2 = appmod.ra_test({"ra_user": "", "ra_api_key": ""})
+    assert t2["configured"] is False and t2["ok"] is False and t2["enabled"] is False
 
 
 def test_get_retroachievements_ok_false_on_api_failure(appmod, monkeypatch):
@@ -251,6 +287,15 @@ def test_dashboard_retro_card_markup():
     assert "function renderRetro(" in h
     assert "/api/retroachievements" in h
     assert "loadRetro();" in h, "initDashboard debe llamar a loadRetro"
+
+
+def test_dashboard_retro_disabled_state_has_activate():
+    # Si hay credenciales pero el interruptor está apagado, el dashboard debe
+    # ofrecer activarlo (no quedarse mudo) y la prueba de conexión debe avisarlo.
+    h = _html()
+    assert "function enableRetro(" in h
+    assert "enableRetro()" in h, "el estado desactivado debe ofrecer Activar"
+    assert "res.enabled" in h, "testRA debe reflejar el interruptor"
 
 
 

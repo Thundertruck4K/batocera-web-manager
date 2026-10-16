@@ -2570,7 +2570,11 @@ async function testRA() {
   if (box) box.textContent = 'Probando…';
   const res = await fetchJson('/api/retroachievements/test');
   if (!box) return;
-  if (res && res.ok) box.textContent = `✔ Conectado como ${res.user}`;
+  if (res && res.ok) {
+    box.textContent = res.enabled === false
+      ? `✔ Conectado como ${res.user} · los récords están DESACTIVADOS en el Dashboard`
+      : `✔ Conectado como ${res.user}`;
+  }
   else if (res && res.configured) box.textContent = '✖ No se pudo conectar (revisa usuario y key)';
   else box.textContent = 'Configura usuario y Web API Key, guarda y vuelve a probar.';
 }
@@ -4399,6 +4403,23 @@ async function loadRetro() {
   renderRetro(r);
 }
 
+// Activa los récords sin pasar por Ajustes (arregla el caso "credenciales
+// guardadas pero interruptor apagado" en un clic).
+async function enableRetro() {
+  const res = await fetchJson('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ra_enabled: true }),
+  });
+  if (res && res.ok) {
+    toast('✔ Récords activados', 'ok');
+    loadRetro();
+    loadRASettings();
+  } else {
+    toast('No se pudieron activar los récords', 'err');
+  }
+}
+
 function renderRetro(r) {
   const box = document.getElementById('dash-retro-body');
   if (!box) return;
@@ -4406,6 +4427,13 @@ function renderRetro(r) {
     box.innerHTML = `<div class="retro-empty">
       <p style="margin:0 0 10px">Conecta tu cuenta de RetroAchievements para ver tus récords personales. Es opcional.</p>
       <button class="btn btn-primary btn-sm" onclick="gotoSettings()">Configurar RetroAchievements</button>
+    </div>`;
+    return;
+  }
+  if (!r.enabled) {
+    box.innerHTML = `<div class="retro-empty">
+      <p style="margin:0 0 10px">Tus credenciales están guardadas, pero los récords están <strong>desactivados</strong>.</p>
+      <button class="btn btn-primary btn-sm" onclick="enableRetro()">Activar récords</button>
     </div>`;
     return;
   }

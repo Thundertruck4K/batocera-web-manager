@@ -71,7 +71,7 @@ DEFAULT_SETTINGS = {
     # RetroAchievements (opcional): usuario + Web API Key (nunca la contraseña)
     "ra_user":       "",
     "ra_api_key":    "",
-    "ra_enabled":    False,
+    "ra_enabled":    True,
 }
 
 PLATFORM_IDS = [
@@ -2780,17 +2780,39 @@ def ra_awards(settings):
     }
 
 
+def ra_test(settings):
+    """Prueba de conexión: informa si las credenciales funcionan y si está activo.
+
+    Distingue `configured` (hay usuario + key) de `enabled` (además el
+    interruptor está activo). Así "Probar conexión" no puede decir "correcto"
+    mientras el Dashboard está desactivado.
+    """
+    user = (settings.get("ra_user") or "").strip()
+    key  = (settings.get("ra_api_key") or "").strip()
+    profile = ra_profile(settings) if (user and key) else None
+    return {
+        "ok": profile is not None,
+        "configured": bool(user and key),
+        "enabled": bool(settings.get("ra_enabled", True)) and bool(user and key),
+        "user": (profile or {}).get("user", ""),
+    }
+
+
 def get_retroachievements(settings, force=False):
     """Resumen combinado de RetroAchievements, cacheado RA_CACHE_TTL segundos.
 
-    `configured=False` si faltan usuario/Web API Key o el toggle está apagado
-    (en ese caso no se toca la red). `ok` refleja si la API respondió.
+    - `configured`: hay usuario + Web API Key.
+    - `enabled`: además el interruptor está activo (si no, no se toca la red).
+    - `ok`: la API respondió.
     """
     user    = (settings.get("ra_user") or "").strip()
     key     = (settings.get("ra_api_key") or "").strip()
-    enabled = bool(settings.get("ra_enabled", False))
-    if not user or not key or not enabled:
-        return {"ok": False, "configured": False, "updated": None,
+    enabled = bool(settings.get("ra_enabled", True))
+    if not user or not key:
+        return {"ok": False, "configured": False, "enabled": False, "updated": None,
+                "profile": None, "recent": [], "completion": [], "awards": None}
+    if not enabled:
+        return {"ok": False, "configured": True, "enabled": False, "updated": None,
                 "profile": None, "recent": [], "completion": [], "awards": None}
 
     now = time.time()
@@ -2805,6 +2827,7 @@ def get_retroachievements(settings, force=False):
     data = {
         "ok": profile is not None,
         "configured": True,
+        "enabled": True,
         "updated": now,
         "profile": profile,
         "recent": ra_recent_achievements(settings),
@@ -4111,11 +4134,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/retroachievements":
             self.send_json(get_retroachievements(s))
         elif path == "/api/retroachievements/test":
-            prof = ra_profile(s)
-            self.send_json({"ok": prof is not None,
-                            "configured": bool((s.get("ra_user") or "").strip()
-                                               and (s.get("ra_api_key") or "").strip()),
-                            "user": (prof or {}).get("user", "")})
+            self.send_json(ra_test(s))
         elif path == "/api/es/status":
             self.send_json(get_es_status())
         elif path == "/api/fans":

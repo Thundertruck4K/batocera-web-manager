@@ -400,9 +400,28 @@ fuentes de BIOS**. Para cada BIOS faltante ofrece:
 
 ---
 
+### `f3ef985..` — Fix: el dashboard no mostraba los récords de RetroAchievements
+
+**Bug reportado:** el usuario puso credenciales, "Probar conexión" decía "correcto",
+pero el dashboard no mostraba nada.
+
+**Causa raíz:** `ra_enabled` nacía en `False` y `get_retroachievements` exigía el
+interruptor, mientras `/api/retroachievements/test` lo ignoraba. Feedback
+contradictorio ("conectado" + dashboard vacío sin explicación).
+
+**Arreglo:**
+- `DEFAULT_SETTINGS["ra_enabled"] = True` (configurar credenciales implica querer verlos).
+- `get_retroachievements` ahora distingue `configured` (hay credenciales) de
+  `enabled` (interruptor activo), y `ra_test()` informa ambos.
+- El dashboard tiene un estado explícito **"desactivado"** con botón
+  **Activar récords** (`enableRetro`), y "Probar conexión" avisa si está apagado.
+- Tests: 165 → **170**.
+
+---
+
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 165 tests (`pytest`, `tests/`) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 170 tests (`pytest`, `tests/`) sin linting ni typechecking
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
 3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
