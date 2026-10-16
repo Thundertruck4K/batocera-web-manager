@@ -3356,31 +3356,40 @@ import uuid as _uuid
 _scraper_jobs = {}
 _scraper_jobs_lock = threading.Lock()
 _scraper_worker_thread = None
+_scraper_start_lock    = threading.Lock()
 
 def _start_batch_worker():
+    """Garantiza un único worker de batch.
+
+    La comprobación y el arranque van dentro del mismo lock: dos peticiones
+    HTTP concurrentes podían ver el thread no vivo y lanzar dos workers
+    (race condition clásica de "check-then-act").
+    """
     global _scraper_worker_thread
-    if _scraper_worker_thread and _scraper_worker_thread.is_alive():
-        return
-    def worker():
-        while True:
-            job = None
-            with _scraper_jobs_lock:
-                for j in _scraper_jobs.values():
-                    if j["status"] == "pending":
-                        j["status"] = "running"
-                        job = j
-                        break
-            if job:
-                try:
-                    _process_batch_job(job)
-                except Exception as e:
-                    with _scraper_jobs_lock:
-                        job["status"] = "failed"
-                        job["error"] = str(e)
-            else:
-                time.sleep(1)
-    _scraper_worker_thread = threading.Thread(target=worker, daemon=True)
-    _scraper_worker_thread.start()
+    with _scraper_start_lock:
+        if _scraper_worker_thread and _scraper_worker_thread.is_alive():
+            return _scraper_worker_thread
+        def worker():
+            while True:
+                job = None
+                with _scraper_jobs_lock:
+                    for j in _scraper_jobs.values():
+                        if j["status"] == "pending":
+                            j["status"] = "running"
+                            job = j
+                            break
+                if job:
+                    try:
+                        _process_batch_job(job)
+                    except Exception as e:
+                        with _scraper_jobs_lock:
+                            job["status"] = "failed"
+                            job["error"] = str(e)
+                else:
+                    time.sleep(1)
+        _scraper_worker_thread = threading.Thread(target=worker, daemon=True)
+        _scraper_worker_thread.start()
+        return _scraper_worker_thread
 
 def _process_batch_job(job):
     def progress_cb(system, rom_name, current, total, partial, err=None):
