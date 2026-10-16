@@ -63,6 +63,21 @@ def _eval_value(node):
         return -ast.literal_eval(node.operand)
     return ast.literal_eval(node)
 
+def _norm_md5(v):
+    """Normaliza un md5 a algo hashable y comparable (str|None).
+
+    El upstream batocera-systems puede declarar `md5` como lista (varios
+    hashes válidos para el mismo fichero); meter esa lista en un set revienta
+    con TypeError. Aquí se unifica a una cadena (o None si está vacío).
+    """
+    if v is None:
+        return None
+    if isinstance(v, (list, tuple, set)):
+        vals = [str(x).strip() for x in v if x not in (None, "")]
+        return ",".join(vals) if vals else None
+    s = str(v).strip()
+    return s or None
+
 # -- Fetch / parse upstream -------------------------------------------
 def fetch_upstream_systems():
     import urllib.request
@@ -130,16 +145,14 @@ def main():
     mismatch_count = 0
 
     for slug in sorted(upstream_slugs & local_slugs):
-        local_entries = {(e["file"], e.get("md5")) for e in local_db[slug]}
+        local_entries = {(e["file"], _norm_md5(e.get("md5"))) for e in local_db[slug]}
         up_files = upstream[slug].get("biosFiles", [])
         up_entries = set()
         for bf in up_files:
             filepath = bf.get("file", "")
             if filepath.startswith("bios/"):
                 filepath = filepath[5:]
-            md5 = bf.get("md5", "")
-            md5 = md5 if md5 else None
-            up_entries.add((filepath, md5))
+            up_entries.add((filepath, _norm_md5(bf.get("md5"))))
 
         missing_entries = up_entries - local_entries
         extra_entries = local_entries - up_entries
@@ -148,10 +161,10 @@ def main():
             mismatch_count += 1
             pin = "[!!]" if missing_entries else "[i]"
             print(f"\n  {pin} {slug}:")
-            for filepath, md5 in sorted(missing_entries):
+            for filepath, md5 in sorted(missing_entries, key=lambda x: (x[0], x[1] or "")):
                 md5_str = md5 or "None"
                 print(f"       + falta: {filepath}  md5={md5_str}")
-            for filepath, md5 in sorted(extra_entries)[:5]:
+            for filepath, md5 in sorted(extra_entries, key=lambda x: (x[0], x[1] or ""))[:5]:
                 md5_str = md5 or "None"
                 print(f"       - extra: {filepath}  md5={md5_str}")
         else:
