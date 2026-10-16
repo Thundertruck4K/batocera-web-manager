@@ -8,29 +8,33 @@
 /* ── Reset & Base ── */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d1117;
-  --bg2:#161b22;
-  --bg3:#1c2333;
-  --bg4:#21262d;
-  --border:#30363d;
-  --border2:#484f58;
-  --text:#e6edf3;
-  --text2:#8b949e;
-  --text3:#6e7681;
-  --accent:#58a6ff;
-  --accent2:#1f6feb;
+  /* ── Paleta base del tema oscuro ── */
+  --bg:#0f1116;
+  --bg2:#161923;
+  --bg3:#20263a;
+  --panel:#1d2133;
+  --text:#e6e9ef;
+  --text2:#9aa0c0;
+  --text3:#6b7394;
+  --accent:#6ea8fe;
+  --border:#2b314d;
   --green:#3fb950;
-  --green2:#238636;
-  --red:#f85149;
-  --red2:#da3633;
   --yellow:#d29922;
-  --orange:#f0883e;
-  --purple:#bc8cff;
+  --red:#f85149;
+  --purple:#6b3fa0;
+  --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* ── Derivadas / apoyo (no definidas en el spec, ajustadas a la paleta) ── */
+  --bg4:#2a3150;
+  --border2:#3a4166;
+  --accent2:#4a76d4;
+  --green2:#2ea043;
+  --red2:#d63a32;
+  --orange:#e08b4c;
+  --purple2:#b18cf0;
   --radius:8px;
   --radius2:12px;
-  --shadow:0 8px 32px rgba(0,0,0,.4);
+  --shadow:0 8px 32px rgba(0,0,0,.45);
   --font:'Segoe UI',system-ui,-apple-system,sans-serif;
-  --mono:'Cascadia Code','Fira Code','Consolas',monospace;
   --sidebar:260px;
   --transition:0.18s ease;
 }
@@ -41,12 +45,17 @@ a{color:var(--accent);text-decoration:none}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
 /* ── Layout ── */
-.layout{display:flex;height:100vh;overflow:hidden}
+.app{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  min-height:100vh;
+}
 
 /* ── Sidebar ── */
 .sidebar{
-  width:var(--sidebar);min-width:var(--sidebar);
-  background:var(--bg2);
+  position:sticky;top:0;
+  height:100vh;
+  background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
   border-right:1px solid var(--border);
   display:flex;flex-direction:column;
   padding:0;overflow-y:auto;
@@ -104,14 +113,25 @@ a{color:var(--accent);text-decoration:none}
 }
 
 /* ── Main ── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main{display:flex;flex-direction:column;min-width:0}
 .topbar{
   background:var(--bg2);border-bottom:1px solid var(--border);
   padding:14px 24px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:60;
+  backdrop-filter:blur(8px);
 }
 .topbar-title{font-size:18px;font-weight:700;flex:1}
 .topbar-sub{font-size:12px;color:var(--text3);margin-top:2px}
-.content{flex:1;overflow-y:auto;padding:24px}
+.content{flex:1;padding:26px 28px 40px;min-width:0}
+
+/* ── Superficies de panel (jerarquía visual) ── */
+.card,.system-card,.dash-card,.fan-card,.modal,.service-status-box{
+  background:var(--panel);
+}
+
+/* El --purple del spec (#6b3fa0) es un tono oscuro: donde se usa como
+   color de TEXTO se sustituye por un púrpura claro legible sobre panel. */
+#roms-tbody{--purple:var(--purple2)}
 
 /* ── Panels ── */
 .panel{display:none}
@@ -225,7 +245,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .badge-blue{background:rgba(88,166,255,.15);color:var(--accent)}
 .badge-orange{background:rgba(240,136,62,.15);color:var(--orange)}
 .badge-red{background:rgba(248,81,73,.15);color:var(--red)}
-.badge-purple{background:rgba(188,140,255,.15);color:var(--purple)}
+.badge-purple{background:rgba(188,140,255,.15);color:var(--purple2)}
 
 /* ── System Cards (List) ── */
 .system-card{
@@ -243,7 +263,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
 /* ── Log / Terminal ── */
 .log-box{
-  background:#0d1117;border:1px solid var(--border);
+  background:var(--bg);border:1px solid var(--border);
   border-radius:var(--radius);
   padding:14px;font-family:var(--mono);font-size:12px;
   color:#3fb950;max-height:220px;overflow-y:auto;
@@ -256,7 +276,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
 /* ── XML Preview ── */
 .xml-box{
-  background:#0d1117;border:1px solid var(--border);
+  background:var(--bg);border:1px solid var(--border);
   border-radius:var(--radius);padding:16px;
   font-family:var(--mono);font-size:12px;line-height:1.6;
   max-height:420px;overflow-y:auto;
@@ -473,7 +493,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 }
 .cmd-editor:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(88,166,255,.15)}
 .custom-sh-preview{
-  background:#0d1117;border:1px solid var(--border);
+  background:var(--bg);border:1px solid var(--border);
   border-radius:var(--radius);padding:12px;
   font-family:var(--mono);font-size:11px;color:#a8d8f0;
   max-height:160px;overflow-y:auto;white-space:pre;
@@ -530,6 +550,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
 /* ── Responsive ── */
 @media(max-width:700px){
+  .app{grid-template-columns:1fr}
   .sidebar{display:none}
   .content{padding:14px}
   .grid-2{grid-template-columns:1fr}
@@ -538,11 +559,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 </head>
 <body>
 
-<div class="layout">
+<div class="app">
   <!-- ── SIDEBAR ── -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <h1>⚙ Batocera Manager</h1>
+      <h1>🕹️ Batocera Manager</h1>
       <p>Sistema Manager Web v1.0</p>
       <div class="sidebar-badge">Batocera v43+</div>
     </div>
@@ -586,7 +607,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   </aside>
 
   <!-- ── MAIN ── -->
-  <div class="main">
+  <main class="main">
     <div class="topbar">
       <div>
         <div class="topbar-title" id="topbar-title">📊 Dashboard</div>
@@ -1118,8 +1139,8 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       </div>
 
     </div><!-- /content -->
-  </div><!-- /main -->
-</div><!-- /layout -->
+  </main><!-- /main -->
+</div><!-- /app -->
 
 <!-- ── MODAL: Ver XML de sistema existente ── -->
 <div class="modal-overlay" id="modal-xml">
