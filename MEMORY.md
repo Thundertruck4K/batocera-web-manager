@@ -352,9 +352,26 @@ Objetivo: dashboard "más atractivo, útil y ágil". Fase 1: sidebar + paleta ap
 
 ---
 
+### `90e91e4..1f1be0a` — Reinicio de ES, sidebar re-semantizado y landing + dashboard (TDD, 107 → 134 tests)
+
+Objetivo: dashboard "más amigable y atractivo para GitHub". Sin dependencias nuevas.
+
+| # | Cambio | Commit |
+|---|--------|--------|
+| 1 | Botón "Reiniciar ES" (tarjeta + barra superior) y aviso global de cambios sin aplicar; `GET /api/es/status`; ES **nunca** se reinicia solo | `90e91e4` |
+| 2 | Sidebar de 8 ítems sueltos → 5 bloques / 6 destinos; "BIOS Faltante" como pestaña dentro de "ROMs & BIOS"; "Vista Previa XML" inline en crear/editar | `0661a7d` |
+| 3 | Backend de analítica de juego: `find_user_art` (arte de usuario primero), `collect_play_stats` (playcount/lastplayed/playtime), `pick_random_game`; endpoints `/api/game-stats` y `/api/random-game` | `b481acd` |
+| 4 | Landing animado (loader SVG, hechos reales, saltable y recordable) | `5a09f57` |
+| 5 | Dashboard: hero con saludo y cifras, card de juego al azar y analítica (más jugados + gráfica de actividad) | `1f1be0a` |
+
+- Tests nuevos: `tests/test_es_ui.py`, `tests/test_nav_merge.py`, `tests/test_game_stats.py`, `tests/test_landing_dashboard.py`. Total **134**.
+- Datos honestos: "horas de uso" solo si `gamelist.xml` trae `<playtime>`; si no, se muestran partidas y actividad por `lastplayed` (rotulado "tiempo no registrado"). No se inventan horas.
+
+---
+
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 107 tests (`pytest`, `tests/`) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 134 tests (`pytest`, `tests/`) sin linting ni typechecking
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
 3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
