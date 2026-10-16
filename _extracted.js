@@ -1,0 +1,51 @@
+
+  const HW_COLORS = {
+    console:'#1f6feb',portable:'#2d5a27',computer:'#6b3fa0',
+    arcade:'#8b2020',engine:'#6b5a00',fantasy:'#1a5a6b',other:'#444'
+  };
+  const CARD_PALETTE = ['#1f6feb','#2d5a27','#6b3fa0','#8b2020','#6b5a00','#1a5a6b','#3a3f46'];
+  function cardColor(s){
+    const name = (s && typeof s === 'object') ? (s.name || s.system || '') : (s || '');
+    const nm = String(name || '');
+    if (!nm) return CARD_PALETTE[0];
+    let h = 0;
+    for (let i = 0; i < nm.length; i++) {
+      h = (h * 31 + nm.charCodeAt(i)) >>> 0;
+    }
+    return CARD_PALETTE[h % CARD_PALETTE.length];
+  }
+  function systemAccent(s){
+    if (s && s.hardware && HW_COLORS[s.hardware]) return HW_COLORS[s.hardware];
+    return cardColor(s);
+  }
+  function filterSystems(list, q){
+    const qv = (q || '').trim().toLowerCase();
+    if (!qv) return list.slice();
+    return list.filter(x => {
+      const name = String(x && x.name ? x.name : '');
+      const fullname = String(x && x.fullname ? x.fullname : '');
+      const blob = (name + ' ' + fullname).toLowerCase();
+      return blob.includes(qv);
+    });
+  }
+  function sortSystems(list, key){
+    const k = key || 'name';
+    return list.slice().sort((a,b) => {
+      if (k === 'roms' || k === 'rom_count') {
+        const ra = Number(a && a.rom_count ? a.rom_count : 0);
+        const rb = Number(b && b.rom_count ? b.rom_count : 0);
+        if (rb !== ra) return rb - ra;
+        const na = String(a && a.name ? a.name : '').toLowerCase();
+        const nb = String(b && b.name ? b.name : '').toLowerCase();
+        if (na < nb) return -1; if (na > nb) return 1; return 0;
+      }
+      const na = String(a && a.name ? a.name : '').toLowerCase();
+      const nb = String(b && b.name ? b.name : '').toLowerCase();
+      if (na < nb) return -1; if (na > nb) return 1;
+      const fa = String(a && a.fullname ? a.fullname : '').toLowerCase();
+      const fb = String(b && b.fullname ? b.fullname : '').toLowerCase();
+      if (fa < fb) return -1; if (fa > fb) return 1;
+      return 0;
+    });
+  }
+  

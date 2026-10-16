@@ -1,0 +1,185 @@
+﻿c159f6f docs(sdd): informe de fix UI1 (var(--panel) por regla) en task1-report
+373d231 fix(ui): aplicar var(--panel) dentro de cada regla de tarjeta/panel (regla agrupada muerta)
+diff --git a/templates/index.html b/templates/index.html
+index 6cb14f8..c0c7163 100644
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -115,40 +115,38 @@ a{color:var(--accent);text-decoration:none}
+ /* ÔöÇÔöÇ Main ÔöÇÔöÇ */
+ .main{display:flex;flex-direction:column;min-width:0}
+ .topbar{
+   background:var(--bg2);border-bottom:1px solid var(--border);
+   padding:14px 24px;display:flex;align-items:center;gap:12px;
+   position:sticky;top:0;z-index:60;
+   backdrop-filter:blur(8px);
+ }
+ .topbar-title{font-size:18px;font-weight:700;flex:1}
+ .topbar-sub{font-size:12px;color:var(--text3);margin-top:2px}
+ .content{flex:1;padding:26px 28px 40px;min-width:0}
+ 
+-/* ÔöÇÔöÇ Superficies de panel (jerarqu├¡a visual) ÔöÇÔöÇ */
+-.card,.system-card,.dash-card,.fan-card,.modal,.service-status-box{
+-  background:var(--panel);
+-}
++/* ÔöÇÔöÇ Superficies de panel: cada tarjeta/panel usa --panel en su propia regla
++   (ver .card, .system-card, .modal, .dash-card, .fan-card, .service-status-box) ÔöÇÔöÇ */
+ 
+ /* El --purple del spec (#6b3fa0) es un tono oscuro: donde se usa como
+    color de TEXTO se sustituye por un p├║rpura claro legible sobre panel. */
+ #roms-tbody{--purple:var(--purple2)}
+ 
+ /* ÔöÇÔöÇ Panels ÔöÇÔöÇ */
+ .panel{display:none}
+ .panel.active{display:block}
+ 
+ /* ÔöÇÔöÇ Cards & Sections ÔöÇÔöÇ */
+ .card{
+-  background:var(--bg2);border:1px solid var(--border);
++  background:var(--panel);border:1px solid var(--border);
+   border-radius:var(--radius2);padding:20px;
+   margin-bottom:16px;
+ }
+ .card-title{
+   font-size:13px;font-weight:700;text-transform:uppercase;
+   letter-spacing:.6px;color:var(--text2);
+   margin-bottom:16px;padding-bottom:10px;
+   border-bottom:1px solid var(--border);
+   display:flex;align-items:center;gap:8px;
+ }
+ .card-title .icon{color:var(--accent);font-size:15px}
+ 
+@@ -240,25 +238,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
+ .badge{
+   display:inline-block;padding:2px 8px;border-radius:20px;
+   font-size:11px;font-weight:600;
+ }
+ .badge-green{background:rgba(63,185,80,.15);color:var(--green)}
+ .badge-blue{background:rgba(88,166,255,.15);color:var(--accent)}
+ .badge-orange{background:rgba(240,136,62,.15);color:var(--orange)}
+ .badge-red{background:rgba(248,81,73,.15);color:var(--red)}
+ .badge-purple{background:rgba(188,140,255,.15);color:var(--purple2)}
+ 
+ /* ÔöÇÔöÇ System Cards (List) ÔöÇÔöÇ */
+ .system-card{
+-  background:var(--bg2);border:1px solid var(--border);
++  background:var(--panel);border:1px solid var(--border);
+   border-radius:var(--radius2);padding:16px 20px;
+   margin-bottom:10px;display:flex;align-items:center;gap:16px;
+   transition:border-color var(--transition),box-shadow var(--transition);
+ }
+ .system-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+ .system-card-icon{font-size:28px;width:44px;text-align:center;flex-shrink:0}
+ .system-card-info{flex:1;min-width:0}
+ .system-card-info h3{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .system-card-info p{font-size:11px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .system-card-actions{display:flex;gap:8px;flex-shrink:0}
+ 
+ /* ÔöÇÔöÇ Log / Terminal ÔöÇÔöÇ */
+@@ -324,25 +322,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
+ }
+ .theme-item.active .dot{background:var(--accent)}
+ 
+ /* ÔöÇÔöÇ Modal ÔöÇÔöÇ */
+ .modal-overlay{
+   position:fixed;inset:0;background:rgba(0,0,0,.7);
+   display:flex;align-items:center;justify-content:center;
+   z-index:1000;opacity:0;pointer-events:none;
+   transition:opacity var(--transition);
+ }
+ .modal-overlay.open{opacity:1;pointer-events:all}
+ .modal{
+-  background:var(--bg2);border:1px solid var(--border);
++  background:var(--panel);border:1px solid var(--border);
+   border-radius:var(--radius2);padding:24px;
+   max-width:680px;width:90%;max-height:85vh;
+   overflow-y:auto;box-shadow:var(--shadow);
+   transform:scale(.96);transition:transform var(--transition);
+ }
+ .modal-overlay.open .modal{transform:scale(1)}
+ .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+ .modal-header h2{font-size:16px;font-weight:700}
+ .modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;padding:4px}
+ .modal-close:hover{color:var(--text)}
+ 
+ /* ÔöÇÔöÇ Spinner ÔöÇÔöÇ */
+@@ -367,25 +365,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
+ #toast.ok{border-color:var(--green);color:var(--green)}
+ #toast.err{border-color:var(--red);color:var(--red)}
+ 
+ /* ÔöÇÔöÇ Divider ÔöÇÔöÇ */
+ .divider{height:1px;background:var(--border);margin:16px 0}
+ 
+ /* ÔöÇÔöÇ Ext preset select ÔöÇÔöÇ */
+ .preset-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+ .preset-row select{flex:1}
+ 
+ /* ÔöÇÔöÇ Dashboard ÔöÇÔöÇ */
+ .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
+-.dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:18px;position:relative;overflow:hidden}
++.dash-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius2);padding:18px;position:relative;overflow:hidden}
+ .dash-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent2))}
+ .dash-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+ .dash-card h3 .icon{font-size:14px}
+ .metric-big{font-size:36px;font-weight:700;line-height:1;color:var(--text)}
+ .metric-sub{font-size:12px;color:var(--text3);margin-top:4px}
+ .gauge-wrap{position:relative;width:110px;height:60px;margin:0 auto 8px}
+ .gauge-bg{fill:none;stroke:var(--bg3);stroke-width:10}
+ .gauge-fg{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s ease,stroke .4s}
+ .gauge-text{font-size:13px;font-weight:700;fill:var(--text)}
+ .bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+ .bar-label{font-size:12px;color:var(--text2);width:80px;flex-shrink:0}
+ .bar-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
+@@ -408,25 +406,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
+ .temp-ok{color:var(--green)} .temp-warn{color:var(--yellow)} .temp-hot{color:var(--red)}
+ .net-iface{display:flex;flex-direction:column;align-items:stretch;padding:8px 0;border-bottom:1px solid var(--border)}
+ .net-iface:last-child{border-bottom:none}
+ .disk-item{margin-bottom:12px}
+ .disk-item:last-child{margin-bottom:0}
+ .pulse{animation:pulse 2s infinite}
+ @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+ 
+ /* ÔöÇÔöÇ Ventiladores ÔöÇÔöÇ */
+ @keyframes fanSpin{to{transform:rotate(360deg)}}
+ .fan-blades{animation:fanSpin linear infinite;transform-box:view-box;transform-origin:40px 40px}
+ .fan-blades.paused{animation-play-state:paused}
+-.fan-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px}
++.fan-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px}
+ .fan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent2))}
+ .fan-card.fan-fault{border-color:var(--red)}
+ .fan-card.fan-stopped{border-color:var(--yellow)}
+ .fan-rpm{font-size:26px;font-weight:800;line-height:1;font-family:var(--mono)}
+ .fan-sub{font-size:11px;color:var(--text3);text-align:center;line-height:1.4}
+ .fan-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+ .fan-status.fan-ok{color:var(--green);background:rgba(63,185,80,.12)}
+ .fan-status.fan-fault{color:var(--red);background:rgba(248,81,73,.12)}
+ .fan-status.fan-stopped{color:var(--yellow);background:rgba(210,153,34,.12)}
+ .fan-alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--radius2);background:rgba(248,81,73,.12);border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:600;margin-bottom:14px}
+ .fan-alert.warn{background:rgba(210,153,34,.12);border-color:var(--yellow);color:var(--yellow)}
+ 
+@@ -469,25 +467,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
+ .news-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.35)}
+ .news-img{aspect-ratio:16/9;background:var(--bg);overflow:hidden}
+ .news-img img{width:100%;height:100%;object-fit:cover;display:block}
+ .news-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:5px}
+ .news-title{font-size:13px;font-weight:700;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+ .news-title:hover{color:var(--accent)}
+ .news-meta{font-size:10px;color:var(--text3);letter-spacing:.3px}
+ 
+ /* ÔöÇÔöÇ Service Manager ÔöÇÔöÇ */
+ .service-status-box{
+   display:flex;align-items:center;gap:14px;
+   padding:16px 20px;border-radius:var(--radius2);
+-  border:1px solid var(--border);background:var(--bg2);
++  border:1px solid var(--border);background:var(--panel);
+   margin-bottom:16px;
+ }
+ .service-icon{font-size:36px;line-height:1}
+ .service-status-label{font-size:15px;font-weight:700}
+ .service-status-sub{font-size:12px;color:var(--text3);margin-top:3px}
+ .service-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+ .cmd-editor{
+   font-family:var(--mono);font-size:12px;
+   background:var(--bg3);border:1px solid var(--border);
+   border-radius:var(--radius);padding:10px 12px;
+   width:100%;color:var(--text);
+ }
