@@ -26,22 +26,22 @@ def _nav() -> str:
     return m.group(1)
 
 
-def test_eight_nav_items_with_svg_icons():
+def test_six_nav_items_with_svg_icons():
     s = _sidebar()
-    assert len(re.findall(r'class="nav-item', s)) == 8
-    assert len(re.findall(r"<svg", s)) >= 8, "cada item debe tener un icono SVG"
+    assert len(re.findall(r'class="nav-item', s)) == 6
+    assert len(re.findall(r"<svg", s)) >= 6, "cada item debe tener un icono SVG"
     assert '<span class="icon">' not in s, "no deben quedar iconos emoji"
 
 
 def test_nav_items_keep_showpanel_handlers():
     s = _sidebar()
-    for pid in ["dashboard", "add", "list", "themes", "preview", "roms", "biosmissing", "settings"]:
+    for pid in ["dashboard", "roms", "list", "add", "themes", "settings"]:
         assert f"showPanel('{pid}',this)" in s, f"falta handler showPanel('{pid}')"
 
 
-def test_sidebar_has_four_sections():
+def test_sidebar_has_five_sections():
     s = _sidebar()
-    for label in ["Principal", "Visual", "Contenido", "Sistema"]:
+    for label in ["Estado", "Contenido", "Sistemas", "Personalización", "Ajustes"]:
         assert label in s, f"falta la sección {label}"
 
 
@@ -51,7 +51,7 @@ def test_nav_has_no_emoji():
 
 def test_badges_kept():
     s = _sidebar()
-    for bid in ["badge-count", "badge-roms", "badge-biosmissing"]:
+    for bid in ["badge-count", "badge-biosmissing"]:
         assert f'id="{bid}"' in s, f"falta el badge {bid}"
 
 

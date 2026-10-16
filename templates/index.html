@@ -112,6 +112,15 @@ a{color:var(--accent);text-decoration:none}
   border-radius:20px;color:var(--text3);
 }
 .nav-item.active .nav-badge{background:rgba(255,255,255,.2);color:#fff}
+.panel-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.panel-tab{
+  background:transparent;border:1px solid transparent;color:var(--text2);
+  padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;
+  display:inline-flex;align-items:center;gap:6px;font-family:inherit;
+}
+.panel-tab:hover{background:var(--bg3);color:var(--text1)}
+.panel-tab.active{background:var(--bg3);color:var(--text1);border-color:var(--accent)}
+.panel-tab .nav-badge{margin-left:2px}
 .sidebar-footer{
   padding:14px 16px;border-top:1px solid var(--border);
   font-size:11px;color:var(--text3);
@@ -596,34 +605,28 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       <div class="sidebar-badge">Batocera v43+</div>
     </div>
     <nav class="nav">
-      <div class="nav-section-label">Principal</div>
+      <div class="nav-section-label">Estado</div>
       <button class="nav-item active" onclick="showPanel('dashboard',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Dashboard
-      </button>
-      <button class="nav-item" onclick="showPanel('add',this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Agregar Sistema
-      </button>
-      <button class="nav-item" onclick="showPanel('list',this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Sistemas Creados
-        <span class="nav-badge" id="badge-count">…</span>
-      </button>
-      <div class="nav-section-label">Visual</div>
-      <button class="nav-item" onclick="showPanel('themes',this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2a10 10 0 1 0 0 20c1.7 0 2.5-1.2 2.5-2.5 0-.6-.2-1.1-.6-1.5-.4-.4-.6-.9-.6-1.5 0-1.4 1.1-2.5 2.5-2.5H18a4 4 0 0 0 4-4c0-5-4.5-8-10-8z"/></svg> Temas &amp; Assets
-      </button>
-      <button class="nav-item" onclick="showPanel('preview',this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Vista Previa XML
       </button>
       <div class="nav-section-label">Contenido</div>
       <button class="nav-item" onclick="showPanel('roms',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg> ROMs &amp; BIOS
-        <span class="nav-badge" id="badge-roms">…</span>
-      </button>
-      <div class="nav-section-label">Sistema</div>
-      <button class="nav-item" onclick="showPanel('biosmissing',this)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14v2a2 2 0 0 1-2 2h-1v3h-2v-3H10v3H8v-3H7a2 2 0 0 1-2-2v-1H2v-2h3V10H2V8h3V7a2 2 0 0 1 2-2h1V2h2v3h2V2h2v3h1a2 2 0 0 1 2 2v1h3v2h-3v4z"/></svg> BIOS Faltante
         <span class="nav-badge" id="badge-biosmissing" style="display:none">0</span>
       </button>
+      <div class="nav-section-label">Sistemas</div>
+      <button class="nav-item" onclick="showPanel('list',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Sistemas Creados
+        <span class="nav-badge" id="badge-count">…</span>
+      </button>
+      <button class="nav-item" onclick="showPanel('add',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Agregar / Editar
+      </button>
+      <div class="nav-section-label">Personalización</div>
+      <button class="nav-item" onclick="showPanel('themes',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2a10 10 0 1 0 0 20c1.7 0 2.5-1.2 2.5-2.5 0-.6-.2-1.1-.6-1.5-.4-.4-.6-.9-.6-1.5 0-1.4 1.1-2.5 2.5-2.5H18a4 4 0 0 0 4-4c0-5-4.5-8-10-8z"/></svg> Temas &amp; Assets
+      </button>
+      <div class="nav-section-label">Ajustes</div>
       <button class="nav-item" onclick="showPanel('settings',this)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Configuración
       </button>
@@ -908,6 +911,18 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           </button>
         </div>
 
+        <!-- Vista previa XML (inline, paso de crear/editar) -->
+        <div id="add-preview-wrap" style="display:none;margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div style="font-size:12px;color:var(--text3)">XML que se generará en <code>es_systems_&lt;nombre&gt;.cfg</code></div>
+            <div class="btn-row">
+              <button class="btn btn-ghost btn-sm" onclick="previewXml()">↺ Actualizar</button>
+              <button class="btn btn-ghost btn-sm" onclick="copyXml()">📋 Copiar</button>
+            </div>
+          </div>
+          <div class="xml-box" id="xml-preview">Genera un preview con "Previsualizar XML".</div>
+        </div>
+
         <!-- Log -->
         <div style="margin-top:16px">
           <div style="font-size:12px;color:var(--text3);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">
@@ -968,29 +983,17 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
 
       <!-- ═══════════════════════════════════════════════
-           PANEL: VISTA PREVIA XML
-           ═══════════════════════════════════════════════ -->
-      <div class="panel" id="panel-preview">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div>
-            <h2 style="font-size:18px;font-weight:700">Vista Previa XML</h2>
-            <p style="font-size:12px;color:var(--text3);margin-top:2px">XML que se generará en <code>es_systems_&lt;nombre&gt;.cfg</code></p>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-ghost" onclick="previewXml()">↺ Actualizar</button>
-            <button class="btn btn-ghost" onclick="copyXml()">📋 Copiar</button>
-          </div>
-        </div>
-        <div class="xml-box" id="xml-preview">Genera un preview desde el panel "Agregar Sistema".</div>
-      </div>
-
-
-
-      <!-- ═══════════════════════════════════════════════
            PANEL: ROMs & BIOS MONITOR
            ═══════════════════════════════════════════════ -->
       <div class="panel" id="panel-roms">
 
+        <!-- Pestañas internas: ROMs & media | BIOS Faltante -->
+        <div class="panel-tabs">
+          <button class="panel-tab active" id="roms-tab-content" onclick="showRomTab('content')">🎮 ROMs &amp; media</button>
+          <button class="panel-tab" id="roms-tab-bios" onclick="showRomTab('bios')">🧩 BIOS Faltante <span class="nav-badge" id="badge-biosmissing-tab" style="display:none">0</span></button>
+        </div>
+
+        <div id="roms-pane-content">
         <!-- Toolbar -->
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
           <div style="flex:1">
@@ -1071,6 +1074,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               </thead>
               <tbody id="roms-tbody"></tbody>
             </table>
+          </div>
+        </div>
+        </div><!-- /roms-pane-content -->
+
+        <div id="roms-pane-bios" style="display:none">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+            <div style="flex:1">
+              <h2 style="font-size:18px;font-weight:700">🧩 BIOS Faltante</h2>
+              <p style="font-size:12px;color:var(--text3);margin-top:2px" id="biosmissing-summary">Cargando…</p>
+            </div>
+            <button class="btn btn-ghost" onclick="loadMissingBios()">↺ Actualizar</button>
+          </div>
+          <div id="biosmissing-list">
+            <div style="text-align:center;padding:40px;color:var(--text3)">Cargando lista de BIOS faltantes…</div>
           </div>
         </div>
 
@@ -1165,19 +1182,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       </div>
 
       <!-- ── PANEL: BIOS FALTANTE ── -->
-      <div class="panel" id="panel-biosmissing">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
-          <div style="flex:1">
-            <h2 style="font-size:18px;font-weight:700">🧩 BIOS Faltante</h2>
-            <p style="font-size:12px;color:var(--text3);margin-top:2px" id="biosmissing-summary">Cargando…</p>
-          </div>
-          <button class="btn btn-ghost" onclick="loadMissingBios()">↺ Actualizar</button>
-        </div>
-        <div id="biosmissing-list">
-          <div style="text-align:center;padding:40px;color:var(--text3)">Cargando lista de BIOS faltantes…</div>
-        </div>
-      </div>
-
     </div><!-- /content -->
   </main><!-- /main -->
 </div><!-- /app -->
@@ -1774,10 +1778,8 @@ const panelMeta = {
   add:      { title:'➕ Agregar Sistema',    sub:'Configura y genera el cfg para un nuevo sistema en EmulationStation' },
   list:     { title:'📋 Sistemas Creados',   sub:'Todos los sistemas personalizados en tu directorio CFG' },
   themes:   { title:'🎨 Temas & Assets',     sub:'Temas instalados y estructura de archivos para logos' },
-  preview:  { title:'👁 Vista Previa XML',   sub:'XML que se generará al crear el sistema' },
   dashboard:{ title:'📊 Dashboard',           sub:'Estado del sistema en tiempo real — Batocera' },
-  roms:     { title:'🎮 ROMs & BIOS Monitor',  sub:'Explora sistemas, ROMs, multimedia y verifica BIOS' },
-  biosmissing:{ title:'🧩 BIOS Faltante',     sub:'Busca y sube archivos BIOS faltantes' },
+  roms:     { title:'🎮 ROMs & BIOS',         sub:'Explora sistemas, ROMs, multimedia y verifica BIOS' },
   settings: { title:'⚙ Configuración',      sub:'Rutas de Batocera e instrucciones de uso' },
 };
 
@@ -1796,7 +1798,18 @@ function showPanel(name, btn) {
   if (name === 'dashboard') initDashboard();
   if (name === 'settings')  checkServiceStatus();
   if (name === 'roms')   loadRomSystems();
-  if (name === 'biosmissing') loadMissingBios();
+}
+
+// Pestañas internas de "ROMs & BIOS"
+function showRomTab(name) {
+  const isBios = name === 'bios';
+  const content = document.getElementById('roms-pane-content');
+  const bios = document.getElementById('roms-pane-bios');
+  if (content) content.style.display = isBios ? 'none' : '';
+  if (bios) bios.style.display = isBios ? '' : 'none';
+  document.getElementById('roms-tab-content')?.classList.toggle('active', !isBios);
+  document.getElementById('roms-tab-bios')?.classList.toggle('active', isBios);
+  if (isBios) loadMissingBios();
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -2076,10 +2089,9 @@ async function previewXml() {
   if (!res) return;
   if (res.ok) {
     currentXml = res.xml;
-    const box = document.getElementById('xml-preview');
-    box.textContent = res.xml;
-    const previewBtn = document.querySelector('.nav-item[onclick*="preview"]');
-    showPanel('preview', previewBtn);
+    document.getElementById('xml-preview').textContent = res.xml;
+    const wrap = document.getElementById('add-preview-wrap');
+    if (wrap) { wrap.style.display = ''; wrap.scrollIntoView({behavior:'smooth', block:'nearest'}); }
   } else {
     toast(res.error, 'err');
   }
@@ -2381,7 +2393,6 @@ async function loadRomSystems() {
   const data = await fetchJson('/api/rom-systems');
   if (!data) return;
   allRomSystems = data;
-  document.getElementById('badge-roms').textContent = data.length;
   const total = data.reduce((a,s) => a + s.rom_count, 0);
   const empty = data.filter(s => s.is_empty).length;
   document.getElementById('rom-summary-text').textContent =
@@ -2997,10 +3008,7 @@ async function loadMissingBios() {
     if (!data || !data.ok) { list.innerHTML = '<div class="warn-box">Error al cargar BIOS faltantes</div>'; return; }
     renderMissingBios(data);
     summary.textContent = `${data.total_missing} archivo(s) BIOS faltante(s) en ${Object.keys(data.systems||{}).length} sistema(s)`;
-    // Update sidebar badge
-    const badge = document.getElementById('badge-biosmissing');
-    if (data.total_missing > 0) { badge.textContent = data.total_missing; badge.style.display = ''; }
-    else { badge.style.display = 'none'; }
+    setBiosMissingCount(data.total_missing);
   } catch(e) {
     list.innerHTML = '<div class="warn-box">Error de red</div>';
   }
@@ -3167,9 +3175,17 @@ function loadMissingBiosSummary() {
   const summary = document.getElementById('biosmissing-summary');
   const remaining = document.querySelectorAll('.bios-miss-item').length;
   summary.textContent = `${remaining} archivo(s) BIOS faltante(s) restante(s)`;
-  const badge = document.getElementById('badge-biosmissing');
-  if (remaining > 0) { badge.textContent = remaining; badge.style.display = ''; }
-  else { badge.style.display = 'none'; }
+  setBiosMissingCount(remaining);
+}
+
+// Refresca a la vez el badge del sidebar y el de la pestaña de Contenido
+function setBiosMissingCount(n) {
+  for (const id of ['badge-biosmissing', 'badge-biosmissing-tab']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (n > 0) { el.textContent = n; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  }
 }
 
 // ── Delete ROM ──
