@@ -22,7 +22,7 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ```
 batocera_web/
-├── app.py                 # ~4085 líneas — servidor HTTP + API REST + scraper + dashboard
+├── app.py                 # ~4250 líneas — servidor HTTP + API REST + scraper + dashboard
 ├── templates/
 │   └── index.html         # ~4440 líneas — SPA con todo el CSS/JS inline (l10n: es)
 ├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
@@ -313,9 +313,33 @@ color verde/amarillo/rojo según pct
 
 ---
 
+### `c64b7c2..ae45171` — 7 arreglos de fondo (TDD, 42 → 76 tests)
+
+Cada tarea es un commit atómico con su test; la historia completa se verificó
+commit a commit en un worktree temporal (todos GREEN).
+
+| # | Arreglo | Commit |
+|---|---------|--------|
+| 1 | Reinicio **manual** de ES: `POST /api/es/restart` + flag `restart_pending` en `get_es_status()`; se marca al crear/editar/borrar sistemas | `c64b7c2` |
+| 2 | Skip de BIOS persistido en `batocera_manager_bios_skipped.json` (antes solo en memoria); nuevos endpoints `unskip` y `skipped` | `f1b11b6` |
+| 3 | `_detect_configgen_path()`: `python_path` se detecta por glob (`python3*`) en vez de hardcodear `/usr/lib/python3.12/...` | `f8b1aea` |
+| 4 | `get_system_extensions()`: una definición de usuario **reemplaza** a la integrada (no se unen) — semántica de EmulationStation | `7a919e1` |
+| 5 | `delete_custom_system()`: `DELETE /api/system/<name>` borra solo ese `<system>`; el `.cfg` se elimina solo si queda vacío | `a131c3a` |
+| 6 | `_scraper_start_lock`: comprobación + arranque atómicos en `_start_batch_worker` (dos peticiones podían crear dos workers) | `dd2fd26` |
+| 7 | `tests/bios_validator.py`: `_norm_md5()` admite `md5` como lista (upstream) y `sorted()` tolera `None` | `ae45171` |
+
+Notas:
+- `restart_emulationstation()` usa `batocera-es-swissknife --restart` y **nunca se
+  invoca solo**: interrumpe la UI en pantalla, solo va vía endpoint/botón.
+- Tests nuevos: `test_es_restart`, `test_bios_skip`, `test_configgen`,
+  `test_extensions`, `test_system_delete`, `test_batch_worker`,
+  `test_bios_validator`.
+
+---
+
 ## Issues conocidos
 
-1. **Sin tests/linting/typechecking** — No existe infraestructura de pruebas
+1. **Infraestructura de pruebas** — 76 tests (`pytest`, `tests/`) sin linting ni typechecking
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
 3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor

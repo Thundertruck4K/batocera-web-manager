@@ -29,3 +29,5 @@ _extracted.js
 _jscheck.py
 _peek.py
 find_rom.py
+_stage.py
+_verify_history.py
