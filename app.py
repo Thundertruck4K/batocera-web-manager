@@ -1232,30 +1232,35 @@ def is_gamelist_image_type(media_type):
     """
     return SS_MEDIA_LAYOUT.get(media_type, ("images", "-image"))[1] == "-image"
 
-def get_system_extensions(system, settings):
-    """Extensiones permitidas para un sistema según es_systems.cfg
-    (integradas /usr/share/emulationstation + custom es_systems_*.cfg)."""
-    exts = set()
-    builtin = Path("/usr/share/emulationstation/es_systems.cfg")
-    for p in ([builtin] if builtin.is_file() else []):
+def get_system_extensions(system, settings, builtin_path=None):
+    """Extensiones permitidas para un sistema según es_systems.cfg.
+
+    Semántica de EmulationStation/Batocera: si un `es_systems_*.cfg` de usuario
+    define el sistema, **reemplaza** por completo la definición integrada (no se
+    unen). Solo si no hay definición de usuario se usa la integrada.
+    """
+    def _exts_from(path):
+        out = set()
         try:
-            for s in ET.parse(p).findall(".//system"):
-                if s.findtext("name","") == system:
-                    ext = (s.findtext("extension","") or "").strip()
-                    exts |= {e.strip().lower() for e in ext.split() if e.strip()}
+            for s in ET.parse(path).findall(".//system"):
+                if s.findtext("name", "") == system:
+                    ext = (s.findtext("extension", "") or "").strip()
+                    out |= {e.strip().lower() for e in ext.split() if e.strip()}
         except Exception:
             pass
-    cfg_dir = Path(settings.get("es_cfg_dir","/userdata/system/configs/emulationstation"))
+        return out
+
+    custom = set()
+    cfg_dir = Path(settings.get("es_cfg_dir", "/userdata/system/configs/emulationstation"))
     if cfg_dir.is_dir():
-        try:
-            for f in sorted(cfg_dir.glob("es_systems_*.cfg")):
-                for s in ET.parse(f).findall(".//system"):
-                    if s.findtext("name","") == system:
-                        ext = (s.findtext("extension","") or "").strip()
-                        exts |= {e.strip().lower() for e in ext.split() if e.strip()}
-        except Exception:
-            pass
-    return exts
+        for f in sorted(cfg_dir.glob("es_systems_*.cfg")):
+            custom |= _exts_from(f)
+    if custom:
+        return custom
+    builtin = Path(builtin_path or "/usr/share/emulationstation/es_systems.cfg")
+    if builtin.is_file():
+        return _exts_from(builtin)
+    return set()
 
 def prettify_xml(elem):
     rough    = ET.tostring(elem, encoding="unicode")
