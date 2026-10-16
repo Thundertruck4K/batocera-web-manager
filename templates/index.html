@@ -609,6 +609,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .dash-random-name{font-size:16px;font-weight:700}
 .dash-random-sys{font-size:12px;color:var(--text3);text-transform:capitalize}
 #dash-playstats{margin-bottom:14px}
+#dash-retro{margin-bottom:14px}
+.retro-empty{font-size:13px;color:var(--text2)}
+.retro-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.retro-avatar{width:56px;height:56px;border-radius:10px;border:1px solid var(--border);object-fit:cover}
+.retro-user{font-size:16px;font-weight:700}
+.retro-since{font-size:12px;color:var(--text3)}
+.retro-rp{font-size:12px;color:var(--text2);margin-top:2px}
+.retro-stats{display:flex;gap:22px;flex-wrap:wrap}
+.retro-recent{display:flex;flex-direction:column;gap:8px}
+.retro-ach{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center}
+.retro-badge{width:36px;height:36px;border-radius:6px;border:1px solid var(--border)}
+.retro-ach-title{font-size:13px;font-weight:600}
+.retro-ach-game{font-size:11px;color:var(--text3)}
+.retro-ach-pts{font-size:12px;color:var(--text2)}
 .dash-playstats-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .ps-sub{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
 .ps-row{display:grid;grid-template-columns:1fr 90px 28px;gap:8px;align-items:center;font-size:12px;margin-bottom:7px}
@@ -787,6 +801,15 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               <svg class="ps-spark" id="dash-activity" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
             </div>
           </div>
+        </div>
+
+        <!-- Récords personales (RetroAchievements) -->
+        <div class="dash-card" id="dash-retro" style="--card-accent:var(--yellow)">
+          <h3><span class="icon">🏆</span>Récords personales
+            <span style="font-size:11px;color:var(--text3);font-weight:400">RetroAchievements</span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="loadRetro()">↻</button>
+          </h3>
+          <div id="dash-retro-body">Cargando…</div>
         </div>
 
         <!-- Fila 0: KPIs de hardware — 6 tarjetas a primera vista -->
@@ -4226,6 +4249,7 @@ function initDashboard() {
   });
   loadRandomGame();
   loadPlayStats();
+  loadRetro();
 }
 
 async function loadDashboard() {
@@ -4333,6 +4357,68 @@ function renderPlayStats(s) {
   spark.innerHTML = counts.length
     ? `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>`
     : '';
+}
+
+// ── Récords personales (RetroAchievements) ──────────────────────
+function gotoSettings() {
+  const btn = [...document.querySelectorAll('.nav-item')]
+    .find(b => (b.getAttribute('onclick') || '').includes("'settings'"));
+  showPanel('settings', btn || null);
+}
+
+async function loadRetro() {
+  const r = await fetchJson('/api/retroachievements');
+  renderRetro(r);
+}
+
+function renderRetro(r) {
+  const box = document.getElementById('dash-retro-body');
+  if (!box) return;
+  if (!r || !r.configured) {
+    box.innerHTML = `<div class="retro-empty">
+      <p style="margin:0 0 10px">Conecta tu cuenta de RetroAchievements para ver tus récords personales. Es opcional.</p>
+      <button class="btn btn-primary btn-sm" onclick="gotoSettings()">Configurar RetroAchievements</button>
+    </div>`;
+    return;
+  }
+  if (!r.ok || !r.profile) {
+    box.innerHTML = '<div class="retro-empty"><p style="margin:0">No se pudo conectar con RetroAchievements. Revisa tus credenciales en Ajustes.</p></div>';
+    return;
+  }
+  const p = r.profile;
+  const awards = r.awards || {};
+  const av = p.avatar ? `<img src="${escHtml(p.avatar)}" alt="" class="retro-avatar">` : '';
+  const stats = [
+    ['Puntos', (p.points || 0).toLocaleString('es-CL')],
+    ['Puntos true', (p.true_points || 0).toLocaleString('es-CL')],
+    ['Dominados', awards.mastery || 0],
+    ['Batidos', (awards.beaten_hardcore || 0) + (awards.beaten_softcore || 0)],
+  ];
+  const recent = (r.recent || []).slice(0, 5);
+  box.innerHTML = `
+    <div class="retro-head">
+      ${av}
+      <div>
+        <div class="retro-user">${escHtml(p.user || '')}</div>
+        <div class="retro-since">${p.member_since ? 'Miembro desde ' + escHtml(p.member_since.slice(0, 10)) : ''}</div>
+        ${p.rich_presence ? `<div class="retro-rp">🎮 ${escHtml(p.rich_presence)}</div>` : ''}
+      </div>
+    </div>
+    <div class="retro-stats">
+      ${stats.map(([k, v]) => `<div class="hero-stat"><div class="hero-stat-v">${escHtml(String(v))}</div><div class="hero-stat-k">${escHtml(k)}</div></div>`).join('')}
+    </div>
+    ${recent.length ? `<div class="ps-sub" style="margin-top:14px">Últimos logros</div>
+      <div class="retro-recent">
+        ${recent.map(a => `<div class="retro-ach">
+            ${a.badge ? `<img src="${escHtml(a.badge)}" alt="" class="retro-badge">` : ''}
+            <div class="retro-ach-txt">
+              <div class="retro-ach-title">${escHtml(a.title)}${a.hardcore ? ' <span class="badge badge-green">hardcore</span>' : ''}</div>
+              <div class="retro-ach-game">${escHtml(a.game)}</div>
+            </div>
+            <div class="retro-ach-pts">${a.points}</div>
+          </div>`).join('')}
+      </div>` : ''}
+  `;
 }
 
 // ── Fila 0: KPIs de hardware (6 tarjetas, vista rápida) ─────────
