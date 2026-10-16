@@ -1068,8 +1068,50 @@ _rom_cache        = {}   # {roms_base: (timestamp, data)}
 _rom_cache_lock   = threading.Lock()
 ROM_CACHE_TTL     = 60   # segundos
 
-# In-memory set of skipped missing BIOS entries (skip_key = "system/file")
+# Set of skipped missing BIOS entries (skip_key = "system/file"). Persistido en disco.
 _missing_bios_skipped = set()
+
+def _bios_skip_file():
+    """Ruta del fichero de skips. Derivada de SETTINGS_FILE (monkeypatcheable en tests)."""
+    return SETTINGS_FILE.parent / "batocera_manager_bios_skipped.json"
+
+def load_bios_skipped():
+    """Carga los skips persistidos. Tolera ausencia o fichero corrupto."""
+    global _missing_bios_skipped
+    f = _bios_skip_file()
+    try:
+        if f.exists():
+            data = json.loads(f.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                _missing_bios_skipped = {str(x) for x in data}
+    except Exception:
+        pass
+    return _missing_bios_skipped
+
+def _save_bios_skipped():
+    f = _bios_skip_file()
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        tmp = f.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(sorted(_missing_bios_skipped), indent=2, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(f)
+    except Exception:
+        pass
+
+def set_bios_skipped(key):
+    """Marca un skip y lo persiste."""
+    if not key:
+        return
+    _missing_bios_skipped.add(key)
+    _save_bios_skipped()
+
+def unset_bios_skipped(key):
+    """Quita un skip y persiste el cambio."""
+    _missing_bios_skipped.discard(key)
+    _save_bios_skipped()
+
+load_bios_skipped()
+
 
 def get_rom_systems_cached(settings):
     key   = settings["roms_base"]
@@ -3554,8 +3596,16 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             d = self.read_json()
             key = d.get("skip_key","")
             if key:
-                _missing_bios_skipped.add(key)
-            self.send_json({"ok":True})
+                set_bios_skipped(key)
+            self.send_json({"ok":True, "skipped": sorted(_missing_bios_skipped)})
+        elif path == "/api/bios/missing/unskip":
+            d = self.read_json()
+            key = d.get("skip_key","")
+            if key:
+                unset_bios_skipped(key)
+            self.send_json({"ok":True, "skipped": sorted(_missing_bios_skipped)})
+        elif path == "/api/bios/missing/skipped":
+            self.send_json({"ok":True, "skipped": sorted(_missing_bios_skipped)})
         elif path == "/api/rom/rename":
             self._rename_rom(s)
         elif path == "/api/service/install":
