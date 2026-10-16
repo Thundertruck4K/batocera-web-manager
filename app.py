@@ -68,6 +68,10 @@ DEFAULT_SETTINGS = {
     "bios_dir":      "/userdata/bios",
     "app_path":      "/userdata/system/batocera_web/app.py",
     "server_port":   5000,
+    # RetroAchievements (opcional): usuario + Web API Key (nunca la contraseña)
+    "ra_user":       "",
+    "ra_api_key":    "",
+    "ra_enabled":    False,
 }
 
 PLATFORM_IDS = [
@@ -2583,6 +2587,44 @@ def get_news():
         _news_cache["data"] = out[:9]
         _news_cache["ts"]   = now
     return _news_cache["data"]
+
+
+# ═══════════════════════════════════════════════════════════════
+#  MÓDULO: RETROACHIEVEMENTS (récords personales)
+# ═══════════════════════════════════════════════════════════════
+
+RA_API_BASE  = "https://retroachievements.org/API"
+RA_CACHE_TTL = 600
+_ra_cache    = {"ts": 0, "data": None}
+
+
+def _ra_urlopen(url, timeout=10):
+    """Indirección sobre urllib para poder simular la red en los tests."""
+    import urllib.request
+    req = urllib.request.Request(url, headers={"User-Agent": "BatoceraManager/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read().decode("utf-8", "replace")
+
+
+def _ra_get(settings, endpoint, params=None, timeout=10):
+    """GET a la Web API de RetroAchievements. Devuelve dict/list o None.
+
+    Autenticación por query string: `z`=usuario, `y`=Web API Key, `u`=usuario.
+    Nunca lanza: si faltan credenciales o hay cualquier error devuelve None.
+    """
+    user = (settings.get("ra_user") or "").strip()
+    key  = (settings.get("ra_api_key") or "").strip()
+    if not user or not key:
+        return None
+    query = {"z": user, "y": key, "u": user}
+    if params:
+        query.update({k: v for k, v in params.items() if v is not None})
+    url = f"{RA_API_BASE}/{endpoint}?" + urllib.parse.urlencode(query)
+    try:
+        return json.loads(_ra_urlopen(url, timeout))
+    except Exception:
+        return None
+
 
 def get_uptime():
     try:
