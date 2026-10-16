@@ -133,6 +133,18 @@ a{color:var(--accent);text-decoration:none}
 }
 .topbar-title{font-size:18px;font-weight:700;flex:1}
 .topbar-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.topbar-pending{
+  display:none;align-items:center;gap:8px;
+  font-size:12px;color:var(--yellow);font-weight:600;
+  background:rgba(210,153,34,.12);border:1px solid rgba(210,153,34,.35);
+  padding:5px 10px;border-radius:var(--radius);
+}
+.topbar-pending .status-dot{margin-right:0}
+.es-pending-note{
+  margin-top:10px;font-size:12px;color:var(--yellow);font-weight:600;
+  background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.3);
+  padding:6px 8px;border-radius:6px;
+}
 .content{flex:1;padding:26px 28px 40px;min-width:0}
 
 /* ── Superficies de panel: cada tarjeta/panel usa --panel en su propia regla
@@ -628,6 +640,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       <div>
         <div class="topbar-title" id="topbar-title">📊 Dashboard</div>
         <div class="topbar-sub" id="topbar-sub">Estado del sistema en tiempo real — Batocera</div>
+      </div>
+      <div id="es-pending-global" class="topbar-pending" title="Hay cambios de sistemas sin aplicar en EmulationStation">
+        <span class="status-dot dot-yellow"></span>
+        <span>Cambios sin aplicar</span>
+        <button class="btn btn-primary btn-sm" onclick="restartES()">⟳ Reiniciar ES</button>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="window.location.reload()">↺ Recargar</button>
     </div>
@@ -3940,6 +3957,33 @@ async function restartService() {
   else toast(res?.error||'Error reiniciando','err');
 }
 
+// ── EmulationStation: reinicio manual (opt-in) + aviso de cambios pendientes ──
+function setEsPending(pending) {
+  const g = document.getElementById('es-pending-global');
+  if (g) g.style.display = pending ? 'flex' : 'none';
+  const c = document.getElementById('kpi-es-pending');
+  if (c) c.style.display = pending ? 'block' : 'none';
+}
+
+async function pollEsStatus() {
+  const st = await fetchJson('/api/es/status');
+  if (st) setEsPending(!!st.restart_pending);
+}
+
+async function restartES() {
+  if (!confirm('¿Reiniciar EmulationStation?\n\nSe interrumpirá lo que esté en pantalla. Solo se reinicia si lo pides tú.')) return;
+  toast('Reiniciando EmulationStation…');
+  const res = await fetchJson('/api/es/restart', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+  if (res && res.ok) {
+    toast('🔄 EmulationStation reiniciado','ok');
+    setEsPending(false);
+    setTimeout(pollEsStatus, 3000);
+  } else {
+    toast((res && res.error) || 'Error reiniciando EmulationStation','err');
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  DASHBOARD
 // ═══════════════════════════════════════════════════════════════
@@ -4038,6 +4082,8 @@ function kpiSkeleton() {
       </div>
       <div class="kv-row"><span class="kv-key">PID</span><span class="kv-val" id="kpi-es-pid">--</span></div>
       <div class="kv-row"><span class="kv-key">Puerto</span><span class="kv-val" id="kpi-es-port">--</span></div>
+      <div id="kpi-es-pending" class="es-pending-note" style="display:none">⚠ Cambios sin aplicar — reinicia ES</div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="restartES()">⟳ Reiniciar ES</button>
     </div>`;
 }
 
@@ -4174,6 +4220,7 @@ function renderKpis(d) {
   if (esCard) esCard.style.setProperty('--card-accent', running ? '#238636' : '#da3633');
   kpiSet('kpi-es-pid', running ? es.pid : null);
   kpiSet('kpi-es-port', running ? es.port : null);
+  setEsPending(!!es.restart_pending);
 }
 
 // ── Fila 1: Batocera info + ES status + Uptime ──────────────────
@@ -4761,6 +4808,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── Boot ────────────────────────────────────────────────────────
 init();
+pollEsStatus();
+setInterval(pollEsStatus, 15000);
 </script>
 </body>
 </html>

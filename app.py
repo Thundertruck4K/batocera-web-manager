@@ -3670,6 +3670,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":True,"folder":folder})
         elif path == "/api/dashboard":
             self.send_json(get_dashboard())
+        elif path == "/api/es/status":
+            self.send_json(get_es_status())
         elif path == "/api/fans":
             self.send_json({"ok": True, "ts": time.time(), "fans": get_fans()})
         elif path == "/api/news":
