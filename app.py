@@ -36,13 +36,34 @@ if _BATOCERA_SYSTEMS_FILE.exists():
         _BATOCERA_SYSTEMS = json.loads(_BATOCERA_SYSTEMS_FILE.read_text())
     except Exception: pass
 
+def _detect_configgen_path(patterns=None):
+    """Detecta `emulatorlauncher.py` de configgen sin fijar la versión de Python.
+
+    En Batocera vive en `/usr/lib/python3.X/site-packages/configgen/`. Se
+    devuelve la primera coincidencia existente; si no hay ninguna, el valor
+    histórico como *fallback*.
+    """
+    import glob as _glob
+    if patterns is None:
+        patterns = [
+            "/usr/lib/python3*/site-packages/configgen/emulatorlauncher.py",
+            "/usr/lib/python3/dist-packages/configgen/emulatorlauncher.py",
+            "/usr/local/lib/python3*/site-packages/configgen/emulatorlauncher.py",
+        ]
+    for pat in patterns:
+        hits = sorted(_glob.glob(pat))
+        if hits:
+            return hits[0]
+    return "/usr/lib/python3.12/site-packages/configgen/emulatorlauncher.py"
+
+
 DEFAULT_SETTINGS = {
     "es_cfg_dir":    "/userdata/system/configs/emulationstation",
     "roms_base":     "/userdata/roms",
     "themes_user":   "/userdata/themes",
     "themes_sys":    "/usr/share/emulationstation/themes",
     "batocera_conf": "/userdata/system/batocera.conf",
-    "python_path":   "/usr/lib/python3.12/site-packages/configgen/emulatorlauncher.py",
+    "python_path":   _detect_configgen_path(),
     "bios_dir":      "/userdata/bios",
     "app_path":      "/userdata/system/batocera_web/app.py",
     "server_port":   5000,
