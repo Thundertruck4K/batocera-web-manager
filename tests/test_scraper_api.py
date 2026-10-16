@@ -229,3 +229,53 @@ def test_save_scraper_config_rejects_conf_without_newline(appmod, tmp_path):
     assert ok
     lines = conf.read_text(encoding="utf-8").splitlines()
     assert "global.scrapper.region=eu" in lines
+
+
+# ─── 6. Parseo de respuestas JSON de ScreenScraper ──────────────────
+
+def test_ss_parse_json_valid_payload(appmod):
+    """El parseador normal debe pasar JSON válido sin tocarlo."""
+    payload = '{"response":{"jeu":{"romnom":"Sonic.zip","medias":[]}}}'
+
+    data = appmod.ss_parse_json(payload)
+
+    assert data["response"]["jeu"]["romnom"] == "Sonic.zip"
+
+
+def test_ss_parse_json_tolerates_invalid_backslash_escape(appmod):
+    """ScreenScraper devuelve `batocera\\_manager` en sus URLs: no es JSON válido.
+
+    (Evidencia: payload real de 68.217 bytes, fallo `Invalid \\escape` en
+    /api2/jeuInfos.php con softname=batocera_manager)."""
+    payload = (
+        '{"response":{"medias":[{"type":"mixrbv1",'
+        '"url":"https://x/api2/mediaJeu.php?softname=batocera\\_manager&media=a"}]}}'
+    )
+
+    data = appmod.ss_parse_json(payload)
+
+    assert data["response"]["medias"][0]["url"].endswith("batocera_manager&media=a")
+
+
+def test_ss_parse_json_keeps_valid_escapes(appmod):
+    """Los escapes legítimos no deben re-escaparse (\\n sigue siendo salto de línea)."""
+    payload = '{"desc":"primera\\nsegunda","tab":"x\\ty"}'
+
+    data = appmod.ss_parse_json(payload)
+
+    assert data["desc"] == "primera\nsegunda"
+    assert data["tab"] == "x\ty"
+
+
+def test_ss_parse_json_invalid_escape_inside_nested_list(appmod):
+    """El saneado aplica a todo el documento, también dentro de listas anidadas."""
+    payload = (
+        '{"jeux":[{"noms":[{"text":"Juego"}],'
+        '"url":"https://x/?softname=batocera\\_manager"},{"romnom":"z"}]}'
+    )
+
+    data = appmod.ss_parse_json(payload)
+
+    assert data["jeux"][1]["romnom"] == "z"
+    assert data["jeux"][0]["url"].endswith("batocera_manager")
+

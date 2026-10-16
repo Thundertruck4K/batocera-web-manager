@@ -2869,6 +2869,29 @@ SS_SYSTEMS = {
     "scv":67,"cassettevision":300,"triforce":0,"sonic":0,
 }
 
+# ScreenScraper devuelve JSON malformado: añade una barra invertida espuria en las
+# URLs que ecoa (p.ej. `softname=batocera\_manager`, cuando nosotros enviamos
+# `softname=batocera_manager`). Ese `\_` no es un escape JSON válido y
+# `json.loads` estricto aborta con `Invalid \escape`, descartando la respuesta.
+# Se elimina la barra espuria (recupera el valor que realmente pedimos).
+_SS_INVALID_ESCAPE = _re.compile(rb'\\(?!(?:["\\/bfnrt]|u[0-9a-fA-F]{4}))(.)?',
+                                 _re.DOTALL)
+
+def ss_parse_json(payload):
+    """Parsea la respuesta de ScreenScraper, saneando escapes inválidos.
+
+    Sólo se sanea si el parseo estricto falla, para no alterar respuestas
+    correctas. Acepta bytes o str; si el saneado no basta, propaga el error.
+    """
+    if isinstance(payload, (bytes, bytearray)):
+        payload = payload.decode("utf-8", "replace")
+    try:
+        return json.loads(payload)
+    except ValueError:
+        cleaned = _SS_INVALID_ESCAPE.sub(lambda m: m.group(1) or b"",
+                                         payload.encode("utf-8", "replace"))
+        return json.loads(cleaned.decode("utf-8", "replace"))
+
 def _ss_fetch_json(url, timeout=20):
     """GET JSON a ScreenScraper devolviendo (data, error_msg, quota)."""
     try:
@@ -2877,7 +2900,7 @@ def _ss_fetch_json(url, timeout=20):
             "Accept": "application/json",
         })
         with _ureq.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read()), None, {}
+            return ss_parse_json(r.read()), None, {}
     except _ureq.HTTPError as e:
         body = ""
         try: body = e.read().decode(errors="replace")[:200]
