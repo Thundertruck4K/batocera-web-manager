@@ -32,23 +32,29 @@
   }
   function sortSystems(list, key){
     const k = key || 'name';
-    return list.slice().sort((a,b) => {
+    // Optimización de re-render: decoramos (Schwartzian transform) una sola vez
+    // por elemento en lugar de recalcular String()/toLowerCase()/Number() dentro
+    // del comparador O(n log n) veces. El comparador solo lee claves ya normalizadas,
+    // reduciendo el trabajo cuando búsqueda/orden re-pintan la lista repetidamente.
+    const decorated = list.map(x => {
+      const o = (x && typeof x === 'object') ? x : {};
+      return {
+        item: x,
+        name: String(o.name ? o.name : '').toLowerCase(),
+        fullname: String(o.fullname ? o.fullname : '').toLowerCase(),
+        rom_count: Number(o.rom_count ? o.rom_count : 0)
+      };
+    });
+    decorated.sort((a,b) => {
       if (k === 'roms' || k === 'rom_count') {
-        const ra = Number(a && a.rom_count ? a.rom_count : 0);
-        const rb = Number(b && b.rom_count ? b.rom_count : 0);
-        if (rb !== ra) return rb - ra;
-        const na = String(a && a.name ? a.name : '').toLowerCase();
-        const nb = String(b && b.name ? b.name : '').toLowerCase();
-        if (na < nb) return -1; if (na > nb) return 1; return 0;
+        if (b.rom_count !== a.rom_count) return b.rom_count - a.rom_count;
+        if (a.name < b.name) return -1; if (a.name > b.name) return 1; return 0;
       }
-      const na = String(a && a.name ? a.name : '').toLowerCase();
-      const nb = String(b && b.name ? b.name : '').toLowerCase();
-      if (na < nb) return -1; if (na > nb) return 1;
-      const fa = String(a && a.fullname ? a.fullname : '').toLowerCase();
-      const fb = String(b && b.fullname ? b.fullname : '').toLowerCase();
-      if (fa < fb) return -1; if (fa > fb) return 1;
+      if (a.name < b.name) return -1; if (a.name > b.name) return 1;
+      if (a.fullname < b.fullname) return -1; if (a.fullname > b.fullname) return 1;
       return 0;
     });
+    return decorated.map(d => d.item);
   }
   </script>
   <!-- <<< UI-HELPERS <<< -->
