@@ -2383,12 +2383,44 @@ def _es_listen_port(pid):
     return max(ports) if ports else None
 
 
+_es_restart_pending = False
+
+def mark_es_restart_pending(flag=True):
+    """Marca que EmulationStation debe recargar los cambios de es_systems."""
+    global _es_restart_pending
+    _es_restart_pending = bool(flag)
+
+def restart_emulationstation():
+    """Reinicio manual (opt-in) de EmulationStation vía batocera-es-swissknife.
+
+    Nunca se invoca automáticamente: interrumpe la UI en pantalla, así que solo
+    corre si el usuario lo pide explícitamente desde el dashboard.
+
+    Devuelve (ok, info).
+    """
+    import subprocess as _sp
+    try:
+        p = _sp.run(["batocera-es-swissknife", "--restart"],
+                    capture_output=True, text=True, timeout=60)
+    except FileNotFoundError:
+        return False, {"error": "batocera-es-swissknife no está disponible"}
+    except _sp.TimeoutExpired:
+        return False, {"error": "Reinicio de ES agotado (timeout)"}
+    except Exception as e:
+        return False, {"error": str(e)}
+    if p.returncode != 0:
+        msg = (p.stderr or p.stdout or "error desconocido").strip()[:500]
+        return False, {"error": msg}
+    mark_es_restart_pending(False)
+    return True, {"ok": True}
+
 def get_es_status():
     # `comm` se trunca a 15 chars ("emulationstatio"), por eso -f (cmdline completa)
     pid = _run("pgrep -f -n emulationstation 2>/dev/null")
     if pid:
-        return {"running": True, "pid": pid, "port": _es_listen_port(pid)}
-    return {"running": False, "port": None}
+        return {"running": True, "pid": pid, "port": _es_listen_port(pid),
+                "restart_pending": _es_restart_pending}
+    return {"running": False, "port": None, "restart_pending": _es_restart_pending}
 
 def get_top_processes():
     procs = []
@@ -3508,6 +3540,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             current.update({k:v for k,v in data.items() if k in DEFAULT_SETTINGS})
             save_settings_to_file(current)
             self.send_json({"ok":True})
+        elif path == "/api/es/restart":
+            ok, info = restart_emulationstation()
+            self.send_json({"ok": ok, **info})
         elif path == "/api/upload-logo":
             self._upload_logo(s)
         elif len(parts)==4 and parts[:2]==["api","rom-systems"] and parts[3]=="upload":
@@ -3621,6 +3656,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             try:
                 os.makedirs(cfg_dir, exist_ok=True)
                 with open(cfg_path,"w",encoding="utf-8") as f: f.write(xml_str)
+                mark_es_restart_pending()
                 log.append(f"✔ CFG escrito: {cfg_path}")
             except Exception as e:
                 self.send_json({"ok":False,"errors":[str(e)]}); return
@@ -3674,6 +3710,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             try:
                 os.makedirs(cfg_dir, exist_ok=True)
                 with open(new_cfg, "w", encoding="utf-8") as f: f.write(xml_str)
+                mark_es_restart_pending()
                 log.append(f"✔ CFG escrito: {new_cfg}")
                 if old != slug and os.path.exists(old_cfg):
                     os.remove(old_cfg)
