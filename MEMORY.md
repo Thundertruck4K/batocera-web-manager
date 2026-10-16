@@ -369,9 +369,24 @@ Objetivo: dashboard "más amigable y atractivo para GitHub". Sin dependencias nu
 
 ---
 
+### `b481acd..ffbb093` — RetroAchievements: récords personales (TDD, 134 → 155 tests)
+
+| # | Cambio | Commit |
+|---|--------|--------|
+| 1 | Settings `ra_user` / `ra_api_key` / `ra_enabled` + cliente HTTP `_ra_get` (auth por query `z`/`y`/`u`) con caché de 10 min | `aff0d33` |
+| 2 | Normalizadores: `ra_profile`, `ra_recent_achievements`, `ra_completion`, `ra_awards` | `6b50390` |
+| 3 | `get_retroachievements` (cacheado, `configured`/`ok`) + endpoints `/api/retroachievements` y `/api/retroachievements/test` | `b215fe4` |
+| 4 | Tarjeta de configuración en **Ajustes** (usuario, Web API Key, toggle, probar conexión) | `2c12d06` |
+| 5 | Tarjeta "Récords personales" en el **Dashboard** (avatar, puntos, dominados, últimos logros) | `ffbb093` |
+
+- Nunca se usa la contraseña de RA: solo usuario + **Web API Key**.
+- Si no está configurado o desactivado, **no se toca la red** y el dashboard invita a configurarlo.
+
+---
+
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 134 tests (`pytest`, `tests/`) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 155 tests (`pytest`, `tests/`) sin linting ni typechecking
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
 3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
@@ -379,6 +394,7 @@ Objetivo: dashboard "más amigable y atractivo para GitHub". Sin dependencias nu
 6. **Sin autenticación** — El servidor expone toda la API sin protección
 7. **Sin HTTPS** — Tráfico en texto plano
 8. **BIOS_DB no incluye todos los sistemas MAME** — Los BIOS de arcade/MAME están dentro de los ROMs ZIPs, no se verifican separadamente
+9. **La Web API Key de RetroAchievements viaja en `/api/settings`** — Como no hay autenticación (ver 6/7), la key es visible para cualquiera en la LAN. Se mitigó usando la Web API Key (revocable) en vez de la contraseña, pero idealmente `/api/settings` debería ocultarla y exponer solo un indicador de "configurada".
 
 ---
 
