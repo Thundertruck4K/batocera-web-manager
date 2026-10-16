@@ -29,7 +29,7 @@
 
 ## Key notes
 
-- **Tests**: 155 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 165 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - Scraper sources: ScreenScraper.fr (default, needs SS user/pass), TheGamesDB (needs API key), IGDB (needs Twitch Client ID + Secret)
 - Credentials read from `batocera.conf` keys: `global.scrapper.user`, `global.scrapper.password`, etc.

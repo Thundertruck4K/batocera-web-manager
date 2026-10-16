@@ -384,9 +384,25 @@ Objetivo: dashboard "más amigable y atractivo para GitHub". Sin dependencias nu
 
 ---
 
+### `32d1297..13a3e04` — Asistente de BIOS legal-primero (TDD, 155 → 165 tests)
+
+Enfoque **legal-primero** elegido por el usuario: la app **no incluye ni sugiere
+fuentes de BIOS**. Para cada BIOS faltante ofrece:
+
+| # | Cambio | Commit |
+|---|--------|--------|
+| 1 | Backend: `github_bios_search_url`, `download_bios_from_url` (solo http/https, límite 64 MiB, ruta validada, MD5 verificado), `_bios_urlopen` y endpoint `POST /api/bios/fetch` | `e322519` |
+| 2 | UI: enlace `🔎 GitHub` por BIOS, botón `⬇ URL` (`fetchBios`), aviso legal en la tarjeta | `13a3e04` |
+
+- Reutiliza `BIOS_DB` / `_check_bios_grouped` / `/api/bios/missing` y la tarjeta existente.
+- La descarga es siempre desde una URL que el usuario pega; la app no trae fuentes.
+- Sin dependencias nuevas.
+
+---
+
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 155 tests (`pytest`, `tests/`) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 165 tests (`pytest`, `tests/`) sin linting ni typechecking
 2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
 3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
