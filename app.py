@@ -9,6 +9,7 @@ import http.server
 import io
 import json
 import os
+import random
 import re
 import shlex
 import shutil
@@ -1639,6 +1640,205 @@ def list_rom_folder(settings, system, subpath=""):
         "has_gamelist": gl.exists(),
         "is_empty": len(items) == 0,
     }
+
+
+# ─── Analítica de juego (dashboard) ──────────────────────────────────
+IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif"]
+
+# Preferencia de arte, de mayor a menor (arte de usuario primero). Cada par es
+# (carpeta, sufijo): con sufijo "" busca "<stem>.<ext>"; si no "<stem><sufijo>.<ext>".
+USER_ART_PREFERENCE = [
+    ("media/images", ""),
+    ("images",       "-image"),
+    ("mixrbv2",      "-mixrbv2"),
+    ("mixrbv1",      "-mixrbv1"),
+    ("fanart",       "-fanart"),
+    ("screenshots",  "-titleshot"),
+    ("named_boxarts", "-box"),
+    ("boxart",       "-box"),
+    ("images",       "-box"),
+    ("wheels",       "-wheel"),
+    ("images",       "-wheel"),
+    ("marquees",     "-marquee"),
+    ("images",       "-marquee"),
+]
+
+
+def find_user_art(roms_base, system, rom_relpath):
+    """Lista de imágenes candidatas para un ROM, arte de usuario primero.
+
+    `rom_relpath` admite subcarpeta (p. ej. "CPS1/foo.zip"). Devuelve list[Path]
+    de archivos existentes ordenados por USER_ART_PREFERENCE; si no hay arte de
+    usuario, incluye el `<image>` del gamelist.xml. Nunca lanza.
+    """
+    try:
+        sys_dir = Path(roms_base) / system
+        stem = Path(rom_relpath).stem
+    except Exception:
+        return []
+    if not sys_dir.is_dir():
+        return []
+
+    bases = []
+    sub = Path(rom_relpath).parent
+    if str(sub) not in (".", ""):
+        bases.append(sys_dir / sub)
+    bases.append(sys_dir)
+
+    out, seen = [], set()
+    for base in bases:
+        for mdir, suf in USER_ART_PREFERENCE:
+            for ext in IMAGE_EXTS:
+                p = base / mdir / (stem + suf + ext)
+                if p.exists() and p not in seen:
+                    seen.add(p)
+                    out.append(p)
+
+    if not out:
+        gl = sys_dir / "gamelist.xml"
+        if gl.exists():
+            try:
+                tree = ET.parse(gl)
+                for game in tree.findall(".//game"):
+                    gpath = (game.findtext("path", "") or "").lstrip("./")
+                    if gpath == rom_relpath or Path(gpath).stem == stem:
+                        img = (game.findtext("image", "") or "").lstrip("./")
+                        if img:
+                            p = sys_dir / img
+                            if p.exists():
+                                out.append(p)
+                        break
+            except Exception:
+                pass
+    return out
+
+
+def _parse_es_date(value):
+    """Convierte 'YYYYMMDDTHHMMSS' de EmulationStation a 'YYYY-MM-DD', o ''."""
+    value = (value or "").strip()
+    if len(value) >= 8 and value[:8].isdigit():
+        return f"{value[0:4]}-{value[4:6]}-{value[6:8]}"
+    return ""
+
+
+def collect_play_stats(roms_base, systems=None):
+    """Agrega estadísticas de juego desde los `gamelist.xml` de `roms_base`.
+
+    `systems`: lista de slugs a incluir; None = todos los subdirectorios.
+    Devuelve ok/updated/has_playtime/totals/top_games/by_system/activity.
+    Nunca lanza: entradas ilegibles se saltan.
+    """
+    result = {
+        "ok": True,
+        "updated": time.time(),
+        "has_playtime": False,
+        "totals": {"games": 0, "playcount": 0, "playtime_s": 0, "systems": 0},
+        "top_games": [],
+        "by_system": [],
+        "activity": [],
+    }
+    base = Path(roms_base)
+    if not base.is_dir():
+        return result
+    if systems is None:
+        try:
+            systems = [d.name for d in sorted(base.iterdir()) if d.is_dir()]
+        except Exception:
+            systems = []
+
+    activity: dict[str, int] = {}
+    top, per_sys = [], []
+    total_games = total_playcount = total_playtime = 0
+
+    for sys_name in systems:
+        gl = base / sys_name / "gamelist.xml"
+        if not gl.exists():
+            continue
+        try:
+            tree = ET.parse(gl)
+        except Exception:
+            continue
+        sys_playcount = sys_playtime = sys_games = 0
+        for game in tree.findall(".//game"):
+            try:
+                pc = int((game.findtext("playcount", "0") or "0").strip() or 0)
+            except ValueError:
+                pc = 0
+            try:
+                pt = int((game.findtext("playtime", "0") or "0").strip() or 0)
+            except ValueError:
+                pt = 0
+            if pc <= 0 and pt <= 0:
+                continue
+            gpath = (game.findtext("path", "") or "").lstrip("./")
+            name = game.findtext("name", "") or Path(gpath).stem
+            lastplayed = _parse_es_date(game.findtext("lastplayed", ""))
+            sys_games += 1
+            sys_playcount += pc
+            sys_playtime += pt
+            if lastplayed:
+                activity[lastplayed] = activity.get(lastplayed, 0) + 1
+            art = find_user_art(roms_base, sys_name, gpath)
+            top.append({
+                "system": sys_name, "name": name, "path": gpath,
+                "playcount": pc, "lastplayed": lastplayed, "playtime_s": pt,
+                "image": str(art[0]) if art else "",
+            })
+        if sys_games:
+            per_sys.append({"system": sys_name, "playcount": sys_playcount,
+                            "playtime_s": sys_playtime, "games": sys_games})
+        total_games += sys_games
+        total_playcount += sys_playcount
+        total_playtime += sys_playtime
+
+    top.sort(key=lambda g: (g["playcount"], g["playtime_s"]), reverse=True)
+    per_sys.sort(key=lambda x: (x["playcount"], x["playtime_s"]), reverse=True)
+    result["totals"] = {"games": total_games, "playcount": total_playcount,
+                        "playtime_s": total_playtime, "systems": len(per_sys)}
+    result["has_playtime"] = total_playtime > 0
+    result["top_games"] = top[:10]
+    result["by_system"] = per_sys
+    result["activity"] = [{"date": d, "count": c} for d, c in sorted(activity.items())]
+    return result
+
+
+def pick_random_game(roms_base, systems=None):
+    """Elige un juego al azar entre los que tienen arte disponible.
+
+    Devuelve {"system","name","filename","subpath","has_art"} o None.
+    """
+    base = Path(roms_base)
+    if not base.is_dir():
+        return None
+    if systems is None:
+        try:
+            systems = [d.name for d in sorted(base.iterdir()) if d.is_dir()]
+        except Exception:
+            return None
+
+    candidates = []
+    for sys_name in systems:
+        sys_dir = base / sys_name
+        if not sys_dir.is_dir():
+            continue
+        try:
+            entries = sorted(sys_dir.iterdir())
+        except Exception:
+            continue
+        for item in entries:
+            if not item.is_file():
+                continue
+            if item.name.startswith(".") or item.name in FILTER_FILES:
+                continue
+            if item.suffix.lower() not in ROM_EXTENSIONS:
+                continue
+            if find_user_art(roms_base, sys_name, item.name):
+                candidates.append({"system": sys_name, "name": item.stem,
+                                   "filename": item.name, "subpath": "",
+                                   "has_art": True})
+    if not candidates:
+        return None
+    return random.choice(candidates)
 
 
 def get_rom_systems(settings, fast=False):
@@ -3670,6 +3870,10 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":True,"folder":folder})
         elif path == "/api/dashboard":
             self.send_json(get_dashboard())
+        elif path == "/api/game-stats":
+            self.send_json(collect_play_stats(s["roms_base"]))
+        elif path == "/api/random-game":
+            self.send_json({"ok": True, "game": pick_random_game(s["roms_base"])})
         elif path == "/api/es/status":
             self.send_json(get_es_status())
         elif path == "/api/fans":
