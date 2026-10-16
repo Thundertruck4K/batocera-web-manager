@@ -32,3 +32,9 @@ find_rom.py
 _stage.py
 _verify_history.py
 _deploy.py
+_probe*.sh
+_verify*.sh
+_debug*.sh
+_inspect*.sh
+_check*.py
+_check*.sh
