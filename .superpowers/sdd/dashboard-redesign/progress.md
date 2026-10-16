@@ -38,3 +38,5 @@ Task 2: CLOSED (self-review; sin reviewer independiente por coste)
 Task 3: dispatched (grid de sistemas)
 Task 3: CLOSED. DONE_WITH_CONCERNS (eccb459). 42 passed (+5). notes: #panel-list no expone has_logo/rom_count; filtro/orden case-insensitive sin localeCompare; app.py sin cambios.
 Task 4: dispatched (ROMs lista + filtros; resolución por filename)
+Task 4: CLOSED. OK (593b3c4). 42 passed. Correcciones: showRomDetail por filename; filtro/orden en #panel-roms; delegación por data-*.
+Task 5: dispatched (Scraper/Batch y BIOS UI)
