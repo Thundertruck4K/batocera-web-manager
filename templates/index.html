@@ -124,10 +124,8 @@ a{color:var(--accent);text-decoration:none}
 .topbar-sub{font-size:12px;color:var(--text3);margin-top:2px}
 .content{flex:1;padding:26px 28px 40px;min-width:0}
 
-/* ── Superficies de panel (jerarquía visual) ── */
-.card,.system-card,.dash-card,.fan-card,.modal,.service-status-box{
-  background:var(--panel);
-}
+/* ── Superficies de panel: cada tarjeta/panel usa --panel en su propia regla
+   (ver .card, .system-card, .modal, .dash-card, .fan-card, .service-status-box) ── */
 
 /* El --purple del spec (#6b3fa0) es un tono oscuro: donde se usa como
    color de TEXTO se sustituye por un púrpura claro legible sobre panel. */
@@ -139,7 +137,7 @@ a{color:var(--accent);text-decoration:none}
 
 /* ── Cards & Sections ── */
 .card{
-  background:var(--bg2);border:1px solid var(--border);
+  background:var(--panel);border:1px solid var(--border);
   border-radius:var(--radius2);padding:20px;
   margin-bottom:16px;
 }
@@ -249,7 +247,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
 /* ── System Cards (List) ── */
 .system-card{
-  background:var(--bg2);border:1px solid var(--border);
+  background:var(--panel);border:1px solid var(--border);
   border-radius:var(--radius2);padding:16px 20px;
   margin-bottom:10px;display:flex;align-items:center;gap:16px;
   transition:border-color var(--transition),box-shadow var(--transition);
@@ -333,7 +331,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 }
 .modal-overlay.open{opacity:1;pointer-events:all}
 .modal{
-  background:var(--bg2);border:1px solid var(--border);
+  background:var(--panel);border:1px solid var(--border);
   border-radius:var(--radius2);padding:24px;
   max-width:680px;width:90%;max-height:85vh;
   overflow-y:auto;box-shadow:var(--shadow);
@@ -376,7 +374,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
 /* ── Dashboard ── */
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:14px}
-.dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:18px;position:relative;overflow:hidden}
+.dash-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius2);padding:18px;position:relative;overflow:hidden}
 .dash-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent2))}
 .dash-card h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:7px}
 .dash-card h3 .icon{font-size:14px}
@@ -417,7 +415,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 @keyframes fanSpin{to{transform:rotate(360deg)}}
 .fan-blades{animation:fanSpin linear infinite;transform-box:view-box;transform-origin:40px 40px}
 .fan-blades.paused{animation-play-state:paused}
-.fan-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px}
+.fan-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px}
 .fan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent2))}
 .fan-card.fan-fault{border-color:var(--red)}
 .fan-card.fan-stopped{border-color:var(--yellow)}
@@ -478,7 +476,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .service-status-box{
   display:flex;align-items:center;gap:14px;
   padding:16px 20px;border-radius:var(--radius2);
-  border:1px solid var(--border);background:var(--bg2);
+  border:1px solid var(--border);background:var(--panel);
   margin-bottom:16px;
 }
 .service-icon{font-size:36px;line-height:1}
