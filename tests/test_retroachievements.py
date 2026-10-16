@@ -160,3 +160,61 @@ def test_ra_awards_none_on_error(appmod, monkeypatch):
     monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: None)
     assert appmod.ra_awards(_creds()) is None
 
+
+# ─── Tarea 3: resumen cacheado + endpoints ─────────────────────────────
+
+def _fake_ra_get(calls):
+    def fake(settings, endpoint, params=None, timeout=10):
+        calls.append(endpoint)
+        return {
+            "API_GetUserProfile.php": PROFILE,
+            "API_GetUserRecentAchievements.php": RECENT,
+            "API_GetUserCompletionProgress.php": COMPLETION,
+            "API_GetUserAwards.php": AWARDS,
+        }.get(endpoint)
+    return fake
+
+
+def test_get_retroachievements_ok_and_cached(appmod, monkeypatch):
+    appmod._ra_cache["data"] = None
+    calls = []
+    monkeypatch.setattr(appmod, "_ra_get", _fake_ra_get(calls))
+
+    r1 = appmod.get_retroachievements(_creds())
+    n1 = len(calls)
+    r2 = appmod.get_retroachievements(_creds())
+
+    assert r1["ok"] is True and r1["configured"] is True
+    assert r1["profile"]["user"] == "tester"
+    assert r1["recent"] and r1["completion"] and r1["awards"]
+    assert r1 == r2, "la segunda llamada debe devolver el mismo objeto cacheado"
+    assert len(calls) == n1, "la segunda llamada no debe tocar la red"
+    appmod._ra_cache["data"] = None
+
+
+def test_get_retroachievements_unconfigured_makes_no_request(appmod, monkeypatch):
+    appmod._ra_cache["data"] = None
+    called = []
+    monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: called.append(1))
+
+    r = appmod.get_retroachievements({"ra_user": "", "ra_api_key": "", "ra_enabled": True})
+    assert r["configured"] is False and r["ok"] is False
+    r2 = appmod.get_retroachievements({"ra_user": "u", "ra_api_key": "k", "ra_enabled": False})
+    assert r2["configured"] is False
+    assert called == [], "no debe llamar a la red"
+
+
+def test_get_retroachievements_ok_false_on_api_failure(appmod, monkeypatch):
+    appmod._ra_cache["data"] = None
+    monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: None)
+    r = appmod.get_retroachievements(_creds())
+    assert r["configured"] is True and r["ok"] is False
+
+
+def test_ra_endpoints_declared():
+    src = APP.read_text(encoding="utf-8")
+    assert '"/api/retroachievements"' in src
+    assert '"/api/retroachievements/test"' in src
+    assert "get_retroachievements(" in src
+
+

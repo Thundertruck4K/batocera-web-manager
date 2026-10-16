@@ -2595,7 +2595,7 @@ def get_news():
 
 RA_API_BASE  = "https://retroachievements.org/API"
 RA_CACHE_TTL = 600
-_ra_cache    = {"ts": 0, "data": None}
+_ra_cache    = {"ts": 0, "data": None, "user": ""}
 
 
 def _ra_urlopen(url, timeout=10):
@@ -2719,6 +2719,43 @@ def ra_awards(settings):
         "beaten_softcore": data.get("BeatenSoftcoreAwardsCount", 0),
         "events": data.get("EventAwardsCount", 0),
     }
+
+
+def get_retroachievements(settings, force=False):
+    """Resumen combinado de RetroAchievements, cacheado RA_CACHE_TTL segundos.
+
+    `configured=False` si faltan usuario/Web API Key o el toggle está apagado
+    (en ese caso no se toca la red). `ok` refleja si la API respondió.
+    """
+    user    = (settings.get("ra_user") or "").strip()
+    key     = (settings.get("ra_api_key") or "").strip()
+    enabled = bool(settings.get("ra_enabled", False))
+    if not user or not key or not enabled:
+        return {"ok": False, "configured": False, "updated": None,
+                "profile": None, "recent": [], "completion": [], "awards": None}
+
+    now = time.time()
+    fresh = (not force
+             and _ra_cache["data"] is not None
+             and _ra_cache.get("user") == user
+             and (now - _ra_cache["ts"]) < RA_CACHE_TTL)
+    if fresh:
+        return _ra_cache["data"]
+
+    profile = ra_profile(settings)
+    data = {
+        "ok": profile is not None,
+        "configured": True,
+        "updated": now,
+        "profile": profile,
+        "recent": ra_recent_achievements(settings),
+        "completion": ra_completion(settings),
+        "awards": ra_awards(settings),
+    }
+    if profile is not None:
+        _ra_cache.update({"ts": now, "data": data, "user": user})
+    return data
+
 
 
 
@@ -4012,6 +4049,14 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json(collect_play_stats(s["roms_base"]))
         elif path == "/api/random-game":
             self.send_json({"ok": True, "game": pick_random_game(s["roms_base"])})
+        elif path == "/api/retroachievements":
+            self.send_json(get_retroachievements(s))
+        elif path == "/api/retroachievements/test":
+            prof = ra_profile(s)
+            self.send_json({"ok": prof is not None,
+                            "configured": bool((s.get("ra_user") or "").strip()
+                                               and (s.get("ra_api_key") or "").strip()),
+                            "user": (prof or {}).get("user", "")})
         elif path == "/api/es/status":
             self.send_json(get_es_status())
         elif path == "/api/fans":
@@ -4130,6 +4175,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             current = load_settings()
             current.update({k:v for k,v in data.items() if k in DEFAULT_SETTINGS})
             save_settings_to_file(current)
+            if any(k.startswith("ra_") for k in data):
+                _ra_cache.update({"ts": 0, "data": None, "user": ""})
             self.send_json({"ok":True})
         elif path == "/api/es/restart":
             ok, info = restart_emulationstation()
