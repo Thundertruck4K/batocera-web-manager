@@ -4447,10 +4447,14 @@ function renderRetro(r) {
   const stats = [
     ['Puntos', (p.points || 0).toLocaleString('es-CL')],
     ['Puntos true', (p.true_points || 0).toLocaleString('es-CL')],
-    ['Dominados', awards.mastery || 0],
-    ['Batidos', (awards.beaten_hardcore || 0) + (awards.beaten_softcore || 0)],
   ];
+  if ((p.softcore_points || 0) > 0) stats.push(['Puntos softcore', (p.softcore_points || 0).toLocaleString('es-CL')]);
+  stats.push(['Dominados', awards.mastery || 0]);
+  stats.push(['Batidos', (awards.beaten_hardcore || 0) + (awards.beaten_softcore || 0)]);
   const recent = (r.recent || []).slice(0, 5);
+  // `completion` es lo que realmente tiene contenido para cuentas nuevas: juegos con
+  // progreso, aunque no haya logros recientes ni premios todavía.
+  const completion = (r.completion || []).slice(0, 5);
   box.innerHTML = `
     <div class="retro-head">
       ${av}
@@ -4472,6 +4476,17 @@ function renderRetro(r) {
               <div class="retro-ach-game">${escHtml(a.game)}</div>
             </div>
             <div class="retro-ach-pts">${a.points}</div>
+          </div>`).join('')}
+      </div>` : ''}
+    ${completion.length ? `<div class="ps-sub" style="margin-top:14px">Juegos en progreso</div>
+      <div class="retro-recent">
+        ${completion.map(g => `<div class="retro-ach">
+            ${g.icon ? `<img src="${escHtml(g.icon)}" alt="" class="retro-badge">` : ''}
+            <div class="retro-ach-txt">
+              <div class="retro-ach-title">${escHtml(g.title || '')}</div>
+              <div class="retro-ach-game">${escHtml(g.console || '')} · ${g.num_awarded || 0}/${g.max_possible || 0} logros</div>
+            </div>
+            <div class="retro-ach-pts">${g.percent || 0}%</div>
           </div>`).join('')}
       </div>` : ''}
   `;

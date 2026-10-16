@@ -298,4 +298,14 @@ def test_dashboard_retro_disabled_state_has_activate():
     assert "res.enabled" in h, "testRA debe reflejar el interruptor"
 
 
+def test_dashboard_renders_completion_and_softcore():
+    # Una cuenta con progreso pero sin logros recientes debe mostrar algo útil:
+    # los juegos en progreso y los puntos softcore.
+    h = _html()
+    assert "r.completion" in h
+    assert "Juegos en progreso" in h
+    assert "softcore_points" in h
+    assert "num_awarded" in h and "max_possible" in h
+
+
 
