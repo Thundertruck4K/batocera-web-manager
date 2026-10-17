@@ -1156,6 +1156,47 @@ def invalidate_rom_cache():
     with _rom_cache_lock:
         _rom_cache.clear()
 
+
+def count_rom_systems(settings):
+    """Nº de sistemas de `roms_base` con al menos un juego.
+
+    Recorre solo el primer nivel de cada sistema y corta al primer juego: no
+    usa el escaneo completo (`get_rom_systems`), que suma el tamaño de todos
+    los ficheros y tarda segundos. Mismas reglas que aquel:
+
+    - un fichero con extensión de ROM (`ROM_EXTENSIONS`) cuenta;
+    - una subcarpeta cuenta (ports/motores guardan el juego dentro, p. ej.
+      `iortcw/main`, `pygame/pygun`), salvo `media/` y los filtrados
+      (`images/`, `videos/`, `manuals/`);
+    - `gamelist.xml`, los ficheros ocultos y `FILTER_FILES` no cuentan.
+    """
+    base = Path(settings["roms_base"])
+    if not base.is_dir():
+        return 0
+    try:
+        system_dirs = [d for d in base.iterdir() if d.is_dir()]
+    except Exception:
+        return 0
+    total = 0
+    for sys_dir in system_dirs:
+        try:
+            for item in sys_dir.iterdir():
+                name = item.name
+                if name.startswith(".") or name == "gamelist.xml":
+                    continue
+                if name in FILTER_FILES:
+                    continue
+                if item.is_dir():
+                    if name == "media" or name.lower() in FILTER_DIRS:
+                        continue
+                elif item.suffix.lower() not in ROM_EXTENSIONS:
+                    continue
+                total += 1
+                break
+        except Exception:
+            continue
+    return total
+
 # ─── Helpers ─────────────────────────────────────────────────────
 def load_settings():
     if SETTINGS_FILE.exists():
@@ -4231,6 +4272,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/info":
             self.send_json({"active_theme":detect_active_theme(s),
                 "themes":list_themes(s),"systems_count":len(list_custom_systems(s)),
+                "rom_systems_count":count_rom_systems(s),
                 "ext_presets":EXT_PRESETS,"platform_ids":PLATFORM_IDS,
                 "hardware_types":HARDWARE_TYPES,"has_pil":HAS_PIL})
         elif path == "/api/systems":

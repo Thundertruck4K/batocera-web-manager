@@ -4456,8 +4456,10 @@ function renderHero(d) {
   const upt = (d && d.uptime) || '—';
   if (sub) sub.textContent = `Batocera ${ver} · en marcha ${upt}`;
   const es = !!(d && d.es && d.es.running);
-  const sysCount = _heroInfo && typeof _heroInfo.systems_count === 'number'
-    ? _heroInfo.systems_count : '—';
+  // "Sistemas" = sistemas con ROMs (no los creados a mano: eso es el badge
+  // de "Sistemas Creados"). Así el banner muestra todos los que tienen ROM.
+  const sysCount = _heroInfo && typeof _heroInfo.rom_systems_count === 'number'
+    ? _heroInfo.rom_systems_count : '—';
   const played = _heroStats && _heroStats.ok ? _heroStats.totals.playcount : '—';
   const hours  = _heroStats && _heroStats.ok && _heroStats.has_playtime
     ? (_heroStats.totals.playtime_s / 3600).toFixed(1) : '—';

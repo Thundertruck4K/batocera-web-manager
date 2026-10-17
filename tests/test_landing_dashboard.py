@@ -70,6 +70,21 @@ def test_dashboard_hero_markup():
     assert "function renderHero(" in h
 
 
+def test_hero_systems_counts_rom_systems_not_custom(appmod):
+    """El banner debe contar los sistemas con ROMs, no los creados a mano.
+
+    `systems_count` son los `es_systems_*.cfg` (pestaña "Sistemas Creados");
+    el hero usa `rom_systems_count` (sistemas con ≥1 ROM) para no mostrar
+    solo los 4 sistemas añadidos a mano.
+    """
+    h = _html()
+    assert "rom_systems_count" in h, "el hero debe usar rom_systems_count"
+    assert "rom_systems_count" in _app(), "/api/info debe exponerlo"
+    # El hero no debe volver a caer en el recuento de sistemas personalizados.
+    hero = h.split("function renderHero(", 1)[1].split("function ", 1)[0]
+    assert "systems_count" not in hero or "rom_systems_count" in hero
+
+
 # ─── C2: juego al azar ─────────────────────────────────────────────────
 
 def test_random_game_card_markup():
