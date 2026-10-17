@@ -953,7 +953,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <div class="dash-card" style="--card-accent:var(--aurora)">
             <h3><span class="icon">🌀</span>Ventiladores</h3>
             <div id="fan-alert"></div>
-            <div class="dash-grid" id="dash-row-fans" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:0"></div>
+            <div class="dash-grid" id="dash-row-fans" style="grid-template-columns:repeat(auto-fit,minmax(100px,1fr));margin-bottom:0"></div>
           </div>
         </div>
 
@@ -5083,52 +5083,39 @@ function tachoArcPath(cx, cy, r, v1, v2) {
 
 function tachoInit(id, accent, opts) {
   opts = opts || {};
-  const gy  = opts.gy  !== undefined ? opts.gy  : 60;   // verde → amarillo
-  const rd  = opts.rd  !== undefined ? opts.rd  : 85;   // amarillo → rojo
-  const maxW = opts.maxW || 150;
-  const cx = 100, cy = 98, r = 80;
-  let ticks = '';
-  for (let v = 0; v <= 100; v += 5) {
-    const major = v % 25 === 0;
-    const t = Math.PI * v / 100;
-    const r1 = 80, r2 = major ? 68 : 74;
-    ticks += `<line x1="${(cx + r1 * Math.cos(t)).toFixed(2)}" y1="${(cy - r1 * Math.sin(t)).toFixed(2)}" x2="${(cx + r2 * Math.cos(t)).toFixed(2)}" y2="${(cy - r2 * Math.sin(t)).toFixed(2)}" stroke="var(--text3)" stroke-width="${major ? 2 : 1}" opacity="${major ? 0.85 : 0.4}"/>`;
-  }
-  const zones =
-    `<path d="${tachoArcPath(cx, cy, 66, 0, gy)}" fill="none" stroke="rgba(63,214,139,.8)" stroke-width="8" stroke-linecap="round"/>` +
-    `<path d="${tachoArcPath(cx, cy, 66, gy, rd)}" fill="none" stroke="rgba(242,196,107,.8)" stroke-width="8" stroke-linecap="round"/>` +
-    `<path d="${tachoArcPath(cx, cy, 66, rd, 100)}" fill="none" stroke="rgba(255,107,107,.85)" stroke-width="8" stroke-linecap="round"/>`;
-  const needle = `<polygon class="needle" id="needle-${id}" points="100,98 100,93.6 158,98 100,102.4" fill="${accent}"/>`;
-  const svg = `<svg viewBox="0 0 200 142" width="100%" style="display:block;max-width:${maxW}px;margin:0 auto">
-    ${ticks}
-    ${zones}
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="3"/>
-    ${needle}
-    <circle id="hub-${id}" cx="${cx}" cy="${cy}" r="6" fill="${accent}"/>
-    <text x="${cx}" y="${cy - 24}" text-anchor="middle" font-size="20" font-weight="800" fill="var(--text)" id="tacho-val-${id}"></text>
-    <text x="${cx}" y="${cy + 32}" text-anchor="middle" font-size="9" fill="var(--text3)" id="tacho-sub-${id}">0%</text>
+  const maxW = opts.maxW || 130;
+  const cx = 50, cy = 50, r = 40;
+  const C = 2 * Math.PI * r;
+  const svg = `<svg viewBox="0 0 100 100" width="100%" style="display:block;max-width:${maxW}px;margin:0 auto">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="7" opacity="0.3"/>
+    <circle id="needle-${id}" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${accent}" stroke-width="7" stroke-linecap="round"
+      stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset .6s cubic-bezier(.3,.8,.35,1)"/>
+    <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle" font-size="20" font-weight="800" fill="var(--text)" id="tacho-val-${id}">0%</text>
+    <text x="${cx}" y="${cy+22}" text-anchor="middle" font-size="9" fill="var(--text3)" id="tacho-sub-${id}"></text>
   </svg>`;
   const el = document.getElementById('tacho-' + id);
   if (!el) return null;
   el.innerHTML = svg;
   return {
     needle: document.getElementById('needle-' + id),
-    hub:    document.getElementById('hub-' + id),
+    hub:    null,
     val:    document.getElementById('tacho-val-' + id),
     sub:    document.getElementById('tacho-sub-' + id),
+    C: C,
   };
 }
 
 function tachoSet(t, value, color, label, sub) {
   if (!t) return;
   const v = Math.max(0, Math.min(100, value || 0));
-  t.needle.style.transform = `rotate(${-v * 1.8}deg)`;
-  t.needle.setAttribute('fill', color);
-  t.hub.setAttribute('fill', color);
+  const offset = t.C * (1 - v / 100);
+  t.needle.style.strokeDashoffset = offset;
+  t.needle.setAttribute('stroke', color);
   t.val.textContent = label !== undefined ? label : `${v}%`;
   t.val.setAttribute('fill', color);
   if (sub !== undefined) t.sub.textContent = sub;
 }
+
 
 function renderRow2(d) {
   const cpu  = d.cpu   || {};
@@ -5153,82 +5140,65 @@ function renderRow2(d) {
   const row = document.getElementById('dash-row2');
   if (!_tachos.init) {
     row.innerHTML = `
-      <div class="dash-card" style="--card-accent:var(--orange)">
+      <div class="dash-card" style="--card-accent:var(--orange);padding:10px 12px">
         <h3><span class="icon">⚙</span>CPU</h3>
-        <div style="font-size:10px;color:var(--text3);text-align:center;margin-bottom:2px;letter-spacing:.4px">USO</div>
-        <div class="tacho" id="tacho-cpu"></div>
-        <div style="font-size:10px;color:var(--text3);text-align:center;margin-top:8px;letter-spacing:.4px">TEMPERATURA</div>
-        <div class="tacho" id="tacho-cpu-temp" style="margin-top:-2px"></div>
-        <div class="tacho-info">
-          <div class="kv-row"><span class="kv-key">Núcleos</span><span class="kv-val" id="cpu-cores">—</span></div>
-          <div class="kv-row"><span class="kv-key">Fuente Tº</span><span class="kv-val" id="cpu-tempsrc">—</span></div>
+        <div class="ring-wrap">
+          <div class="tacho" id="tacho-cpu"></div>
+          <div class="tacho-info" style="border-top:none;margin-top:2px;padding-top:2px;gap:2px">
+            <div class="kv-row"><span class="kv-key">Temp</span><span class="kv-val" id="cpu-temp">—</span></div>
+          </div>
         </div>
       </div>
-      <div class="dash-card" style="--card-accent:var(--accent)">
+      <div class="dash-card" style="--card-accent:var(--accent);padding:10px 12px">
         <h3><span class="icon">🧠</span>Memoria RAM</h3>
-        <div class="tacho" id="tacho-ram"></div>
-        <div class="tacho-info">
-          <div class="kv-row"><span class="kv-key">Usada</span><span class="kv-val" id="ram-used">—</span></div>
-          <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="ram-total">—</span></div>
-          <div class="kv-row"><span class="kv-key">Libre</span><span class="kv-val" id="ram-free">—</span></div>
-          <div class="kv-row" id="ram-swap-row" style="display:none"><span class="kv-key">Swap</span><span class="kv-val" id="ram-swap">—</span></div>
+        <div class="ring-wrap">
+          <div class="tacho" id="tacho-ram"></div>
+          <div class="tacho-info" style="border-top:none;margin-top:2px;padding-top:2px;gap:2px">
+            <div class="kv-row"><span class="kv-key">Usada</span><span class="kv-val" id="ram-used">—</span></div>
+            <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="ram-total">—</span></div>
+          </div>
         </div>
       </div>
       ${g0 ? `
-      <div class="dash-card" style="--card-accent:${accentG}">
+      <div class="dash-card" style="--card-accent:${accentG};padding:10px 12px">
         <h3><span class="icon">🎨</span>GPU</h3>
-        <div style="font-size:11px;font-weight:600;margin-bottom:6px;color:var(--text2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g0.name||'')}</div>
-        <div class="tacho" id="tacho-gpu"></div>
-        <div class="tacho-info">
-          <div class="kv-row"><span class="kv-key">Temperatura</span><span class="kv-val" id="gpu-temp">—</span></div>
-          <div class="kv-row"><span class="kv-key">VRAM</span><span class="kv-val" id="gpu-vram">—</span></div>
-          <div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val" id="gpu-power">—</span></div>
+        <div style="font-size:10px;font-weight:600;margin-bottom:4px;color:var(--text2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g0.name||'')}</div>
+        <div class="ring-wrap">
+          <div class="tacho" id="tacho-gpu"></div>
+          <div class="tacho-info" style="border-top:none;margin-top:2px;padding-top:2px;gap:2px">
+            <div class="kv-row"><span class="kv-key">Temp</span><span class="kv-val" id="gpu-temp">—</span></div>
+          </div>
         </div>
       </div>` : `
-      <div class="dash-card" style="--card-accent:var(--text3)">
+      <div class="dash-card" style="--card-accent:var(--text3);padding:10px 12px">
         <h3><span class="icon">🎨</span>GPU</h3>
-        <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">No detectada<br><span style="font-size:11px">nvidia-smi no disponible</span></div>
+        <div style="color:var(--text3);font-size:12px;text-align:center;padding:16px 0">No detectada</div>
       </div>`}
     `;
     _tachos.init = true;
     _tachos.cpu  = tachoInit('cpu', '#FFA76B');
-    _tachos.cpuT = tachoInit('cpu-temp', '#FFA76B', {gy: 60, rd: 80, maxW: 120});
     _tachos.ram  = tachoInit('ram', '#7C9CFF');
     _tachos.gpu  = g0 ? tachoInit('gpu', accentG) : null;
   }
 
-  // Actualizar tacómetros en su sitio (aguja animada)
+  // Actualizar anillos
   tachoSet(_tachos.cpu, cpuPct, cpuColor, `${cpuPct}%`, 'CPU');
-  if (_tachos.cpuT) {
-    const cTemp = (cpuTemp != null && !isNaN(cpuTemp)) ? cpuTemp : 0;
-    const tColor = cpuTemp == null ? '#FFA76B' : cTemp < 60 ? '#3FD68B' : cTemp < 80 ? '#F2C46B' : '#FF6B6B';
-    tachoSet(_tachos.cpuT, cTemp, tColor, cpuTemp != null ? `${Math.round(cTemp)}°C` : 'N/D', 'Tº CPU');
-  }
   tachoSet(_tachos.ram, ramPct, ramColor, `${ramPct}%`, 'RAM');
   if (g0 && _tachos.gpu) tachoSet(_tachos.gpu, gUtil, gColor, `${gUtil}%`, 'GPU');
 
-  // Info de CPU
-  const cpuC = document.getElementById('cpu-cores');
-  const cpuS = document.getElementById('cpu-tempsrc');
-  if (cpuC) cpuC.textContent = (cpu.cores || '?');
-  if (cpuS) cpuS.textContent = cpu.temp_src ? escHtml(cpu.temp_src) : '—';
+  // Temperatura de CPU
+  const ct = document.getElementById('cpu-temp');
+  if (ct) { const v = parseFloat(cpu.temp); ct.textContent = isNaN(v) ? '—' : `${Math.round(v)}°C`; ct.className = 'kv-val ' + (isNaN(v) ? '' : v < 60 ? 'temp-ok' : v < 80 ? 'temp-warn' : 'temp-hot'); }
 
   // Info de RAM
-  const ru = document.getElementById('ram-used'), rt = document.getElementById('ram-total'),
-        rf = document.getElementById('ram-free'), rsw = document.getElementById('ram-swap'),
-        rswRow = document.getElementById('ram-swap-row');
+  const ru = document.getElementById('ram-used'), rt = document.getElementById('ram-total');
   if (ru) ru.textContent = `${mem.used_mb||0} MB`;
   if (rt) rt.textContent = `${mem.total_mb||0} MB`;
-  if (rf) rf.textContent = `${mem.free_mb||0} MB`;
-  if (rswRow) rswRow.style.display = mem.swap_total_mb > 0 ? '' : 'none';
-  if (rsw) rsw.textContent = `${mem.swap_used_mb||0}/${mem.swap_total_mb||0} MB`;
 
-  // Info de GPU
+  // Temperatura de GPU
   if (g0) {
-    const gt = document.getElementById('gpu-temp'), gv = document.getElementById('gpu-vram'), gp = document.getElementById('gpu-power');
-    if (gt) { gt.textContent = g0.temp != null ? `${g0.temp}°C` : '—'; gt.className = 'kv-val ' + ((parseFloat(g0.temp)||0) < 60 ? 'temp-ok' : (parseFloat(g0.temp)||0) < 80 ? 'temp-warn' : 'temp-hot'); }
-    if (gv) gv.textContent = g0.mem_used || g0.mem_total ? `${g0.mem_used||'?'} / ${g0.mem_total||'?'}` : '—';
-    if (gp) gp.textContent = g0.power || '—';
+    const gt = document.getElementById('gpu-temp');
+    if (gt) { const v = parseFloat(g0.temp); gt.textContent = isNaN(v) ? '—' : `${Math.round(v)}°C`; gt.className = 'kv-val ' + (isNaN(v) ? '' : v < 60 ? 'temp-ok' : v < 80 ? 'temp-warn' : 'temp-hot'); }
   }
 }
 
@@ -5490,7 +5460,7 @@ function fanSvg(rpm, status) {
   const paused  = stopped ? 'paused' : '';
   const blade   = '<path d="M40 44 C45 35 47 25 43 15 C41 9 36 9 34 16 C30 25 34 34 40 44 Z" fill="#C9CFE0" stroke="#8B93AD" stroke-width="1"/>';
   return `
-  <svg viewBox="0 0 80 80" width="84" height="84" style="display:block">
+  <svg viewBox="0 0 80 80" width="48" height="48" style="display:block">
     <circle cx="40" cy="40" r="35" fill="rgba(255,255,255,.04)" stroke="var(--border)" stroke-width="2"/>
     <circle cx="40" cy="40" r="31" fill="none" stroke="rgba(255,255,255,.05)" stroke-dasharray="3 5"/>
     <g class="fan-blades ${paused}" style="animation-duration:${dur}s">
@@ -5542,12 +5512,12 @@ function renderFans(fans) {
       const meta  = fanStatusMeta(f.status);
       const rpmStr = f.status === 'fault' ? '—' : `${f.rpm} RPM`;
       return `
-      <div class="fan-card ${meta.cls}" data-idx="${i}">
+      <div class="fan-card ${meta.cls}" data-idx="${i}" style="padding:6px 4px">
         ${fanSvg(f.rpm, f.status)}
-        <div style="font-size:12px;font-weight:700;text-align:center">${escHtml(f.label)}</div>
-        <div class="fan-rpm" style="color:${meta.color}">${rpmStr}</div>
-        <div class="fan-sub">${escHtml(f.name||'')} · fan${escHtml(f.index||'')}</div>
-        <div class="fan-status ${f.status==='ok'?'fan-ok':f.status==='fault'?'fan-fault':'fan-stopped'}">
+        <div style="font-size:10px;font-weight:700;text-align:center;margin-top:2px">${escHtml(f.label)}</div>
+        <div class="fan-rpm" style="color:${meta.color};font-size:10px">${rpmStr}</div>
+        <div class="fan-sub" style="font-size:9px">${escHtml(f.name||'')} · fan${escHtml(f.index||'')}</div>
+        <div class="fan-status ${f.status==='ok'?'fan-ok':f.status==='fault'?'fan-fault':'fan-stopped'}" style="font-size:9px">
           <span class="status-dot ${meta.dot}"></span>${meta.label}
         </div>
       </div>`;
