@@ -5,11 +5,12 @@
 **Interfaz web para gestionar tu Batocera desde el navegador**: sistemas personalizados,
 ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.3-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![Sin dependencias](https://img.shields.io/badge/dependencias-ninguna-16a34a)]()
-[![Tests](https://img.shields.io/badge/tests-270%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-281%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -319,12 +320,12 @@ La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **270 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **281 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 270 passed in ~11s
+# 281 passed in ~13s
 ```
 
 ---
@@ -338,7 +339,7 @@ batocera_web/
 │   └── index.html            # interfaz completa (HTML + CSS + JS)
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
-├── tests/                    # 270 tests con pytest
+├── tests/                    # 281 tests con pytest
 ├── docs/
 │   ├── media/demo.gif        # demostración
 │   ├── screenshots/          # capturas del README
