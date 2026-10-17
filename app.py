@@ -4260,6 +4260,17 @@ def _process_batch_job(job):
 # ─── HTTP Handler ─────────────────────────────────────────────────
 class BatoceraHandler(http.server.BaseHTTPRequestHandler):
 
+    def log_request(self, code='-', size='-'):
+        # El dashboard hace polling cada pocos segundos (fans, ES, dashboard);
+        # no queremos que cada petición correcta inunde la consola. Solo se
+        # registran los errores (4xx/5xx) y las excepciones.
+        try:
+            status = int(code)
+        except (ValueError, TypeError):
+            status = 0
+        if status >= 400 or status == 0:
+            super().log_request(code, size)
+
     def log_message(self, format, *args):
         print(f"  {self.address_string()} — {format % args}")
 
