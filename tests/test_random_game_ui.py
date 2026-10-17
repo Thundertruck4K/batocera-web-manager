@@ -34,7 +34,8 @@ def _run_node_eval(js: str) -> str:
     node = shutil.which("node")
     if not node:
         pytest.skip("node no disponible")
-    p = subprocess.run([node, "-e", js], capture_output=True, text=True, cwd=str(ROOT))
+    p = subprocess.run([node, "-e", js], capture_output=True, text=True,
+                       encoding="utf-8", cwd=str(ROOT))
     assert p.returncode == 0, f"node error:\n{p.stderr}\n{p.stdout}"
     return p.stdout.strip()
 
@@ -42,6 +43,13 @@ def _run_node_eval(js: str) -> str:
 def _view(game):
     js = ("const console=global.console;\n" + _helper_source() + "\n"
           + "console.log(JSON.stringify(randomGameView(" + json.dumps(game) + ")));\n")
+    return json.loads(_run_node_eval(js))
+
+
+def _call(fn: str, game):
+    """Ejecuta un helper puro del bloque UI-HELPERS con un juego dado."""
+    js = ("const console=global.console;\n" + _helper_source() + "\n"
+          + f"console.log(JSON.stringify({fn}(" + json.dumps(game) + ")));\n")
     return json.loads(_run_node_eval(js))
 
 
@@ -119,3 +127,74 @@ def test_renderRandomGame_uses_view_and_textContent():
     assert "textContent" in body, "se pinta como texto (la gamelist no es HTML de confianza)"
     for node in ("facts", "usage", "desc"):
         assert f"random-{node}" in body, f"renderRandomGame no pinta {node}"
+
+
+# ─── Chips del espacio 2 (sistema · año · tipo) ────────────────────────
+
+def test_chips_helper_exists():
+    assert "function randomGameChips" in _helper_source(), "falta randomGameChips"
+
+
+def test_chips_one_per_field_with_kind():
+    chips = _call("randomGameChips", FULL)
+    assert [c["label"] for c in chips] == ["PlayStation 2", "2005", "Disparos / 1ª persona"]
+    assert [c["kind"] for c in chips] == ["system", "year", "genre"]
+
+
+def test_chips_skip_missing_fields():
+    chips = _call("randomGameChips",
+                  {"system": "snes", "system_name": "Super Nintendo Entertainment System"})
+    assert [c["label"] for c in chips] == ["Super Nintendo Entertainment System"]
+    assert chips[0]["kind"] == "system"
+
+
+def test_chips_fall_back_to_slug():
+    chips = _call("randomGameChips", {"system": "snes"})
+    assert [c["label"] for c in chips] == ["snes"], "sin nombre amigable se muestra el slug"
+
+
+def test_chips_empty_without_game():
+    assert _call("randomGameChips", None) == []
+
+
+# ─── Carátula vertical + wallpaper generado ────────────────────────────
+
+def test_art_uses_cover_url_when_has_art():
+    art = _call("randomGameArt", FULL)
+    assert "/api/rom-image/ps2/Area%2051.iso" in art["url"]
+    assert art["placeholder"] is False
+
+
+def test_art_keeps_subpath_in_url():
+    art = _call("randomGameArt", {**FULL, "system": "cps1", "filename": "foo.zip",
+                                  "subpath": "CPS1"})
+    assert art["url"].endswith("?subpath=CPS1")
+
+
+def test_art_asks_for_wallpaper_without_art():
+    art = _call("randomGameArt", {"system": "snes", "filename": "game.zip"})
+    assert art["url"] == "", "sin arte no hay URL: se pinta el wallpaper"
+    assert art["placeholder"] is True
+    assert art["label"] == "game.zip", "el wallpaper lleva el nombre del juego"
+
+
+def test_art_label_prefers_name_over_filename():
+    art = _call("randomGameArt", {"system": "snes", "filename": "f.zip",
+                                  "name": "Sonic", "has_art": False})
+    assert art["label"] == "Sonic"
+
+
+def test_card_has_wallpaper_and_cover_nodes():
+    h = _html()
+    for node in ("dash-random-media", "dash-random-ph", "dash-random-ph-name",
+                 "dash-random-cover"):
+        assert f'id="{node}"' in h, f"falta el nodo {node}"
+
+
+def test_renderRandomGame_falls_back_when_cover_fails():
+    m = re.search(r"function renderRandomGame\(g\)\s*\{([\s\S]*?)\n\}", _html())
+    assert m, "falta renderRandomGame()"
+    body = m.group(1)
+    assert "randomGameArt(" in body, "la imagen sale de randomGameArt()"
+    assert "onerror" in body, "si la carátula no carga se pinta el wallpaper"
+    assert "dash-random-ph" in body

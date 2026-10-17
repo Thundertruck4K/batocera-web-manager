@@ -617,14 +617,39 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .hero-stat-v{font-size:22px;font-weight:800;line-height:1.1;background:linear-gradient(120deg,#BCD0FF,#7EE6FF);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .hero-stat-k{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
 .dash-random{margin-bottom:14px}
-.dash-random-body{display:grid;grid-template-columns:minmax(160px,240px) 1fr;gap:16px;align-items:center}
-.dash-random-img{background-size:cover;background-position:center;aspect-ratio:16/9;border-radius:10px;
-  background-color:var(--bg3);border:1px solid var(--border)}
-.dash-random-name{font-size:16px;font-weight:700}
-.dash-random-facts{font-size:12px;color:var(--text2);margin-top:2px}
-.dash-random-usage{font-size:11px;color:var(--text3);margin-top:4px}
-.dash-random-desc{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.45;
-  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.dash-random-body{display:grid;grid-template-columns:minmax(150px,196px) 1fr;gap:18px;align-items:start}
+/* espacio 1: carátula vertical; si no hay, wallpaper generado */
+.dash-random-media{position:relative;aspect-ratio:2/3;border-radius:14px;overflow:hidden;
+  background:var(--bg3);border:1px solid var(--border)}
+.dash-random-cover{width:100%;height:100%;object-fit:cover;display:block}
+.dash-random-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  isolation:isolate;background:radial-gradient(120% 90% at 50% 0%,#1b1530,#141021 55%,#171018)}
+.dash-random-ph[hidden],.dash-random-cover[hidden]{display:none}
+.dash-random-ph::before,.dash-random-ph::after{content:'';position:absolute;left:50%;width:156%;
+  aspect-ratio:1;border-radius:50%;transform:translateX(-50%);filter:blur(30px);
+  z-index:0;pointer-events:none}
+.dash-random-ph::before{top:-34%;background:radial-gradient(circle,rgba(178,152,255,.92),rgba(160,132,250,.45) 42%,rgba(160,132,250,0) 70%)}
+.dash-random-ph::after{bottom:-34%;background:radial-gradient(circle,rgba(255,142,142,.88),rgba(255,120,120,.4) 42%,rgba(255,120,120,0) 70%)}
+.dash-random-ph span{position:relative;z-index:2;padding:0 14px;text-align:center;
+  font-size:19px;font-weight:800;line-height:1.2;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.55)}
+/* espacio 2: título, etiquetas, uso y sinopsis */
+.dash-random-name{font-size:19px;font-weight:800;line-height:1.15}
+.dash-random-facts{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.dash-random-facts:empty{display:none}
+.dash-random-usage{font-size:13.5px;font-weight:700;margin-top:10px;
+  background:linear-gradient(90deg,#67E8F9,#8FB4FF 55%,#A78BFA);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.dash-random-usage:empty{display:none}
+.dash-random-desc{font-size:12.5px;color:var(--text3);margin-top:10px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.dash-random-desc:empty{display:none}
+/* etiquetas redondeadas (y el botón "Otro", que usa el mismo estilo) */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;
+  font-family:inherit;line-height:1;padding:6.5px 11px;border-radius:999px;
+  background:rgba(255,255,255,.055);border:1px solid var(--border);color:var(--text)}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--c,var(--accent));flex:none}
+.chip-btn{cursor:pointer;transition:all var(--transition)}
+.chip-btn:hover{background:rgba(255,255,255,.13);color:#fff}
 #dash-playstats{margin-bottom:14px}
 #dash-retro{margin-bottom:14px}
 .retro-empty{font-size:13px;color:var(--text2)}
@@ -845,10 +870,13 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <!-- Juego al azar -->
         <div class="dash-card dash-random" id="dash-random-game" style="--card-accent:var(--accent)">
           <h3><span class="icon">🎲</span>Juego al azar
-            <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="loadRandomGame()">↻ Otro</button>
+            <button class="chip chip-btn" style="margin-left:auto" onclick="loadRandomGame()">↻ Otro</button>
           </h3>
           <div class="dash-random-body" id="dash-random-body">
-            <div class="dash-random-img" id="dash-random-img"></div>
+            <div class="dash-random-media" id="dash-random-media">
+              <div class="dash-random-ph" id="dash-random-ph"><span id="dash-random-ph-name"></span></div>
+              <img class="dash-random-cover" id="dash-random-cover" alt="" hidden>
+            </div>
             <div class="dash-random-info">
               <div class="dash-random-name" id="dash-random-name">Buscando…</div>
               <div class="dash-random-facts" id="dash-random-facts"></div>
@@ -2014,14 +2042,36 @@ function esReloadNotice(esReload) {
 function randomGameView(g) {
   // Convierte el juego al azar en tres líneas de texto plano para pintar:
   // datos (plataforma · año · género), uso y sinopsis. Sin datos inventados.
+  // `facts` sale de `randomGameChips` para que sistema/año/género se deriven
+  // en un solo sitio (la tarjeta pinta las etiquetas, no este texto).
   if (!g) return { facts: '', usage: '', desc: '' };
-  const facts = [g.system_name || g.system, g.year, g.genre]
-    .filter(x => x).join(' · ');
+  const facts = randomGameChips(g).map(c => c.label).join(' · ');
   const bits = [];
   if (g.playcount > 0) bits.push(g.playcount === 1 ? '1 vez' : g.playcount + ' veces');
   if (g.gametime_s > 0) bits.push(fmtPlaytime(g.gametime_s));
   if (g.lastplayed) bits.push('última vez ' + fmtDateEs(g.lastplayed));
   return { facts: facts, usage: bits.join(' · '), desc: g.desc || '' };
+}
+function randomGameChips(g) {
+  // Etiquetas redondeadas del espacio 2: sistema, año y tipo de juego.
+  // Solo lo que existe: sin datos inventados.
+  if (!g) return [];
+  const out = [];
+  const sys = g.system_name || g.system;
+  if (sys) out.push({ label: sys, kind: 'system' });
+  if (g.year) out.push({ label: String(g.year), kind: 'year' });
+  if (g.genre) out.push({ label: g.genre, kind: 'genre' });
+  return out;
+}
+function randomGameArt(g) {
+  // Carátula vertical si el juego tiene arte en disco. Si no lo tiene (o si la
+  // imagen no carga) se pinta el wallpaper generado con `label` en el centro.
+  if (!g) return { url: '', label: '', placeholder: true };
+  const label = g.name || g.filename || '';
+  if (!g.has_art) return { url: '', label: label, placeholder: true };
+  const q = g.subpath ? `?subpath=${encodeURIComponent(g.subpath)}` : '';
+  const url = `/api/rom-image/${encodeURIComponent(g.system)}/${encodeURIComponent(g.filename)}${q}`;
+  return { url: url, label: label, placeholder: false };
 }
 function fmtPlaytime(sec) {
   // Segundos -> '45 min' / '1,2 h' (coma decimal, como en español).
@@ -4541,27 +4591,60 @@ async function loadRandomGame() {
   renderRandomGame(res && res.game);
 }
 
+function paintRandomChips(box, chips) {
+  // Etiquetas redondeadas con un punto de color. Se construyen nodo a nodo:
+  // el texto viene de la gamelist y no es HTML de confianza.
+  if (!box) return;
+  box.textContent = '';
+  const COLORS = { system: 'var(--accent)', year: 'var(--yellow)', genre: 'var(--purple2)' };
+  for (const c of chips || []) {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    const dot = document.createElement('i');
+    dot.className = 'dot';
+    dot.style.setProperty('--c', COLORS[c.kind] || 'var(--accent)');
+    chip.appendChild(dot);
+    chip.appendChild(document.createTextNode(c.label || ''));
+    box.appendChild(chip);
+  }
+}
+
 function renderRandomGame(g) {
-  const img   = document.getElementById('dash-random-img');
+  const cover = document.getElementById('dash-random-cover');
+  const ph    = document.getElementById('dash-random-ph');
+  const phName= document.getElementById('dash-random-ph-name');
   const name  = document.getElementById('dash-random-name');
   const facts = document.getElementById('dash-random-facts');
   const usage = document.getElementById('dash-random-usage');
   const desc  = document.getElementById('dash-random-desc');
-  if (!img || !name) return;
+  if (!cover || !name) return;
   const view = randomGameView(g);
   // textContent: la gamelist no es HTML de confianza.
   const set = (el, text) => { if (el) el.textContent = text || ''; };
+  const wallpaper = (label) => {
+    if (phName) phName.textContent = label || '';
+    if (ph) ph.hidden = false;
+    cover.hidden = true;
+    cover.removeAttribute('src');
+  };
   if (!g) {
-    img.style.backgroundImage = '';
-    set(name, 'Sin juegos con arte todavía');
+    wallpaper('');
+    set(name, 'Sin juegos todavía');
     set(facts, ''); set(usage, ''); set(desc, '');
     return;
   }
-  const q = g.subpath ? `?subpath=${encodeURIComponent(g.subpath)}` : '';
-  img.style.backgroundImage =
-    `url('/api/rom-image/${encodeURIComponent(g.system)}/${encodeURIComponent(g.filename)}${q}')`;
+  const art = randomGameArt(g);
+  if (art.placeholder) {
+    wallpaper(art.label);
+  } else {
+    if (ph) ph.hidden = true;
+    cover.hidden = false;
+    // Si la carátula no carga (404) caemos al wallpaper con el nombre encima.
+    cover.onerror = () => wallpaper(art.label);
+    cover.src = art.url;
+  }
   set(name, g.name || g.filename);
-  set(facts, view.facts);
+  paintRandomChips(facts, randomGameChips(g));
   set(usage, view.usage);
   set(desc, view.desc);
 }
