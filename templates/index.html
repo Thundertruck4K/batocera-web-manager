@@ -650,7 +650,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 /* ── Landing (overlay de bienvenida) ── */
 .landing{
   position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(1200px 600px at 50% -10%,rgba(110,168,254,.18),transparent),var(--bg);
+  background:radial-gradient(1200px 600px at 50% -10%,rgba(124,156,255,.18),transparent),var(--bg);
   transition:opacity .35s ease;
 }
 .landing.hidden{opacity:0;pointer-events:none}
@@ -690,9 +690,22 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .fx__spark--4{left:72%;top:16%;animation-delay:-2.8s}
 .fx__spark--5{left:82%;top:22%;animation-delay:-1.4s}
 .fx__spark--6{left:46%;top:20%;animation-delay:-3.2s}
+@keyframes mat{0%{opacity:0;transform:translateY(22px) scale(.955);filter:blur(14px)}100%{opacity:1;transform:none;filter:none}}
+.panel.active .card, .panel.active .dash-card, .panel.active .dash-hero{animation:mat .7s ease-out both}
+.panel.active .card:nth-child(2){animation-delay:.05s}
+.panel.active .card:nth-child(3){animation-delay:.1s}
+.panel.active .card:nth-child(4){animation-delay:.15s}
+.panel.active .dash-card:nth-child(2){animation-delay:.05s}
+.panel.active .dash-card:nth-child(3){animation-delay:.1s}
+.panel.active .dash-card:nth-child(4){animation-delay:.15s}
+.panel.active .dash-card:nth-child(5){animation-delay:.2s}
+.panel.active .dash-card:nth-child(6){animation-delay:.25s}
+.panel.active .dash-card:nth-child(7){animation-delay:.3s}
+.panel.active .dash-card:nth-child(8){animation-delay:.35s}
 @media (prefers-reduced-motion: reduce){
   .landing-ring,.landing-ring2,.landing-glyph,.landing-pulse,.skeleton-pill{animation:none;stroke-dashoffset:0}
   .fx__blob,.fx__bubble,.fx__spark{animation:none}
+  .panel.active .card, .panel.active .dash-card, .panel.active .dash-hero{animation:none}
 }
 </style>
 </head>
