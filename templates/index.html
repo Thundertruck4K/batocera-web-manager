@@ -1447,15 +1447,17 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
         <div class="card">
           <div class="card-title"><span class="icon">🚀</span>Instrucciones de uso</div>
-          <div style="font-size:13px;color:var(--text2);line-height:2">
-            <p><strong style="color:var(--text)">1. Instalar dependencias en Batocera:</strong></p>
-            <div class="log-box" style="color:var(--text2);margin:8px 0 14px">pip install flask pillow</div>
-            <p><strong style="color:var(--text)">2. Copiar y ejecutar el servidor:</strong></p>
-            <div class="log-box" style="color:var(--text2);margin:8px 0 14px">python3 app.py</div>
-            <p><strong style="color:var(--text)">3. Acceder desde cualquier dispositivo en la red:</strong></p>
-            <div class="log-box" style="color:var(--green);margin:8px 0 14px">http://&lt;IP-de-Batocera&gt;:5000</div>
-            <p><strong style="color:var(--text)">4. Para ejecutar al inicio (opcional), agregar a:</strong></p>
-            <div class="log-box" style="color:var(--text2);margin:8px 0">/userdata/system/custom.sh</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.9">
+            <p><strong style="color:var(--text)">1. Clonar e instalar en Batocera (por SSH):</strong></p>
+            <div class="log-box" style="color:var(--text);margin:8px 0 6px">ssh root@batocera</div>
+            <div class="log-box" style="color:var(--text);margin:0 0 6px">git clone https://github.com/Thundertruck4K/batocera-web-manager.git /userdata/system/batocera_web</div>
+            <div class="log-box" style="color:var(--text);margin:0 0 6px">cd /userdata/system/batocera_web &amp;&amp; bash install.sh</div>
+            <p style="margin:0 0 14px;font-size:12.5px">No hace falta instalar dependencias: <strong style="color:var(--text)">Batocera ya trae Python 3</strong>. El instalador te pregunta si quieres añadirlo al arranque automático.</p>
+            <p><strong style="color:var(--text)">2. Arrancar el servidor (si no lo dejó ya en marcha):</strong></p>
+            <div class="log-box" style="color:var(--text);margin:8px 0 14px">python3 /userdata/system/batocera_web/app.py --port 5000</div>
+            <p><strong style="color:var(--text)">3. Abrir el manager desde cualquier dispositivo de tu red:</strong></p>
+            <div class="log-box" style="color:var(--green);margin:8px 0 6px">http://BATOCERA:5000</div>
+            <p style="margin:0;font-size:12.5px">Funciona desde el móvil, el PC o la tele, sin mirar la IP.</p>
           </div>
         </div>
       </div>
