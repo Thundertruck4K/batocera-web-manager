@@ -107,9 +107,9 @@ a{color:var(--accent);text-decoration:none}
 }
 .nav-item:hover{background:var(--bg3);color:var(--text)}
 .nav-item.active{
-  background:linear-gradient(135deg,rgba(110,168,254,.18),rgba(74,118,212,.06));
-  color:#fff;border:1px solid rgba(110,168,254,.45);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 16px -8px rgba(110,168,254,.6);
+  background:linear-gradient(135deg,rgba(124,156,255,.18),rgba(74,118,212,.06));
+  color:#fff;border:1px solid rgba(124,156,255,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 6px 16px -8px rgba(124,156,255,.6);
 }
 .nav-item svg{width:17px;height:17px;flex:none;stroke-width:2;opacity:.92}
 .nav-item.active svg{stroke:var(--accent);opacity:1}
@@ -167,7 +167,7 @@ a{color:var(--accent);text-decoration:none}
 /* ── Superficies de panel: cada tarjeta/panel usa --panel en su propia regla
    (ver .card, .system-card, .modal, .dash-card, .fan-card, .service-status-box) ── */
 
-/* El --purple del spec (#6b3fa0) es un tono oscuro: donde se usa como
+/* El --purple historico (#6b3fa0) era un tono oscuro: donde se usa como
    color de TEXTO se sustituye por un púrpura claro legible sobre panel. */
 #roms-tbody{--purple:var(--purple2)}
 
@@ -232,11 +232,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 }
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-primary{background:var(--accent2);color:#fff;border-color:var(--accent2)}
-.btn-primary:hover:not(:disabled){background:#388bfd;border-color:#388bfd}
+.btn-primary:hover:not(:disabled){background:var(--accent2);border-color:var(--accent2);filter:brightness(1.15)}
 .btn-success{background:var(--green2);color:#fff;border-color:var(--green2)}
-.btn-success:hover:not(:disabled){background:#2ea043}
+.btn-success:hover:not(:disabled){background:var(--green2);border-color:var(--green2);filter:brightness(1.15)}
 .btn-danger{background:var(--red2);color:#fff;border-color:var(--red2)}
-.btn-danger:hover:not(:disabled){background:#f85149}
+.btn-danger:hover:not(:disabled){background:var(--red2);border-color:var(--red2);filter:brightness(1.15)}
 .btn-ghost{background:var(--bg3);color:var(--text2);border-color:var(--border)}
 .btn-ghost:hover:not(:disabled){background:var(--bg4);color:var(--text)}
 .btn-sm{padding:5px 12px;font-size:12px}
@@ -281,17 +281,19 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   display:inline-block;padding:2px 8px;border-radius:20px;
   font-size:11px;font-weight:600;
 }
-.badge-green{background:rgba(63,185,80,.15);color:var(--green)}
-.badge-blue{background:rgba(88,166,255,.15);color:var(--accent)}
-.badge-orange{background:rgba(240,136,62,.15);color:var(--orange)}
-.badge-red{background:rgba(248,81,73,.15);color:var(--red)}
-.badge-purple{background:rgba(188,140,255,.15);color:var(--purple2)}
+.badge-green{background:rgba(63,214,139,.15);color:var(--green)}
+.badge-blue{background:rgba(124,156,255,.15);color:var(--accent)}
+.badge-orange{background:rgba(255,167,107,.15);color:var(--orange)}
+.badge-red{background:rgba(255,107,107,.15);color:var(--red)}
+.badge-purple{background:rgba(169,139,255,.15);color:var(--purple2)}
 
 /* ── System Cards (List) ── */
 .system-card{
-  background:var(--panel);border:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)), var(--panel);
+  border:1px solid var(--border);
   border-radius:var(--radius2);padding:16px 20px;
   margin-bottom:10px;display:flex;align-items:center;gap:16px;
+  box-shadow:var(--shadow);
   transition:border-color var(--transition),box-shadow var(--transition);
 }
 .system-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
@@ -306,7 +308,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   background:var(--bg);border:1px solid var(--border);
   border-radius:var(--radius);
   padding:14px;font-family:var(--mono);font-size:12px;
-  color:#3fb950;max-height:220px;overflow-y:auto;
+  color:var(--green);max-height:220px;overflow-y:auto;
   line-height:1.6;white-space:pre-wrap;word-break:break-all;
 }
 .log-box .log-warn{color:var(--yellow)}
@@ -466,18 +468,18 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 @keyframes fanSpin{to{transform:rotate(360deg)}}
 .fan-blades{animation:fanSpin linear infinite;transform-box:view-box;transform-origin:40px 40px}
 .fan-blades.paused{animation-play-state:paused}
-.fan-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px}
+.fan-card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)), var(--panel);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:var(--shadow)}
 .fan-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent,var(--accent2))}
 .fan-card.fan-fault{border-color:var(--red)}
 .fan-card.fan-stopped{border-color:var(--yellow)}
 .fan-rpm{font-size:26px;font-weight:800;line-height:1;font-family:var(--mono)}
 .fan-sub{font-size:11px;color:var(--text3);text-align:center;line-height:1.4}
 .fan-status{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
-.fan-status.fan-ok{color:var(--green);background:rgba(63,185,80,.12)}
-.fan-status.fan-fault{color:var(--red);background:rgba(248,81,73,.12)}
-.fan-status.fan-stopped{color:var(--yellow);background:rgba(210,153,34,.12)}
-.fan-alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--radius2);background:rgba(248,81,73,.12);border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:600;margin-bottom:14px}
-.fan-alert.warn{background:rgba(210,153,34,.12);border-color:var(--yellow);color:var(--yellow)}
+.fan-status.fan-ok{color:var(--green);background:rgba(63,214,139,.12)}
+.fan-status.fan-fault{color:var(--red);background:rgba(255,107,107,.12)}
+.fan-status.fan-stopped{color:var(--yellow);background:rgba(242,196,107,.12)}
+.fan-alert{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--radius2);background:rgba(255,107,107,.12);border:1px solid var(--red);color:var(--red);font-size:13px;font-weight:600;margin-bottom:14px}
+.fan-alert.warn{background:rgba(242,196,107,.12);border-color:var(--yellow);color:var(--yellow)}
 
 /* ── Braille graphs (btop style) ── */
 .braille{font-family:var(--mono);font-size:11px;line-height:1.2;letter-spacing:2px;margin:3px 0;white-space:pre;text-shadow:0 0 5px currentColor}
@@ -485,8 +487,8 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .net-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .net-graph{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin:5px 0;position:relative;overflow:hidden}
 .net-graph::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.025) 3px 4px)}
-.net-graph.rx{border-color:rgba(63,185,80,.45);box-shadow:inset 0 0 12px rgba(63,185,80,.08)}
-.net-graph.tx{border-color:rgba(88,166,255,.45);box-shadow:inset 0 0 12px rgba(88,166,255,.08)}
+.net-graph.rx{border-color:rgba(63,214,139,.45);box-shadow:inset 0 0 12px rgba(63,214,139,.08)}
+.net-graph.tx{border-color:rgba(124,156,255,.45);box-shadow:inset 0 0 12px rgba(124,156,255,.08)}
 .net-tag{font-size:13px;flex-shrink:0;filter:drop-shadow(0 0 4px currentColor)}
 .net-big{font-size:21px;line-height:1.08;letter-spacing:0;margin:0;text-shadow:0 0 7px currentColor}
 
@@ -527,7 +529,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .service-status-box{
   display:flex;align-items:center;gap:14px;
   padding:16px 20px;border-radius:var(--radius2);
-  border:1px solid var(--border);background:var(--panel);
+  border:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)), var(--panel);
+  box-shadow:var(--shadow);
   margin-bottom:16px;
 }
 .service-icon{font-size:36px;line-height:1}
@@ -540,11 +544,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   border-radius:var(--radius);padding:10px 12px;
   width:100%;color:var(--text);
 }
-.cmd-editor:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(88,166,255,.15)}
+.cmd-editor:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px rgba(124,156,255,.15)}
 .custom-sh-preview{
   background:var(--bg);border:1px solid var(--border);
   border-radius:var(--radius);padding:12px;
-  font-family:var(--mono);font-size:11px;color:#a8d8f0;
+  font-family:var(--mono);font-size:11px;color:var(--text2);
   max-height:160px;overflow-y:auto;white-space:pre;
 }
 .check-row{
@@ -664,9 +668,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .landing-ring{stroke-dasharray:290;stroke-dashoffset:290;animation:landing-draw 1.6s ease forwards}
 .landing-ring2{animation-delay:.25s;opacity:.55}
 .landing-glyph{stroke-dasharray:120;stroke-dashoffset:120;animation:landing-draw 1s ease .4s forwards}
-.landing-pulse{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(110,168,254,.45);animation:landing-pulse 2s ease-out infinite}
+.landing-pulse{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(124,156,255,.45);animation:landing-pulse 2s ease-out infinite}
 @keyframes landing-draw{to{stroke-dashoffset:0}}
-@keyframes landing-pulse{to{box-shadow:0 0 0 34px rgba(110,168,254,0)}}
+@keyframes landing-pulse{to{box-shadow:0 0 0 34px rgba(124,156,255,0)}}
 @keyframes landing-blink{50%{opacity:.4}}
 /* Aurora Glass FX */
 .fx{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
@@ -894,14 +898,14 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <div class="dash-grid" id="dash-row2" style="grid-template-columns:1fr 1fr 1fr"></div>
 
         <!-- Fila Ventiladores -->
-        <div class="dash-card" style="--card-accent:#0d9488;margin-bottom:14px">
+        <div class="dash-card" style="--card-accent:var(--aurora);margin-bottom:14px">
           <h3><span class="icon">🌀</span>Ventiladores</h3>
           <div id="fan-alert"></div>
           <div class="dash-grid" id="dash-row-fans" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:0"></div>
         </div>
 
         <!-- Fila 3: Almacenamiento (diario 18:00) -->
-        <div class="dash-card" style="--card-accent:#3fb950;margin-bottom:14px">
+        <div class="dash-card" style="--card-accent:var(--green);margin-bottom:14px">
           <h3><span class="icon">💾</span>Almacenamiento</h3>
           <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:24px;align-items:start">
             <div id="dash-storage"></div>
@@ -910,7 +914,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         </div>
 
         <!-- Noticias de emulación (RSS español) -->
-        <div class="dash-card" style="--card-accent:#d29922;margin-bottom:14px">
+        <div class="dash-card" style="--card-accent:var(--yellow);margin-bottom:14px">
           <h3><span class="icon">📰</span>Noticias de emulación <span style="font-size:11px;color:var(--text3);font-weight:400">· RSS en español · actualiza 5 min</span></h3>
           <div id="dash-news"></div>
         </div>
@@ -1080,7 +1084,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
                   📂 Seleccionar imagen
                   <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="previewLogo(event)">
                 </label>
-                <button class="btn btn-ghost btn-sm" style="background:rgba(63,185,80,.1);border-color:var(--green2);color:var(--green)" onclick="uploadLogo()">⬆ Instalar logo</button>
+                <button class="btn btn-ghost btn-sm" style="background:rgba(63,214,139,.1);border-color:var(--green2);color:var(--green)" onclick="uploadLogo()">⬆ Instalar logo</button>
                 <button class="btn btn-ghost btn-sm" style="color:var(--text3)" onclick="clearLogo()">✖ Limpiar</button>
               </div>
             </div>
@@ -1180,7 +1184,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             Para que EmulationStation muestre el logo de tu sistema personalizado en el tema activo, 
             coloca los archivos en esta estructura:
           </div>
-          <div class="log-box" id="theme-tree-box" style="color:#a8d8f0;max-height:200px">Cargando…</div>
+          <div class="log-box" id="theme-tree-box" style="color:var(--text2);max-height:200px">Cargando…</div>
         </div>
         <div class="card">
           <div class="card-title"><span class="icon">ℹ</span>Notas sobre logos y assets</div>
@@ -1237,7 +1241,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             <div id="detail-badges" style="display:flex;gap:6px;flex-wrap:wrap"></div>
             <div style="flex:1"></div>
             <button class="btn btn-ghost btn-sm" onclick="openBiosPanel()">🔍 Verificar BIOS</button>
-            <button class="btn btn-ghost btn-sm" onclick="openScraperForSystem()" style="background:rgba(88,166,255,.1);border-color:var(--accent2);color:var(--accent)">🌐 Scrapear sistema</button>
+            <button class="btn btn-ghost btn-sm" onclick="openScraperForSystem()" style="background:rgba(124,156,255,.1);border-color:var(--accent2);color:var(--accent)">🌐 Scrapear sistema</button>
             <label class="btn btn-primary btn-sm" style="cursor:pointer">
               ⬆ Subir ROM
               <input type="file" id="rom-upload-file" multiple style="display:none" onchange="uploadRoms()">
@@ -1415,13 +1419,13 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <div class="card-title"><span class="icon">🚀</span>Instrucciones de uso</div>
           <div style="font-size:13px;color:var(--text2);line-height:2">
             <p><strong style="color:var(--text)">1. Instalar dependencias en Batocera:</strong></p>
-            <div class="log-box" style="color:#a8d8f0;margin:8px 0 14px">pip install flask pillow</div>
+            <div class="log-box" style="color:var(--text2);margin:8px 0 14px">pip install flask pillow</div>
             <p><strong style="color:var(--text)">2. Copiar y ejecutar el servidor:</strong></p>
-            <div class="log-box" style="color:#a8d8f0;margin:8px 0 14px">python3 app.py</div>
+            <div class="log-box" style="color:var(--text2);margin:8px 0 14px">python3 app.py</div>
             <p><strong style="color:var(--text)">3. Acceder desde cualquier dispositivo en la red:</strong></p>
-            <div class="log-box" style="color:#3fb950;margin:8px 0 14px">http://&lt;IP-de-Batocera&gt;:5000</div>
+            <div class="log-box" style="color:var(--green);margin:8px 0 14px">http://&lt;IP-de-Batocera&gt;:5000</div>
             <p><strong style="color:var(--text)">4. Para ejecutar al inicio (opcional), agregar a:</strong></p>
-            <div class="log-box" style="color:#a8d8f0;margin:8px 0">/userdata/system/custom.sh</div>
+            <div class="log-box" style="color:var(--text2);margin:8px 0">/userdata/system/custom.sh</div>
           </div>
         </div>
       </div>
@@ -1452,7 +1456,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       <h2 id="rom-modal-title" style="font-size:17px">🎮 Detalle del juego</h2>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-primary btn-sm" id="rom-modal-edit-btn" onclick="toggleRomEdit()">✏ Editar</button>
-        <button class="btn btn-ghost btn-sm" onclick="openScraperForRom()" style="background:rgba(88,166,255,.1);border-color:var(--accent2);color:var(--accent)">🔍 Scrapear</button>
+        <button class="btn btn-ghost btn-sm" onclick="openScraperForRom()" style="background:rgba(124,156,255,.1);border-color:var(--accent2);color:var(--accent)">🔍 Scrapear</button>
         <button class="btn btn-ghost btn-sm" id="rom-modal-save-btn" onclick="saveRomEdit()" style="display:none">💾 Guardar</button>
         <button class="btn btn-ghost btn-sm" id="rom-modal-cancel-btn" onclick="cancelRomEdit()" style="display:none">✕ Cancelar</button>
         <button class="modal-close" onclick="closeModal('modal-rom')">✕</button>
@@ -1685,7 +1689,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <span id="sc-sys-pct">0%</span>
         </div>
         <div style="height:10px;background:var(--bg3);border-radius:5px;overflow:hidden">
-          <div id="sc-sys-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),#58a6ff);border-radius:5px;transition:width .3s"></div>
+          <div id="sc-sys-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:5px;transition:width .3s"></div>
         </div>
         <div id="sc-sys-stats" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
       </div>
@@ -1802,7 +1806,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <span id="sc-batch-pct">0%</span>
         </div>
         <div style="height:10px;background:var(--bg3);border-radius:5px;overflow:hidden">
-          <div id="sc-batch-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),#58a6ff);border-radius:5px;transition:width .3s"></div>
+          <div id="sc-batch-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:5px;transition:width .3s"></div>
         </div>
         <div id="sc-batch-stats" style="font-size:11px;color:var(--text3);margin-top:4px"></div>
       </div>
@@ -1862,7 +1866,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <span id="upload-pct-label">0%</span>
       </div>
       <div style="height:12px;background:var(--bg3);border-radius:6px;overflow:hidden;position:relative">
-        <div id="upload-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),#58a6ff);border-radius:6px;transition:width .15s ease"></div>
+        <div id="upload-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:6px;transition:width .15s ease"></div>
         <div id="upload-bar-anim" style="position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);animation:shimmer 1.2s infinite;display:none"></div>
       </div>
     </div>
@@ -1930,10 +1934,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 <!-- >>> UI-HELPERS (puros, testables sin DOM) >>> -->
 <script>
 const HW_COLORS = {
-  console:'#1f6feb',portable:'#2d5a27',computer:'#6b3fa0',
-  arcade:'#8b2020',engine:'#6b5a00',fantasy:'#1a5a6b',other:'#444'
+  console:'#7C9CFF',portable:'#3FD68B',computer:'#A98BFF',
+  arcade:'#FF6B6B',engine:'#F2C46B',fantasy:'#22D3EE',other:'#8B93AD'
 };
-const CARD_PALETTE = ['#1f6feb','#2d5a27','#6b3fa0','#8b2020','#6b5a00','#1a5a6b','#3a3f46'];
+const CARD_PALETTE = ['#7C9CFF','#3FD68B','#A98BFF','#FF6B6B','#F2C46B','#22D3EE','#7A5BD4'];
 function cardColor(s){
   const name = (s && typeof s === 'object') ? (s.name || s.system || '') : (s || '');
   const nm = String(name || '');
@@ -2911,9 +2915,9 @@ function renderRoms(roms) {
 
   // Botón "subir nivel" si estamos dentro de una subcarpeta
   const upRow = currentSubpath ? `
-    <tr style="border-bottom:1px solid var(--border);cursor:pointer;background:rgba(88,166,255,.04)"
+    <tr style="border-bottom:1px solid var(--border);cursor:pointer;background:rgba(124,156,255,.04)"
         onclick="navigateUp()" onmouseover="this.style.background='var(--bg3)'"
-        onmouseout="this.style.background='rgba(88,166,255,.04)'">
+        onmouseout="this.style.background='rgba(124,156,255,.04)'">
       <td style="padding:9px 14px;color:var(--text3)">↩</td>
       <td colspan="5" style="padding:9px 14px;color:var(--accent);font-weight:600">.. (subir un nivel)</td>
     </tr>` : '';
@@ -2950,7 +2954,7 @@ function renderRoms(roms) {
         </td>
       </tr>`;
     }
-    const extColor = rom.is_rom ? '#3fb950' : '#8b949e';
+    const extColor = rom.is_rom ? '#3FD68B' : '#8B93AD';
     const infoBadges = [
       rom.has_image ? '<span title="Tiene imagen" style="cursor:default">🖼</span>' : '',
       rom.has_video ? '<span title="Tiene video" style="cursor:default">🎬</span>' : '',
@@ -3284,7 +3288,7 @@ function uploadRoms() {
       // Terminar
       document.getElementById('upload-bar-anim').style.display = 'none';
       document.getElementById('upload-bar').style.background   =
-        errors.length ? '#f85149' : 'var(--green)';
+        errors.length ? '#FF6B6B' : 'var(--green)';
       document.getElementById('upload-status-label').textContent =
         errors.length
           ? `✖ ${errors.length} error(s) — ${results.length} subidos`
@@ -4707,7 +4711,7 @@ let _kpis = {};
 
 function kpiSkeleton() {
   return `
-    <div class="dash-card" id="kpi-cpu" style="--card-accent:#f0883e">
+    <div class="dash-card" id="kpi-cpu" style="--card-accent:var(--orange)">
       <h3><span class="icon">⚙</span>CPU</h3>
       <div class="kpi-val" id="kpi-cpu-val">--</div>
       <div class="kpi-sub" id="kpi-cpu-sub">Uso</div>
@@ -4715,7 +4719,7 @@ function kpiSkeleton() {
       <div class="kv-row"><span class="kv-key">Temperatura</span><span class="kv-val" id="kpi-cpu-temp">--</span></div>
       <div class="kv-row"><span class="kv-key">Fuente Tº</span><span class="kv-val" id="kpi-cpu-src">--</span></div>
     </div>
-    <div class="dash-card" id="kpi-gpu" style="--card-accent:#bc8cff">
+    <div class="dash-card" id="kpi-gpu" style="--card-accent:var(--purple2)">
       <h3><span class="icon">🎨</span>GPU</h3>
       <div class="kpi-sub" id="kpi-gpu-name">—</div>
       <div class="kpi-val" id="kpi-gpu-val">--</div>
@@ -4725,7 +4729,7 @@ function kpiSkeleton() {
       <div class="kv-row"><span class="kv-key">VRAM</span><span class="kv-val" id="kpi-gpu-vram">--</span></div>
       <div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val" id="kpi-gpu-power">--</span></div>
     </div>
-    <div class="dash-card" id="kpi-ram" style="--card-accent:#58a6ff">
+    <div class="dash-card" id="kpi-ram" style="--card-accent:var(--accent)">
       <h3><span class="icon">🧠</span>Memoria RAM</h3>
       <div class="kpi-val" id="kpi-ram-val">--</div>
       <div class="kpi-sub">En uso</div>
@@ -4733,7 +4737,7 @@ function kpiSkeleton() {
       <div class="kv-row"><span class="kv-key">Usada</span><span class="kv-val" id="kpi-ram-used">--</span></div>
       <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="kpi-ram-total">--</span></div>
     </div>
-    <div class="dash-card" id="kpi-disk" style="--card-accent:#3fb950">
+    <div class="dash-card" id="kpi-disk" style="--card-accent:var(--green)">
       <h3><span class="icon">💾</span>Disco</h3>
       <div class="kpi-val" id="kpi-disk-val">--</div>
       <div class="kpi-sub" id="kpi-disk-mount">Montaje</div>
@@ -4741,14 +4745,14 @@ function kpiSkeleton() {
       <div class="kv-row"><span class="kv-key">Usado</span><span class="kv-val" id="kpi-disk-used">--</span></div>
       <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="kpi-disk-total">--</span></div>
     </div>
-    <div class="dash-card" id="kpi-net" style="--card-accent:#58a6ff">
+    <div class="dash-card" id="kpi-net" style="--card-accent:var(--accent)">
       <h3><span class="icon">🌐</span>Red / IP</h3>
       <div class="kpi-val" id="kpi-net-ip" style="font-size:22px">--</div>
       <div class="kpi-sub" id="kpi-net-iface">Interfaz activa</div>
       <div class="kv-row"><span class="kv-key">↓ Recepción</span><span class="kv-val" id="kpi-net-rx">--</span></div>
       <div class="kv-row"><span class="kv-key">↑ Envío</span><span class="kv-val" id="kpi-net-tx">--</span></div>
     </div>
-    <div class="dash-card" id="kpi-es" style="--card-accent:#da3633">
+    <div class="dash-card" id="kpi-es" style="--card-accent:var(--red)">
       <h3><span class="icon">🎮</span>EmulationStation</h3>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span class="status-dot dot-red" id="kpi-es-dot"></span>
@@ -4789,7 +4793,7 @@ function kpiTemp(id, t) {
 
 function kpiRamp(pct) {
   const v = parseFloat(pct) || 0;
-  return v < 60 ? '#3fb950' : v < 80 ? '#d29922' : '#f85149';
+  return v < 60 ? '#3FD68B' : v < 80 ? '#F2C46B' : '#FF6B6B';
 }
 
 function kpiGb(mb) {
@@ -4841,7 +4845,7 @@ function renderKpis(d) {
     kpiSet('kpi-gpu-vram', (g0.mem_used || g0.mem_total) ? `${g0.mem_used || '?'} / ${g0.mem_total || '?'}` : null);
     kpiSet('kpi-gpu-power', g0.power);
     if (gpuCard) gpuCard.style.setProperty('--card-accent',
-      g0.is_nvidia ? '#76b900' : (g0.vendor === 'AMD' ? '#ff6900' : '#bc8cff'));
+      g0.is_nvidia ? '#76B900' : (g0.vendor === 'AMD' ? '#FFA76B' : '#A98BFF'));
   }
 
   // RAM — usado/total + %
@@ -4891,7 +4895,7 @@ function renderKpis(d) {
   const dot = document.getElementById('kpi-es-dot');
   if (dot) dot.className = 'status-dot ' + (running ? 'dot-green' : 'dot-red');
   const esCard = document.getElementById('kpi-es');
-  if (esCard) esCard.style.setProperty('--card-accent', running ? '#238636' : '#da3633');
+  if (esCard) esCard.style.setProperty('--card-accent', running ? '#1F8F57' : '#C6433A');
   kpiSet('kpi-es-pid', running ? es.pid : null);
   kpiSet('kpi-es-port', running ? es.port : null);
   setEsPending(!!es.restart_pending);
@@ -4904,7 +4908,7 @@ function renderRow1(d) {
   const esLabel = es.running ? `Corriendo (PID ${es.pid})` : 'Detenido';
 
   document.getElementById('dash-row1').innerHTML = `
-    <div class="dash-card" style="--card-accent:#1f6feb">
+    <div class="dash-card" style="--card-accent:var(--accent)">
       <h3><span class="icon">🐧</span>Batocera</h3>
       <div class="metric-big" style="font-size:22px">${escHtml(d.batocera_version||'?')}</div>
       <div class="metric-sub" style="margin-top:10px">
@@ -4912,7 +4916,7 @@ function renderRow1(d) {
         <div class="kv-row"><span class="kv-key">Núcleos</span><span class="kv-val">${(d.cpu&&d.cpu.cores)||'?'}</span></div>
       </div>
     </div>
-    <div class="dash-card" style="--card-accent:${es.running?'#238636':'#da3633'}">
+    <div class="dash-card" style="--card-accent:${es.running?'var(--green2)':'var(--red2)'}">
       <h3><span class="icon">🎮</span>EmulationStation</h3>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         ${esDot}
@@ -4920,7 +4924,7 @@ function renderRow1(d) {
       </div>
       <div class="kv-row"><span class="kv-key">Uptime sistema</span><span class="kv-val">${escHtml(d.uptime||'?')}</span></div>
     </div>
-    <div class="dash-card" style="--card-accent:#6e40c9">
+    <div class="dash-card" style="--card-accent:var(--purple)">
       <h3><span class="icon">⏱</span>Tiempo encendido</h3>
       <div class="metric-big">${escHtml(d.uptime||'?')}</div>
       <div class="metric-sub">Sistema activo</div>
@@ -4952,9 +4956,9 @@ function tachoInit(id, accent, opts) {
     ticks += `<line x1="${(cx + r1 * Math.cos(t)).toFixed(2)}" y1="${(cy - r1 * Math.sin(t)).toFixed(2)}" x2="${(cx + r2 * Math.cos(t)).toFixed(2)}" y2="${(cy - r2 * Math.sin(t)).toFixed(2)}" stroke="var(--text3)" stroke-width="${major ? 2 : 1}" opacity="${major ? 0.85 : 0.4}"/>`;
   }
   const zones =
-    `<path d="${tachoArcPath(cx, cy, 66, 0, gy)}" fill="none" stroke="rgba(63,185,80,.8)" stroke-width="8" stroke-linecap="round"/>` +
-    `<path d="${tachoArcPath(cx, cy, 66, gy, rd)}" fill="none" stroke="rgba(210,153,34,.8)" stroke-width="8" stroke-linecap="round"/>` +
-    `<path d="${tachoArcPath(cx, cy, 66, rd, 100)}" fill="none" stroke="rgba(248,81,73,.85)" stroke-width="8" stroke-linecap="round"/>`;
+    `<path d="${tachoArcPath(cx, cy, 66, 0, gy)}" fill="none" stroke="rgba(63,214,139,.8)" stroke-width="8" stroke-linecap="round"/>` +
+    `<path d="${tachoArcPath(cx, cy, 66, gy, rd)}" fill="none" stroke="rgba(242,196,107,.8)" stroke-width="8" stroke-linecap="round"/>` +
+    `<path d="${tachoArcPath(cx, cy, 66, rd, 100)}" fill="none" stroke="rgba(255,107,107,.85)" stroke-width="8" stroke-linecap="round"/>`;
   const needle = `<polygon class="needle" id="needle-${id}" points="100,98 100,93.6 158,98 100,102.4" fill="${accent}"/>`;
   const svg = `<svg viewBox="0 0 200 142" width="100%" style="display:block;max-width:${maxW}px;margin:0 auto">
     ${ticks}
@@ -4999,18 +5003,18 @@ function renderRow2(d) {
     .filter((g, i, arr) => arr.findIndex(x => x.vendor === g.vendor) === i);
   const g0    = gpuList[0] || null;
   const gUtil = g0 ? (parseFloat(g0.util) || 0) : 0;
-  const accentG = g0 && g0.is_nvidia ? '#76b900' : (g0 && g0.vendor === 'AMD' ? '#ff6900' : '#bc8cff');
+  const accentG = g0 && g0.is_nvidia ? '#76B900' : (g0 && g0.vendor === 'AMD' ? '#FFA76B' : '#A98BFF');
 
-  const cpuColor = cpuPct < 60 ? '#3fb950' : cpuPct < 80 ? '#d29922' : '#f85149';
-  const ramColor = ramPct < 60 ? '#3fb950' : ramPct < 80 ? '#d29922' : '#f85149';
-  const gColor   = gUtil < 60 ? '#3fb950' : gUtil < 80 ? '#d29922' : '#f85149';
+  const cpuColor = cpuPct < 60 ? '#3FD68B' : cpuPct < 80 ? '#F2C46B' : '#FF6B6B';
+  const ramColor = ramPct < 60 ? '#3FD68B' : ramPct < 80 ? '#F2C46B' : '#FF6B6B';
+  const gColor   = gUtil < 60 ? '#3FD68B' : gUtil < 80 ? '#F2C46B' : '#FF6B6B';
 
   const cpuTemp  = cpu.temp;
 
   const row = document.getElementById('dash-row2');
   if (!_tachos.init) {
     row.innerHTML = `
-      <div class="dash-card" style="--card-accent:#f0883e">
+      <div class="dash-card" style="--card-accent:var(--orange)">
         <h3><span class="icon">⚙</span>CPU</h3>
         <div style="font-size:10px;color:var(--text3);text-align:center;margin-bottom:2px;letter-spacing:.4px">USO</div>
         <div class="tacho" id="tacho-cpu"></div>
@@ -5021,7 +5025,7 @@ function renderRow2(d) {
           <div class="kv-row"><span class="kv-key">Fuente Tº</span><span class="kv-val" id="cpu-tempsrc">—</span></div>
         </div>
       </div>
-      <div class="dash-card" style="--card-accent:#58a6ff">
+      <div class="dash-card" style="--card-accent:var(--accent)">
         <h3><span class="icon">🧠</span>Memoria RAM</h3>
         <div class="tacho" id="tacho-ram"></div>
         <div class="tacho-info">
@@ -5042,15 +5046,15 @@ function renderRow2(d) {
           <div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val" id="gpu-power">—</span></div>
         </div>
       </div>` : `
-      <div class="dash-card" style="--card-accent:#484f58">
+      <div class="dash-card" style="--card-accent:var(--text3)">
         <h3><span class="icon">🎨</span>GPU</h3>
         <div style="color:var(--text3);font-size:13px;text-align:center;padding:20px 0">No detectada<br><span style="font-size:11px">nvidia-smi no disponible</span></div>
       </div>`}
     `;
     _tachos.init = true;
-    _tachos.cpu  = tachoInit('cpu', '#f0883e');
-    _tachos.cpuT = tachoInit('cpu-temp', '#f0883e', {gy: 60, rd: 80, maxW: 170});
-    _tachos.ram  = tachoInit('ram', '#58a6ff');
+    _tachos.cpu  = tachoInit('cpu', '#FFA76B');
+    _tachos.cpuT = tachoInit('cpu-temp', '#FFA76B', {gy: 60, rd: 80, maxW: 170});
+    _tachos.ram  = tachoInit('ram', '#7C9CFF');
     _tachos.gpu  = g0 ? tachoInit('gpu', accentG) : null;
   }
 
@@ -5058,7 +5062,7 @@ function renderRow2(d) {
   tachoSet(_tachos.cpu, cpuPct, cpuColor, `${cpuPct}%`, 'CPU');
   if (_tachos.cpuT) {
     const cTemp = (cpuTemp != null && !isNaN(cpuTemp)) ? cpuTemp : 0;
-    const tColor = cpuTemp == null ? '#f0883e' : cTemp < 60 ? '#3fb950' : cTemp < 80 ? '#d29922' : '#f85149';
+    const tColor = cpuTemp == null ? '#FFA76B' : cTemp < 60 ? '#3FD68B' : cTemp < 80 ? '#F2C46B' : '#FF6B6B';
     tachoSet(_tachos.cpuT, cTemp, tColor, cpuTemp != null ? `${Math.round(cTemp)}°C` : 'N/D', 'Tº CPU');
   }
   tachoSet(_tachos.ram, ramPct, ramColor, `${ramPct}%`, 'RAM');
@@ -5132,11 +5136,11 @@ function renderRow3(d) {
   }).join('');
 
   document.getElementById('dash-row3').innerHTML = `
-    <div class="dash-card" style="--card-accent:#58a6ff">
+    <div class="dash-card" style="--card-accent:var(--accent)">
       <h3><span class="icon">🌐</span>Red</h3>
       ${netHtml}
     </div>
-    <div class="dash-card" style="--card-accent:#d29922">
+    <div class="dash-card" style="--card-accent:var(--yellow)">
       <h3><span class="icon">📋</span>Procesos (top CPU)</h3>
       <table class="proc-table">
         <thead><tr><th>Proceso</th><th>CPU</th><th>CPU↦</th><th>MEM</th><th>PID</th></tr></thead>
@@ -5157,7 +5161,7 @@ function renderStorage(d) {
   _storageSig = sig;
   const html = disk.length ? disk.map((p, i) => {
     const pct   = p.pct || 0;
-    const color = pct < 70 ? '#3fb950' : pct < 85 ? '#d29922' : '#f85149';
+    const color = pct < 70 ? '#3FD68B' : pct < 85 ? '#F2C46B' : '#FF6B6B';
     return `<div class="tank-item">
       <div class="tank-gauge">${tankGauge(pct, i)}</div>
       <div style="flex:1;min-width:0">
@@ -5281,11 +5285,11 @@ function tankGauge(pct, idx) {
   const Y     = level;
   const id    = idx;
   const isOk  = pct < 70, isWarn = pct < 85;
-  const cTop  = isOk ? '#57d9a3' : isWarn ? '#e3b341' : '#f87171';
-  const cBot  = isOk ? '#1e7a44' : isWarn ? '#8a5a12' : '#a11c14';
+  const cTop  = isOk ? '#3FD68B' : isWarn ? '#F2C46B' : '#FF6B6B';
+  const cBot  = isOk ? '#1F7A4D' : isWarn ? '#8A6A1F' : '#A8342F';
   const wave  = `M0 ${Y} Q 6.25 ${Y-4} 12.5 ${Y} T 25 ${Y} T 37.5 ${Y} T 50 ${Y} T 62.5 ${Y} T 75 ${Y} T 87.5 ${Y} T 100 ${Y} T 112.5 ${Y} T 125 ${Y} L 125 112 L 0 112 Z`;
   return `
-  <svg viewBox="0 0 100 100" width="88" height="88" style="display:block;filter:drop-shadow(0 0 6px ${isOk?'rgba(63,185,80,.45)':isWarn?'rgba(210,153,34,.45)':'rgba(248,81,73,.5)'})">
+  <svg viewBox="0 0 100 100" width="88" height="88" style="display:block;filter:drop-shadow(0 0 6px ${isOk?'rgba(63,214,139,.45)':isWarn?'rgba(242,196,107,.45)':'rgba(255,107,107,.5)'})">
     <defs>
       <linearGradient id="tg-${id}" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="${cTop}"/>
@@ -5378,7 +5382,7 @@ function fanSvg(rpm, status) {
   const stopped = status !== 'ok';
   const dur     = stopped ? 60 : Math.round(Math.max(0.25, Math.min(2.2, 2.2 - rpm / 2500)) * 100) / 100;
   const paused  = stopped ? 'paused' : '';
-  const blade   = '<path d="M40 44 C45 35 47 25 43 15 C41 9 36 9 34 16 C30 25 34 34 40 44 Z" fill="#c7d2e0" stroke="#9fb2c7" stroke-width="1"/>';
+  const blade   = '<path d="M40 44 C45 35 47 25 43 15 C41 9 36 9 34 16 C30 25 34 34 40 44 Z" fill="#C9CFE0" stroke="#8B93AD" stroke-width="1"/>';
   return `
   <svg viewBox="0 0 80 80" width="84" height="84" style="display:block">
     <circle cx="40" cy="40" r="35" fill="rgba(255,255,255,.04)" stroke="var(--border)" stroke-width="2"/>
