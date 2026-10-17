@@ -114,8 +114,8 @@ def test_activity_svg_path():
 def test_tecnico_conservado():
     h = _html()
     for anchor in ('id="dash-kpis"', 'id="dash-row1"', 'id="dash-row2"',
-                   'id="dash-row-fans"', 'id="dash-storage"', 'id="dash-news"',
-                   'id="dash-row3"'):
+                   'id="dash-row-storage-fans"', 'id="dash-storage"', 'id="dash-row-fans"',
+                   'id="dash-news"', 'id="dash-es-info"'):
         assert anchor in h, f"falta {anchor}"
 
 

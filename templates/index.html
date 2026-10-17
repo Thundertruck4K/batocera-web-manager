@@ -941,30 +941,33 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <!-- Fila 2: CPU + RAM + GPU -->
         <div class="dash-grid" id="dash-row2" style="grid-template-columns:1fr 1fr 1fr"></div>
 
-        <!-- Fila Ventiladores -->
-        <div class="dash-card" style="--card-accent:var(--aurora);margin-bottom:14px">
-          <h3><span class="icon">🌀</span>Ventiladores</h3>
-          <div id="fan-alert"></div>
-          <div class="dash-grid" id="dash-row-fans" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:0"></div>
-        </div>
-
-        <!-- Fila 3: Almacenamiento (diario 18:00) -->
-        <div class="dash-card" style="--card-accent:var(--green);margin-bottom:14px">
-          <h3><span class="icon">💾</span>Almacenamiento</h3>
-          <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:24px;align-items:start">
-            <div id="dash-storage"></div>
-            <div id="dash-power"></div>
+        <!-- Fila: Almacenamiento + Ventiladores (en una sola fila) -->
+        <div class="dash-grid" id="dash-row-storage-fans" style="grid-template-columns:1.15fr 1fr;margin-bottom:14px">
+          <div class="dash-card" style="--card-accent:var(--green)">
+            <h3><span class="icon">💾</span>Almacenamiento</h3>
+            <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:16px;align-items:start">
+              <div id="dash-storage"></div>
+              <div id="dash-power"></div>
+            </div>
+          </div>
+          <div class="dash-card" style="--card-accent:var(--aurora)">
+            <h3><span class="icon">🌀</span>Ventiladores</h3>
+            <div id="fan-alert"></div>
+            <div class="dash-grid" id="dash-row-fans" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:0"></div>
           </div>
         </div>
 
-        <!-- Noticias de emulación (RSS español) -->
-        <div class="dash-card" style="--card-accent:var(--yellow);margin-bottom:14px">
-          <h3><span class="icon">📰</span>Noticias de emulación <span style="font-size:11px;color:var(--text3);font-weight:400">· RSS en español · actualiza 5 min</span></h3>
-          <div id="dash-news"></div>
+        <!-- Fila: Actualizaciones de Batocera + EmulationStation -->
+        <div class="dash-grid" id="dash-row-news-es" style="grid-template-columns:1.4fr 1fr;margin-bottom:14px">
+          <div class="dash-card" style="--card-accent:var(--yellow)">
+            <h3><span class="icon">📰</span>Actualizaciones de Batocera <span style="font-size:11px;color:var(--text3);font-weight:400">· GitHub releases · cada 30 min</span></h3>
+            <div id="dash-news" style="max-height:260px;overflow-y:auto"></div>
+          </div>
+          <div class="dash-card" style="--card-accent:var(--accent)">
+            <h3><span class="icon">🎮</span>EmulationStation</h3>
+            <div id="dash-es-info"></div>
+          </div>
         </div>
-
-        <!-- Fila 4: Red + Procesos -->
-        <div class="dash-grid" id="dash-row3" style="grid-template-columns:1fr 1.4fr"></div>
       </div>
 
       <!-- ═══════════════════════════════════════════════
@@ -4608,8 +4611,8 @@ function renderDashboard(d) {
   renderRow2(d);
   renderStorage(d);
   renderPower(d);
-  renderRow3(d);
   renderFans(d.fans);
+  renderEsInfo(d);
 }
 
 // ── Hero + juego al azar + actividad de juego ───────────────────
@@ -5082,7 +5085,7 @@ function tachoInit(id, accent, opts) {
   opts = opts || {};
   const gy  = opts.gy  !== undefined ? opts.gy  : 60;   // verde → amarillo
   const rd  = opts.rd  !== undefined ? opts.rd  : 85;   // amarillo → rojo
-  const maxW = opts.maxW || 220;
+  const maxW = opts.maxW || 150;
   const cx = 100, cy = 98, r = 80;
   let ticks = '';
   for (let v = 0; v <= 100; v += 5) {
@@ -5189,7 +5192,7 @@ function renderRow2(d) {
     `;
     _tachos.init = true;
     _tachos.cpu  = tachoInit('cpu', '#FFA76B');
-    _tachos.cpuT = tachoInit('cpu-temp', '#FFA76B', {gy: 60, rd: 80, maxW: 170});
+    _tachos.cpuT = tachoInit('cpu-temp', '#FFA76B', {gy: 60, rd: 80, maxW: 120});
     _tachos.ram  = tachoInit('ram', '#7C9CFF');
     _tachos.gpu  = g0 ? tachoInit('gpu', accentG) : null;
   }
@@ -5227,63 +5230,6 @@ function renderRow2(d) {
     if (gv) gv.textContent = g0.mem_used || g0.mem_total ? `${g0.mem_used||'?'} / ${g0.mem_total||'?'}` : '—';
     if (gp) gp.textContent = g0.power || '—';
   }
-}
-
-// ── Fila 3: Disco + Red + Procesos ──────────────────────────────
-function renderRow3(d) {
-  collectHist(d);
-  const net  = d.network || [];
-  const proc = d.processes || [];
-
-  // Red — braille rx/tx dinámico (pixeles grandes estilo btop)
-  const netHtml = net.length ? net.map(n => {
-    const h     = _netHist[n.iface] || {rx:[0], tx:[0]};
-    const rxNow = fmtRate(h.rx[h.rx.length-1] || 0);
-    const txNow = fmtRate(h.tx[h.tx.length-1] || 0);
-    return `<div class="net-iface">
-      <div class="net-head">
-        <span style="font-size:13px;font-weight:600">${escHtml(n.iface)}</span>
-        <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">↓ <b style="color:var(--green)">${rxNow}</b> · ↑ <b style="color:var(--accent)">${txNow}</b></span>
-      </div>
-      <div class="net-graph rx">
-        <span class="net-tag" style="color:var(--green)">▼</span>
-        <pre class="braille net-big" style="color:var(--green)">${brailleGraph(h.rx, 3)}</pre>
-      </div>
-      <div class="net-graph tx">
-        <span class="net-tag" style="color:var(--accent)">▲</span>
-        <pre class="braille net-big" style="color:var(--accent)">${brailleGraph(h.tx, 3)}</pre>
-      </div>
-    </div>`;
-  }).join('')
-  : '<div style="color:var(--text3);font-size:12px">Sin interfaces de red</div>';
-
-  // Procesos — braille sparkline de CPU por proceso
-  const procRows = proc.map(p => {
-    const cpu   = parseFloat(p.cpu) || 0;
-    const color = cpu > 50 ? 'var(--red)' : cpu > 20 ? 'var(--yellow)' : 'var(--text2)';
-    const g     = brailleGraph(_procHist[p.pid || p.cmd] || [cpu], 1);
-    return `<tr>
-      <td>${escHtml(p.cmd)}</td>
-      <td style="color:${color};font-weight:600">${p.cpu}%</td>
-      <td><pre class="braille" style="color:${color};margin:0;font-size:10px;letter-spacing:1px">${g}</pre></td>
-      <td>${p.mem}%</td>
-      <td style="color:var(--text3)">${p.pid}</td>
-    </tr>`;
-  }).join('');
-
-  document.getElementById('dash-row3').innerHTML = `
-    <div class="dash-card" style="--card-accent:var(--accent)">
-      <h3><span class="icon">🌐</span>Red</h3>
-      ${netHtml}
-    </div>
-    <div class="dash-card" style="--card-accent:var(--yellow)">
-      <h3><span class="icon">📋</span>Procesos (top CPU)</h3>
-      <table class="proc-table">
-        <thead><tr><th>Proceso</th><th>CPU</th><th>CPU↦</th><th>MEM</th><th>PID</th></tr></thead>
-        <tbody>${procRows}</tbody>
-      </table>
-    </div>
-  `;
 }
 
 // ── Almacenamiento (diario 18:00, se reconstruye solo cuando cambia) ──
@@ -5375,21 +5321,20 @@ function renderNews(items) {
   const box = document.getElementById('dash-news');
   if (!box) return;
   if (!items || !items.length) {
-    box.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0">Sin noticias (revisa conexión a internet)</div>';
+    box.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0">Sin actualizaciones (revisa la conexión a internet)</div>';
     return;
   }
-  box.innerHTML = `<div class="news-grid">${items.map(it => {
-    const imgHtml = it.img
-      ? `<div class="news-img"><img loading="lazy" src="${escHtml(it.img)}" alt="" onerror="this.parentNode.style.display='none'"></div>`
-      : '';
-    return `<a class="news-card" href="${escHtml(it.link)}" target="_blank" rel="noopener">
-      ${imgHtml}
-      <div class="news-body">
-        <div class="news-title">${escHtml(it.title)}</div>
-        <div class="news-meta"><span style="color:var(--accent)">${escHtml(it.src)}</span> · ${relTime(it.ts)}</div>
-      </div>
-    </a>`;
-  }).join('')}</div>`;
+  box.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px">
+    ${items.map(it => `
+      <a class="news-card" href="${escHtml(it.link)}" target="_blank" rel="noopener"
+         style="flex-direction:row;align-items:center;gap:10px;padding:8px 10px">
+        <div style="flex:1;min-width:0">
+          <div class="news-title" style="font-size:12px;-webkit-line-clamp:2">${escHtml(it.title)}</div>
+          <div class="news-meta">${escHtml(it.src)} · ${relTime(it.ts)}</div>
+        </div>
+        <span style="color:var(--text3);font-size:14px;flex:none">↗</span>
+      </a>`).join('')}
+  </div>`;
 }
 
 let _newsTimer = null;
@@ -5407,6 +5352,31 @@ function initNews() {
       if (data.ok) renderNews(data.news);
     } catch (e) {}
   })();
+}
+
+// ── Tarjeta de info de EmulationStation ──────────────────────────
+function renderEsInfo(d) {
+  const box = document.getElementById('dash-es-info');
+  if (!box) return;
+  const es = d.es || {};
+  const running = !!es.running;
+  const dot = running ? '<span class="status-dot dot-green"></span>' : '<span class="status-dot dot-red"></span>';
+  const label = running ? `Corriendo (PID ${escHtml(es.pid)})` : 'Detenido';
+  const uptime = d.uptime || '—';
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      ${dot}
+      <span style="font-size:15px;font-weight:700">${label}</span>
+    </div>
+    <div class="kv-row"><span class="kv-key">Estado</span><span class="kv-val">${running ? 'Activo' : 'Detenido'}</span></div>
+    <div class="kv-row"><span class="kv-key">PID</span><span class="kv-val">${running ? escHtml(es.pid) : '—'}</span></div>
+    <div class="kv-row"><span class="kv-key">Puerto</span><span class="kv-val">${running && es.port ? es.port : '—'}</span></div>
+    <div class="kv-row"><span class="kv-key">Uptime sistema</span><span class="kv-val">${escHtml(uptime)}</span></div>
+    <div class="kv-row"><span class="kv-key">Cambios pendientes</span><span class="kv-val">${es.restart_pending ? 'Sí' : 'No'}</span></div>
+    <div style="margin-top:10px">
+      <button class="btn btn-ghost btn-sm" onclick="restartES()">↻ Reiniciar ES</button>
+    </div>
+  `;
 }
 
 // ── Historial + gráficos braille (estilo btop) ────────────────

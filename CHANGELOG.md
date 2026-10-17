@@ -6,6 +6,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Cambiado
+- Dashboard rediseñado: tarjetas CPU/GPU/RAM más compactas (tacómetros más chicos); Almacenamiento y Ventiladores en una sola fila; eliminadas las tarjetas de Red y Procesos.
+- La tarjeta de "Noticias" ahora muestra las actualizaciones oficiales de Batocera (releases de GitHub) en formato compacto, y se añadió una segunda tarjeta con información de EmulationStation (estado, PID, puerto, uptime, reinicio).
+
 ## [1.3] - 2026-10-17
 
 ### Añadido

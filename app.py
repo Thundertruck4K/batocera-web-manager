@@ -2650,8 +2650,8 @@ def get_battery(power_supply_root=None):
 import urllib.request as _nreq
 
 NEWS_FEEDS = [
-    {"name": "HobbyConsolas", "url": "https://www.hobbyconsolas.com/rss/", "filter": True},
-    {"name": "Eurogamer.es",  "url": "https://www.eurogamer.es/feed",     "filter": False},
+    # Actualizaciones oficiales de Batocera (releases de GitHub, Atom)
+    {"name": "Batocera", "url": "https://github.com/batocera-linux/batocera.linux/releases.atom", "filter": False},
 ]
 # Filtro de relevancia: emulación / retro / videojuegos en español
 NEWS_KEYWORDS = (
@@ -2673,9 +2673,23 @@ def _news_strip_html(raw):
         return ""
 
 def _news_parse_date(raw):
+    raw = (raw or "").strip()
+    if not raw:
+        return 0
+    # RFC 2822 (RSS)
     try:
         import email.utils
         dt = email.utils.parsedate_to_datetime(raw)
+        return int(dt.timestamp())
+    except Exception:
+        pass
+    # ISO 8601 (Atom, p. ej. "2026-05-29T06:02:43Z")
+    try:
+        from datetime import datetime, timezone
+        s = raw.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
         return int(dt.timestamp())
     except Exception:
         return 0
@@ -2686,6 +2700,7 @@ def _fetch_feed(url, timeout=8):
         return r.read()
 
 def _parse_rss_feed(data, source):
+    """Parsea RSS 2.0 o Atom y devuelve lista de {title,link,desc,img,src,ts}."""
     items = []
     if not xml_looks_safe(data):
         return items
@@ -2693,19 +2708,41 @@ def _parse_rss_feed(data, source):
         root = ET.fromstring(data)
     except Exception:
         return items
-    ns  = {"media": "http://search.yahoo.com/mrss/"}
-    ch  = root.find("channel")
+    ns = {"media": "http://search.yahoo.com/mrss/", "atom": "http://www.w3.org/2005/Atom"}
+    tag = root.tag.split("}")[-1].lower()
+    if tag == "feed":
+        # ── Atom (p. ej. GitHub releases) ──
+        for it in root.iterfind("atom:entry", namespaces=ns) or root.iterfind("{http://www.w3.org/2005/Atom}entry"):
+            try:
+                title = (it.findtext("{http://www.w3.org/2005/Atom}title") or "").strip()
+                link_el = it.find("{http://www.w3.org/2005/Atom}link")
+                link = (link_el.get("href") if link_el is not None else "") or ""
+                link = link.strip()
+                if not title or not link:
+                    continue
+                desc = _news_strip_html(it.findtext("{http://www.w3.org/2005/Atom}content")
+                                       or it.findtext("{http://www.w3.org/2005/Atom}summary") or "")
+                pub = _news_parse_date(it.findtext("{http://www.w3.org/2005/Atom}updated")
+                                       or it.findtext("{http://www.w3.org/2005/Atom}published") or "")
+                items.append({"title": title, "link": link, "desc": desc,
+                              "img": "", "src": source, "ts": pub})
+            except Exception:
+                continue
+        return items
+
+    # ── RSS 2.0 ──
+    ch = root.find("channel")
     src = ch if ch is not None else root
     for it in src.iterfind("item"):
         try:
             title = (it.findtext("title") or "").strip()
-            link  = (it.findtext("link") or "").strip()
+            link = (it.findtext("link") or "").strip()
             if not title or not link:
                 continue
-            desc  = _news_strip_html(it.findtext("description") or "")
-            pub   = _news_parse_date(it.findtext("pubDate") or "")
-            img   = ""
-            enc   = it.find("enclosure")
+            desc = _news_strip_html(it.findtext("description") or "")
+            pub = _news_parse_date(it.findtext("pubDate") or "")
+            img = ""
+            enc = it.find("enclosure")
             if enc is not None and (enc.get("type") or "").startswith("image"):
                 img = enc.get("url") or ""
             if not img:
@@ -2723,60 +2760,32 @@ def _parse_rss_feed(data, source):
     return items
 
 def get_news():
-    """Noticias RSS de portales de emulación en español, cacheadas 30 min."""
+    """Actualizaciones de Batocera (releases de GitHub), cacheadas 30 min."""
     now = time.time()
     if now - _news_cache["ts"] > 1800:
-        items, seen_url = [], set()
+        items, seen = [], set()
         for f in NEWS_FEEDS:
             try:
                 for it in _parse_rss_feed(_fetch_feed(f["url"]), f["name"]):
                     key = (it["link"] or "").split("#")[0].rstrip("/").lower()
-                    if key and key not in seen_url:
-                        seen_url.add(key)
-                        items.append(it)
+                    if key and key in seen:
+                        continue
+                    if key:
+                        seen.add(key)
+                    items.append(it)
             except Exception:
                 continue
-        # Dedup adicional por título normalizado (mismo artículo, distinta URL)
-        seen_title, dedup = set(), []
+        # Dedup por título normalizado
+        seen_t, dedup = set(), []
         for it in items:
             tk = re.sub(r"[^a-z0-9]+", "", (it["title"] or "").lower())
-            if tk in seen_title: continue
-            seen_title.add(tk)
+            if tk in seen_t:
+                continue
+            seen_t.add(tk)
             dedup.append(it)
-        # Filtro de relevancia solo en feeds mixtos (HobbyConsolas mezcla cine/series)
-        NEG = ("capítulo", "capitulo", "temporada", "película", "pelicula",
-               "episodio", "cine", "crítica", "critica", "serie", "televisión")
-        STRONG = ("emula", "retro", "rom", "nintendo", "playstation", "xbox", "sega",
-                  "steam", "switch", "gameboy", "game boy", "consola", "videojuego",
-                  "remake", "remaster", "retroarch", "arcade", "wii", "gamecube",
-                  "n64", "snes", "megadrive", "genesis", "indie", "mame", "homebrew",
-                  "gamer", "gaming", "dolphin", "cemu", "rpcs3", "yuzu", "ryujinx")
-        WEAK = ("juego", "juegos", "ofertas", "análisis", "analisis", "lanzamiento",
-                "tráiler", "trailer", "demo", "gratis", "ps5", "ps4")
-        def relevant(it, filtrado):
-            if not filtrado: return True
-            tl = ((it["title"] or "") + " " + (it["desc"] or "")).lower()
-            if any(k in tl for k in STRONG): return True
-            if any(k in tl for k in NEG): return False
-            return any(k in tl for k in WEAK)
-        dedup = [it for it in dedup if relevant(it, (it["src"] == "HobbyConsolas"))]
-        # Balance por fuente: máx 5 de HobbyConsolas + 4 de Eurogamer, entrelazados
-        per = {}
-        for it in dedup:
-            per.setdefault(it["src"], []).append(it)
-        for src, items in per.items():
-            items.sort(key=lambda x: x["ts"], reverse=True)
-        cap = {"HobbyConsolas": 5, "Eurogamer.es": 4}
-        out, idx, srcs = [], {}, [s for s in per if s in cap]
-        for s in srcs: idx[s] = 0
-        while len(out) < 9:
-            placed = False
-            for s in srcs:
-                if idx[s] < min(cap[s], len(per[s])):
-                    out.append(per[s][idx[s]]); idx[s] += 1; placed = True
-            if not placed: break
-        _news_cache["data"] = out[:9]
-        _news_cache["ts"]   = now
+        dedup.sort(key=lambda x: x["ts"], reverse=True)
+        _news_cache["data"] = dedup[:8]
+        _news_cache["ts"] = now
     return _news_cache["data"]
 
 
