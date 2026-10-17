@@ -2514,6 +2514,7 @@ _disk_cache = {"data": [], "day": None, "updated": None}
 def _compute_disk():
     partitions = []
     skip_fs = ("tmpfs", "none", "overlay", "devtmpfs", "squashfs")
+    skip_mounts = ("/boot", "/RESTORE")
     try:
         out = _run("df -k 2>/dev/null")
         for line in out.splitlines()[1:]:
@@ -2523,6 +2524,9 @@ def _compute_disk():
             # Solo particiones reales: excluye pseudo-fs (tmpfs/overlay/loop)
             if fs in skip_fs: continue
             if fs.startswith("/dev/loop"): continue
+            # Excluye particiones del sistema que no aportan (boot, restore)
+            if mount in skip_mounts: continue
+            if any(mount.startswith(m + "/") for m in skip_mounts): continue
             try:
                 partitions.append({
                     "fs":     fs,
