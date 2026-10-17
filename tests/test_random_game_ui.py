@@ -191,6 +191,26 @@ def test_card_has_wallpaper_and_cover_nodes():
         assert f'id="{node}"' in h, f"falta el nodo {node}"
 
 
+def test_media_column_is_a_thumbnail():
+    # La carátula acompaña a la info: una franja estrecha (~mitad de antes),
+    # no media tarjeta. Sigue siendo vertical (2/3).
+    css = _html()
+    m = re.search(r"\.dash-random-body\{([^}]*)\}", css)
+    assert m, "falta la regla .dash-random-body"
+    cols = re.search(r"grid-template-columns:minmax\((\d+)px,\s*(\d+)px\)", m.group(1))
+    assert cols, "la columna de imagen se define con minmax(<min>px, <max>px)"
+    lo, hi = int(cols.group(1)), int(cols.group(2))
+    assert hi <= 100, f"la carátula es una miniatura: {hi}px es demasiado ancha"
+    assert 60 <= lo < hi, "la miniatura debe seguir viéndose"
+
+    media = re.search(r"\.dash-random-media\{([^}]*)\}", css)
+    assert media and "aspect-ratio:2/3" in media.group(1), "la imagen sigue siendo vertical"
+
+    mob = re.search(r"@media \(max-width:760px\)\{([^\n]*)\}", css)
+    assert mob and "dash-random-media" in mob.group(1), \
+        "en móvil la miniatura no debe crecer a pantalla completa"
+
+
 def test_renderRandomGame_falls_back_when_cover_fails():
     m = re.search(r"function renderRandomGame\(g\)\s*\{([\s\S]*?)\n\}", _html())
     assert m, "falta renderRandomGame()"
