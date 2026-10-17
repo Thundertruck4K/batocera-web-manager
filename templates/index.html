@@ -657,15 +657,35 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 @keyframes landing-draw{to{stroke-dashoffset:0}}
 @keyframes landing-pulse{to{box-shadow:0 0 0 34px rgba(110,168,254,0)}}
 @keyframes landing-blink{50%{opacity:.4}}
-.landing-inner h1{font-size:24px;font-weight:800;margin:6px 0 0}
-.landing-tagline{font-size:13px;color:var(--text2);margin:0}
-.landing-facts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px;min-height:28px}
-.landing-fact{font-size:12px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 12px}
-.skeleton-pill{width:90px;height:24px;border-radius:20px;background:var(--bg3);animation:landing-blink 1.2s ease-in-out infinite}
-.landing-enter{margin-top:8px}
-.landing-skip{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;margin-top:6px}
+/* Aurora Glass FX */
+.fx{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.fx__blob{position:absolute;border-radius:50%;filter:blur(95px);opacity:.36}
+.fx__blob--1{width:520px;height:520px;left:-160px;top:-220px;background:radial-gradient(circle, var(--accent) 0%, transparent 70%);animation:fx-drift 26s ease-in-out infinite alternate}
+.fx__blob--2{width:620px;height:620px;right:-180px;top:-160px;background:radial-gradient(circle, var(--aurora) 0%, transparent 70%);animation:fx-drift 30s ease-in-out infinite alternate-reverse}
+.fx__blob--3{width:560px;height:560px;left:40%;bottom:-280px;background:radial-gradient(circle, #FB7185 0%, transparent 70%);animation:fx-drift 28s ease-in-out infinite alternate}
+.fx__noise{position:absolute;inset:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.025'/></svg>");background-size:180px 180px;opacity:.03}
+@keyframes fx-drift{from{transform:translate(0,0)}to{transform:translate(40px,-30px)}}
+@keyframes fx-bob{from{transform:translateY(-10px)}to{transform:translateY(10px)}}
+@keyframes fx-spark{0%{opacity:0;transform:scale(.4)}50%{opacity:.28}100%{opacity:0;transform:scale(.6)}}
+.fx__bubble{position:absolute;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle, rgba(255,255,255,.28), transparent 70%);filter:blur(.4px);animation:fx-bob 12s ease-in-out infinite alternate}
+.fx__bubble--1{left:10%;top:40%;animation-delay:-2s}
+.fx__bubble--2{left:24%;top:32%;animation-delay:-6s;opacity:.7}
+.fx__bubble--3{left:38%;top:46%;animation-delay:-10s}
+.fx__bubble--4{left:54%;top:36%;animation-delay:-4s}
+.fx__bubble--5{left:68%;top:42%;animation-delay:-8s;opacity:.8}
+.fx__bubble--6{left:78%;top:28%;animation-delay:-12s}
+.fx__bubble--7{left:86%;top:38%;animation-delay:-3s}
+.fx__bubble--8{left:16%;top:60%;animation-delay:-9s;opacity:.7}
+.fx__spark{position:absolute;width:6px;height:6px;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);background:radial-gradient(circle, rgba(255,255,255,.45), transparent 70%);filter:blur(.2px);animation:fx-spark 3.6s ease-in-out infinite}
+.fx__spark--1{left:18%;top:18%;animation-delay:-1s}
+.fx__spark--2{left:32%;top:14%;animation-delay:-2s}
+.fx__spark--3{left:58%;top:12%;animation-delay:-1.6s}
+.fx__spark--4{left:72%;top:16%;animation-delay:-2.8s}
+.fx__spark--5{left:82%;top:22%;animation-delay:-1.4s}
+.fx__spark--6{left:46%;top:20%;animation-delay:-3.2s}
 @media (prefers-reduced-motion: reduce){
   .landing-ring,.landing-ring2,.landing-glyph,.landing-pulse,.skeleton-pill{animation:none;stroke-dashoffset:0}
+  .fx__blob,.fx__bubble,.fx__spark{animation:none}
 }
 </style>
 </head>
