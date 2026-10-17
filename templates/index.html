@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Batocera System Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 /* ── Reset & Base ── */
 *{box-sizing:border-box;margin:0;padding:0}
@@ -149,13 +152,13 @@ a{color:var(--accent);text-decoration:none}
 .topbar-pending{
   display:none;align-items:center;gap:8px;
   font-size:12px;color:var(--yellow);font-weight:600;
-  background:rgba(210,153,34,.12);border:1px solid rgba(210,153,34,.35);
+  background:rgba(242,196,107,.12);border:1px solid rgba(242,196,107,.35);
   padding:5px 10px;border-radius:var(--radius);
 }
 .topbar-pending .status-dot{margin-right:0}
 .es-pending-note{
   margin-top:10px;font-size:12px;color:var(--yellow);font-weight:600;
-  background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.3);
+  background:rgba(242,196,107,.1);border:1px solid rgba(242,196,107,.3);
   padding:6px 8px;border-radius:6px;
 }
 .content{flex:1;padding:26px 28px 40px;min-width:0}
@@ -208,7 +211,7 @@ input,select,textarea{
 }
 input:focus,select:focus,textarea:focus{
   border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(88,166,255,.15);
+  box-shadow:0 0 0 3px rgba(124,156,255,.15);
 }
 input::placeholder,textarea::placeholder{color:var(--text3)}
 select option{background:var(--bg3)}
@@ -316,12 +319,12 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   border-radius:var(--radius);padding:16px;
   font-family:var(--mono);font-size:12px;line-height:1.6;
   max-height:420px;overflow-y:auto;
-  color:#a8d8f0;white-space:pre;
+  color:var(--text2);white-space:pre;
 }
-.xml-tag{color:#7ee787}
-.xml-attr{color:#ffab70}
-.xml-val{color:#a5d6ff}
-.xml-comment{color:#8b949e;font-style:italic}
+.xml-tag{color:var(--green)}
+.xml-attr{color:var(--orange)}
+.xml-val{color:var(--accent)}
+.xml-comment{color:var(--text3);font-style:italic}
 
 /* ── Settings ── */
 .settings-path-row{display:flex;gap:6px;align-items:center}
