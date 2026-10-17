@@ -28,10 +28,10 @@
 |---|---|
 | 1. Tokens + Google Fonts | **hecho** (`e454213` fuentes, `f8086ba` tokens) |
 | 2. Capa FX (aurora, grano, partículas) + reduced-motion | **hecho** (`5b039bc`, `bc224eb`, `56427c1`) |
-| 3. Superficies (cristal 4 sitios, tarjetas+brillo, info/warn/success) | **hecho** (`f385f6a`) |
+| 3. Superficies (cristal 4 sitios, tarjetas+brillo, info/warn/success) | **hecho** (`f385f6a`, `0849189` completa system-card/fan-card/service-status-box) |
 | 4. Materialización (`mat`) + reduced-motion | **hecho** (`c793382`) |
-| 5. Unificación de paleta fuera de `:root` | **en curso** |
-| 6. Verificación final | pendiente |
+| 5. Unificación de paleta fuera de `:root` | **hecho** (`0849189`, `7138684`) |
+| 6. Verificación final | **hecho** (231 verdes, `node --check` OK, 6 paneles + modal + tabla, 0 colores viejos en runtime) |
 
 ---
 

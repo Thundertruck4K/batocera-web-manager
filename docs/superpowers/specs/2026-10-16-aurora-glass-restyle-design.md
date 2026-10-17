@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-10-16
 **Autor:** sesión de rediseño (asistida) — el usuario eligió la propuesta **A** entre tres maquetas
-**Estado:** pendiente de aprobación
+**Estado:** aprobado e implementado (restyle completado; 231 tests verdes)
 
 ---
 
@@ -222,3 +222,6 @@ a los tokens y a los pocos colores semánticos que se decidan.
 - 2026-10-16: revisión de construcción independiente; única pregunta abierta: alcance de la
   paleta fuera de `:root`. El usuario elige la **opción 2 (unificar todo el sitio)** → §7.8 y
   decisiones 7-9.
+- 2026-10-17: implementado en 8 commits. Nota: la paleta fuera de `:root` se unificó
+  sustituyendo **directamente** los literales de color en estilos en línea (y hex en cadenas
+  JS), en vez de con reglas por `id` + `!important`: igual de efectivo y sin `!important`.
