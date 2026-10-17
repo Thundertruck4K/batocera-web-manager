@@ -616,7 +616,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .dash-hero-stats{display:flex;gap:22px;flex-wrap:wrap}
 .hero-stat-v{font-size:22px;font-weight:800;line-height:1.1;background:linear-gradient(120deg,#BCD0FF,#7EE6FF);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .hero-stat-k{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
-.dash-random{margin-bottom:14px}
+/* las dos tarjetas comparten fila: dos mitades en vez de una fila entera cada una */
+.dash-double{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media (max-width:900px){.dash-double{grid-template-columns:1fr}}
 .dash-random-body{display:grid;grid-template-columns:minmax(75px,98px) 1fr;gap:18px;align-items:start}
 /* espacio 1: carátula vertical; si no hay, wallpaper generado */
 .dash-random-media{position:relative;aspect-ratio:2/3;border-radius:14px;overflow:hidden;
@@ -650,7 +652,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .chip .dot{width:6px;height:6px;border-radius:50%;background:var(--c,var(--accent));flex:none}
 .chip-btn{cursor:pointer;transition:all var(--transition)}
 .chip-btn:hover{background:rgba(255,255,255,.13);color:#fff}
-#dash-playstats{margin-bottom:14px}
 #dash-retro{margin-bottom:14px}
 .retro-empty{font-size:13px;color:var(--text2)}
 .retro-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
@@ -665,7 +666,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .retro-ach-title{font-size:13px;font-weight:600}
 .retro-ach-game{font-size:11px;color:var(--text3)}
 .retro-ach-pts{font-size:12px;color:var(--text2)}
-.dash-playstats-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.dash-playstats-grid{display:grid;grid-template-columns:1fr;gap:16px}
 .ps-sub{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
 .ps-row{display:grid;grid-template-columns:1fr 90px 28px;gap:8px;align-items:center;font-size:12px;margin-bottom:7px}
 .ps-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -674,7 +675,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .ps-val{text-align:right;color:var(--text2)}
 .ps-empty{font-size:12px;color:var(--text3)}
 .ps-spark{width:100%;height:80px}
-@media (max-width:760px){.dash-playstats-grid{grid-template-columns:1fr}.dash-random-body{grid-template-columns:1fr}.dash-random-media{max-width:110px}}
+@media (max-width:760px){.dash-random-body{grid-template-columns:1fr}.dash-random-media{max-width:110px}}
 
 /* ── Landing (overlay de bienvenida) ── */
 .landing{
@@ -867,40 +868,45 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <div class="dash-hero-stats" id="dash-hero-stats"></div>
         </div>
 
-        <!-- Juego al azar -->
-        <div class="dash-card dash-random" id="dash-random-game" style="--card-accent:var(--accent)">
-          <h3><span class="icon">🎲</span>Juego al azar
-            <button class="chip chip-btn" style="margin-left:auto" onclick="loadRandomGame()">↻ Otro</button>
-          </h3>
-          <div class="dash-random-body" id="dash-random-body">
-            <div class="dash-random-media" id="dash-random-media">
-              <div class="dash-random-ph" id="dash-random-ph"><span id="dash-random-ph-name"></span></div>
-              <img class="dash-random-cover" id="dash-random-cover" alt="" hidden>
-            </div>
-            <div class="dash-random-info">
-              <div class="dash-random-name" id="dash-random-name">Buscando…</div>
-              <div class="dash-random-facts" id="dash-random-facts"></div>
-              <div class="dash-random-usage" id="dash-random-usage"></div>
-              <div class="dash-random-desc" id="dash-random-desc"></div>
-            </div>
-          </div>
-        </div>
+        <!-- Fila: Juego al azar + Actividad de juego, una al lado de la otra -->
+        <div class="dash-double">
 
-        <!-- Actividad de juego -->
-        <div class="dash-card" id="dash-playstats" style="--card-accent:var(--purple2)">
-          <h3><span class="icon">📈</span>Actividad de juego
-            <span style="font-size:11px;color:var(--text3);font-weight:400" id="dash-playstats-note"></span>
-          </h3>
-          <div class="dash-playstats-grid">
-            <div>
-              <div class="ps-sub">Más jugados</div>
-              <div id="dash-top-games"></div>
-            </div>
-            <div>
-              <div class="ps-sub" id="dash-activity-label">Últimos 30 días</div>
-              <svg class="ps-spark" id="dash-activity" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
+          <!-- Juego al azar -->
+          <div class="dash-card dash-random" id="dash-random-game" style="--card-accent:var(--accent)">
+            <h3><span class="icon">🎲</span>Juego al azar
+              <button class="chip chip-btn" style="margin-left:auto" onclick="loadRandomGame()">↻ Otro</button>
+            </h3>
+            <div class="dash-random-body" id="dash-random-body">
+              <div class="dash-random-media" id="dash-random-media">
+                <div class="dash-random-ph" id="dash-random-ph"><span id="dash-random-ph-name"></span></div>
+                <img class="dash-random-cover" id="dash-random-cover" alt="" hidden>
+              </div>
+              <div class="dash-random-info">
+                <div class="dash-random-name" id="dash-random-name">Buscando…</div>
+                <div class="dash-random-facts" id="dash-random-facts"></div>
+                <div class="dash-random-usage" id="dash-random-usage"></div>
+                <div class="dash-random-desc" id="dash-random-desc"></div>
+              </div>
             </div>
           </div>
+
+          <!-- Actividad de juego -->
+          <div class="dash-card" id="dash-playstats" style="--card-accent:var(--purple2)">
+            <h3><span class="icon">📈</span>Actividad de juego
+              <span style="font-size:11px;color:var(--text3);font-weight:400" id="dash-playstats-note"></span>
+            </h3>
+            <div class="dash-playstats-grid">
+              <div>
+                <div class="ps-sub">Más jugados</div>
+                <div id="dash-top-games"></div>
+              </div>
+              <div>
+                <div class="ps-sub" id="dash-activity-label">Últimos 30 días</div>
+                <svg class="ps-spark" id="dash-activity" viewBox="0 0 300 80" preserveAspectRatio="none"></svg>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- Récords personales (RetroAchievements) -->
