@@ -1887,6 +1887,40 @@ function filterSystems(list, q){
     return blob.includes(qv);
   });
 }
+function scraperJobView(job) {
+  // Vista compacta de un job del lote para pintar la pestaña "Por sistema".
+  // Reutiliza el mismo modelo de progreso que el lote múltiple, pero con
+  // etiquetas pensadas para un único sistema.
+  if (!job) return { active: false, pct: 0, label: '', stats: '' };
+  const status = job.status || 'pending';
+  const active = status === 'running' || status === 'pending';
+  const pct = (typeof job.progress === 'number') ? job.progress : 0;
+  const sysName = job.current_system || '';
+  const rom = job.current_rom || '';
+  const raw = job.progress_raw || [0, 0];
+  const part = job.partial || {};
+  const agg = job.aggregated || {};
+  let label;
+  if (status === 'completed') {
+    label = 'Completado';
+  } else if (status === 'cancelled') {
+    label = 'Cancelado';
+  } else if (status === 'failed') {
+    label = 'Error: ' + (job.error || 'desconocido');
+  } else if (rom) {
+    label = 'Scrapeando ' + sysName + ' → ' + rom;
+  } else if (sysName) {
+    label = 'Escaneando ' + sysName + '…';
+  } else {
+    label = 'Preparando…';
+  }
+  const ok = (agg.ok || 0) + (part.ok || 0);
+  const fail = (agg.fail || 0) + (part.fail || 0);
+  const romPart = raw[1] ? (' · ROM ' + raw[0] + '/' + raw[1]) : '';
+  const stats = (job.systems_done || 0) + '/' + (job.systems || []).length +
+    ' sistemas' + romPart + ' · ' + ok + ' OK · ' + fail + ' fallos';
+  return { active: active, pct: pct, label: label, stats: stats };
+}
 function sortSystems(list, key){
   const k = key || 'name';
   // Decoramos (Schwartzian transform) una sola vez por elemento en lugar de
@@ -3852,15 +3886,16 @@ async function scraperSystem() {
   const btn = document.getElementById('sc-sys-btn');
   btn.disabled = true; btn.textContent = '⏳ Scrapeando…';
   document.getElementById('sc-sys-progress').style.display = '';
-  document.getElementById('sc-sys-bar').style.width  = '5%';
+  document.getElementById('sc-sys-bar').style.width  = '0%';
+  document.getElementById('sc-sys-pct').textContent = '0%';
   document.getElementById('sc-sys-label').textContent = `Scrapeando con ${SOURCE_LABELS[creds.source]}…`;
   document.getElementById('sc-sys-result').innerHTML  = '';
 
-  const res = await fetchJson('/api/scraper/scrape-system', {
+  const res = await fetchJson('/api/scraper/batch', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
-      system:        _scraperCurrentSystem,
-      subpath:       _scraperCurrentSubpath,
+      systems: [_scraperCurrentSystem],
+      subpath: _scraperCurrentSubpath,
       ss_image_type: document.getElementById('sc-sys-imgtype')?.value || 'mixrbv1',
       ss_region:     document.getElementById('sc-sys-region')?.value  || 'wor',
       only_missing:  document.getElementById('sc-sys-missing').checked,
@@ -3868,34 +3903,18 @@ async function scraperSystem() {
     }),
   });
 
-  btn.disabled = false; btn.textContent = '🚀 Iniciar scraping del sistema';
-  document.getElementById('sc-sys-bar').style.width = '100%';
-
-  if (res?.ok) {
-    const r = res.results;
-    document.getElementById('sc-sys-label').textContent = 'Completado';
-    const q = r.quota || {};
-    const quotaHtml = q.maxrequestsperday ? `
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)">
-        Cuota: ${q.requeststoday||0} / ${q.maxrequestsperday} requests hoy ·
-        Nivel: ${escHtml(q.level||'?')} · Threads: ${q.maxthreads||1}
-      </div>` : '';
-    document.getElementById('sc-sys-result').innerHTML = `
-      <div class="success-box">
-        ✔ ${r.ok} ROMs scrapeados exitosamente<br>
-        ${r.fail ? `⚠ ${r.fail} fallos` : ''}<br>
-        Total procesados: ${r.ok + r.fail} / ${r.total}
-        ${r.errors.length ? `<div style="margin-top:8px;font-size:11px;max-height:80px;overflow-y:auto">
-          ${r.errors.map(e=>`<div>• ${escHtml(e)}</div>`).join('')}</div>` : ''}
-        ${quotaHtml}
-      </div>`;
-    toast(`Scraping: ${r.ok} OK, ${r.fail} fallos`, r.fail ? 'err' : 'ok');
-    currentSystem = _scraperCurrentSystem; currentSubpath = _scraperCurrentSubpath; loadFolder();
-  } else {
+  if (!res?.ok) {
+    btn.disabled = false; btn.textContent = '🚀 Iniciar scraping del sistema';
+    document.getElementById('sc-sys-progress').style.display = 'none';
     document.getElementById('sc-sys-result').innerHTML =
       `<div class="warn-box">Error: ${escHtml(res?.error||'desconocido')}</div>`;
     toast(res?.error||'Error en scraping','err');
+    return;
   }
+
+  _sysJobId = res.job_id;
+  toast(`Scraping iniciado: ${_scraperCurrentSystem}`, 'ok');
+  _scheduleSysPoll();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3903,6 +3922,8 @@ async function scraperSystem() {
 // ═══════════════════════════════════════════════════════════════
 let _batchPollTimer = null;
 let _batchActiveJobId = null;
+let _sysJobId = null;
+let _sysPollTimer = null;
 
 function batchToggleAll() {
   const checked = document.getElementById('batch-select-all').checked;
@@ -4083,6 +4104,61 @@ function _scheduleBatchPoll() {
   _batchPollTimer = setTimeout(() => {
     scraperBatchRefresh();
   }, 2000);
+}
+
+function _scheduleSysPoll() {
+  if (_sysPollTimer) clearTimeout(_sysPollTimer);
+  _sysPollTimer = setTimeout(() => {
+    scraperSystemPoll();
+  }, 2000);
+}
+
+async function scraperSystemPoll() {
+  if (!_sysJobId) return;
+  const data = await fetchJson(`/api/scraper/batch/${_sysJobId}`);
+  if (!data?.ok || !data.job) return;
+  const job = data.job;
+  const view = scraperJobView(job);
+  const bar = document.getElementById('sc-sys-bar');
+  const pct = document.getElementById('sc-sys-pct');
+  const label = document.getElementById('sc-sys-label');
+  const stats = document.getElementById('sc-sys-stats');
+  if (bar) bar.style.width = view.pct + '%';
+  if (pct) pct.textContent = view.pct + '%';
+  if (label) label.textContent = view.label;
+  if (stats) stats.textContent = view.stats;
+
+  if (job.status === 'running' || job.status === 'pending') {
+    _scheduleSysPoll();
+    return;
+  }
+
+  // Terminado
+  if (_sysPollTimer) { clearTimeout(_sysPollTimer); _sysPollTimer = null; }
+  const btn = document.getElementById('sc-sys-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar scraping del sistema'; }
+  const agg = job.aggregated || {};
+  const q = job.quota || {};
+  const quotaHtml = q.maxrequestsperday ? `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)">
+      Cuota: ${q.requeststoday||0} / ${q.maxrequestsperday} requests hoy ·
+      Nivel: ${escHtml(q.level||'?')} · Threads: ${q.maxthreads||1}
+    </div>` : '';
+  const errs = (agg.errors || []).slice(0, 20);
+  document.getElementById('sc-sys-result').innerHTML = `
+    <div class="success-box">
+      ✔ ${agg.ok||0} ROMs scrapeados exitosamente<br>
+      ${(agg.fail||0) ? `⚠ ${agg.fail} fallos` : ''}<br>
+      Total procesados: ${(agg.ok||0)+(agg.fail||0)} / ${agg.total||0}
+      ${errs.length ? `<div style="margin-top:8px;font-size:11px;max-height:80px;overflow-y:auto">
+        ${errs.map(e=>`<div>• ${escHtml(e)}</div>`).join('')}</div>` : ''}
+      ${quotaHtml}
+    </div>`;
+  toast(`Scraping: ${agg.ok||0} OK, ${agg.fail||0} fallos`, (agg.fail||0) ? 'err' : 'ok');
+  _sysJobId = null;
+  if (job.status === 'completed') {
+    currentSystem = _scraperCurrentSystem; currentSubpath = _scraperCurrentSubpath; loadFolder();
+  }
 }
 
 function scraperBatchPoll() {

@@ -3420,47 +3420,61 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
             md5v = md5_file(rom_path)
             crcv = crc32_file(rom_path)
 
-    params = dict(base)
-    params["romtype"]   = "rom"
-    params["romnom"]    = rom_filename
-    params["romtaille"] = str(size)
-    if md5v:
-        params["md5"] = md5v.upper()
-    if crcv:
-        params["crc"] = crcv
+    has_crc = bool(crcv)
+    # ScreenScraper exige `systemeid` válido si no hay CRC. Si el sistema no
+    # está mapeado (sys_id=0) y no podemos aportar CRC, la petición a
+    # jeuInfos.php está condenada al HTTP 400: la saltamos y vamos directo a
+    # la búsqueda por nombre (jeuRecherche.php), que sí funciona sin systemeid.
+    skip_jeuinfos = (sys_id == 0 and not has_crc)
 
-    data, err, _ = _ss_fetch_json(f"{SS_API}/jeuInfos.php?" + _uparse.urlencode(params))
-    if data is None:
-        return None, err, {}
-    hdr = data.get("header",{}) or {}
-    quota = _ss_quota(data)
-    if hdr.get("success") == "true":
-        jeu = _ss_parse_jeu(data)
-        if jeu:
-            return jeu, None, quota
-    elif hdr.get("success") is False:
-        msg = hdr.get("message","") or hdr.get("error","Sin resultados")
-        return None, msg, quota
+    data = err = quota = None
+    if not skip_jeuinfos:
+        params = dict(base)
+        params["romtype"]   = "rom"
+        params["romnom"]    = rom_filename
+        params["romtaille"] = str(size)
+        if md5v:
+            params["md5"] = md5v.upper()
+        if crcv:
+            params["crc"] = crcv
+
+        data, err, _ = _ss_fetch_json(f"{SS_API}/jeuInfos.php?" + _uparse.urlencode(params))
+        quota = _ss_quota(data) if data else {}
+        if data is None:
+            # No abortamos: caemos al fallback por nombre (útil cuando el
+            # sistema no está mapeado o el archivo no se localiza).
+            data = None
+        else:
+            hdr = data.get("header", {}) or {}
+            if hdr.get("success") == "true":
+                jeu = _ss_parse_jeu(data)
+                if jeu:
+                    return jeu, None, quota
+            elif hdr.get("success") is False:
+                msg = hdr.get("message", "") or hdr.get("error", "Sin resultados")
+                # Si el motivo es el systemeid obligatorio, seguimos al fallback
+                if "systemeid" not in str(msg).lower():
+                    return None, msg, quota
 
     # Fallback por nombre limpio (jeuRecherche.php)
     clean = _clean_rom_name(rom_filename)
     if not clean:
-        return None, "Sin resultados para este ROM", quota
-    p2 = {k:v for k,v in base.items()}
-    p2["recherche"]  = clean
-    p2["systemeid"]  = str(sys_id)
-    data2, err, _ = _ss_fetch_json(f"{SS_API}/jeuRecherche.php?" + _uparse.urlencode(p2))
+        return None, (err or "Sin resultados para este ROM"), (quota or {})
+    p2 = {k: v for k, v in base.items()}
+    p2["recherche"] = clean
+    p2["systemeid"] = str(sys_id)
+    data2, err2, _ = _ss_fetch_json(f"{SS_API}/jeuRecherche.php?" + _uparse.urlencode(p2))
     if data2 is None:
-        return None, err, quota
-    hdr2 = data2.get("header",{}) or {}
+        return None, (err2 or err or "Sin resultados"), (quota or {})
+    hdr2 = data2.get("header", {}) or {}
     quota2 = _ss_quota(data2)
     if hdr2.get("success") == "true":
         jeu = _ss_parse_jeu(data2)
         if jeu:
             return jeu, None, quota2
         return None, "Sin resultados para este ROM", quota2
-    msg2 = hdr2.get("message","") or hdr2.get("error","Sin resultados")
-    return None, msg2, quota2
+    msg2 = hdr2.get("message", "") or hdr2.get("error", "Sin resultados")
+    return None, msg2, (quota2 or quota or {})
 
 def ss_media_url(game_data, image_type, region="wor"):
     """Devuelve (url, extension) del mejor medio SS para el tipo solicitado,
