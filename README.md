@@ -183,6 +183,18 @@ bash install.sh
 
 (También puedes ejecutarlo directamente: `./install.sh`, ya es ejecutable.)
 
+**Sin git** (Batocera no lo trae por defecto): descarga la última release y
+extráela (la carpeta queda lista, sin renombrar):
+
+```bash
+cd /userdata/system
+wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/releases/latest/download/batocera_web.tar.gz
+tar -xzf batocera_web.tar.gz
+chmod +x batocera_web/install.sh
+cd batocera_web
+./install.sh
+```
+
 El instalador comprueba Python y Pillow (opcional), deja los ficheros en
 `/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, añade un
 bloque marcado a `/userdata/system/custom.sh` y arranca el manager en ese momento.
@@ -239,9 +251,8 @@ así que no se pierden):
 ```bash
 cd /userdata/system
 mv batocera_web batocera_web.bak
-wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/archive/refs/heads/master.tar.gz
+wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/releases/latest/download/batocera_web.tar.gz
 tar -xzf batocera_web.tar.gz
-mv batocera-web-manager-master batocera_web
 chmod +x batocera_web/install.sh
 cd batocera_web
 BM_AUTOSTART=s ./install.sh
