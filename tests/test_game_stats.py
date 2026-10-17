@@ -101,6 +101,53 @@ def test_collect_play_stats_missing_dir_is_safe(appmod, tmp_path):
     assert s["totals"]["games"] == 0
 
 
+def _write_gamelist_gametime(sys_dir: Path, games: list[tuple]) -> None:
+    """Gamelist en el formato real de EmulationStation: <gametime>, no <playtime>."""
+    sys_dir.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for path, name, playcount, lastplayed, gametime in games:
+        rows.append(
+            "<game>"
+            f"<path>./{path}</path><name>{name}</name>"
+            f"<playcount>{playcount}</playcount>"
+            f"<lastplayed>{lastplayed}</lastplayed>"
+            f"<gametime>{gametime}</gametime>"
+            "</game>"
+        )
+    sys_dir.joinpath("gamelist.xml").write_text(
+        "<gameList>" + "".join(rows) + "</gameList>", encoding="utf-8"
+    )
+
+
+def test_collect_play_stats_reads_gametime(appmod, tmp_path):
+    """ES guarda el tiempo en <gametime>; antes se leía <playtime> y salía 0."""
+    _write_gamelist_gametime(tmp_path / "ps2", [
+        ("gameA.iso", "Game A", 5, "20261010T120000", 3600),
+        ("gameB.iso", "Game B", 2, "", 600),
+    ])
+
+    s = appmod.collect_play_stats(tmp_path)
+
+    assert s["has_playtime"] is True
+    assert s["totals"]["playtime_s"] == 4200
+    assert s["top_games"][0]["playtime_s"] == 3600
+
+
+def test_collect_play_stats_prefers_gametime_over_playtime(appmod, tmp_path):
+    sys_dir = tmp_path / "nes"
+    sys_dir.mkdir()
+    sys_dir.joinpath("gamelist.xml").write_text(
+        "<gameList><game><path>./a.zip</path><name>A</name>"
+        "<playcount>1</playcount>"
+        "<playtime>600</playtime><gametime>3600</gametime></game></gameList>",
+        encoding="utf-8",
+    )
+
+    s = appmod.collect_play_stats(tmp_path)
+
+    assert s["totals"]["playtime_s"] == 3600, "gametime (lo que escribe ES) manda"
+
+
 # ─── A3: pick_random_game ──────────────────────────────────────────────
 
 def test_pick_random_game_returns_game_with_art(appmod, tmp_path, monkeypatch):

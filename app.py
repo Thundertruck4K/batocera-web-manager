@@ -1725,6 +1725,14 @@ def _parse_es_date(value):
     return ""
 
 
+def _int_text(value):
+    """Entero de un campo de texto; 0 si viene vacío o no es numérico."""
+    try:
+        return int((value or "").strip() or 0)
+    except (ValueError, AttributeError):
+        return 0
+
+
 def collect_play_stats(roms_base, systems=None):
     """Agrega estadísticas de juego desde los `gamelist.xml` de `roms_base`.
 
@@ -1764,14 +1772,10 @@ def collect_play_stats(roms_base, systems=None):
             continue
         sys_playcount = sys_playtime = sys_games = 0
         for game in tree.findall(".//game"):
-            try:
-                pc = int((game.findtext("playcount", "0") or "0").strip() or 0)
-            except ValueError:
-                pc = 0
-            try:
-                pt = int((game.findtext("playtime", "0") or "0").strip() or 0)
-            except ValueError:
-                pt = 0
+            pc = _int_text(game.findtext("playcount", "0"))
+            # ES escribe el tiempo en <gametime>; <playtime> lo usan otras herramientas.
+            pt = _int_text(game.findtext("gametime", "")) or \
+                 _int_text(game.findtext("playtime", "0"))
             if pc <= 0 and pt <= 0:
                 continue
             gpath = (game.findtext("path", "") or "").lstrip("./")
@@ -1806,10 +1810,86 @@ def collect_play_stats(roms_base, systems=None):
     return result
 
 
+# El catálogo usa claves cortas para algunos sistemas; el slug de Batocera no
+# siempre coincide (gamecube vs gc). Alias explícitos: no se inventan nombres,
+# se reutiliza el que ya está en `batocera_systems.json`.
+SYSTEM_SLUG_ALIASES = {
+    "gamecube": "gc",
+    "dreamcast": "dc",
+    "pcengine": "pce",
+    "atari800": "atari-800",
+}
+
+
+def friendly_system_name(slug):
+    """Nombre legible de un sistema desde `batocera_systems.json` (o el slug)."""
+    info = _BATOCERA_SYSTEMS.get(slug) or {}
+    if not info.get("n"):
+        info = _BATOCERA_SYSTEMS.get(SYSTEM_SLUG_ALIASES.get(slug, "")) or {}
+    return info.get("n") or slug
+
+
+def read_game_meta(roms_base, system, filename, subpath=""):
+    """Metadatos de un ROM leídos de `roms/<system>/gamelist.xml`.
+
+    Devuelve solo lo que existe: `{}` si el ROM no está en la gamelist o su
+    entrada no tiene texto. Nunca lanza.
+
+    Claves: name, desc, genre, publisher (cae a developer), players, year,
+    playcount, gametime_s y lastplayed (YYYY-MM-DD).
+    """
+    gl = Path(roms_base) / system / "gamelist.xml"
+    if not gl.exists():
+        return {}
+    try:
+        root = ET.parse(gl).getroot()
+    except Exception:
+        return {}
+    rel = f"{subpath}/{filename}" if subpath else filename
+    game = None
+    for g in root.findall("game"):
+        gpath = (g.findtext("path", "") or "").lstrip("./")
+        if gpath == rel or (not subpath and Path(gpath).name == filename):
+            game = g
+            break
+    if game is None:
+        return {}
+
+    def txt(tag):
+        return (game.findtext(tag, "") or "").strip()
+
+    meta = {}
+    for tag in ("name", "desc", "genre", "players"):
+        val = txt(tag)
+        if val:
+            meta[tag] = val
+    publisher = txt("publisher") or txt("developer")
+    if publisher:
+        meta["publisher"] = publisher
+    year = _parse_es_date(txt("releasedate"))[:4]
+    if year:
+        meta["year"] = year
+    playcount = _int_text(txt("playcount"))
+    if playcount:
+        meta["playcount"] = playcount
+    # ES escribe el tiempo en <gametime>; <playtime> es de otras herramientas.
+    gametime = _int_text(txt("gametime")) or _int_text(txt("playtime"))
+    if gametime:
+        meta["gametime_s"] = gametime
+    lastplayed = _parse_es_date(txt("lastplayed"))
+    if lastplayed:
+        meta["lastplayed"] = lastplayed
+    return meta
+
+
 def pick_random_game(roms_base, systems=None):
     """Elige un juego al azar entre los que tienen arte disponible.
 
-    Devuelve {"system","name","filename","subpath","has_art"} o None.
+    Enriquece el resultado con el nombre amigable de la plataforma y con los
+    metadatos que ya existan en la gamelist del sistema elegido.
+
+    Devuelve {"system","system_name","name","filename","subpath","has_art",...}
+    o None.
     """
     base = Path(roms_base)
     if not base.is_dir():
@@ -1842,7 +1922,11 @@ def pick_random_game(roms_base, systems=None):
                                    "has_art": True})
     if not candidates:
         return None
-    return random.choice(candidates)
+    game = random.choice(candidates)
+    game["system_name"] = friendly_system_name(game["system"])
+    game.update(read_game_meta(roms_base, game["system"], game["filename"],
+                               game["subpath"]))
+    return game
 
 
 def get_rom_systems(settings, fast=False):

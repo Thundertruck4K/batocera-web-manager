@@ -608,7 +608,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .dash-random-img{background-size:cover;background-position:center;aspect-ratio:16/9;border-radius:10px;
   background-color:var(--bg3);border:1px solid var(--border)}
 .dash-random-name{font-size:16px;font-weight:700}
-.dash-random-sys{font-size:12px;color:var(--text3);text-transform:capitalize}
+.dash-random-facts{font-size:12px;color:var(--text2);margin-top:2px}
+.dash-random-usage{font-size:11px;color:var(--text3);margin-top:4px}
+.dash-random-desc{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 #dash-playstats{margin-bottom:14px}
 #dash-retro{margin-bottom:14px}
 .retro-empty{font-size:13px;color:var(--text2)}
@@ -782,7 +785,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
             <div class="dash-random-img" id="dash-random-img"></div>
             <div class="dash-random-info">
               <div class="dash-random-name" id="dash-random-name">Buscando…</div>
-              <div class="dash-random-sys" id="dash-random-sys"></div>
+              <div class="dash-random-facts" id="dash-random-facts"></div>
+              <div class="dash-random-usage" id="dash-random-usage"></div>
+              <div class="dash-random-desc" id="dash-random-desc"></div>
             </div>
           </div>
         </div>
@@ -1939,6 +1944,30 @@ function esReloadNotice(esReload) {
            '🔄 Recargar ES</button></div>';
   }
   return '';
+}
+function randomGameView(g) {
+  // Convierte el juego al azar en tres líneas de texto plano para pintar:
+  // datos (plataforma · año · género), uso y sinopsis. Sin datos inventados.
+  if (!g) return { facts: '', usage: '', desc: '' };
+  const facts = [g.system_name || g.system, g.year, g.genre]
+    .filter(x => x).join(' · ');
+  const bits = [];
+  if (g.playcount > 0) bits.push(g.playcount === 1 ? '1 vez' : g.playcount + ' veces');
+  if (g.gametime_s > 0) bits.push(fmtPlaytime(g.gametime_s));
+  if (g.lastplayed) bits.push('última vez ' + fmtDateEs(g.lastplayed));
+  return { facts: facts, usage: bits.join(' · '), desc: g.desc || '' };
+}
+function fmtPlaytime(sec) {
+  // Segundos -> '45 min' / '1,2 h' (coma decimal, como en español).
+  if (!(sec > 0)) return '';
+  if (sec < 60) return 'menos de 1 min';
+  if (sec < 3600) return Math.round(sec / 60) + ' min';
+  return (sec / 3600).toFixed(1).replace('.', ',') + ' h';
+}
+function fmtDateEs(iso) {
+  // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
 }
 function sortSystems(list, key){
   const k = key || 'name';
@@ -4445,21 +4474,28 @@ async function loadRandomGame() {
 }
 
 function renderRandomGame(g) {
-  const img  = document.getElementById('dash-random-img');
-  const name = document.getElementById('dash-random-name');
-  const sys  = document.getElementById('dash-random-sys');
-  if (!img || !name || !sys) return;
+  const img   = document.getElementById('dash-random-img');
+  const name  = document.getElementById('dash-random-name');
+  const facts = document.getElementById('dash-random-facts');
+  const usage = document.getElementById('dash-random-usage');
+  const desc  = document.getElementById('dash-random-desc');
+  if (!img || !name) return;
+  const view = randomGameView(g);
+  // textContent: la gamelist no es HTML de confianza.
+  const set = (el, text) => { if (el) el.textContent = text || ''; };
   if (!g) {
     img.style.backgroundImage = '';
-    name.textContent = 'Sin juegos con arte todavía';
-    sys.textContent = '';
+    set(name, 'Sin juegos con arte todavía');
+    set(facts, ''); set(usage, ''); set(desc, '');
     return;
   }
   const q = g.subpath ? `?subpath=${encodeURIComponent(g.subpath)}` : '';
   img.style.backgroundImage =
     `url('/api/rom-image/${encodeURIComponent(g.system)}/${encodeURIComponent(g.filename)}${q}')`;
-  name.textContent = g.name || g.filename;
-  sys.textContent = g.system;
+  set(name, g.name || g.filename);
+  set(facts, view.facts);
+  set(usage, view.usage);
+  set(desc, view.desc);
 }
 
 async function loadPlayStats() {
