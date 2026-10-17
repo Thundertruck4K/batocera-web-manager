@@ -181,6 +181,8 @@ cd /userdata/system/batocera_web
 bash install.sh
 ```
 
+(También puedes ejecutarlo directamente: `./install.sh`, ya es ejecutable.)
+
 El instalador comprueba Python y Pillow (opcional), deja los ficheros en
 `/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, añade un
 bloque marcado a `/userdata/system/custom.sh` y arranca el manager en ese momento.
