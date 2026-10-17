@@ -19,6 +19,9 @@ Thumbs.db
 static/
 *.log
 
+# Capturas crudas: material de trabajo del README (las figuras si van en docs/screenshots)
+docs/_raw/
+
 # Backups
 *.bak
 *.bak-*
