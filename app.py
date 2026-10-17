@@ -2044,6 +2044,156 @@ def invalidate_system_meta():
     _SYSTEM_META_CACHE["data"] = {}
 
 
+
+# Clasificacion heuristica por nombre de carpeta (fallback cuando no hay
+# metadata en es_systems.cfg). Devuelve (tipo, fabricante).
+_MFR_RULES = [
+    ("nintendo", "Nintendo"), ("gameboy", "Nintendo"), ("game boy", "Nintendo"),
+    ("gamecube", "Nintendo"), ("virtualboy", "Nintendo"), ("virtual boy", "Nintendo"),
+    ("wonderswan", "Nintendo"), ("wswan", "Nintendo"), ("gameandwatch", "Nintendo"),
+    ("game and watch", "Nintendo"), ("n64", "Nintendo"), ("nes", "Nintendo"),
+    ("snes", "Nintendo"), ("gb", "Nintendo"), ("gba", "Nintendo"), ("gbc", "Nintendo"),
+    ("nds", "Nintendo"), ("3ds", "Nintendo"), ("switch", "Nintendo"), ("wii", "Nintendo"),
+    ("fds", "Nintendo"), ("satellaview", "Nintendo"), ("sufami", "Nintendo"),
+    ("sgb", "Nintendo"), ("gamecom", "Nintendo"), ("pokemini", "Nintendo"),
+    ("gamepock", "Nintendo"), ("game master", "Nintendo"),
+    ("sega", "Sega"), ("genesis", "Sega"), ("megadrive", "Sega"),
+    ("mastersystem", "Sega"), ("gamegear", "Sega"), ("saturn", "Sega"),
+    ("dreamcast", "Sega"), ("sega32x", "Sega"), ("segacd", "Sega"), ("sg1000", "Sega"),
+    ("pico", "Sega"), ("naomi", "Sega"), ("atomiswave", "Sega"), ("model2", "Sega"),
+    ("model3", "Sega"), ("hikaru", "Sega"), ("chihiro", "Sega"), ("systemsp", "Sega"),
+    ("system16", "Sega"), ("megacd", "Sega"), ("segaai", "Sega"),
+    ("sony", "Sony"), ("playstation", "Sony"), ("psx", "Sony"), ("ps1", "Sony"),
+    ("ps2", "Sony"), ("ps3", "Sony"), ("ps4", "Sony"), ("psp", "Sony"),
+    ("psvita", "Sony"), ("ps5", "Sony"), ("vita", "Sony"),
+    ("atari", "Atari"),
+    ("nec", "NEC"), ("pcengine", "NEC"), ("pce", "NEC"), ("turbografx", "NEC"),
+    ("supergrafx", "NEC"), ("pcfx", "NEC"), ("tg16", "NEC"),
+    ("snk", "SNK"), ("neogeo", "SNK"), ("ngp", "SNK"), ("ngpc", "SNK"),
+    ("microsoft", "Microsoft"), ("xbox", "Microsoft"), ("xbox360", "Microsoft"),
+    ("commodore", "Commodore"), ("c64", "Commodore"), ("amiga", "Commodore"),
+    ("vic20", "Commodore"), ("c128", "Commodore"), ("c16", "Commodore"),
+    ("plus4", "Commodore"), ("pet", "Commodore"), ("amstrad", "Amstrad"),
+    ("cpc", "Amstrad"), ("gx4000", "Amstrad"), ("apple", "Apple"),
+    ("macintosh", "Apple"), ("apple2", "Apple"), ("appleiigs", "Apple"),
+    ("sharp", "Sharp"), ("x68000", "Sharp"), ("x1", "Sharp"),
+    ("sinclair", "Sinclair"), ("spectrum", "Sinclair"), ("zx", "Sinclair"),
+    ("zx81", "Sinclair"), ("philips", "Philips"), ("cdi", "Philips"),
+    ("mattel", "Mattel"), ("intellivision", "Mattel"), ("coleco", "Coleco"),
+    ("colecovision", "Coleco"), ("bandai", "Bandai"), ("wonderswan", "Bandai"),
+    ("wswan", "Bandai"), ("casio", "Casio"), ("pv1000", "Casio"),
+    ("pv2000", "Casio"), ("epoch", "Epoch"), ("fairchild", "Fairchild"),
+    ("channelf", "Fairchild"), ("magnavox", "Magnavox"), ("odyssey", "Magnavox"),
+    ("rca", "RCA"), ("studio2", "RCA"), ("texas", "Texas Instruments"),
+    ("ti99", "Texas Instruments"), ("ti-99", "Texas Instruments"),
+    ("tomy", "Tomy"), ("tutor", "Tomy"), ("vectrex", "GCE"), ("gce", "GCE"),
+    ("3do", "Panasonic"), ("jaguar", "Atari"), ("lynx", "Atari"),
+    ("dreamcast", "Sega"), ("saturn", "Sega"), ("virtualboy", "Nintendo"),
+    ("ngp", "SNK"), ("ngpc", "SNK"), ("gamegear", "Sega"),
+    ("colecovision", "Coleco"), ("intellivision", "Mattel"),
+    ("odyssey", "Magnavox"), ("channelf", "Fairchild"),
+    ("entex", "Entex"), ("advision", "Entex"), ("adventurevision", "Entex"),
+    ("acorn", "Acorn"), ("bbc", "Acorn"), ("archimedes", "Acorn"),
+    ("coco", "Tandy"), ("enterprise", "Enterprise"), ("samcoupe", "MGT"),
+    ("oricatmos", "Tangerine"), ("oric", "Tangerine"), ("gp32", "GamePark"),
+    ("arduboy", "Arduboy"), ("gamecom", "Tiger"), ("pokemini", "Nintendo"),
+    ("astrocade", "Bally"), ("astrocde", "Bally"), ("vectrex", "GCE"),
+    ("odyssey2", "Magnavox"), ("channelf", "Fairchild"), ("ti99", "Texas Instruments"),
+    ("microsoft", "Microsoft"), ("dos", "Microsoft"), ("windows", "Microsoft"),
+]
+_MFR_RULES.sort(key=lambda x: -len(x[0]))
+
+
+def _classify_system(slug):
+    """Clasificacion heuristica (tipo, fabricante) a partir del nombre de carpeta."""
+    s = (slug or "").lower().replace("-", "").replace("_", "").replace(" ", "")
+    # fabricante: primero coincidencia exacta/prefijo, luego subcadena solo
+    # para palabras largas (evita falsos positivos como "n64" en "dragon64")
+    mfr = ""
+    norm = s
+    # 1) exacta
+    for kw, name in _MFR_RULES:
+        k = kw.replace("-", "").replace("_", "").replace(" ", "")
+        if norm == k:
+            mfr = name
+            break
+    # 2) prefijo
+    if not mfr:
+        for kw, name in sorted(_MFR_RULES, key=lambda x: -len(x[0])):
+            k = kw.replace("-", "").replace("_", "").replace(" ", "")
+            if norm.startswith(k):
+                mfr = name
+                break
+    # 3) subcadena (solo palabras de >= 4 letras)
+    if not mfr:
+        for kw, name in sorted(_MFR_RULES, key=lambda x: -len(x[0])):
+            k = kw.replace("-", "").replace("_", "").replace(" ", "")
+            if len(k) >= 4 and k in norm:
+                mfr = name
+                break
+    # tipo
+    arcade_kw = ["arcade", "mame", "fbneo", "neogeo", "cps", "cave", "gaelco",
+                 "atomiswave", "naomi", "model2", "model3", "hikaru", "chihiro",
+                 "namco", "systemsp", "system16", "taito", "igs", "pgm", "daphne",
+                 "singe", "demul", "flycast", "konami", "cannonball", "zinc",
+                 "lindbergh", "triforce", "stv", "irem", "toaplan", "technos",
+                 "midway", "williams", "bally", "capcom"]
+    portable_kw = ["gb", "gba", "gbc", "nds", "3ds", "switch", "gamegear", "lynx",
+                   "gameboy", "ngp", "wonderswan", "wswan", "virtualboy", "pokemon",
+                   "gamecom", "gp32", "ngage", "psp", "vita", "psvita", "gamepock",
+                   "supervision", "gameandwatch", "lcd", "pokemini", "arduboy",
+                   "lowresnx", "tic80", "tic80", "pico8", "pico", "uzebox", "wasm4",
+                   "gameboy", "gameboyadvance", "gameboycolor", "nintendods",
+                   "nintendo3ds", "nintendoswitch", "gamegear", "atarilynx",
+                   "neogeopocket", "wonderswan", "virtualboy", "gamecom", "gp32",
+                   "ngage", "playstationportable", "playstationvita", "gamepocketcomputer",
+                   "supervision", "gameandwatch", "pokemini", "arduboy", "lowresnx",
+                   "tic80", "pico8", "uzebox", "wasm4", "gamate", "game master",
+                   "gameandwatch", "lcdgames", "gamecom"]
+    computer_kw = ["pc", "dos", "windows", "mac", "amiga", "atarist", "c64", "zx",
+                   "spectrum", "msx", "apple", "pc88", "pc98", "x68000", "sharp",
+                   "thomson", "oric", "bbc", "amstrad", "cpc", "ti99", "coco", "dragon",
+                   "enterprise", "samcoupe", "zx81", "z80", "tandy", "trs80", "mc10",
+                   "c128", "c16", "plus4", "pet", "vic20", "vic", "commodore",
+                   "apple2", "appleiigs", "macintosh", "msx", "pcw", "x1", "thomson",
+                   "oric", "bbc", "archimedes", "acorn", "samcoupe", "enterprise",
+                   "dragon", "tandy", "trs80", "z80", "spectrum", "zx", "cpc",
+                   "amstrad", "ti99", "coco", "c20", "c128", "vic20", "pet", "c64",
+                   "c16", "plus4", "commodore", "apple2", "appleiigs", "macintosh",
+                   "apple", "msx", "dos", "windows", "linux", "unix", "mac", "amiga",
+                   "atari st", "atarist", "msx1", "msx2", "msxturbor", "pc88", "pc98",
+                   "pc60", "pc80", "x68000", "sharp", "x1", "thomson", "oric",
+                   "bbc", "archimedes", "acorn", "samcoupe", "enterprise", "dragon",
+                   "tandy", "trs80", "z80", "spectrum", "zx", "cpc", "amstrad", "ti99",
+                   "ti99", "coco", "c20", "c128", "vic20", "pet", "c64", "c16",
+                   "plus4", "commodore", "apple2", "appleiigs", "macintosh", "apple",
+                   "msx", "dos", "windows", "linux", "unix", "mac", "amiga", "atari st", "atarist", "pc", "ti994a", "ti-99"]
+    # pcengine/pce/pcfx are consoles, not computers
+    if any(k in s for k in ("pcengine", "pce", "pcfx", "pc-98", "pc98", "pc-88",
+                            "pc88", "pc-60", "pc60", "pc-80", "pc80", "pcw")):
+        if any(k in s for k in ("pcengine", "pce", "pcfx")):
+            typ = "Consolas"
+        else:
+            typ = "Ordenadores"
+    else:
+        for kw in sorted(arcade_kw, key=len, reverse=True):
+            if kw in s:
+                typ = "Arcade"
+                break
+        else:
+            for kw in sorted(portable_kw, key=len, reverse=True):
+                if kw in s:
+                    typ = "Portátiles"
+                    break
+            else:
+                for kw in sorted(computer_kw, key=len, reverse=True):
+                    if kw in s:
+                        typ = "Ordenadores"
+                        break
+                else:
+                    typ = "Consolas"
+    return typ, mfr
+
 def get_rom_systems(settings, fast=False):
     roms_base = Path(settings["roms_base"])
     result = []
@@ -2104,7 +2254,14 @@ def get_rom_systems(settings, fast=False):
             except Exception: pass
         has_logo = find_system_logo(settings, name, active_theme) is not None
         meta = _meta.get(name, {})
-        hw = meta.get("hardware", "")
+        hw = (meta.get("hardware") or "").strip()
+        mfr = (meta.get("manufacturer") or "").strip()
+        if not hw or not mfr:
+            h2, m2 = _classify_system(name)
+            if not hw:
+                hw = h2
+            if not mfr:
+                mfr = m2
         result.append({
             "name":name,"path":str(sys_dir),
             "rom_count":len(roms),"media_count":media_count,
@@ -2114,8 +2271,8 @@ def get_rom_systems(settings, fast=False):
             "has_bios":bool(_get_bios_entries(name)),
             "bios_count":len(_get_bios_entries(name)),
             "has_logo": has_logo,
-            "type": system_type_name(hw),
-            "manufacturer": meta.get("manufacturer", "") or "",
+            "type": system_type_name(hw) if hw.lower() in ("arcade","console","portable","computer","engine","fantasy","other","") else hw,
+            "manufacturer": mfr,
             "platform": meta.get("platform", "") or "",
             "release": meta.get("release", "") or "",
             "fullname": meta.get("fullname", "") or name,
@@ -4537,10 +4694,11 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     skip_key = f"{name}/{b['file']}"
                     if skip_key in _missing_bios_skipped:
                         continue
-                    items.append({
+                    _t, _m = _classify_system(name)
+                items.append({
                         "system": name,
-                        "type": usys.get("type", "Otros"),
-                        "manufacturer": usys.get("manufacturer", ""),
+                        "type": usys.get("type") or _t,
+                        "manufacturer": usys.get("manufacturer") or _m,
                         "file": b["file"],
                         "desc": b["desc"],
                         "mandatory": b["mandatory"],
