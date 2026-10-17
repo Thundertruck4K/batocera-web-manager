@@ -26,11 +26,11 @@ def _nav() -> str:
     return m.group(1)
 
 
-def test_six_nav_items_with_svg_icons():
-    s = _sidebar()
-    assert len(re.findall(r'class="nav-item', s)) == 6
-    assert len(re.findall(r"<svg", s)) >= 6, "cada item debe tener un icono SVG"
-    assert '<span class="icon">' not in s, "no deben quedar iconos emoji"
+def test_six_nav_items_with_emoji_icons():
+    nav = _nav()
+    assert len(re.findall(r'class="nav-item', nav)) == 6
+    assert "<svg" not in nav, "los items del sidebar usan emoji, no SVG monocromo"
+    assert len(_EMOJI_RE.findall(nav)) >= 6, "cada item debe llevar su emoji de color"
 
 
 def test_nav_items_keep_showpanel_handlers():
@@ -45,8 +45,8 @@ def test_sidebar_has_five_sections():
         assert label in s, f"falta la sección {label}"
 
 
-def test_nav_has_no_emoji():
-    assert not _EMOJI_RE.search(_nav()), "los items del sidebar no deben contener emojis"
+def test_nav_has_no_svg_icons():
+    assert "<svg" not in _nav(), "los items del sidebar no deben usar SVG monocromo"
 
 
 def test_badges_kept():
@@ -63,17 +63,19 @@ def test_showpanel_still_toggles_single_active():
     assert ".nav-item" in body and "remove('active')" in body and "add('active')" in body
 
 
-def test_active_item_uses_accent_gradient_and_border():
+def test_active_item_is_flat_highlight():
     css = HTML.read_text(encoding="utf-8")
     m = re.search(r"\.nav-item\.active\s*\{([^}]*)\}", css, re.S)
     assert m, "falta la regla .nav-item.active"
     body = m.group(1)
-    assert "gradient" in body and "border" in body, "Variante C: gradiente + borde acento"
+    assert "background" in body and "rgba(255,255,255" in body, "el activo es un realce plano y claro"
+    assert "gradient" not in body, "Aurora Glass: el activo no lleva degradado"
+    assert "box-shadow" not in body, "sin relieve"
+    assert "border" not in body, "sin borde"
 
 
-def test_active_item_icon_takes_accent():
+def test_nav_hover_lightens_background():
     css = HTML.read_text(encoding="utf-8")
-    m = re.search(r"\.nav-item\.active\s+svg\s*\{([^}]*)\}", css, re.S)
-    assert m, "falta la regla .nav-item.active svg (Variante C: icono en acento)"
-    body = m.group(1)
-    assert "var(--accent)" in body and "stroke" in body, "el icono activo debe tomar el acento"
+    m = re.search(r"\.nav-item:hover\s*\{([^}]*)\}", css, re.S)
+    assert m, "falta la regla .nav-item:hover"
+    assert "background" in m.group(1) and "rgba(255,255,255" in m.group(1), "el hover ilumina el botón"
