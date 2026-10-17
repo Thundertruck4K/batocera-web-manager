@@ -1443,9 +1443,11 @@ def delete_custom_system(name, settings):
                 encoding="utf-8",
             )
             mark_es_restart_pending()
+            invalidate_system_meta()
             return True, {"file_deleted": False, "removed_systems": removed}
         cfg_path.unlink()
         mark_es_restart_pending()
+        invalidate_system_meta()
         return True, {"file_deleted": True, "removed_systems": removed}
     except Exception as e:
         return False, {"error": str(e)}
@@ -1977,10 +1979,76 @@ def pick_random_game(roms_base, systems=None):
     return game
 
 
+_HARDWARE_TYPE_NAMES = {
+    "arcade": "Arcade",
+    "console": "Consolas",
+    "portable": "Portátiles",
+    "computer": "Ordenadores",
+    "engine": "Otros",
+    "fantasy": "Otros",
+    "other": "Otros",
+}
+
+
+def system_type_name(hardware):
+    """Convierte el campo `hardware` de Batocera en una categoría amigable."""
+    return _HARDWARE_TYPE_NAMES.get((hardware or "").strip().lower(), "Otros")
+
+
+_SYSTEM_META_CACHE = {"ts": 0, "data": {}}
+
+
+def load_system_meta(settings):
+    """Lee manufacturer/hardware/platform/release/fullname de los es_systems.cfg.
+
+    Combina los cfg de usuario (custom) con el oficial de Batocera
+    (/usr/share/emulationstation/es_systems.cfg). Los custom tienen prioridad.
+    Devuelve {slug: {fullname, manufacturer, hardware, platform, release}}.
+    """
+    now = time.time()
+    if now - _SYSTEM_META_CACHE["ts"] < 300 and _SYSTEM_META_CACHE["data"]:
+        return _SYSTEM_META_CACHE["data"]
+
+    meta = {}
+    cfg_dir = Path(settings.get("es_cfg_dir", "/userdata/system/configs/emulationstation"))
+    files = []
+    builtin = Path("/usr/share/emulationstation/es_systems.cfg")
+    if builtin.is_file():
+        files.append(builtin)  # primero: base
+    if cfg_dir.is_dir():
+        files += sorted(cfg_dir.glob("es_systems_*.cfg"))  # después: override
+
+    for f in files:
+        try:
+            for s in ET.parse(f).findall(".//system"):
+                name = (s.findtext("name") or "").strip()
+                if not name:
+                    continue
+                meta[name] = {
+                    "fullname": (s.findtext("fullname") or "").strip() or name,
+                    "manufacturer": (s.findtext("manufacturer") or "").strip(),
+                    "hardware": (s.findtext("hardware") or "").strip(),
+                    "platform": (s.findtext("platform") or "").strip(),
+                    "release": (s.findtext("release") or "").strip()[:4],
+                }
+        except Exception:
+            continue
+
+    _SYSTEM_META_CACHE["ts"] = now
+    _SYSTEM_META_CACHE["data"] = meta
+    return meta
+
+
+def invalidate_system_meta():
+    _SYSTEM_META_CACHE["ts"] = 0
+    _SYSTEM_META_CACHE["data"] = {}
+
+
 def get_rom_systems(settings, fast=False):
     roms_base = Path(settings["roms_base"])
     result = []
     if not roms_base.exists(): return result
+    _meta = load_system_meta(settings)
     try: dirs = sorted(roms_base.iterdir())
     except Exception: return result
     active_theme = detect_active_theme(settings)
@@ -2035,6 +2103,8 @@ def get_rom_systems(settings, fast=False):
                     if meta: rom.update(meta)
             except Exception: pass
         has_logo = find_system_logo(settings, name, active_theme) is not None
+        meta = _meta.get(name, {})
+        hw = meta.get("hardware", "")
         result.append({
             "name":name,"path":str(sys_dir),
             "rom_count":len(roms),"media_count":media_count,
@@ -2044,6 +2114,11 @@ def get_rom_systems(settings, fast=False):
             "has_bios":bool(_get_bios_entries(name)),
             "bios_count":len(_get_bios_entries(name)),
             "has_logo": has_logo,
+            "type": system_type_name(hw),
+            "manufacturer": meta.get("manufacturer", "") or "",
+            "platform": meta.get("platform", "") or "",
+            "release": meta.get("release", "") or "",
+            "fullname": meta.get("fullname", "") or name,
         })
     return result
 
@@ -4464,6 +4539,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                         continue
                     items.append({
                         "system": name,
+                        "type": usys.get("type", "Otros"),
+                        "manufacturer": usys.get("manufacturer", ""),
                         "file": b["file"],
                         "desc": b["desc"],
                         "mandatory": b["mandatory"],
@@ -4657,6 +4734,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 os.makedirs(cfg_dir, exist_ok=True)
                 with open(cfg_path,"w",encoding="utf-8") as f: f.write(xml_str)
                 mark_es_restart_pending()
+                invalidate_system_meta()
                 log.append(f"✔ CFG escrito: {cfg_path}")
             except Exception as e:
                 self.send_json({"ok":False,"errors":[str(e)]}); return

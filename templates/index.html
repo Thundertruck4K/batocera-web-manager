@@ -124,6 +124,13 @@ a{color:var(--accent);text-decoration:none}
 .panel-tab:hover{background:var(--bg3);color:var(--text1)}
 .panel-tab.active{background:var(--bg3);color:var(--text1);border-color:var(--accent)}
 .panel-tab .nav-badge{margin-left:2px}
+.filter-chip{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  padding:4px 10px;border-radius:14px;cursor:pointer;font-size:12px;font-weight:600;
+  font-family:inherit;transition:all .15s;line-height:1.2;
+}
+.filter-chip:hover{border-color:var(--accent);color:var(--text1)}
+.filter-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .sidebar-footer{
   padding:14px 16px;border-top:1px solid var(--border);
   font-size:11px;color:var(--text3);
@@ -1273,6 +1280,18 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <button class="btn btn-ghost" onclick="loadRomSystems()">↺ Actualizar</button>
         </div>
 
+        <!-- Filtros por tipo y fabricante -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.5px">TIPO</span>
+            <div id="rom-type-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.5px">FABRICANTE</span>
+            <div id="rom-mfr-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          </div>
+        </div>
+
         <!-- Vista: lista sistemas -->
         <div id="roms-systems-view">
           <div id="roms-systems-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
@@ -1349,6 +1368,17 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               <p style="font-size:12px;color:var(--text3);margin-top:2px" id="biosmissing-summary">Cargando…</p>
             </div>
             <button class="btn btn-ghost" onclick="loadMissingBios()">↺ Actualizar</button>
+          </div>
+          <!-- Filtros por tipo y fabricante (BIOS) -->
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.5px">TIPO</span>
+              <div id="bios-type-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text3);font-weight:700;letter-spacing:.5px">FABRICANTE</span>
+              <div id="bios-mfr-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            </div>
           </div>
           <div id="biosmissing-list">
             <div style="text-align:center;padding:40px;color:var(--text3)">Cargando lista de BIOS faltantes…</div>
@@ -2855,6 +2885,9 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 //  ROM & BIOS MONITOR
 // ═══════════════════════════════════════════════════════════════
 let allRomSystems = [];
+let allBiosMissing = null;
+let _biosTypeFilter = new Set();
+let _biosMfrFilter = new Set();
 let currentSystem  = null;
 let currentSubpath = "";   // ruta relativa dentro del sistema, ej: "CPS1" o "CPS1/bootlegs"
 let currentRoms     = [];
@@ -2869,8 +2902,46 @@ async function loadRomSystems() {
   const empty = data.filter(s => s.is_empty).length;
   document.getElementById('rom-summary-text').textContent =
     `${data.length} sistemas · ${total} ROMs en total · ${empty} sistemas vacíos`;
+  populateRomFilters(data);
   filterRomSystems();
 }
+
+function romSystemCard(s) {
+  const barW = s.rom_count > 0 ? Math.min(100, Math.round(s.rom_count/3)) : 0;
+  const statusDot = s.is_empty
+    ? '<span style="color:var(--text3);font-size:10px">● vacío</span>'
+    : `<span style="color:var(--green);font-size:10px">● ${s.rom_count} ROMs</span>`;
+  const biosWarning = s.has_bios && s.bios_count > 0
+    ? `<span style="color:var(--yellow);font-size:10px" title="Requiere BIOS">⚠ BIOS</span>` : '';
+  const logoHtml = s.has_logo
+    ? `<img src="/api/system-logo/${encodeURIComponent(s.name)}" style="width:28px;height:28px;object-fit:contain"
+            alt="${escHtml(s.name)}">`
+    : `<span>🕹</span>`;
+  const mfr = s.manufacturer ? `<span style="font-size:9px;color:var(--text3);padding:1px 6px;border:1px solid var(--border);border-radius:10px">${escHtml(s.manufacturer)}</span>` : '';
+  return `
+  <div class="system-card" style="flex-direction:column;align-items:stretch;gap:10px;cursor:pointer;padding:14px"
+       onclick="openSystem(this.dataset.system)" data-system="${escHtml(s.name)}">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:36px;height:36px;border-radius:8px;background:${systemAccent(s)};
+        display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">
+        ${logoHtml}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</div>
+        <div style="display:flex;gap:6px;margin-top:3px;align-items:center;flex-wrap:wrap">${statusDot} ${biosWarning} ${mfr}</div>
+      </div>
+    </div>
+    <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+      <div style="height:100%;width:${barW}%;background:${s.is_empty?'var(--border)':'var(--accent2)'};border-radius:2px;transition:width .4s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
+      <span>${s.size_human}</span>
+      <span>${s.has_gamelist?'📋 gamelist':''} ${s.media_count>0?'🖼 '+s.media_count:''}</span>
+    </div>
+  </div>`;
+}
+
+const ROM_TYPE_ORDER = ['Arcade', 'Consolas', 'Portátiles', 'Ordenadores', 'Otros'];
 
 function renderRomSystems(systems) {
   const grid = document.getElementById('roms-systems-grid');
@@ -2878,39 +2949,95 @@ function renderRomSystems(systems) {
     grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);grid-column:1/-1">Sin sistemas encontrados</div>';
     return;
   }
-  grid.innerHTML = systems.map(s => {
-    const barW = s.rom_count > 0 ? Math.min(100, Math.round(s.rom_count/3)) : 0;
-    const statusDot = s.is_empty
-      ? '<span style="color:var(--text3);font-size:10px">● vacío</span>'
-      : `<span style="color:var(--green);font-size:10px">● ${s.rom_count} ROMs</span>`;
-    const biosWarning = s.has_bios && s.bios_count > 0
-      ? `<span style="color:var(--yellow);font-size:10px" title="Requiere BIOS">⚠ BIOS</span>` : '';
-    const logoHtml = s.has_logo
-      ? `<img src="/api/system-logo/${encodeURIComponent(s.name)}" style="width:28px;height:28px;object-fit:contain"
-              alt="${escHtml(s.name)}">`
-      : `<span>🕹</span>`;
-    return `
-    <div class="system-card" style="flex-direction:column;align-items:stretch;gap:10px;cursor:pointer;padding:14px"
-         onclick="openSystem(this.dataset.system)" data-system="${escHtml(s.name)}">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:36px;height:36px;border-radius:8px;background:${systemAccent(s)};
-          display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden">
-          ${logoHtml}
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.name)}</div>
-          <div style="display:flex;gap:8px;margin-top:3px;align-items:center">${statusDot} ${biosWarning}</div>
-        </div>
+  // Agrupar por tipo
+  const groups = {};
+  for (const s of systems) {
+    const t = s.type || 'Otros';
+    (groups[t] = groups[t] || []).push(s);
+  }
+  const orderedTypes = ROM_TYPE_ORDER.filter(t => groups[t] && groups[t].length)
+    .concat(Object.keys(groups).filter(t => !ROM_TYPE_ORDER.includes(t) && groups[t] && groups[t].length));
+  grid.innerHTML = orderedTypes.map(t => {
+    const items = groups[t];
+    const collapsed = _romCollapsedTypes.has(t);
+    return `<div class="rom-type-section" data-type="${escHtml(t)}" style="margin-bottom:6px">
+      <div class="rom-type-header" onclick="toggleRomTypeSection(this)" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;user-select:none">
+        <span class="rom-type-arrow" style="font-size:11px;color:var(--text3);transition:transform .15s">${collapsed ? '▶' : '▼'}</span>
+        <span style="font-size:13px;font-weight:700">${escHtml(t)}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:auto">${items.length} sistema${items.length===1?'':'s'}</span>
       </div>
-      <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
-        <div style="height:100%;width:${barW}%;background:${s.is_empty?'var(--border)':'var(--accent2)'};border-radius:2px;transition:width .4s"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
-        <span>${s.size_human}</span>
-        <span>${s.has_gamelist?'📋 gamelist':''} ${s.media_count>0?'🖼 '+s.media_count:''}</span>
+      <div class="rom-type-body" style="display:${collapsed?'none':'grid'};grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px">
+        ${items.map(s => romSystemCard(s)).join('')}
       </div>
     </div>`;
   }).join('');
+}
+
+const _romCollapsedTypes = new Set();
+
+function toggleRomTypeSection(header) {
+  const section = header.parentElement;
+  const body = section.querySelector('.rom-type-body');
+  const arrow = header.querySelector('.rom-type-arrow');
+  if (!body) return;
+  const collapsed = body.style.display === 'none';
+  body.style.display = collapsed ? 'grid' : 'none';
+  if (arrow) arrow.textContent = collapsed ? '▼' : '▶';
+  if (collapsed) _romCollapsedTypes.delete(section.dataset.type);
+  else _romCollapsedTypes.add(section.dataset.type);
+}
+
+// ── Filtros (chips) para ROMs ─────────────────────────────────────
+let _romTypeFilter = new Set();   // vacío = todos
+let _romMfrFilter  = new Set();   // vacío = todos
+
+function populateRomFilters(systems) {
+  const typeChips = document.getElementById('rom-type-chips');
+  const mfrChips  = document.getElementById('rom-mfr-chips');
+  if (!typeChips || !mfrChips) return;
+  const types = ROM_TYPE_ORDER.filter(t => systems.some(s => (s.type||'Otros') === t));
+  // añade tipos no previstos
+  for (const s of systems) {
+    const t = s.type || 'Otros';
+    if (!types.includes(t)) types.push(t);
+  }
+  const mfrs = [...new Set(systems.map(s => s.manufacturer).filter(Boolean))].sort();
+  typeChips.innerHTML =
+    `<button class="filter-chip ${_romTypeFilter.size===0?'active':''}" onclick="toggleRomTypeFilter('')">Todos</button>` +
+    types.map(t => `<button class="filter-chip ${_romTypeFilter.has(t)?'active':''}" onclick="toggleRomTypeFilter('${escHtml(t)}')">${escHtml(t)}</button>`).join('');
+  mfrChips.innerHTML =
+    `<button class="filter-chip ${_romMfrFilter.size===0?'active':''}" onclick="toggleRomMfrFilter('')">Todos</button>` +
+    mfrs.map(m => `<button class="filter-chip ${_romMfrFilter.has(m)?'active':''}" onclick="toggleRomMfrFilter('${escHtml(m)}')">${escHtml(m)}</button>`).join('');
+}
+
+function toggleRomTypeFilter(t) {
+  if (t === '') { _romTypeFilter.clear(); }
+  else {
+    if (_romTypeFilter.has(t)) _romTypeFilter.delete(t);
+    else _romTypeFilter.add(t);
+  }
+  populateRomFilters(allRomSystems);
+  filterRomSystems();
+}
+
+function toggleRomMfrFilter(m) {
+  if (m === '') { _romMfrFilter.clear(); }
+  else {
+    if (_romMfrFilter.has(m)) _romMfrFilter.delete(m);
+    else _romMfrFilter.add(m);
+  }
+  populateRomFilters(allRomSystems);
+  filterRomSystems();
+}
+
+function filterRomSystems() {
+  const q = document.getElementById('rom-search').value;
+  const sortEl = document.getElementById('rom-sort');
+  const key = sortEl ? sortEl.value : 'name';
+  let filtered = filterSystems(allRomSystems, q);
+  if (_romTypeFilter.size) filtered = filtered.filter(s => _romTypeFilter.has(s.type || 'Otros'));
+  if (_romMfrFilter.size) filtered = filtered.filter(s => _romMfrFilter.has(s.manufacturer || ''));
+  renderRomSystems(sortSystems(filtered, key));
 }
 
 function filterRomSystems() {
@@ -3321,6 +3448,34 @@ function renderBios(data) {
     </table>`;
 }
 
+function populateBiosFilters(data) {
+  const typeChips = document.getElementById('bios-type-chips');
+  const mfrChips  = document.getElementById('bios-mfr-chips');
+  if (!typeChips || !mfrChips) return;
+  const systems = data.systems || {};
+  const sysNames = Object.keys(systems);
+  const types = [...new Set(sysNames.map(s => (systems[s][0] && systems[s][0].type) || 'Otros'))].sort();
+  const mfrs = [...new Set(sysNames.map(s => (systems[s][0] && systems[s][0].manufacturer) || '').filter(Boolean))].sort();
+  typeChips.innerHTML =
+    `<button class="filter-chip ${_biosTypeFilter.size===0?'active':''}" onclick="toggleBiosTypeFilter('')">Todos</button>` +
+    types.map(t => `<button class="filter-chip ${_biosTypeFilter.has(t)?'active':''}" onclick="toggleBiosTypeFilter('${escHtml(t)}')">${escHtml(t)}</button>`).join('');
+  mfrChips.innerHTML =
+    `<button class="filter-chip ${_biosMfrFilter.size===0?'active':''}" onclick="toggleBiosMfrFilter('')">Todos</button>` +
+    mfrs.map(m => `<button class="filter-chip ${_biosMfrFilter.has(m)?'active':''}" onclick="toggleBiosMfrFilter('${escHtml(m)}')">${escHtml(m)}</button>`).join('');
+}
+
+function toggleBiosTypeFilter(t) {
+  if (t === '') _biosTypeFilter.clear();
+  else { if (_biosTypeFilter.has(t)) _biosTypeFilter.delete(t); else _biosTypeFilter.add(t); }
+  if (allBiosMissing) { populateBiosFilters(allBiosMissing); renderMissingBios(allBiosMissing); }
+}
+
+function toggleBiosMfrFilter(m) {
+  if (m === '') _biosMfrFilter.clear();
+  else { if (_biosMfrFilter.has(m)) _biosMfrFilter.delete(m); else _biosMfrFilter.add(m); }
+  if (allBiosMissing) { populateBiosFilters(allBiosMissing); renderMissingBios(allBiosMissing); }
+}
+
 function toggleBiosAcc(header) {
   const body = header.nextElementSibling;
   const arrow = header.querySelector('.bios-acc-arrow');
@@ -3478,7 +3633,9 @@ async function loadMissingBios() {
   try {
     const data = await fetchJson('/api/bios/missing');
     if (!data || !data.ok) { list.innerHTML = '<div class="warn-box">Error al cargar BIOS faltantes</div>'; return; }
+    allBiosMissing = data;
     renderMissingBios(data);
+    populateBiosFilters(data);
     summary.textContent = `${data.total_missing} archivo(s) BIOS faltante(s) en ${Object.keys(data.systems||{}).length} sistema(s)`;
     setBiosMissingCount(data.total_missing);
   } catch(e) {
@@ -3493,7 +3650,16 @@ function renderMissingBios(data) {
     return;
   }
   const systems = data.systems || {};
-  const sysNames = Object.keys(systems).sort();
+  let sysNames = Object.keys(systems).sort();
+  // Filtros por tipo y fabricante
+  sysNames = sysNames.filter(sys => {
+    const items = systems[sys] || [];
+    const t = (items[0] && items[0].type) || 'Otros';
+    const m = (items[0] && items[0].manufacturer) || '';
+    if (_biosTypeFilter.size && !_biosTypeFilter.has(t)) return false;
+    if (_biosMfrFilter.size && !_biosMfrFilter.has(m)) return false;
+    return true;
+  });
   let html = '<div class="bios-accordion">';
   for (const sys of sysNames) {
     const items = systems[sys] || [];
