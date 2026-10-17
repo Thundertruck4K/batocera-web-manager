@@ -4,6 +4,13 @@
 **Autor:** sesión de rediseño (asistida) — el usuario eligió la propuesta **A** entre tres maquetas
 **Estado:** aprobado e implementado (restyle completado; 231 tests verdes)
 
+> **Corrección 2026-10-17.** La primera implementación se desvió de la maqueta A: en §7.3 se
+> decidió (mal) dejar las tarjetas con base opaca `--panel` y en §8.5 mantener `--accent2`
+> oscuro, de modo que el resultado parecía el tema anterior. Se corrigió para ser fiel a la
+> maqueta: tarjetas de **cristal translúcido** sin base opaca, cobertura **cian** (`--aurora`)
+> en los degradados, **números del hero con degradado**, blobs vivos y grano visible. Commit
+> `7a48cf0`. §7.3, §7.2 y §8.5 quedan actualizados abajo.
+
 ---
 
 ## 1. Contexto
@@ -112,7 +119,8 @@ Un único `<div class="fx" aria-hidden="true">` insertado como primer hijo de `.
 - 3 «blobs» (`border-radius:50%`, `filter:blur(95px)`, opacidad .34–.5) con degradados
   radiales `--accent`, `--aurora` y `#FB7185`, animados con `transform` (barato) en bucle
   alterno de ~26 s.
-- Una capa de grano fino (data-URI SVG `feTurbulence`) a baja opacidad.
+- Una capa de grano fino (data-URI SVG `feTurbulence`) a opacidad `.5` con
+  `mix-blend-mode:overlay` (como la maqueta).
 
 El contenido (`.app`) sube a `position:relative; z-index:1`. Los blobs quedan **detrás** de
 todo, así que se ven sobre todo en los márgenes y a través de las superficies translúcidas.
@@ -123,10 +131,11 @@ todo, así que se ven sobre todo en los márgenes y a través de las superficies
   1 px `rgba(255,255,255,.10)`) en **4 superficies y solo 4**: sidebar, topbar, overlay de
   modal y hero. Es lo caro; se acota a propósito.
 - **Tarjetas** (`.card`, `.dash-card`, `system-card`, `fan-card`, `service-status-box`):
-  panel **sólido** `--panel` + un brillo superior
-  `linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012))`. Sin
-  `backdrop-filter` (rendimiento) pero con la misma lectura de cristal. Las tarjetas opacas
-  garantizan que el texto no compita con los blobs del fondo.
+  **cristal translúcido** `linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))`
+  **sin base opaca**, de modo que la aurora se ve por detrás (igual que la maqueta A). Sin
+  `backdrop-filter` (rendimiento), pero con la misma lectura de cristal que las 4 superficies
+  caras. La barra de acento superior (`.dash-card::before` / `.fan-card::before`) es un
+  degradado `--accent → --aurora` (azul→cian).
 - Radios `--radius`/`--radius2`; se conserva la barra de acento superior de `.dash-card::before`
   (recoloreada con `--card-accent`).
 
@@ -181,11 +190,12 @@ a los tokens y a los pocos colores semánticos que se decidan.
 ## 8. Decisiones mías (revisables)
 
 1. **Fuentes por CDN con respaldo**, no empaquetadas: no añadir binarios al repo.
-2. **`backdrop-filter` en 4 superficies**; tarjetas con brillo en vez de blur (rendimiento).
+2. **`backdrop-filter` en 4 superficies**; tarjetas de cristal translúcido **sin** blur (rendimiento).
 3. **Animaciones apagadas con `prefers-reduced-motion`** y partículas con tope fijo.
 4. **Sin modo claro**: A es oscura.
-5. **`--accent2` se queda oscuro** (`#4A5BD4`) porque `btn-primary` lo usa de fondo con texto
-   blanco; el cian `#22D3EE` entra como token nuevo `--aurora` solo en degradados.
+5. **`--accent2` se queda oscuro** (`#4A5BD4`) para chips/badges; el cian `#22D3EE` vive en
+   `--aurora` y es el que entra en los degradados (nav activo, barras de acento de tarjeta,
+   `.ps-bar`, botón primario azul→cian con texto oscuro).
 6. **JetBrains Mono solo donde ya se usa `--mono`** (números, rutas, logs); el resto, Inter.
 7. **La paleta se unifica en todo el sitio** (decisión del usuario, «opción 2»): se ajustan
    también los literales de color en estilos en línea y en cadenas de JS (§7.8).
