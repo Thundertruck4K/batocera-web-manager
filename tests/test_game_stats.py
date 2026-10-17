@@ -3,7 +3,7 @@
 Cubren:
 - `find_user_art`: priorizar el arte de usuario (media del usuario) sobre el scraped.
 - `collect_play_stats`: agregar playcount/lastplayed/playtime desde gamelist.xml.
-- `pick_random_game`: elegir un juego al azar entre los que tienen arte.
+- `pick_random_game`: elegir un juego al azar, prefiriendo los que tienen arte.
 """
 from __future__ import annotations
 
@@ -165,8 +165,17 @@ def test_pick_random_game_returns_game_with_art(appmod, tmp_path, monkeypatch):
     assert game["has_art"] is True
 
 
-def test_pick_random_game_none_without_art(appmod, tmp_path):
+def test_pick_random_game_falls_back_to_game_without_art(appmod, tmp_path, monkeypatch):
+    # Si ningún juego tiene arte el sorteo sigue dando un juego (has_art=False):
+    # la tarjeta pinta entonces el wallpaper generado con el nombre encima, así
+    # que ya no hace falta dejar la tarjeta vacía.
     sys_dir = tmp_path / "snes"
     sys_dir.mkdir()
     (sys_dir / "gameA.zip").write_bytes(b"x")
-    assert appmod.pick_random_game(tmp_path) is None
+    monkeypatch.setattr(appmod.random, "choice", lambda seq: seq[0])
+
+    game = appmod.pick_random_game(tmp_path)
+    assert game is not None, "sin arte debe seguir devolviendo un juego"
+    assert game["system"] == "snes"
+    assert game["filename"] == "gameA.zip"
+    assert game["has_art"] is False

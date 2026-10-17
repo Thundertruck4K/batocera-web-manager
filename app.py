@@ -1924,10 +1924,14 @@ def read_game_meta(roms_base, system, filename, subpath=""):
 
 
 def pick_random_game(roms_base, systems=None):
-    """Elige un juego al azar entre los que tienen arte disponible.
+    """Elige un juego al azar, prefiriendo los que tienen arte disponible.
 
     Enriquece el resultado con el nombre amigable de la plataforma y con los
     metadatos que ya existan en la gamelist del sistema elegido.
+
+    Si ningún juego tiene arte devuelve igualmente uno (con `has_art=False`):
+    la tarjeta pinta entonces el wallpaper generado, así que no hace falta
+    dejar el panel vacío.
 
     Devuelve {"system","system_name","name","filename","subpath","has_art",...}
     o None.
@@ -1941,7 +1945,7 @@ def pick_random_game(roms_base, systems=None):
         except Exception:
             return None
 
-    candidates = []
+    with_art, any_rom = [], []
     for sys_name in systems:
         sys_dir = base / sys_name
         if not sys_dir.is_dir():
@@ -1957,13 +1961,16 @@ def pick_random_game(roms_base, systems=None):
                 continue
             if item.suffix.lower() not in ROM_EXTENSIONS:
                 continue
+            entry = {"system": sys_name, "name": item.stem,
+                     "filename": item.name, "subpath": "",
+                     "has_art": False}
+            any_rom.append(entry)
             if find_user_art(roms_base, sys_name, item.name):
-                candidates.append({"system": sys_name, "name": item.stem,
-                                   "filename": item.name, "subpath": "",
-                                   "has_art": True})
-    if not candidates:
+                with_art.append({**entry, "has_art": True})
+    pool = with_art or any_rom
+    if not pool:
         return None
-    game = random.choice(candidates)
+    game = random.choice(pool)
     game["system_name"] = friendly_system_name(game["system"])
     game.update(read_game_meta(roms_base, game["system"], game["filename"],
                                game["subpath"]))
