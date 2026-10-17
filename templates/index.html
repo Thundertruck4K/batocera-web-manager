@@ -534,6 +534,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .service-status-label{font-size:15px;font-weight:700}
 .service-status-sub{font-size:12px;color:var(--text3);margin-top:3px}
 .service-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+/* aviso de modo manual: solo aparece si corre pero no está en custom.sh */
+.svc-warn{
+  display:flex;align-items:flex-start;gap:15px;
+  padding:15px 18px;border-radius:var(--radius2);
+  border:1px solid rgba(242,196,107,.42);
+  background:linear-gradient(120deg,rgba(242,196,107,.15),rgba(242,196,107,.03) 70%,transparent);
+  box-shadow:var(--shadow);margin-bottom:16px;
+}
+.svc-warn[hidden]{display:none}
+.svc-warn-icon{font-size:24px;line-height:1.1;flex:none}
+.svc-warn-title{font-size:14.5px;font-weight:800;color:var(--yellow);margin-bottom:4px}
+.svc-warn-text{font-size:12.5px;color:var(--text2);line-height:1.6}
+.svc-warn-text code{font-size:12px;background:rgba(0,0,0,.25);padding:1px 5px;border-radius:5px}
+.svc-warn-acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
 .cmd-editor{
   font-family:var(--mono);font-size:12px;
   background:var(--bg3);border:1px solid var(--border);
@@ -1344,6 +1358,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
            PANEL: CONFIGURACIÓN
            ═══════════════════════════════════════════════ -->
       <div class="panel" id="panel-settings">
+        <!-- ── Aviso: manager lanzado a mano (sin autostart) ── -->
+        <div class="svc-warn" id="svc-manual-warn" hidden>
+          <div class="svc-warn-icon">⚠</div>
+          <div style="flex:1">
+            <div class="svc-warn-title">El manager se está ejecutando en modo manual</div>
+            <div class="svc-warn-text">
+              Está lanzado a mano (<code>python3 app.py</code>) y <strong>no</strong> figura en el
+              arranque automático de Batocera: si reinicias la consola, el manager no volverá a
+              levantarse solo. ¿Quieres activar el arranque automático?
+            </div>
+            <div class="svc-warn-acts">
+              <button class="btn btn-success btn-sm" onclick="installService()">
+                ✅ Sí, activar el arranque automático
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="dismissManualWarn()">Ahora no</button>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Autostart Service Manager ── -->
         <div class="card">
           <div class="card-title"><span class="icon">🚀</span>Autostart — Inicio automático con Batocera</div>
@@ -2046,6 +2079,11 @@ function esReloadNotice(esReload) {
            '🔄 Recargar ES</button></div>';
   }
   return '';
+}
+function svcManualWarn(proc, auto, dismissed){
+  // Aviso de modo manual: corre pero no arrancará solo al reiniciar.
+  // `dismissed` es solo de la visita en curso (no se persiste).
+  return !!(proc && proc.running && auto && !auto.registered) && !dismissed;
 }
 function randomGameView(g) {
   // Convierte el juego al azar en tres líneas de texto plano para pintar:
@@ -4380,11 +4418,22 @@ async function scraperBatchDetail(jobId) {
 //  SERVICE MANAGER
 // ═══════════════════════════════════════════════════════════════
 
+let _manualWarnDismissed = false;
+function dismissManualWarn(){
+  _manualWarnDismissed = true;
+  const box = document.getElementById('svc-manual-warn');
+  if (box) box.hidden = true;
+}
+
 async function checkServiceStatus() {
   const data = await fetchJson('/api/service/status');
   if (!data) return;
   const proc = data.process || {}, auto = data.autostart || {};
   const running = proc.running, registered = auto.registered;
+
+  // Aviso de modo manual (arriba del panel): corre pero no arranca solo
+  const warnBox = document.getElementById('svc-manual-warn');
+  if (warnBox) warnBox.hidden = !svcManualWarn(proc, auto, _manualWarnDismissed);
 
   const configs = [
     [running && registered,  'var(--green2)', '✅', 'Servicio activo y autostart configurado',
