@@ -388,7 +388,7 @@ batocera_web/
 │   ├── media/demo.gif        # demostración
 │   ├── screenshots/          # capturas del README
 │   └── superpowers/          # diseño y planes del proyecto
-├── LICENSE                   # MIT
+├── CHANGELOG.md              # historial de cambios por versión
 └── README.md
 ```
 
