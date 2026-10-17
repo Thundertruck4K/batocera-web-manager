@@ -222,7 +222,7 @@ Ejemplo sin interacción: `BM_PORT=8080 BM_AUTOSTART=s bash install.sh`
 
 ### Actualizar a la última versión
 
-Si ya lo tienes instalado (clonado antes), basta con:
+Si ya lo tienes instalado y **tienes git** en la consola:
 
 ```bash
 cd /userdata/system/batocera_web
@@ -232,8 +232,24 @@ sleep 1
 ./install.sh
 ```
 
+Si **no tienes git** (Batocera no lo trae por defecto), descarga la última
+versión y sustituye la carpeta (tus ajustes, temas y ROMs están fuera de ella,
+así que no se pierden):
+
+```bash
+cd /userdata/system
+mv batocera_web batocera_web.bak
+wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/archive/refs/heads/master.tar.gz
+tar -xzf batocera_web.tar.gz
+mv batocera-web-manager-master batocera_web
+chmod +x batocera_web/install.sh
+cd batocera_web
+BM_AUTOSTART=s ./install.sh
+```
+
 El instalador detecta que los ficheros ya están en su sitio y solo reinicia el
-servicio con el código nuevo.
+servicio con el código nuevo. Cuando compruebes que todo va bien, borra la copia
+de seguridad: `rm -rf /userdata/system/batocera_web.bak`.
 
 ### Arranque manual (sin autostart)
 
