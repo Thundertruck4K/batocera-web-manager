@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Batocera System Manager Web — v1.2
-Servidor HTTP puro (stdlib) — sin dependencias externas.
+Batocera System Manager Web — servidor HTTP puro (stdlib), sin dependencias.
 """
 
 import hashlib
@@ -27,6 +26,7 @@ except ImportError:
     HAS_PIL = False
 
 HOST, PORT = "0.0.0.0", 5000
+APP_VERSION = "1.3"   # única fuente: la portada y el banner la reciben de aquí
 
 SETTINGS_FILE = Path("/userdata/system/batocera_manager_settings.json")
 
@@ -3228,30 +3228,60 @@ def get_autostart_status(settings):
         pass
     return {"registered": True, "cmd": None, "block": ""}
 
-def get_process_status():
-    """Verifica si el servidor está corriendo actualmente."""
-    import subprocess
+def _read_proc_cmdline(pid):
+    """Devuelve /proc/<pid>/cmdline como texto (cadena vacía si no se puede)."""
     try:
-        r = subprocess.run(
-            ["pgrep", "-f", "python3.*app.py"],
-            capture_output=True, text=True, timeout=3)
-        pids = [p.strip() for p in r.stdout.strip().splitlines() if p.strip()]
-        if pids:
-            # Obtener puerto desde netstat/ss
-            port = None
-            try:
-                ss = subprocess.run(
-                    ["ss", "-tlnp"],
-                    capture_output=True, text=True, timeout=3)
-                for line in ss.stdout.splitlines():
-                    if "python" in line or any(pid in line for pid in pids):
-                        import re as _re
-                        m = _re.search(r':(\d{4,5})\s', line)
-                        if m: port = int(m.group(1)); break
-            except Exception: pass
-            return {"running": True, "pids": pids, "port": port}
-    except Exception: pass
-    return {"running": False, "pids": [], "port": None}
+        return Path(f"/proc/{pid}/cmdline").read_bytes().decode(errors="replace")
+    except OSError:
+        return ""
+
+def _port_from_cmdline(cmdline):
+    """Extrae el puerto de `--port N` o `--port=N` de una línea de comandos.
+
+    `cmdline` es el contenido de /proc/<pid>/cmdline (argumentos separados por
+    bytes nulos). Devuelve None si no hay --port o si el valor no es un puerto
+    válido (1-65535).
+    """
+    args = [a for a in (cmdline or "").split("\0") if a]
+    for i, arg in enumerate(args):
+        if arg.startswith("--port="):
+            value = arg.split("=", 1)[1]
+        elif arg == "--port" and i + 1 < len(args):
+            value = args[i + 1]
+        else:
+            continue
+        try:
+            port = int(value)
+        except ValueError:
+            return None
+        return port if 1 <= port <= 65535 else None
+    return None
+
+def get_process_status():
+    """Verifica si el servidor está corriendo y en qué puerto escucha.
+
+    El puerto se lee del propio manager: primero de su línea de comandos
+    (`--port N`) y, si no aparece ahí, del socket en LISTEN de ese mismo PID
+    (`_es_listen_port`). Antes se buscaba «el primer python» en la salida de
+    `ss -tlnp`: cualquier otro servicio escrito en Python que escuchara en
+    otro puerto (wsdd, por ejemplo) salía como si fuera el puerto del manager,
+    aunque su línea de comandos dijera 5000.
+    """
+    pids = _run('pgrep -f "python3.*app.py"').split()
+    if not pids:
+        return {"running": False, "pids": [], "port": None}
+
+    port = None
+    for pid in pids:
+        port = _port_from_cmdline(_read_proc_cmdline(pid))
+        if port:
+            break
+    if not port:
+        for pid in pids:
+            port = _es_listen_port(pid)
+            if port:
+                break
+    return {"running": True, "pids": pids, "port": port}
 
 def install_autostart(cmd):
     """Instala o actualiza el bloque de autostart en custom.sh."""
@@ -5278,6 +5308,7 @@ def render_index():
     tpl = Path(__file__).parent / "templates" / "index.html"
     if tpl.exists():
         html = tpl.read_text(encoding="utf-8")
+        html = html.replace("{{app_version}}", APP_VERSION)
         html = html.replace("{{active_theme}}", active_theme)
         html = html.replace("{{themes_user}}",  s.get("themes_user",""))
         html = html.replace("{{platform_opts}}",
@@ -5305,7 +5336,7 @@ if __name__ == "__main__":
         sock.connect(("8.8.8.8",80)); local_ip = sock.getsockname()[0]; sock.close()
     except Exception: local_ip = "127.0.0.1"
     print("="*55)
-    print("  Batocera System Manager Web  v1.2")
+    print(f"  Batocera System Manager Web  v{APP_VERSION}")
     print(f"  PIL/Pillow: {'disponible' if HAS_PIL else 'no disponible'}")
     print(f"  -> http://localhost:{PORT}")
     print(f"  -> http://{local_ip}:{PORT}  (desde tu red)")
