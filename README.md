@@ -220,6 +220,21 @@ Al terminar verás algo así:
 
 Ejemplo sin interacción: `BM_PORT=8080 BM_AUTOSTART=s bash install.sh`
 
+### Actualizar a la última versión
+
+Si ya lo tienes instalado (clonado antes), basta con:
+
+```bash
+cd /userdata/system/batocera_web
+git pull
+pkill -f "python3.*app.py"
+sleep 1
+./install.sh
+```
+
+El instalador detecta que los ficheros ya están en su sitio y solo reinicia el
+servicio con el código nuevo.
+
 ### Arranque manual (sin autostart)
 
 Si prefieres lanzarlo a mano (o probarlo antes de dejarlo fijo):
