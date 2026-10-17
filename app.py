@@ -2955,10 +2955,14 @@ def mark_es_restart_pending(flag=True):
     _es_restart_pending = bool(flag)
 
 def restart_emulationstation():
-    """Reinicio manual (opt-in) de EmulationStation vía batocera-es-swissknife.
+    """Reinicia EmulationStation vía batocera-es-swissknife.
 
-    Nunca se invoca automáticamente: interrumpe la UI en pantalla, así que solo
-    corre si el usuario lo pide explícitamente desde el dashboard.
+    `--restart` hace `kill -9` del proceso de ES; el wrapper
+    `emulationstation-standalone` (un bucle) lo relanza solo, sin tocar X ni
+    openbox. Tarda milisegundos: es seguro llamarlo desde un handler HTTP.
+
+    Se invoca desde el botón manual del dashboard y, automáticamente, tras un
+    scrapeo que guardó metadatos (ver `reload_es_after_scrape`).
 
     Devuelve (ok, info).
     """
@@ -2977,6 +2981,28 @@ def restart_emulationstation():
         return False, {"error": msg}
     mark_es_restart_pending(False)
     return True, {"ok": True}
+
+def reload_es_after_scrape(meta_saved=True):
+    """Recarga EmulationStation tras escribir metadatos en la gamelist.
+
+    ES lee las gamelists al arrancar y las mantiene en memoria: la imagen sí
+    aparece en la TV (autodetecta la carpeta `images/`), pero el texto no se
+    relee hasta que ES se reinicia. Por eso, tras un scrapeo que guardó
+    metadatos, hay que recargarlo.
+
+    Nunca lanza: si el reinicio falla, el scrapeo ya se completó igual.
+    Devuelve {"ok", "reloaded", "error"?}.
+    """
+    if not meta_saved:
+        return {"ok": True, "reloaded": False}
+    try:
+        ok, info = restart_emulationstation()
+    except Exception as e:  # pragma: no cover - defensivo
+        return {"ok": False, "reloaded": False, "error": str(e)}
+    if ok:
+        return {"ok": True, "reloaded": True}
+    return {"ok": False, "reloaded": False,
+            "error": (info or {}).get("error", "error desconocido")}
 
 def get_es_status():
     # `comm` se trunca a 15 chars ("emulationstatio"), por eso -f (cmdline completa)
@@ -3880,7 +3906,8 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
             and r["name"] not in ("images","media","videos","manuals")]
     if only_missing:
         roms = [r for r in roms if not r["has_image"]]
-    results = {"ok":0,"fail":0,"skip":0,"errors":[],"total":len(roms),"quota":{}}
+    results = {"ok":0,"fail":0,"skip":0,"errors":[],"total":len(roms),
+               "quota":{},"meta_saved":0}
     for idx, rom in enumerate(roms):
         rom_stem = Path(rom["filename"]).stem
         rom_abspath = sys_root / rom["filename"]
@@ -3943,6 +3970,7 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
             continue
         meta.update({"system":system,"filename":rom["filename"]})
         save_gamelist_entry(settings["roms_base"], meta)
+        results["meta_saved"] += 1
         if ok_img:
             results["ok"] += 1
         else:
@@ -4052,11 +4080,20 @@ def _process_batch_job(job):
             agg["fail"] += result["fail"]
             agg["skip"] += result.get("skip",0)
             agg["total"] += result["total"]
+            agg["meta_saved"] = agg.get("meta_saved", 0) + result.get("meta_saved", 0)
             agg["errors"].extend(result["errors"][:50])  # cap at 50 errors
             job["progress"] = _batch_progress(_sys_done, total_systems, 0, 0)
     with _scraper_jobs_lock:
         job["status"] = "completed"
         job["progress"] = 100
+        meta_saved_total = job["aggregated"].get("meta_saved", 0)
+    # ES mantiene las gamelists en memoria: recargarlo al terminar para que los
+    # textos aparezcan en la TV. Fuera del lock: el reinicio puede tardar y no
+    # debe bloquear el sondeo de progreso del front-end.
+    if meta_saved_total > 0:
+        es_reload = reload_es_after_scrape(True)
+        with _scraper_jobs_lock:
+            job["es_reload"] = es_reload
 
 # ─── HTTP Handler ─────────────────────────────────────────────────
 class BatoceraHandler(http.server.BaseHTTPRequestHandler):
@@ -4803,6 +4840,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self._save_gamelist_entry(s, meta)
                 results["meta"] = True
 
+        # ES lee las gamelists al arrancar: recargarlo para que el texto
+        # recién guardado se vea en la TV.
+        results["es_reload"] = reload_es_after_scrape(bool(results.get("meta")))
         self.send_json({"ok":True,"results":results})
 
     def _save_gamelist_entry(self, s, meta):
@@ -4820,6 +4860,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if source == "screenscraper" and not (cfg.get("ss_user") and cfg.get("ss_password")):
             self.send_json({"ok":False,"error":"Configura usuario y contraseña de ScreenScraper"}); return
         results = do_scrape_system(s, system, source, cfg, d)
+        results["es_reload"] = reload_es_after_scrape(results.get("meta_saved", 0) > 0)
         self.send_json({"ok":True,"results":results})
 
 
@@ -4865,7 +4906,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             "partial": {},
             "systems_done": 0,
             "systems_result": {},
-            "aggregated": {"ok":0,"fail":0,"skip":0,"total":0,"errors":[]},
+            "aggregated": {"ok":0,"fail":0,"skip":0,"total":0,"errors":[],
+                           "meta_saved":0},
             "quota": {},
             "created_at": time.time(),
             "error": None,
@@ -4894,6 +4936,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     "aggregated": j["aggregated"],
                     "created_at": j["created_at"],
                     "error": j.get("error"),
+                    "es_reload": j.get("es_reload"),
                 })
         self.send_json({"ok":True,"jobs":jobs})
 
@@ -4919,6 +4962,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "created_at": j["created_at"],
                 "error": j.get("error"),
                 "options": j["options"],
+                "es_reload": j.get("es_reload"),
             }
         self.send_json({"ok":True,"job":detail})
 

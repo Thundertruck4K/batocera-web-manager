@@ -1921,6 +1921,25 @@ function scraperJobView(job) {
     ' sistemas' + romPart + ' · ' + ok + ' OK · ' + fail + ' fallos';
   return { active: active, pct: pct, label: label, stats: stats };
 }
+function esReloadNotice(esReload) {
+  // Aviso tras scrapear: EmulationStation solo relee las gamelists al
+  // arrancar, así que hay que recargarlo para que el texto se vea en la TV.
+  if (!esReload) return '';
+  const esc = (typeof escHtml === 'function') ? escHtml : (s => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
+  if (esReload.reloaded === true) {
+    return '<div class="success-box">🔄 EmulationStation recargado: los textos ' +
+           'ya se ven en la TV.</div>';
+  }
+  if (esReload.ok === false) {
+    return '<div class="warn-box">Metadatos guardados, pero no se pudo recargar ' +
+           'EmulationStation' + (esReload.error ? ': ' + esc(esReload.error) : '') +
+           '. <button class="btn btn-ghost btn-sm" onclick="restartES()">' +
+           '🔄 Recargar ES</button></div>';
+  }
+  return '';
+}
 function sortSystems(list, key){
   const k = key || 'name';
   // Decoramos (Schwartzian transform) una sola vez por elemento en lugar de
@@ -3860,7 +3879,8 @@ async function scraperDownload() {
       ? `✔ Imagen guardada en ${escHtml(r.images[0].path)}`
       : `⚠ Sin imagen: ${escHtml(r.errors[0]||'')}`;
     document.getElementById('scraper-status').innerHTML =
-      `<div class="${r.images.length?'success-box':'warn-box'}">${msg}${r.meta?' · Metadatos guardados':''}</div>`;
+      `<div class="${r.images.length?'success-box':'warn-box'}">${msg}${r.meta?' · Metadatos guardados':''}</div>` +
+      esReloadNotice(r.es_reload);
     // Actualizar la ROM en memoria
     if (_scraperCurrentRom && r.meta) {
       const romIdx = currentRoms.findIndex(r => r.filename === _scraperCurrentRom.filename);
@@ -4093,6 +4113,7 @@ async function scraperBatchRefresh() {
     window._batchErrorsText = (agg.errors || []).join('\n');
     document.getElementById('sc-batch-stats').innerHTML =
       `<span style="color:var(--green)">✔ Completado</span> · ${agg.ok} OK · ${agg.fail} fallos · ${agg.errors.length ? `<span style="color:var(--red);cursor:pointer" onclick="alert(escHtml(window._batchErrorsText))">${agg.errors.length} errores</span>` : ''}`;
+    document.getElementById('sc-batch-result').innerHTML += esReloadNotice(activeJob.es_reload);
     _batchActiveJobId = null;
   } else if (activeJob && (activeJob.status === 'cancelled' || activeJob.status === 'failed')) {
     document.getElementById('sc-batch-progress').style.display = 'none';
@@ -4153,7 +4174,7 @@ async function scraperSystemPoll() {
       ${errs.length ? `<div style="margin-top:8px;font-size:11px;max-height:80px;overflow-y:auto">
         ${errs.map(e=>`<div>• ${escHtml(e)}</div>`).join('')}</div>` : ''}
       ${quotaHtml}
-    </div>`;
+    </div>` + esReloadNotice(job.es_reload);
   toast(`Scraping: ${agg.ok||0} OK, ${agg.fail||0} fallos`, (agg.fail||0) ? 'err' : 'ok');
   _sysJobId = null;
   if (job.status === 'completed') {

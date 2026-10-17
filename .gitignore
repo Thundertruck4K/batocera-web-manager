@@ -25,6 +25,7 @@ static/
 
 # Scratch / herramienta temporal de desarrollo (no versionar)
 .superpowers/
+.diag/
 _extracted.js
 _jscheck.py
 _peek.py
