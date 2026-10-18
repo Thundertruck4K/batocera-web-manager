@@ -14,9 +14,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Dashboard rediseñado: tarjetas CPU/GPU/RAM más compactas (tacómetros más chicos); Almacenamiento y Ventiladores en una sola fila; eliminadas las tarjetas de Red y Procesos.
 - La tarjeta de "Noticias" ahora muestra las actualizaciones oficiales de Batocera (releases de GitHub) en formato compacto, y se añadió una segunda tarjeta con información de EmulationStation (estado, PID, puerto, uptime, reinicio).
 - Tacómetros reemplazados por anillos radiales (más compactos) y se quitó parte del texto informativo de las tarjetas CPU/GPU/RAM. Tarjetas de ventiladores mucho más pequeñas.
-- Contador de tests actualizado a 316.
+- Contador de tests actualizado a 320.
 
 ### Corregido
+- Los chips de **TIPO** y **FABRICANTE** del panel ROMs & BIOS sólo mostraban "Todos / Otros": el endpoint `/api/rom-systems` devolvía una lista recortada de campos en la que faltaban `type` y `manufacturer`, justo los que alimentan los filtros. La serialización se centraliza ahora en `rom_system_summary()`, que los incluye (junto a `platform`/`release`/`fullname`).
 - El servidor ya no puede cerrar la conexión sin enviar respuesta (`net::ERR_EMPTY_RESPONSE`): cualquier excepción no controlada en un handler (`GET`/`POST`/`DELETE`) ahora se responde como **500 en JSON** y el *traceback* se imprime en la consola, en lugar de dejar al navegador con una respuesta vacía. Además, un sistema problemático (permisos, fichero que desaparece…) ya no tumba la lista completa de BIOS faltantes.
 - `/api/bios/missing` devolvía una respuesta vacía (`ERR_EMPTY_RESPONSE`) cuando un sistema tenía BIOS pero ninguna faltaba: el `append` había quedado fuera del bucle y leía variables no asignadas. Se extrajo la lógica a `collect_missing_bios()`, ahora cubierta por tests.
 - El grid de sistemas del monitor de ROMs ya no se muestra en una sola columna: las cabeceras de tipo ocupan todo el ancho del grid y las tarjetas vuelven a fluir en varias columnas.

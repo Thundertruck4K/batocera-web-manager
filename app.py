@@ -2324,6 +2324,31 @@ def get_rom_systems(settings, fast=False):
         })
     return result
 
+
+def rom_system_summary(x):
+    """Resumen de un sistema para el listado del panel ROMs & BIOS.
+
+    Incluye `type`/`manufacturer` (y platform/release/fullname) porque son los
+    campos que alimentan los chips de filtrado de la interfaz.
+    """
+    return {
+        "name": x["name"],
+        "rom_count": x["rom_count"],
+        "media_count": x["media_count"],
+        "size_human": x["size_human"],
+        "is_empty": x["is_empty"],
+        "has_gamelist": x["has_gamelist"],
+        "has_bios": x["has_bios"],
+        "bios_count": x["bios_count"],
+        "has_logo": x.get("has_logo", False),
+        "type": x.get("type") or "Otros",
+        "manufacturer": x.get("manufacturer") or "",
+        "platform": x.get("platform") or "",
+        "release": x.get("release") or "",
+        "fullname": x.get("fullname") or x["name"],
+    }
+
+
 def _check_bios_grouped(slug, bios_dir):
     """Helper: returns grouped BIOS info for a single slug, or None if unknown."""
     raw = _get_bios_entries(slug)
@@ -4657,13 +4682,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         # ROM monitor
         elif path == "/api/rom-systems":
             systems = get_rom_systems_cached(s)
-            self.send_json([{
-                "name":x["name"],"rom_count":x["rom_count"],
-                "media_count":x["media_count"],"size_human":x["size_human"],
-                "is_empty":x["is_empty"],"has_gamelist":x["has_gamelist"],
-                "has_bios":x["has_bios"],"bios_count":x["bios_count"],
-                "has_logo":x.get("has_logo",False),
-            } for x in systems])
+            self.send_json([rom_system_summary(x) for x in systems])
         elif len(parts)==3 and parts[:2]==["api","rom-systems"]:
             name = urllib.parse.unquote(parts[2])
             # Detalle: escanear solo ese sistema con gamelist completa

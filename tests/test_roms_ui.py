@@ -273,3 +273,58 @@ def test_safe_api_returns_json_500_on_exception(appmod):
     assert status == 500
     assert data.get("ok") is False
 
+
+# ── /api/rom-systems (resumen que alimenta los chips TIPO/FABRICANTE) ──
+
+
+def _full_system(**over):
+    base = {
+        "name": "nes", "path": "/userdata/roms/nes",
+        "rom_count": 120, "media_count": 8, "total_size": 1048576,
+        "size_human": "1.0 MB", "has_gamelist": True,
+        "roms": [{"file": "a.zip"}], "is_empty": False,
+        "has_bios": True, "bios_count": 3, "has_logo": True,
+        "type": "Consolas", "manufacturer": "Nintendo",
+        "platform": "nes", "release": "1983",
+        "fullname": "Nintendo Entertainment System",
+    }
+    base.update(over)
+    return base
+
+
+def test_rom_system_summary_keeps_filter_fields(appmod):
+    """El resumen DEBE llevar type/manufacturer; si no, los chips salen vacíos.
+
+    Regresión: el endpoint recortaba los campos y sólo aparecían 'Todos/Otros'.
+    """
+    s = appmod.rom_system_summary(_full_system())
+    assert s["type"] == "Consolas"
+    assert s["manufacturer"] == "Nintendo"
+    assert s["platform"] == "nes"
+    assert s["release"] == "1983"
+    assert s["fullname"] == "Nintendo Entertainment System"
+
+
+def test_rom_system_summary_drops_heavy_fields(appmod):
+    s = appmod.rom_system_summary(_full_system())
+    assert "roms" not in s
+    assert "path" not in s
+    assert "total_size" not in s
+
+
+def test_rom_system_summary_defaults(appmod):
+    s = appmod.rom_system_summary({
+        "name": "zzz", "rom_count": 0, "media_count": 0, "size_human": "0 B",
+        "is_empty": True, "has_gamelist": False, "has_bios": False, "bios_count": 0,
+    })
+    assert s["type"] == "Otros"
+    assert s["manufacturer"] == ""
+    assert s["fullname"] == "zzz"
+    assert s["has_logo"] is False
+
+
+def test_rom_systems_endpoint_uses_summary(appmod):
+    """El endpoint debe serializar con `rom_system_summary` (no recortar a mano)."""
+    src = Path(appmod.__file__).read_text(encoding="utf-8")
+    assert "rom_system_summary(x) for x in systems" in src
+
