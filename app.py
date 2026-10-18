@@ -2194,6 +2194,42 @@ def _classify_system(slug):
                     typ = "Consolas"
     return typ, mfr
 
+
+def collect_missing_bios(user_systems, bios_dir):
+    """Recopila las BIOS faltantes de los sistemas del usuario.
+
+    Cada elemento lleva `type`/`manufacturer` (de la metadata del sistema o,
+    si falta, deducidos del slug) para alimentar los filtros de la interfaz.
+    """
+    items = []
+    for usys in user_systems:
+        name = usys["name"]
+        info = _check_bios_grouped(name, bios_dir)
+        if info is None or not info["files"]:
+            continue
+        _t, _m = _classify_system(name)
+        for b in info["files"]:
+            missing = not b["exists"] or b["md5_ok"] is False
+            if not missing:
+                continue
+            skip_key = f"{name}/{b['file']}"
+            if skip_key in _missing_bios_skipped:
+                continue
+            items.append({
+                "system": name,
+                "type": usys.get("type") or _t,
+                "manufacturer": usys.get("manufacturer") or _m,
+                "file": b["file"],
+                "desc": b["desc"],
+                "mandatory": b["mandatory"],
+                "md5": b.get("expected_md5"),
+                "exists": b["exists"],
+                "md5_ok": b["md5_ok"],
+                "skip_key": skip_key,
+            })
+    return items
+
+
 def get_rom_systems(settings, fast=False):
     roms_base = Path(settings["roms_base"])
     result = []
@@ -4681,32 +4717,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/bios/missing":
             bios_dir = Path(s.get("bios_dir","/userdata/bios"))
             user_systems = get_rom_systems_cached(s)
-            items = []
-            for usys in user_systems:
-                name = usys["name"]
-                info = _check_bios_grouped(name, bios_dir)
-                if info is None or not info["files"]:
-                    continue
-                for b in info["files"]:
-                    missing = not b["exists"] or b["md5_ok"] is False
-                    if not missing:
-                        continue
-                    skip_key = f"{name}/{b['file']}"
-                    if skip_key in _missing_bios_skipped:
-                        continue
-                    _t, _m = _classify_system(name)
-                items.append({
-                        "system": name,
-                        "type": usys.get("type") or _t,
-                        "manufacturer": usys.get("manufacturer") or _m,
-                        "file": b["file"],
-                        "desc": b["desc"],
-                        "mandatory": b["mandatory"],
-                        "md5": b.get("expected_md5"),
-                        "exists": b["exists"],
-                        "md5_ok": b["md5_ok"],
-                        "skip_key": skip_key,
-                    })
+            items = collect_missing_bios(user_systems, bios_dir)
             total = len(items)
             systems = {}
             for it in items:

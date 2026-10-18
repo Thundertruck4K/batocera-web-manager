@@ -139,3 +139,85 @@ def test_system_type_name_maps_hardware(appmod):
     assert appmod.system_type_name("computer") == "Ordenadores"
     assert appmod.system_type_name("arcade") == "Arcade"
     assert appmod.system_type_name("") == "Otros"
+
+
+# ── /api/bios/missing (colección de BIOS faltantes) ───────────────
+
+
+def _file(name, *, exists, md5_ok, mandatory=True, desc="BIOS"):
+    return {
+        "file": name,
+        "desc": desc,
+        "mandatory": mandatory,
+        "exists": exists,
+        "md5_ok": md5_ok,
+        "expected_md5": None,
+    }
+
+
+def test_collect_missing_bios_ok_when_nothing_missing(appmod, monkeypatch):
+    """Regresión: si un sistema tiene BIOS y ninguna falta, no debe reventar.
+
+    El `append` quedó fuera del bucle y referenciaba variables no asignadas,
+    lo que provocaba un cierre de conexión sin respuesta (ERR_EMPTY_RESPONSE).
+    """
+    monkeypatch.setattr(
+        appmod, "_check_bios_grouped",
+        lambda slug, d: {"known": True, "files": [_file("x.bin", exists=True, md5_ok=True)]},
+    )
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
+    items = appmod.collect_missing_bios([{"name": "n64"}], Path("bios"))
+    assert items == []
+
+
+def test_collect_missing_bios_enriches_type_and_manufacturer(appmod, monkeypatch):
+    monkeypatch.setattr(
+        appmod, "_check_bios_grouped",
+        lambda slug, d: {"known": True, "files": [_file("neogeo.zip", exists=False, md5_ok=None)]},
+    )
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
+    items = appmod.collect_missing_bios([{"name": "neogeo"}], Path("bios"))
+    assert len(items) == 1
+    assert items[0]["type"] == "Arcade"
+    assert items[0]["manufacturer"] == "SNK"
+    assert items[0]["skip_key"] == "neogeo/neogeo.zip"
+
+
+def test_collect_missing_bios_prefers_system_meta(appmod, monkeypatch):
+    monkeypatch.setattr(
+        appmod, "_check_bios_grouped",
+        lambda slug, d: {"known": True, "files": [_file("z.bin", exists=False, md5_ok=None)]},
+    )
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
+    usys = {"name": "zzz", "type": "Personalizada", "manufacturer": "Acme"}
+    items = appmod.collect_missing_bios([usys], Path("bios"))
+    assert items[0]["type"] == "Personalizada"
+    assert items[0]["manufacturer"] == "Acme"
+
+
+def test_collect_missing_bios_respects_skips(appmod, monkeypatch):
+    monkeypatch.setattr(
+        appmod, "_check_bios_grouped",
+        lambda slug, d: {"known": True, "files": [_file("y.bin", exists=False, md5_ok=None)]},
+    )
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", {"nes/y.bin"})
+    assert appmod.collect_missing_bios([{"name": "nes"}], Path("bios")) == []
+
+
+def test_collect_missing_bios_ignores_unknown_systems(appmod, monkeypatch):
+    monkeypatch.setattr(appmod, "_check_bios_grouped", lambda slug, d: None)
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
+    assert appmod.collect_missing_bios([{"name": "desconocido"}], Path("bios")) == []
+
+
+def test_collect_missing_bios_reports_bad_md5(appmod, monkeypatch):
+    """Un fichero presente con MD5 incorrecto también cuenta como faltante."""
+    monkeypatch.setattr(
+        appmod, "_check_bios_grouped",
+        lambda slug, d: {"known": True, "files": [_file("bad.bin", exists=True, md5_ok=False)]},
+    )
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
+    items = appmod.collect_missing_bios([{"name": "nes"}], Path("bios"))
+    assert len(items) == 1
+    assert items[0]["exists"] is True and items[0]["md5_ok"] is False
+
