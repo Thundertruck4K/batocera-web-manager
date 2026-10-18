@@ -221,3 +221,55 @@ def test_collect_missing_bios_reports_bad_md5(appmod, monkeypatch):
     assert len(items) == 1
     assert items[0]["exists"] is True and items[0]["md5_ok"] is False
 
+
+def test_collect_missing_bios_survives_broken_system(appmod, monkeypatch):
+    """Un sistema que falla no debe tumbar el listado entero."""
+
+    def fake(slug, d):
+        if slug == "roto":
+            raise OSError("permiso denegado")
+        return {"known": True, "files": [_file("ok.bin", exists=False, md5_ok=None)]}
+
+    monkeypatch.setattr(appmod, "_check_bios_grouped", fake)
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
+    items = appmod.collect_missing_bios(
+        [{"name": "roto"}, {"name": "nes"}], Path("bios"))
+    assert [i["system"] for i in items] == ["nes"]
+
+
+def test_collect_missing_bios_ignores_entry_without_name(appmod, monkeypatch):
+    monkeypatch.setattr(
+        appmod, "_check_bios_grouped",
+        lambda slug, d: {"known": True, "files": [_file("a.bin", exists=False, md5_ok=None)]})
+    monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
+    assert appmod.collect_missing_bios([{}], Path("bios")) == []
+
+
+# ── Blindaje del servidor (evita ERR_EMPTY_RESPONSE) ──────────────
+
+
+def test_http_methods_are_guarded(appmod):
+    """do_GET/POST/DELETE deben ir envueltos por `_safe_api`."""
+    for name in ("do_GET", "do_POST", "do_DELETE"):
+        fn = getattr(appmod.BatoceraHandler, name)
+        assert getattr(fn, "_safe_api", False) is True, f"{name} no está blindado"
+
+
+def test_safe_api_returns_json_500_on_exception(appmod):
+    """Si el handler revienta, se responde 500 en JSON en vez de nada."""
+    calls = []
+
+    class Fake:
+        def send_json(self, data, status=200):
+            calls.append((data, status))
+
+        def boom(self):
+            raise RuntimeError("vaya")
+
+    appmod._safe_api(lambda self: self.boom())(Fake())
+
+    assert calls, "el wrapper no respondió"
+    data, status = calls[0]
+    assert status == 500
+    assert data.get("ok") is False
+

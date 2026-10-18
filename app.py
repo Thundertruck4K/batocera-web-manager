@@ -13,6 +13,7 @@ import re
 import shlex
 import shutil
 import time
+import traceback
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zlib
@@ -2203,8 +2204,16 @@ def collect_missing_bios(user_systems, bios_dir):
     """
     items = []
     for usys in user_systems:
-        name = usys["name"]
-        info = _check_bios_grouped(name, bios_dir)
+        name = usys.get("name")
+        if not name:
+            continue
+        try:
+            info = _check_bios_grouped(name, bios_dir)
+        except Exception as e:
+            # Un sistema problemático (permisos, fichero que desaparece…) no
+            # debe tumbar la lista entera de BIOS faltantes.
+            print(f"  aviso: no se pudo revisar las BIOS de '{name}': {e}")
+            continue
         if info is None or not info["files"]:
             continue
         _t, _m = _classify_system(name)
@@ -4541,6 +4550,28 @@ def _process_batch_job(job):
             job["es_reload"] = es_reload
 
 # ─── HTTP Handler ─────────────────────────────────────────────────
+
+def _safe_api(fn):
+    """Blinda un método HTTP para que nunca cierre la conexión sin respuesta.
+
+    Sin esto, cualquier excepción no controlada aborta el handler y el
+    navegador recibe una respuesta vacía (`net::ERR_EMPTY_RESPONSE`) sin pista
+    del motivo. Ahora se devuelve un 500 en JSON y el traceback va a la consola.
+    """
+    def wrapper(self, *args, **kwargs):
+        try:
+            return fn(self, *args, **kwargs)
+        except Exception:
+            traceback.print_exc()
+            try:
+                self.send_json({"ok": False, "error": "error interno del servidor"}, 500)
+            except Exception:
+                pass
+    wrapper._safe_api = True
+    wrapper.__name__ = getattr(fn, "__name__", "handler")
+    return wrapper
+
+
 class BatoceraHandler(http.server.BaseHTTPRequestHandler):
 
     def log_request(self, code='-', size='-'):
@@ -4594,6 +4625,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers","Content-Type")
         self.end_headers()
 
+    @_safe_api
     def do_GET(self):
         path  = urllib.parse.urlparse(self.path).path.rstrip("/") or "/"
         parts = [p for p in path.split("/") if p]
@@ -4750,6 +4782,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.send_json({"error":"Not found"},404)
 
+    @_safe_api
     def do_POST(self):
         path  = urllib.parse.urlparse(self.path).path.rstrip("/")
         parts = [p for p in path.split("/") if p]
@@ -4848,6 +4881,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.send_json({"error":"Not found"},404)
 
+    @_safe_api
     def do_DELETE(self):
         path  = urllib.parse.urlparse(self.path).path.rstrip("/")
         parts = [p for p in path.split("/") if p]
