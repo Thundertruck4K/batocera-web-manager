@@ -15,6 +15,7 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - La tarjeta de "Noticias" ahora muestra las actualizaciones oficiales de Batocera (releases de GitHub) en formato compacto, y se añadió una segunda tarjeta con información de EmulationStation (estado, PID, puerto, uptime, reinicio).
 - Tacómetros reemplazados por anillos radiales (más compactos) y se quitó parte del texto informativo de las tarjetas CPU/GPU/RAM. Tarjetas de ventiladores mucho más pequeñas.
 - Contador de tests actualizado a 320.
+- README sincronizado con el estado actual: conteo de tests (320), descripción del dashboard (anillos radiales, ventiladores, tarjetas de actualizaciones de Batocera y de EmulationStation) y del panel ROMs & BIOS (agrupación por tipo de equipo y filtros por fabricante).
 
 ### Corregido
 - Los chips de **TIPO** y **FABRICANTE** del panel ROMs & BIOS sólo mostraban "Todos / Otros": el endpoint `/api/rom-systems` devolvía una lista recortada de campos en la que faltaban `type` y `manufacturer`, justo los que alimentan los filtros. La serialización se centraliza ahora en `rom_system_summary()`, que los incluye (junto a `platform`/`release`/`fullname`).

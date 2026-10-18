@@ -10,7 +10,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![Sin dependencias](https://img.shields.io/badge/dependencias-ninguna-16a34a)]()
-[![Tests](https://img.shields.io/badge/tests-281%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-320%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -58,9 +58,10 @@ EmulationStation sólo muestra los sistemas que ya están definidos en sus fiche
 eligues un sistema de referencia de Batocera, ajustas nombre, extensiones, emulador, núcleo y tema,
 y el manager escribe el `es_systems_<slug>.cfg` correcto y crea las carpetas necesarias.
 
-Además del gestor de sistemas, incluye un **panel de control en vivo** (CPU, GPU, RAM, disco, red y
-estado de EmulationStation leídos de `/proc` y `/sys`), un **monitor de ROMs y BIOS** que detecta qué
-BIOS faltan en cada sistema, un **scraper multi-fuente** y un asistente de **arranque automático**.
+Además del gestor de sistemas, incluye un **panel de control en vivo** (CPU, GPU, RAM, disco y
+ventiladores, más el estado de EmulationStation y las últimas versiones de Batocera, leídos de
+`/proc` y `/sys`), un **monitor de ROMs y BIOS** que agrupa los sistemas por tipo de equipo y detecta
+qué BIOS faltan en cada uno, un **scraper multi-fuente** y un asistente de **arranque automático**.
 
 No hay que compilar nada, ni instalar dependencias, ni tocar Node, Docker o bases de datos: es un
 servidor HTTP de la librería estándar de Python que sirve una única página.
@@ -69,14 +70,16 @@ servidor HTTP de la librería estándar de Python que sirve una única página.
 
 - **🕹️ Gestor de sistemas** — crea, edita y elimina sistemas personalizados con formulario completo,
   vista previa del XML y registro de lo que se escribe en disco.
-- **📊 Panel de control en vivo** — CPU (uso, núcleos, temperatura), GPU (modelo, uso, VRAM, consumo),
-  RAM, disco, red, y estado/PID de EmulationStation. Con refresco automático opcional.
+- **📊 Panel de control en vivo** — anillos radiales de CPU (uso, núcleos, temperatura), GPU (modelo,
+  uso, VRAM, consumo) y RAM; almacenamiento y ventiladores; estado/PID de EmulationStation y las últimas
+  versiones oficiales de Batocera. Con refresco automático opcional.
 - **🎲 Juego al azar + estadísticas** — tarjeta con carátula, ficha y descripción de un juego aleatorio
   de tu biblioteca, ranking de más jugados y horas totales.
 - **🏆 RetroAchievements** — progreso y logros de tu perfil dentro del propio panel.
-- **💾 Monitor de ROMs y BIOS** — inventario por sistema (número de ROMs, extensiones, subcarpetas) y
-  verificación de BIOS: qué falta, en qué sistema, con subida manual, descarga automática y lista de
-  omisiones.
+- **💾 Monitor de ROMs y BIOS** — inventario por sistema (número de ROMs, extensiones, subcarpetas),
+  agrupado en secciones plegables por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros)
+  con filtros combinables por tipo y por fabricante, y verificación de BIOS: qué falta, en qué sistema,
+  con subida manual, descarga automática y lista de omisiones.
 - **🧲 Scraper multi-fuente** — ScreenScraper.fr, TheGamesDB e IGDB (Twitch), con imágenes guardadas
   como EmulationStation espera (`images/<rom>-image`, `-box`, `-wheel`, `-fanart`…).
 - **🎨 Temas y assets** — temas instalados, tema activo, estructura de assets esperada y subida de
@@ -143,6 +146,9 @@ carpeta de ROMs. Desde aquí se editan, se ve el XML generado o se borran.
 ![BIOS faltantes](docs/screenshots/07-bios.png)
 
 *Verificación de BIOS: cuántas faltan, en qué sistema y subida/descarga desde la propia web.*
+
+Los sistemas se agrupan por tipo de equipo y puedes filtrarlos por tipo y por fabricante con los chips
+de la parte superior, que se combinan con la búsqueda y el orden.
 
 ### 🧲 Scraper
 
@@ -340,7 +346,9 @@ Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/syste
   primera pantalla se ve sin esperas.
 - **`batocera_systems.json`** — catálogo de referencia con los sistemas y emuladores que trae
   Batocera; alimenta el formulario de creación (extensiones, núcleos y sistema de referencia).
-- **Sin estado en memoria** más allá de la caché de ROMs (60 s) y de tokens de las APIs.
+- **Sin estado en memoria** más allá de la caché de ROMs (60 s), la caché de metadatos de sistemas
+  (300 s) y los tokens de las APIs. Los handlers HTTP responden siempre: cualquier error inesperado se
+  devuelve como `500` en JSON con su traza en la consola, nunca como una respuesta vacía.
 
 ---
 
@@ -364,12 +372,12 @@ La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **281 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **320 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 281 passed in ~13s
+# 320 passed in ~11s
 ```
 
 ---
@@ -383,7 +391,7 @@ batocera_web/
 │   └── index.html            # interfaz completa (HTML + CSS + JS)
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
-├── tests/                    # 281 tests con pytest
+├── tests/                    # 320 tests con pytest
 ├── docs/
 │   ├── media/demo.gif        # demostración
 │   ├── screenshots/          # capturas del README
