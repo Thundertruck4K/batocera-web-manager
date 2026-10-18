@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 **Proyecto de código abierto** · Licencia MIT · Hecho con Python puro (sin dependencias)  
 [Instalación](#-instalación) · [Capturas](#-capturas) · [API](#-api-rest) · [FAQ](#-preguntas-frecuentes) · [Apoyar el proyecto](#-apoyar-el-proyecto)
 
-[▶ Ver vídeo de presentación (MP4, ~30 s)](docs/media/demo.mp4)
+[▶ Logo (imagen)](docs/media/logo.jpg)
 
 </div>
 
@@ -396,7 +396,7 @@ batocera_web/
 ├── tests/                    # 320 tests con pytest
 ├── docs/
 │   ├── media/demo.gif        # demostración animada (GIF)
-│   ├── media/demo.mp4        # vídeo de presentación (~30 s, H.264)
+│   ├── media/logo.jpg        # logo del proyecto
 │   ├── screenshots/          # capturas del README
 │   └── superpowers/          # diseño y planes del proyecto
 ├── CHANGELOG.md              # historial de cambios por versión
