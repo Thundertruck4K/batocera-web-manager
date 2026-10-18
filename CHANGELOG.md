@@ -6,10 +6,20 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Añadido
+- Monitor de ROMs & BIOS: los sistemas se agrupan por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros) en secciones plegables, con filtros combinables por tipo y por fabricante en forma de chips. El tipo/fabricante se lee de `es_systems.cfg` y, si el slug no aparece, se deduce del nombre del sistema.
+- 25 tests nuevos para el panel de ROMs & BIOS (`tests/test_roms_ui.py`): estructura del grid multicolumna, chips de filtrado y clasificación por tipo/fabricante.
+
 ### Cambiado
 - Dashboard rediseñado: tarjetas CPU/GPU/RAM más compactas (tacómetros más chicos); Almacenamiento y Ventiladores en una sola fila; eliminadas las tarjetas de Red y Procesos.
 - La tarjeta de "Noticias" ahora muestra las actualizaciones oficiales de Batocera (releases de GitHub) en formato compacto, y se añadió una segunda tarjeta con información de EmulationStation (estado, PID, puerto, uptime, reinicio).
 - Tacómetros reemplazados por anillos radiales (más compactos) y se quitó parte del texto informativo de las tarjetas CPU/GPU/RAM. Tarjetas de ventiladores mucho más pequeñas.
+- Contador de tests actualizado a 306.
+
+### Corregido
+- El grid de sistemas del monitor de ROMs ya no se muestra en una sola columna: las cabeceras de tipo ocupan todo el ancho del grid y las tarjetas vuelven a fluir en varias columnas.
+- Los chips de filtrado (tipo/fabricante) no filtraban nada porque `filterRomSystems` estaba definida dos veces y la segunda definición (sin filtros) sobrescribía la primera; se eliminó la duplicada y se restauraron `populateRomFilters`, `toggleRomTypeFilter` y `toggleRomMfrFilter`.
+
 
 ## [1.3] - 2026-10-17
 

@@ -2955,37 +2955,37 @@ function renderRomSystems(systems) {
     const t = s.type || 'Otros';
     (groups[t] = groups[t] || []).push(s);
   }
-  const orderedTypes = ROM_TYPE_ORDER.filter(t => groups[t] && groups[t].length)
-    .concat(Object.keys(groups).filter(t => !ROM_TYPE_ORDER.includes(t) && groups[t] && groups[t].length));
-  grid.innerHTML = orderedTypes.map(t => {
+  const typeOrder = ['Arcade', 'Consolas', 'Portátiles', 'Ordenadores', 'Otros'];
+  const orderedTypes = typeOrder.filter(t => groups[t] && groups[t].length)
+    .concat(Object.keys(groups).filter(t => !typeOrder.includes(t) && groups[t] && groups[t].length));
+  let html = '';
+  for (const t of orderedTypes) {
     const items = groups[t];
     const collapsed = _romCollapsedTypes.has(t);
-    return `<div class="rom-type-section" data-type="${escHtml(t)}" style="margin-bottom:6px">
-      <div class="rom-type-header" onclick="toggleRomTypeSection(this)" style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;user-select:none">
-        <span class="rom-type-arrow" style="font-size:11px;color:var(--text3);transition:transform .15s">${collapsed ? '▶' : '▼'}</span>
-        <span style="font-size:13px;font-weight:700">${escHtml(t)}</span>
-        <span style="font-size:11px;color:var(--text3);margin-left:auto">${items.length} sistema${items.length===1?'':'s'}</span>
-      </div>
-      <div class="rom-type-body" style="display:${collapsed?'none':'grid'};grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px">
-        ${items.map(s => romSystemCard(s)).join('')}
-      </div>
+    html += `<div class="rom-type-header" data-type="${escHtml(t)}" onclick="toggleRomTypeSection(this)"
+      style="grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:8px 12px;margin-top:4px;
+             background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;user-select:none">
+      <span class="rom-type-arrow" style="font-size:11px;color:var(--text3)">${collapsed ? '▶' : '▼'}</span>
+      <span style="font-size:13px;font-weight:700">${escHtml(t)}</span>
+      <span style="font-size:11px;color:var(--text3);margin-left:auto">${items.length} sistema${items.length===1?'':'s'}</span>
     </div>`;
-  }).join('');
+    if (!collapsed) {
+      for (const s of items) html += romSystemCard(s);
+    }
+  }
+  grid.innerHTML = html;
+}
+
+function toggleRomTypeSection(header) {
+  const type = header.dataset.type;
+  const collapsed = _romCollapsedTypes.has(type);
+  if (collapsed) _romCollapsedTypes.delete(type);
+  else _romCollapsedTypes.add(type);
+  // re-render preserving filters
+  filterRomSystems();
 }
 
 const _romCollapsedTypes = new Set();
-
-function toggleRomTypeSection(header) {
-  const section = header.parentElement;
-  const body = section.querySelector('.rom-type-body');
-  const arrow = header.querySelector('.rom-type-arrow');
-  if (!body) return;
-  const collapsed = body.style.display === 'none';
-  body.style.display = collapsed ? 'grid' : 'none';
-  if (arrow) arrow.textContent = collapsed ? '▼' : '▶';
-  if (collapsed) _romCollapsedTypes.delete(section.dataset.type);
-  else _romCollapsedTypes.add(section.dataset.type);
-}
 
 // ── Filtros (chips) para ROMs ─────────────────────────────────────
 let _romTypeFilter = new Set();   // vacío = todos
@@ -2996,7 +2996,6 @@ function populateRomFilters(systems) {
   const mfrChips  = document.getElementById('rom-mfr-chips');
   if (!typeChips || !mfrChips) return;
   const types = ROM_TYPE_ORDER.filter(t => systems.some(s => (s.type||'Otros') === t));
-  // añade tipos no previstos
   for (const s of systems) {
     const t = s.type || 'Otros';
     if (!types.includes(t)) types.push(t);
@@ -3037,14 +3036,6 @@ function filterRomSystems() {
   let filtered = filterSystems(allRomSystems, q);
   if (_romTypeFilter.size) filtered = filtered.filter(s => _romTypeFilter.has(s.type || 'Otros'));
   if (_romMfrFilter.size) filtered = filtered.filter(s => _romMfrFilter.has(s.manufacturer || ''));
-  renderRomSystems(sortSystems(filtered, key));
-}
-
-function filterRomSystems() {
-  const q = document.getElementById('rom-search').value;
-  const sortEl = document.getElementById('rom-sort');
-  const key = sortEl ? sortEl.value : 'name';
-  const filtered = filterSystems(allRomSystems, q);
   renderRomSystems(sortSystems(filtered, key));
 }
 
