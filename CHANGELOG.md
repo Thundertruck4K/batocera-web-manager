@@ -6,6 +6,8 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [1.4] - 2026-10-18
+
 ### Añadido
 - Monitor de ROMs & BIOS: los sistemas se agrupan por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros) en secciones plegables, con filtros combinables por tipo y por fabricante en forma de chips. El tipo/fabricante se lee de `es_systems.cfg` y, si el slug no aparece, se deduce del nombre del sistema.
 - 25 tests nuevos para el panel de ROMs & BIOS (`tests/test_roms_ui.py`): estructura del grid multicolumna, chips de filtrado y clasificación por tipo/fabricante.
@@ -80,7 +82,8 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Primera versión: servidor HTTP puro (stdlib), sin dependencias, gestor de sistemas personalizados, dashboard básico, monitor de ROMs/BIOS, scraper, temas y arranque automático.
 - Licencia MIT.
 
-[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager/compare/v1.3...HEAD
+[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager/compare/v1.4...HEAD
+[1.4]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.4
 [1.3]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.3
 
 > Las versiones anteriores a v1.3 no están etiquetadas en Git; se referencian por

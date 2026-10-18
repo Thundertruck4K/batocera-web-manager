@@ -27,7 +27,7 @@ except ImportError:
     HAS_PIL = False
 
 HOST, PORT = "0.0.0.0", 5000
-APP_VERSION = "1.3"   # única fuente: la portada y el banner la reciben de aquí
+APP_VERSION = "1.4"   # única fuente: la portada y el banner la reciben de aquí
 
 SETTINGS_FILE = Path("/userdata/system/batocera_manager_settings.json")
 

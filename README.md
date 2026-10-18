@@ -5,7 +5,7 @@
 **Interfaz web para gestionar tu Batocera desde el navegador**: sistemas personalizados,
 ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.3-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager/releases)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.4-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
