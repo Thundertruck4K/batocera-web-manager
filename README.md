@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 **Proyecto de código abierto** · Licencia MIT · Hecho con Python puro (sin dependencias)  
 [Instalación](#-instalación) · [Capturas](#-capturas) · [API](#-api-rest) · [FAQ](#-preguntas-frecuentes) · [Apoyar el proyecto](#-apoyar-el-proyecto)
 
-[▶ Logo (imagen)](docs/media/logo.jpg)
+![Batocera System Manager](docs/media/logo.png)
 
 </div>
 
