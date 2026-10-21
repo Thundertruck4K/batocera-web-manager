@@ -353,6 +353,31 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   font-size:13px;color:var(--green);line-height:1.6;
 }
 
+/* ── Aviso de actualización mayor ── */
+.update-banner{
+  display:none;align-items:center;gap:14px;flex-wrap:wrap;
+  background:linear-gradient(120deg,rgba(124,156,255,.18),rgba(34,211,238,.10) 60%,transparent);
+  backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid rgba(124,156,255,.35);border-radius:var(--radius2);
+  padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow);
+}
+.update-banner.show{display:flex}
+.update-banner-icon{
+  width:38px;height:38px;flex:none;display:flex;align-items:center;justify-content:center;
+  border-radius:12px;font-size:19px;
+  background:linear-gradient(120deg,var(--accent),var(--aurora));color:var(--bg);
+}
+.update-banner-body{flex:1;min-width:200px}
+.update-banner-title{font-size:14px;font-weight:800;color:var(--text)}
+.update-banner-title b{color:var(--accent)}
+.update-banner-sub{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5}
+.update-banner-actions{display:flex;gap:8px;align-items:center;flex:none}
+.update-banner-dismiss{
+  background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;
+  padding:4px 6px;border-radius:6px;line-height:1;
+}
+.update-banner-dismiss:hover{color:var(--text);background:var(--bg3)}
+
 /* ── Theme Grid ── */
 .theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
 .theme-item{
@@ -877,6 +902,19 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               <input type="checkbox" id="dash-auto" checked onchange="toggleDashAuto()"> Auto-refresh 5s
             </label>
             <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↺ Actualizar</button>
+          </div>
+        </div>
+
+        <!-- Aviso de actualización mayor del manager -->
+        <div class="update-banner" id="dash-update-banner">
+          <div class="update-banner-icon">⬆</div>
+          <div class="update-banner-body">
+            <div class="update-banner-title" id="dash-update-title">Hay una versión mayor disponible</div>
+            <div class="update-banner-sub" id="dash-update-sub"></div>
+          </div>
+          <div class="update-banner-actions">
+            <a class="btn btn-primary btn-sm" id="dash-update-link" href="#" target="_blank" rel="noopener">Ver en GitHub</a>
+            <button class="update-banner-dismiss" id="dash-update-dismiss" title="Ocultar aviso" onclick="dismissAppUpdate()">✕</button>
           </div>
         </div>
 
@@ -2222,6 +2260,7 @@ async function init() {
   loadMissingBios();
   initDashboard();
   initNews();
+  initAppUpdate();
 }
 
 // ─── Navigation ──────────────────────────────────────────────
@@ -5479,6 +5518,53 @@ function initNews() {
       if (data.ok) renderNews(data.news);
     } catch (e) {}
   })();
+}
+
+// ── Aviso de actualización mayor del manager ───────────────────
+//  Se guarda la versión que se descartó, no un flag: al llegar la 3.0
+//  el aviso debe volver a aparecer aunque el usuario ya cerrara el de la 2.0.
+const UPDATE_KEY = 'bcm_update_dismissed';
+let _updateVersion = null;
+
+function dismissAppUpdate() {
+  const banner = document.getElementById('dash-update-banner');
+  if (banner) banner.classList.remove('show');
+  if (_updateVersion) {
+    try { localStorage.setItem(UPDATE_KEY, _updateVersion); } catch (e) {}
+  }
+}
+
+function renderAppUpdate(u) {
+  const banner = document.getElementById('dash-update-banner');
+  if (!banner) return;
+  // Sin datos (sin red, sin releases) o sin versión mayor: no hay aviso.
+  if (!u || !u.major) { banner.classList.remove('show'); return; }
+  let dismissed = '';
+  try { dismissed = localStorage.getItem(UPDATE_KEY) || ''; } catch (e) {}
+  if (dismissed === u.version) { banner.classList.remove('show'); return; }
+  _updateVersion = u.version;
+  document.getElementById('dash-update-title').innerHTML =
+    `Hay una <b>versión mayor</b> disponible: <b>v${escHtml(u.version)}</b>`;
+  document.getElementById('dash-update-sub').innerHTML =
+    `Tu instalación está en <b>v${escHtml(u.current)}</b>. ` +
+    `Actualizar trae cambios que no son compatibles con la versión actual.`;
+  const link = document.getElementById('dash-update-link');
+  if (link && u.url) link.href = u.url;
+  banner.classList.add('show');
+}
+
+async function loadAppUpdate() {
+  try {
+    const data = await fetchJson('/api/app-update');
+    if (data && data.ok) renderAppUpdate(data.update);
+  } catch (e) {}
+}
+
+let _updateTimer = null;
+function initAppUpdate() {
+  clearInterval(_updateTimer);
+  loadAppUpdate();
+  _updateTimer = setInterval(loadAppUpdate, 60 * 60 * 1000);
 }
 
 // ── Tarjeta de info de EmulationStation ──────────────────────────

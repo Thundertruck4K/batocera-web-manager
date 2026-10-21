@@ -3098,6 +3098,78 @@ def get_news():
 
 
 # ═══════════════════════════════════════════════════════════════
+#  MÓDULO: VERIFICACIÓN DE ACTUALIZACIONES MAYORES DEL MANAGER
+# ═══════════════════════════════════════════════════════════════
+#  Comprueba las releases publicadas del propio repositorio y avisa cuando
+#  hay una versión mayor (2.0, 3.0...) disponible. Se apoya en el feed Atom
+#  de GitHub, el mismo mecanismo que ya usa get_news() para Batocera.
+#  Todo falla en silencio: sin red, el dashboard sigue funcionando igual.
+APP_RELEASES_FEED = ("https://github.com/Thundertruck4K/"
+                     "batocera-web-manager/releases.atom")
+APP_UPDATE_TTL = 3600          # 1 h entre comprobaciones
+_app_update_cache = {"ts": 0, "data": None}
+
+
+def parse_version(text):
+    """'1.4' -> (1, 4).  'v2.0' -> (2, 0).  None si no parece una versión."""
+    m = re.match(r"^v?(\d+)\.(\d+)", (text or "").strip())
+    if not m:
+        return None
+    return (int(m.group(1)), int(m.group(2)))
+
+
+def get_app_update():
+    """Versión mayor disponible del manager, o None si no la hay.
+
+    Devuelve un dict con la versión publicada más reciente y si es *mayor*
+    que la que está instalada. Sólo compara el número mayor (2.0, 3.0...),
+    que es lo que el usuario necesita saber: una 1.5 no requiere un aviso
+    de "actualización mayor".
+    """
+    now = time.time()
+    if now - _app_update_cache["ts"] > APP_UPDATE_TTL:
+        _app_update_cache["data"] = _fetch_app_update()
+        _app_update_cache["ts"] = now
+    return _app_update_cache["data"]
+
+
+def _fetch_app_update():
+    """Consulta el feed de releases y extrae la versión más reciente."""
+    try:
+        raw = _fetch_feed(APP_RELEASES_FEED)
+    except Exception:
+        return None
+    try:
+        root = ET.fromstring(raw)
+    except Exception:
+        return None
+    ns = "{http://www.w3.org/2005/Atom}"
+    best = None
+    for entry in root.iterfind(f"{ns}entry"):
+        # El id del feed lleva la etiqueta: tag:github.com,2008:Repository/.../v1.4
+        ident = (entry.findtext(f"{ns}id") or "").strip()
+        tag = ident.rsplit("/", 1)[-1] if "/" in ident else ""
+        ver = parse_version(tag)
+        if not ver:
+            continue
+        link_el = entry.find(f"{ns}link")
+        link = (link_el.get("href") if link_el is not None else "") or ""
+        title = (entry.findtext(f"{ns}title") or "").strip()
+        published = _news_parse_date(entry.findtext(f"{ns}updated") or "")
+        if best is None or ver > best["ver"]:
+            best = {"ver": ver, "tag": tag, "title": title,
+                    "url": link, "published": published}
+    if not best:
+        return None
+    current = parse_version(APP_VERSION) or (0, 0)
+    best["current"] = APP_VERSION
+    best["major"] = best["ver"][0] > current[0]
+    best["newer"] = best["ver"] > current
+    best["version"] = f"{best['ver'][0]}.{best['ver'][1]}"
+    return best
+
+
+# ═══════════════════════════════════════════════════════════════
 #  MÓDULO: RETROACHIEVEMENTS (récords personales)
 # ═══════════════════════════════════════════════════════════════
 
@@ -4728,6 +4800,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok": True, "ts": time.time(), "fans": get_fans()})
         elif path == "/api/news":
             self.send_json({"ok": True, "ts": time.time(), "news": get_news()})
+        elif path == "/api/app-update":
+            self.send_json({"ok": True, "update": get_app_update()})
         elif path == "/api/rom-image-info":
             # Devuelve qué imágenes disponibles tiene un ROM
             if len(parts) >= 4:

@@ -6,6 +6,13 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Añadido
+- **Verificación de actualizaciones mayores**: el dashboard comprueba las releases publicadas del propio repositorio (feed Atom de GitHub, cacheado 1 h) y avisa con un banner visual cuando aparece una versión **mayor** (2.0, 3.0...). Endpoint nuevo `/api/app-update`; sin conexión el aviso simplemente no aparece y la app sigue igual. El descarte se recuerda por versión, así que al llegar la 3.0 vuelve a avisar aunque el usuario ya cerrara el aviso de la 2.0.
+- 16 tests nuevos para el sistema de actualización (`tests/test_app_update.py`).
+
+### Cambiado
+- Contador de tests del README actualizado a 336.
+
 ## [1.4] - 2026-10-18
 
 ### Añadido
