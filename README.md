@@ -28,23 +28,14 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 
 ## 🧭 Índice
 
-- [¿Qué es?](#-qué-es)
-- [Características](#-características)
-- [Capturas](#-capturas)
-- [Instalación](#-instalación)
-- [Uso](#-uso)
-- [Scraper de carátulas](#-scraper-de-carátulas)
-- [Arquitectura](#-arquitectura)
-- [API REST](#-api-rest)
-- [Tests](#-tests)
-- [Estructura del proyecto](#-estructura-del-proyecto)
-- [Requisitos y compatibilidad](#-requisitos-y-compatibilidad)
-- [Seguridad](#-seguridad)
-- [Preguntas frecuentes](#-preguntas-frecuentes)
-- [Roadmap](#-roadmap)
-- [Contribuir](#-contribuir)
-- [Apoyar el proyecto](#-apoyar-el-proyecto)
-- [Licencia](#-licencia)
+| | | |
+|:--|:--|:--|
+| [¿Qué es?](#-qué-es) | [Instalación](#-instalación) | [API REST](#-api-rest) |
+| [Características](#características) | [Uso](#-uso) | [Tests](#-tests) |
+| [Capturas](#-capturas) | [Scraper de carátulas](#-scraper-de-carátulas) | [Estructura del proyecto](#-estructura-del-proyecto) |
+| [Arquitectura](#-arquitectura) | [Requisitos y compatibilidad](#-requisitos-y-compatibilidad) | [Seguridad](#-seguridad) |
+| [Preguntas frecuentes](#-preguntas-frecuentes) | [Roadmap](#-roadmap) | [Contribuir](#-contribuir) |
+| [Apoyar el proyecto](#-apoyar-el-proyecto) | [Licencia](#-licencia) | |
 
 ---
 
