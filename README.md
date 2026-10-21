@@ -384,8 +384,7 @@ batocera_web/
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
 ├── tests/                    # 336 tests con pytest
 ├── docs/
-│   ├── media/demo.gif        # demostración animada (GIF)
-│   ├── media/logo.jpg        # logo del proyecto
+│   ├── media/logo.png        # logo del proyecto
 │   ├── screenshots/          # capturas del README
 │   └── superpowers/          # diseño y planes del proyecto
 ├── CHANGELOG.md              # historial de cambios por versión
