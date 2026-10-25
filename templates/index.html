@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="{{ui_theme}}" data-theme-mode="{{ui_theme}}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Batocera System Manager</title>
+<script>
+// Aplica el tema ANTES del primer pintado para que no haya parpadeo.
+// "auto" se resuelve aqui con la preferencia del sistema operativo.
+(function(){
+  var el = document.documentElement;
+  var mode = el.dataset.themeMode || 'dark';
+  if (mode === 'auto') {
+    var mq = window.matchMedia('(prefers-color-scheme: light)');
+    var apply = function(){ el.dataset.theme = mq.matches ? 'light' : 'dark'; };
+    apply();
+    if (mq.addEventListener) mq.addEventListener('change', apply);
+    else if (mq.addListener) mq.addListener(apply);
+  }
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -904,6 +919,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
       <h1><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><rect x="2" y="6" width="20" height="12" rx="6"/></svg> Batocera Manager</h1>
       <p>Sistema Manager Web v{{app_version}}</p>
       <div class="sidebar-badge">Batocera v43+</div>
+      <button id="theme-toggle" class="btn btn-ghost btn-sm" type="button"
+              onclick="toggleTheme()" title="Cambiar de tema"
+              style="margin-top:10px;width:100%">☀️</button>
     </div>
     <nav class="nav">
       <div class="nav-section-label">Estado</div>
@@ -1568,6 +1586,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               <button class="btn btn-ghost btn-sm" onclick="checkServiceStatus()" style="font-size:10px">↺</button>
             </div>
             <div class="custom-sh-preview" id="svc-sh-preview">Cargando…</div>
+          </div>
+        </div>
+
+        <!-- ── Tema de la interfaz ── -->
+        <div class="card">
+          <div class="card-title"><span class="icon">🎨</span>Tema de la interfaz</div>
+          <div class="field" style="margin-bottom:14px">
+            <label>Modo de color</label>
+            <select id="set-ui-theme" onchange="onUiThemeChange(this.value)">
+              <option value="dark">Oscuro</option>
+              <option value="light">Claro</option>
+              <option value="auto">Seguir al sistema</option>
+            </select>
+            <span class="hint">Se guarda en el manager, así que se aplica igual desde el móvil o el PC.</span>
           </div>
         </div>
 
@@ -2305,6 +2337,7 @@ let _editingSystem = null;
 let _batoceraSystems = {}; // slug -> {n: fullname, l: [libretro cores], s: [standalone emulators]}
 
 async function init() {
+  _initTheme();
   const info = await fetchJson('/api/info');
   if (info) {
     document.getElementById('sb-theme').textContent = info.active_theme || '?';
@@ -2914,6 +2947,73 @@ async function loadSettings() {
 }
 
 // ─── RetroAchievements (ajustes) ─────────────────────────────────
+// ─── Tema claro/oscuro ────────────────────────────────────
+const THEME_VALUES = ['dark', 'light', 'auto'];
+let _themeMode = 'dark';
+
+function _applyTheme(mode){
+  _themeMode = THEME_VALUES.indexOf(mode) >= 0 ? mode : 'dark';
+  const el = document.documentElement;
+  el.dataset.themeMode = _themeMode;
+  if (_themeMode === 'auto') {
+    _resolveAutoTheme();
+  } else {
+    el.dataset.theme = _themeMode;
+  }
+  _syncThemeUI();
+}
+
+function _resolveAutoTheme(){
+  const el = document.documentElement;
+  const mq = window.matchMedia('(prefers-color-scheme: light)');
+  const apply = function(){ el.dataset.theme = mq.matches ? 'light' : 'dark'; };
+  apply();
+  if (mq.addEventListener) mq.addEventListener('change', apply);
+  else if (mq.addListener) mq.addListener(apply);
+}
+
+function _syncThemeUI(){
+  const el = document.documentElement;
+  const btn = document.getElementById('theme-toggle');
+  if (btn) {
+    const isLight = el.dataset.theme === 'light';
+    btn.textContent = isLight ? '🌙' : '☀️';
+    btn.title = isLight ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro';
+  }
+  const sel = document.getElementById('set-ui-theme');
+  if (sel && sel.value !== _themeMode) sel.value = _themeMode;
+}
+
+function _initTheme(){
+  const el = document.documentElement;
+  _themeMode = el.dataset.themeMode || 'dark';
+  // Si el script inline no llego a correr, se resuelve aqui.
+  if (_themeMode === 'auto' && el.dataset.theme !== 'light' && el.dataset.theme !== 'dark') {
+    _resolveAutoTheme();
+  }
+  _syncThemeUI();
+}
+
+async function toggleTheme(){
+  const next = (document.documentElement.dataset.theme === 'light') ? 'dark' : 'light';
+  _applyTheme(next);
+  await saveUiTheme(next);
+}
+
+async function onUiThemeChange(mode){
+  _applyTheme(mode);
+  await saveUiTheme(mode);
+}
+
+async function saveUiTheme(mode){
+  const res = await fetchJson('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ui_theme: mode }),
+  });
+  if (!res || !res.ok) toast('No se pudo guardar el tema', 'err');
+}
+
 function toggleRAKey() {
   const el = document.getElementById('set-ra-api-key');
   if (el) el.type = el.type === 'password' ? 'text' : 'password';

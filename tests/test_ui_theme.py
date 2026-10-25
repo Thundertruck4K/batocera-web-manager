@@ -95,3 +95,74 @@ def test_no_raw_white_text_outside_theme_blocks():
     assert not offenders, (
         "usa var(--on-accent) o var(--on-photo) en vez de #fff:\n" + "\n".join(offenders)
     )
+
+
+# ─── Persistencia e inyección en el HTML ────────────────────────────
+
+def test_default_settings_has_ui_theme(appmod):
+    assert appmod.DEFAULT_SETTINGS.get("ui_theme") == "dark"
+
+
+def test_html_tag_declares_theme_attributes():
+    css = _css()
+    assert 'data-theme="{{ui_theme}}"' in css
+    assert 'data-theme-mode="{{ui_theme}}"' in css
+
+
+def test_render_index_injects_theme(appmod, monkeypatch):
+    monkeypatch.setattr(
+        appmod, "load_settings",
+        lambda: {**appmod.DEFAULT_SETTINGS, "ui_theme": "light"},
+    )
+    out = appmod.render_index()
+    assert 'data-theme="light"' in out
+    assert 'data-theme-mode="light"' in out
+    assert "{{ui_theme}}" not in out
+
+
+def test_render_index_falls_back_to_dark(appmod, monkeypatch):
+    monkeypatch.setattr(
+        appmod, "load_settings",
+        lambda: {**appmod.DEFAULT_SETTINGS, "ui_theme": "no-existe"},
+    )
+    out = appmod.render_index()
+    assert 'data-theme="dark"' in out
+    assert 'data-theme-mode="dark"' in out
+
+
+# ─── Conmutador, selector y script inline ───────────────────────────
+
+def test_inline_script_resolves_auto_before_paint():
+    css = _css()
+    assert "prefers-color-scheme: light" in css
+    # El script va en <head>: si no, el tema se aplicaria tarde y parpadearia.
+    head = css[css.index("<head>"):css.index("</head>")]
+    assert "prefers-color-scheme: light" in head
+
+
+def test_theme_functions_exist():
+    css = _css()
+    for fn in ("function toggleTheme(", "function onUiThemeChange(",
+               "function saveUiTheme(", "function _applyTheme(",
+               "function _resolveAutoTheme(", "function _initTheme("):
+        assert fn in css, f"falta {fn}"
+
+
+def test_sidebar_has_theme_toggle():
+    css = _css()
+    m = re.search(r'<aside class="sidebar">([\s\S]*?)</aside>', css)
+    assert m, "no se encontró el sidebar"
+    assert 'id="theme-toggle"' in m.group(1)
+    assert "toggleTheme()" in m.group(1)
+
+
+def test_settings_has_theme_selector():
+    css = _css()
+    assert 'id="set-ui-theme"' in css
+    for value in ("dark", "light", "auto"):
+        assert f'<option value="{value}"' in css
+
+
+def test_theme_selector_is_wired_to_the_change_handler():
+    css = _css()
+    assert 'onchange="onUiThemeChange(this.value)"' in css

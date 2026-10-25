@@ -5769,6 +5769,7 @@ def render_index():
         html = tpl.read_text(encoding="utf-8")
         html = html.replace("{{app_version}}", APP_VERSION)
         html = html.replace("{{active_theme}}", active_theme)
+        html = html.replace("{{ui_theme}}", normalize_ui_theme(s.get("ui_theme")))
         html = html.replace("{{themes_user}}",  s.get("themes_user",""))
         html = html.replace("{{platform_opts}}",
             "\n".join(f'<option value="{p}">{p}</option>' for p in PLATFORM_IDS))
