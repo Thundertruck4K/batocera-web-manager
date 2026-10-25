@@ -229,6 +229,16 @@ Esperado: FAIL con `AttributeError: module 'app' has no attribute 'apply_setting
 
 - [ ] **Paso 3: Implementa `apply_settings_update` y conecta los handlers**
 
+En `app.py`, dentro de `DEFAULT_SETTINGS`, añade la clave del tema:
+
+```python
+    # Tema de la interfaz del manager: "dark" | "light" | "auto"
+    "ui_theme":      "dark",
+```
+
+(La clave vive aquí y no en la Tarea 5 porque la normalización del tema es
+backend, y así esta tarea es testeable por sí sola.)
+
 Añade a nivel de módulo en `app.py`:
 
 ```python
@@ -630,12 +640,8 @@ Esperado: FAIL (`ui_theme` ausente de `DEFAULT_SETTINGS`).
 
 - [ ] **Paso 3: Implementa la persistencia**
 
-En `app.py`, dentro de `DEFAULT_SETTINGS`, añade:
-
-```python
-    # Tema de la interfaz del manager: "dark" | "light" | "auto"
-    "ui_theme":      "dark",
-```
+(La clave `ui_theme` de `DEFAULT_SETTINGS` ya se añadió en la Tarea 2, junto a
+su normalización. Aquí solo queda inyectarla en el HTML.)
 
 En `render_index()`, junto a los demás `html.replace(...)`:
 

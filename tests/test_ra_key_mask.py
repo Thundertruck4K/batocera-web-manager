@@ -52,3 +52,48 @@ def test_public_settings_hides_every_secret(appmod):
     flat = repr(pub)
     assert "abcd1234efgh5678" not in flat
     assert "TGDB-SECRET-KEY" not in flat
+
+
+# ─── Semántica write-only de la key ─────────────────────────────────
+
+def test_post_keeps_stored_key_when_mask_is_submitted(appmod):
+    stored = {"ra_api_key": "abcd1234efgh5678"}
+    payload = {"ra_api_key": appmod.mask_ra_api_key(stored["ra_api_key"])}
+    out = appmod.apply_settings_update(payload, dict(stored))
+    assert out["ra_api_key"] == "abcd1234efgh5678"
+
+
+def test_post_keeps_stored_key_when_key_absent(appmod):
+    stored = {"ra_api_key": "abcd1234efgh5678"}
+    out = appmod.apply_settings_update({"ra_user": "otro"}, dict(stored))
+    assert out["ra_api_key"] == "abcd1234efgh5678"
+
+
+def test_post_replaces_key_with_new_value(appmod):
+    stored = {"ra_api_key": "abcd1234efgh5678"}
+    out = appmod.apply_settings_update({"ra_api_key": "nueva1234clave5678"}, dict(stored))
+    assert out["ra_api_key"] == "nueva1234clave5678"
+
+
+def test_post_empty_key_clears_stored_key(appmod):
+    stored = {"ra_api_key": "abcd1234efgh5678"}
+    out = appmod.apply_settings_update({"ra_api_key": ""}, dict(stored))
+    assert out["ra_api_key"] == ""
+
+
+def test_post_ignores_unknown_keys(appmod):
+    out = appmod.apply_settings_update({"no_existe": "x"}, {"ra_api_key": "abcd1234efgh5678"})
+    assert "no_existe" not in out
+
+
+def test_post_normalises_ui_theme(appmod):
+    assert appmod.apply_settings_update({"ui_theme": "light"}, {})["ui_theme"] == "light"
+    assert appmod.apply_settings_update({"ui_theme": "auto"}, {})["ui_theme"] == "auto"
+    assert appmod.apply_settings_update({"ui_theme": "futurol"}, {})["ui_theme"] == "dark"
+    assert appmod.apply_settings_update({"ui_theme": ""}, {})["ui_theme"] == "dark"
+
+
+def test_post_does_not_mutate_current(appmod):
+    current = {"ra_api_key": "abcd1234efgh5678"}
+    appmod.apply_settings_update({"ra_api_key": "nueva1234clave5678"}, current)
+    assert current["ra_api_key"] == "abcd1234efgh5678"

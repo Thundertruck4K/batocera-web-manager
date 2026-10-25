@@ -73,6 +73,8 @@ DEFAULT_SETTINGS = {
     "ra_user":       "",
     "ra_api_key":    "",
     "ra_enabled":    True,
+    # Tema de la interfaz del manager: "dark" | "light" | "auto"
+    "ui_theme":      "dark",
 }
 
 PLATFORM_IDS = [
@@ -1237,6 +1239,36 @@ def public_settings(settings):
     pub["ra_api_key_set"] = bool(key.strip())
     pub["ra_api_key"] = mask_ra_api_key(key)
     return pub
+
+VALID_UI_THEMES = ("dark", "light", "auto")
+
+
+def normalize_ui_theme(value):
+    """Normaliza el tema de interfaz a un valor conocido."""
+    t = str(value or "").strip().lower()
+    return t if t in VALID_UI_THEMES else "dark"
+
+
+def apply_settings_update(payload, current):
+    """Aplica un POST /api/settings sobre los ajustes actuales.
+
+    La Web API Key es write-only: si no viene se conserva, si viene la mascara
+    se conserva, si viene vacia se borra y cualquier otro valor la sustituye.
+    """
+    current = dict(current or {})
+    incoming = {k: v for k, v in (payload or {}).items() if k in DEFAULT_SETTINGS}
+    if "ra_api_key" in incoming:
+        sent = str(incoming["ra_api_key"] or "").strip()
+        stored = str(current.get("ra_api_key") or "").strip()
+        if not sent:
+            current["ra_api_key"] = ""
+        elif sent != mask_ra_api_key(stored):
+            current["ra_api_key"] = sent
+    for k, v in incoming.items():
+        if k == "ra_api_key":
+            continue
+        current[k] = normalize_ui_theme(v) if k == "ui_theme" else v
+    return current
 
 def human_size(n):
     for u in ["B","KB","MB","GB","TB"]:
@@ -4769,7 +4801,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/themes":
             self.send_json({"active":detect_active_theme(s),"list":list_themes(s)})
         elif path == "/api/settings":
-            self.send_json(s)
+            self.send_json(public_settings(s))
         elif len(parts)==3 and parts[:2]==["api","system"] and path.endswith("/xml"):
             name = parts[2]
             systems = list_custom_systems(s)
@@ -4918,8 +4950,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/settings":
             data = self.read_json()
             current = load_settings()
-            current.update({k:v for k,v in data.items() if k in DEFAULT_SETTINGS})
-            save_settings_to_file(current)
+            updated = apply_settings_update(data, current)
+            save_settings_to_file(updated)
             if any(k.startswith("ra_") for k in data):
                 _ra_cache.update({"ts": 0, "data": None, "user": ""})
             self.send_json({"ok":True})
