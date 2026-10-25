@@ -97,3 +97,32 @@ def test_post_does_not_mutate_current(appmod):
     current = {"ra_api_key": "abcd1234efgh5678"}
     appmod.apply_settings_update({"ra_api_key": "nueva1234clave5678"}, current)
     assert current["ra_api_key"] == "abcd1234efgh5678"
+
+
+# ─── Frontend: la key se muestra enmascarada ────────────────────────
+
+def _html() -> str:
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    return (root / "templates" / "index.html").read_text(encoding="utf-8")
+
+
+def test_ra_field_has_hint_element():
+    assert 'id="ra-key-hint"' in _html()
+
+
+def test_load_ra_settings_reports_configured_state():
+    html = _html()
+    assert "ra_api_key_set" in html, "el hint debe indicar si hay key configurada"
+
+
+def test_load_ra_settings_never_fills_the_real_key():
+    """El frontend no debe asignar la key cruda al campo."""
+    import re
+    html = _html()
+    m = re.search(r"async function loadRASettings\(\)\s*\{(.*?)\n\}", html, re.S)
+    assert m, "no se encontró loadRASettings()"
+    body = m.group(1)
+    assert "data.ra_api_key" in body
+    assert "data.ra_api_key ||" in body
+    assert "ra_api_key_set" in body

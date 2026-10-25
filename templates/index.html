@@ -1538,6 +1538,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
               <input id="set-ra-api-key" type="password" placeholder="••••••••" autocomplete="off" style="flex:1">
               <button class="btn btn-ghost btn-sm" type="button" onclick="toggleRAKey()">👁</button>
             </div>
+            <span class="hint" id="ra-key-hint"></span>
           </div>
           <label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px;margin-bottom:16px">
             <input type="checkbox" id="set-ra-enabled"> Mostrar mis récords en el Dashboard
@@ -2857,9 +2858,16 @@ async function loadRASettings() {
   const u = document.getElementById('set-ra-user');
   const k = document.getElementById('set-ra-api-key');
   const e = document.getElementById('set-ra-enabled');
+  const hint = document.getElementById('ra-key-hint');
   if (u) u.value = data.ra_user || '';
+  // La key llega enmascarada: nunca se expone en claro por la API.
   if (k) k.value = data.ra_api_key || '';
   if (e) e.checked = !!data.ra_enabled;
+  if (hint) {
+    hint.textContent = data.ra_api_key_set
+      ? 'Key guardada (enmascarada). Escribe una nueva para cambiarla, o vacía el campo para borrarla.'
+      : 'Sin key guardada. Pega tu Web API Key de retroachievements.org/settings.';
+  }
 }
 
 async function saveRASettings() {
