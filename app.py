@@ -1211,6 +1211,33 @@ def save_settings_to_file(data):
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
 
+
+# ─── Enmascarado de credenciales ─────────────────────────────
+# La Web API Key de RetroAchievements nunca debe servirse en claro: el servidor
+# no tiene autenticación, así que /api/settings es legible desde la LAN.
+
+def mask_ra_api_key(key):
+    """Enmascara una Web API Key dejando reconocer sus extremos."""
+    k = (key or "").strip()
+    if not k:
+        return ""
+    if len(k) <= 8:
+        return "•" * 8
+    return k[:4] + "•" * 8 + k[-4:]
+
+
+def public_settings(settings):
+    """Copia de los ajustes sin credenciales en claro.
+
+    Solo se exponen las claves conocidas: el fichero de ajustes se edita a
+    mano, así que no debe poder inyectar campos extra en la respuesta.
+    """
+    pub = {k: v for k, v in (settings or {}).items() if k in DEFAULT_SETTINGS}
+    key = str(pub.get("ra_api_key") or "")
+    pub["ra_api_key_set"] = bool(key.strip())
+    pub["ra_api_key"] = mask_ra_api_key(key)
+    return pub
+
 def human_size(n):
     for u in ["B","KB","MB","GB","TB"]:
         if abs(n) < 1024: return f"{n:.1f} {u}"
