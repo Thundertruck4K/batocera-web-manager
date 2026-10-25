@@ -161,12 +161,18 @@ claro:
 | `--active-bg` / `--active-fg` | `rgba(255,255,255,.085)` / `#fff` | `rgba(20,24,36,.07)` / `var(--text)` |
 | `--chip-hover-bg` / `--chip-hover-fg` | `rgba(255,255,255,.13)` / `#fff` | `rgba(20,24,36,.08)` / `var(--text)` |
 | `--badge-bg` / `--badge-fg` | `rgba(255,255,255,.2)` / `#fff` | `rgba(20,24,36,.14)` / `var(--text)` |
-| `--spinner-track` / `--spinner-top` | `rgba(255,255,255,.2)` / `#fff` | `rgba(20,24,36,.15)` / `var(--accent)` |
-| `--grid-line` | `rgba(255,255,255,.12)` | `rgba(20,24,36,.10)` |
+| `--spinner-track` / `--spinner-top` | `rgba(255,255,255,.2)` / `#fff` | `rgba(20,24,36,.15)` / `#3B5BDB` |
+| `--grid-line` | `rgba(255,255,255,.025)` | `rgba(20,24,36,.05)` |
+| `--on-accent` | `#fff` | `#fff` |
+| `--on-photo` | `#fff` | `#fff` |
+| `--fx-dot` / `--fx-spark` | `rgba(255,255,255,.28)` / `.45` | `rgba(20,24,36,.16)` / `.26` |
 
-**Quedan fuera** (no se tocan): los `rgba(255,255,255,…)` de `.fx__bubble` / `.fx__spark`
-y el `color:#fff` de `.dash-random-ph span`, porque viven sobre fondos con gradiente
-**siempre oscuro** propios (`radial-gradient(...,#1b1530,#141021 55%,#171018)`).
+**También pasan por variable:** `.fx__bubble` / `.fx__spark` (`--fx-dot` / `--fx-spark`)
+y el texto de `.dash-random-ph span` (`--on-photo`). Los tres viven sobre fondos
+propios, pero la capa aurora se apoya en `var(--bg)`, que en el tema claro sí es
+claro: sus velos blancos se habrían desvanecido. El degradado de la portada
+genérica (`radial-gradient(...,#1b1530,#141021 55%,#171018)`) sí es siempre oscuro,
+por eso `--on-photo` vale `#fff` en los dos temas.
 
 ### 8.3 Mecánica
 
