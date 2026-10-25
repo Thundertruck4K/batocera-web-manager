@@ -1,7 +1,7 @@
 # MEMORY — Batocera System Manager Web
 
-Proyecto: `batocera_web` v1.2  
-Repositorio: `C:\Users\folk3\Downloads\batocera_web`  
+Proyecto: `batocera_web` v1.4  
+Repositorio: `D:\UTILS\batocera_web`  
 Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ---
@@ -22,12 +22,14 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ```
 batocera_web/
-├── app.py                 # ~4250 líneas — servidor HTTP + API REST + scraper + dashboard
+├── app.py                 # ~5750 líneas — servidor HTTP + API REST + scraper + dashboard
 ├── templates/
-│   └── index.html         # ~4440 líneas — SPA con todo el CSS/JS inline (l10n: es)
+│   └── index.html         # ~5460 líneas — SPA con todo el CSS/JS inline (l10n: es)
 ├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
 ├── AGENTS.md              # Guía operativa para asistentes de IA
-├── install.sh             # Script de instalación (heredado de v1.0)
+├── install.sh             # Script de instalación (v1.4: sin Flask, instala en `batocera_web/`)
+├── CHANGELOG.md           # Keep a Changelog
+├── generate_bios_db.py    # Regenerador de BIOS_DB contra upstream `batocera-systems`
 ├── LICENSE                # MIT
 ├── MEMORY.md              # Este archivo
 └── README.md              # Documentación de usuario
@@ -448,24 +450,29 @@ lo pintaba.
 Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 100`.
 
 **Observado, no incluido (fuera del alcance del fix):**
-- La pestaña "Por sistema" del scraper es **síncrona** (pinta 5% y salta a 100%,
-  sin progreso real).
-- Sistemas sin mapear a ScreenScraper (`SS_SYSTEMS` con valor `0`, p. ej.
-  `triforce`) fallan con `HTTP 400: Champ systemeid obligatoire si aucun CRC`.
+- ~~La pestaña "Por sistema" del scraper es **síncrona** (pinta 5% y salta a 100%,
+  sin progreso real).~~ → **RESUELTO**: la pestaña "Sistema completo" ahora crea un
+  job de lote con un único sistema (`POST /api/scraper/batch` con
+  `systems: [_scraperCurrentSystem]`) y hace polling real cada 2 s con
+  `scraperJobView()` — misma barra y contadores que el lote múltiple. El endpoint
+  síncrono `/api/scraper/scrape-system` se conserva por compatibilidad.
+- ~~Sistemas sin mapear a ScreenScraper (`SS_SYSTEMS` con valor `0`, p. ej.
+  `triforce`) fallan con `HTTP 400: Champ systemeid obligatoire si aucun CRC`.~~
+  → **RESUELTO**: `skip_jeuinfos` (`app.py`) salta `jeuInfos.php` cuando no hay
+  CRC y cae directo a `jeuRecherche.php`, que no exige `systemeid`.
 
 ---
 
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 175 tests (`pytest`, `tests/`) sin linting ni typechecking
-2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
-3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
-4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
-5. **Settings sin cache** — Se lee el JSON en cada request
-6. **Sin autenticación** — El servidor expone toda la API sin protección
-7. **Sin HTTPS** — Tráfico en texto plano
-8. **BIOS_DB no incluye todos los sistemas MAME** — Los BIOS de arcade/MAME están dentro de los ROMs ZIPs, no se verifican separadamente
-9. **La Web API Key de RetroAchievements viaja en `/api/settings`** — Como no hay autenticación (ver 6/7), la key es visible para cualquiera en la LAN. Se mitigó usando la Web API Key (revocable) en vez de la contraseña, pero idealmente `/api/settings` debería ocultarla y exponer solo un indicador de "configurada".
+1. **Infraestructura de pruebas** — 336 tests (`pytest`, `tests/`, 37 ficheros) sin linting ni typechecking
+2. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
+3. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
+4. **Settings sin cache** — Se lee el JSON en cada request
+5. **Sin autenticación** — El servidor expone toda la API sin protección
+6. **Sin HTTPS** — Tráfico en texto plano
+7. **BIOS_DB no incluye todos los sistemas MAME** — Los BIOS de arcade/MAME están dentro de los ROMs ZIPs, no se verifican separadamente
+8. **La Web API Key de RetroAchievements viaja en `/api/settings`** — Como no hay autenticación (ver 5/6), la key es visible para cualquiera en la LAN. Se mitigó usando la Web API Key (revocable) en vez de la contraseña, pero idealmente `/api/settings` debería ocultarla y exponer solo un indicador de "configurada".
 
 ---
 
@@ -473,8 +480,15 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 
 Ver `README.md` → Roadmap y `AGENTS.md` → guía operativa.
 
-Áreas prioritarias:
-- Autenticación básica opcional
-- Scraping batch programable
-- Tests (al menos validación de BIOS_DB contra upstream)
-- Script de actualización de BIOS_DB (re-ejecutar generador contra `batocera-systems`)
+El plugin `superpowers` está instalado en `C:\Users\folk3\.minimax\plugins\superpowers/`
+(port de https://github.com/obra/superpowers v7.0.1, MIT). Sus 15 skills aparecen en
+el catálogo como `superpowers:<name>` (p. ej. `superpowers:brainstorming`,
+`superpowers:writing-plans`, `superpowers:executing-plans`). Flujo: `brainstorming`
+→ `writing-plans` (specs y planes en `docs/superpowers/`) → `executing-plans`.
+
+Áreas prioritarias (estado real a v1.4):
+- **Autenticación básica opcional** — pendiente
+- **Ocultar la Web API Key de RetroAchievements en `/api/settings`** — pendiente
+- **Backup/restore de `es_systems_*.cfg`** — pendiente
+- Validación de `BIOS_DB` contra upstream — **hecho** (`tests/bios_validator.py`, `generate_bios_db.py`)
+- Scraping batch programable — **hecho** (jobs en background con cola FIFO)
