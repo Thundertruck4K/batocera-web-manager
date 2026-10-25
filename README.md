@@ -10,7 +10,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![Sin dependencias](https://img.shields.io/badge/dependencias-ninguna-16a34a)]()
-[![Tests](https://img.shields.io/badge/tests-336%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-384%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -80,6 +80,9 @@ servidor HTTP de la librería estándar de Python que sirve una única página.
   avisa en pantalla si está corriendo en modo manual (lanzado a mano, sin arranque automático).
 - **✏️ Edición de ROMs** — renombrar ficheros, actualizar metadatos, ver información de imágenes y
   subir/borrar carátulas por tipo.
+- **🌗 Tema claro/oscuro** — la interfaz se puede ver en oscuro (por defecto) o en claro, y también
+  seguir la preferencia del sistema. El botón del sidebar alterna al instante; en Configuración se
+  elige el modo. Se guarda en el manager, así que se aplica igual desde el móvil o el PC.
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 
@@ -363,12 +366,12 @@ La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **336 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **384 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 336 passed in ~12s
+# 384 passed in ~12s
 ```
 
 ---
@@ -382,7 +385,7 @@ batocera_web/
 │   └── index.html            # interfaz completa (HTML + CSS + JS)
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
-├── tests/                    # 336 tests con pytest
+├── tests/                    # 384 tests con pytest
 ├── docs/
 │   ├── media/logo.png        # logo del proyecto
 │   ├── screenshots/          # capturas del README
@@ -418,6 +421,9 @@ servicios (en Batocera, el usuario es `root`).
 - Si necesitas acceso desde fuera, usa una VPN (por ejemplo Tailscale o WireGuard) como si estuvieras
   en casa.
 - Si tu red no es de confianza, valora mantenerlo apagado y arrancarlo sólo cuando lo uses.
+- La **Web API Key de RetroAchievements no se sirve en claro**: `/api/settings` la devuelve
+  enmascarada (`abcd••••••••wxyz`) junto con un indicador de si está configurada. Al guardar, el
+  campo se comporta como solo-escritura: si no lo tocas, la key no se pierde; si lo vacías, la borra.
 
 ---
 
@@ -431,8 +437,13 @@ Sí, es justo el objetivo: eliges un sistema de referencia, ajustas los campos y
 `es_systems_<slug>.cfg` y crea las carpetas.
 
 **¿Dónde guarda la configuración?**  
-En `/userdata/system/batocera_manager_settings.json` (rutas, puerto, credenciales del scraper y de
-RetroAchievements).
+En `/userdata/system/batocera_manager_settings.json` (rutas, puerto, tema de la interfaz y usuario
+de RetroAchievements). Las credenciales del scraper se guardan aparte, en `batocera.conf`.
+
+**¿Puedo cambiar el color de la interfaz?**  
+Sí. En **Configuración → Tema de la interfaz** eliges claro, oscuro o "seguir al sistema", y el
+botón del sidebar alterna al instante. La preferencia se guarda en el manager, así que se aplica
+igual desde el móvil o el PC.
 
 **¿Cómo quito el arranque automático?**  
 Desde **Configuración** con un clic, o borrando el bloque marcado `# [batocera-manager]` …
@@ -464,7 +475,8 @@ Ideas anotadas, sin fechas:
 - Copia de seguridad y restauración de `es_systems_*.cfg` desde la web.
 - Más fuentes de scraping y descarga de vídeos.
 - Selección de idioma de la interfaz.
-- Modo claro/oscuro y temas para la propia web.
+- ~~Modo claro/oscuro y temas para la propia web~~ — **hecho**: tema claro y opción de seguir al
+  sistema.
 
 ---
 

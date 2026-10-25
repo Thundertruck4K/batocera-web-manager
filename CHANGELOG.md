@@ -7,11 +7,25 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Tema claro/oscuro para la web del manager**: en *Configuración → Tema de la interfaz* se elige
+  claro, oscuro o "seguir al sistema", y el botón del sidebar alterna al instante. La preferencia se
+  guarda en los ajustes del manager (no en el navegador), así que se aplica igual desde el móvil o el
+  PC, y se inyecta en el HTML al servir la página: no hay parpadeo al cargar. La paleta clara cumple
+  contraste WCAG AA (verificado por tests).
+- 48 tests nuevos (`tests/test_ra_key_mask.py`, `tests/test_ui_theme.py` y ampliación de
+  `tests/test_theme_contrast.py`).
 - **Verificación de actualizaciones mayores**: el dashboard comprueba las releases publicadas del propio repositorio (feed Atom de GitHub, cacheado 1 h) y avisa con un banner visual cuando aparece una versión **mayor** (2.0, 3.0...). Endpoint nuevo `/api/app-update`; sin conexión el aviso simplemente no aparece y la app sigue igual. El descarte se recuerda por versión, así que al llegar la 3.0 vuelve a avisar aunque el usuario ya cerrara el aviso de la 2.0.
 - 16 tests nuevos para el sistema de actualización (`tests/test_app_update.py`).
 
 ### Cambiado
-- Contador de tests del README actualizado a 336.
+- Contador de tests del README actualizado a 384.
+
+### Seguridad
+- La **Web API Key de RetroAchievements ya no se sirve en claro** por `/api/settings`: se devuelve
+  enmascarada (`abcd••••••••wxyz`) junto con un indicador `ra_api_key_set` de si está configurada.
+  Al guardar se comporta como solo-escritura: si no tocas el campo, la key se conserva; si lo vacías,
+  la borra. Además `/api/settings` solo expone claves conocidas, para que el fichero de ajustes
+  (editable a mano) no pueda inyectar campos extra en la respuesta.
 
 ## [1.4] - 2026-10-18
 

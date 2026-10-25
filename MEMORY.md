@@ -472,7 +472,11 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 5. **Sin autenticación** — El servidor expone toda la API sin protección
 6. **Sin HTTPS** — Tráfico en texto plano
 7. **BIOS_DB no incluye todos los sistemas MAME** — Los BIOS de arcade/MAME están dentro de los ROMs ZIPs, no se verifican separadamente
-8. **La Web API Key de RetroAchievements viaja en `/api/settings`** — Como no hay autenticación (ver 5/6), la key es visible para cualquiera en la LAN. Se mitigó usando la Web API Key (revocable) en vez de la contraseña, pero idealmente `/api/settings` debería ocultarla y exponer solo un indicador de "configurada".
+8. ~~**La Web API Key de RetroAchievements viaja en `/api/settings`**~~ — **RESUELTO**: `/api/settings`
+   la devuelve enmascarada (`abcd••••••••wxyz`) con un indicador `ra_api_key_set`, y al guardar se
+   comporta como solo-escritura (si no tocas el campo no se pierde; si lo vacías la borra). El
+   endpoint además solo expone claves conocidas de `DEFAULT_SETTINGS`. **Pendiente**: la API en sí
+   sigue sin autenticación (ver 5/6), que es el problema de fondo.
 
 ---
 
@@ -488,7 +492,7 @@ el catálogo como `superpowers:<name>` (p. ej. `superpowers:brainstorming`,
 
 Áreas prioritarias (estado real a v1.4):
 - **Autenticación básica opcional** — pendiente
-- **Ocultar la Web API Key de RetroAchievements en `/api/settings`** — pendiente
+- **Autenticación de la API** (la Web API Key ya se enmascara) — pendiente
 - **Backup/restore de `es_systems_*.cfg`** — pendiente
 - Validación de `BIOS_DB` contra upstream — **hecho** (`tests/bios_validator.py`, `generate_bios_db.py`)
 - Scraping batch programable — **hecho** (jobs en background con cola FIFO)
