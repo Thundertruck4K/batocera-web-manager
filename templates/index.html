@@ -74,6 +74,14 @@
   --grid-line:rgba(255,255,255,.025);
   /* texto sobre fondos saturados (accent, green2, red2) */
   --on-accent:#fff;
+  /* fondo del modal: translucido sobre el scrim oscuro */
+  --modal-bg:linear-gradient(180deg,var(--glass),var(--glass2));
+  --scrim:rgba(0,0,0,.7);
+  /* chip de codigo monoespaciado */
+  --code-bg:rgba(0,0,0,.25);
+  /* degradados de texto (se oscurecen en tema claro para mantener contraste) */
+  --hero-grad:linear-gradient(120deg,#BCD0FF,#7EE6FF);
+  --usage-grad:linear-gradient(90deg,#67E8F9,#8FB4FF 55%,#A78BFA);
   /* texto sobre el degradado propio de la portada generica */
   --on-photo:#fff;
   /* destellos decorativos del fondo aurora */
@@ -124,6 +132,12 @@
   --on-photo:#fff;
   --fx-dot:rgba(20,24,36,.16);
   --fx-spark:rgba(20,24,36,.26);
+  /* el modal debe ser opaco: si no, el texto oscuro cae sobre el scrim */
+  --modal-bg:var(--panel);
+  --scrim:rgba(20,24,36,.45);
+  --code-bg:rgba(20,24,36,.07);
+  --hero-grad:linear-gradient(120deg,#2B4C9B,#0E7490);
+  --usage-grad:linear-gradient(90deg,#0E7490,#2B4C9B 55%,#5B21B6);
 }
 html{height:100%;background:var(--bg)}
 body{height:100%;background:radial-gradient(1200px 700px at 78% -10%,rgba(124,156,255,.16),transparent 60%),var(--bg);color:var(--text);font-family:var(--font);font-size:14px}
@@ -478,14 +492,14 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 
 /* ── Modal ── */
 .modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  position:fixed;inset:0;background:var(--scrim);
   display:flex;align-items:center;justify-content:center;
   z-index:1000;opacity:0;pointer-events:none;
   transition:opacity var(--transition);
 }
 .modal-overlay.open{opacity:1;pointer-events:all}
 .modal{
-  background:linear-gradient(180deg,var(--glass),var(--glass2));
+  background:var(--modal-bg);
   backdrop-filter:blur(20px) saturate(150%);
   border:1px solid var(--border);
   border-radius:var(--radius2);padding:24px;
@@ -660,7 +674,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .svc-warn-icon{font-size:24px;line-height:1.1;flex:none}
 .svc-warn-title{font-size:14.5px;font-weight:800;color:var(--yellow);margin-bottom:4px}
 .svc-warn-text{font-size:12.5px;color:var(--text2);line-height:1.6}
-.svc-warn-text code{font-size:12px;background:rgba(0,0,0,.25);padding:1px 5px;border-radius:5px}
+.svc-warn-text code{font-size:12px;background:var(--code-bg);padding:1px 5px;border-radius:5px}
 .svc-warn-acts{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
 .cmd-editor{
   font-family:var(--mono);font-size:12px;
@@ -742,7 +756,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .dash-hero-hello{font-size:20px;font-weight:800}
 .dash-hero-sub{font-size:12px;color:var(--text2);margin-top:2px}
 .dash-hero-stats{display:flex;gap:22px;flex-wrap:wrap}
-.hero-stat-v{font-size:22px;font-weight:800;line-height:1.1;background:linear-gradient(120deg,#BCD0FF,#7EE6FF);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero-stat-v{font-size:22px;font-weight:800;line-height:1.1;background:var(--hero-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .hero-stat-k{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
 /* las dos tarjetas comparten fila: dos mitades en vez de una fila entera cada una */
 .dash-double{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -767,7 +781,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .dash-random-facts{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .dash-random-facts:empty{display:none}
 .dash-random-usage{font-size:13.5px;font-weight:700;margin-top:10px;
-  background:linear-gradient(90deg,#67E8F9,#8FB4FF 55%,#A78BFA);
+  background:var(--usage-grad);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .dash-random-usage:empty{display:none}
 .dash-random-desc{font-size:12.5px;color:var(--text3);margin-top:10px;line-height:1.5;

@@ -22,6 +22,25 @@ INSTALL = ROOT / "install.sh"
 _BASH = [r"C:\Program Files\Git\bin\bash.exe",
          r"C:\Program Files (x86)\Git\bin\bash.exe"]
 
+
+def _bash_candidates() -> list[str]:
+    """Candidatos a bash, empezando por el Git que hay realmente instalado.
+
+    Git se puede instalar en cualquier sitio (y se mueve de la máquina), así que
+    derivamos sus rutas de `git.exe` en vez de asumir Program Files. Ojo al
+    orden: `bin/bash.exe` es el intérprete de Git for Windows y monta su propio
+    entorno (con `dirname`, `sed`...), mientras que `usr/bin/bash.exe` es el
+    runtime MSYS a pelo y se queda sin herramientas.
+    """
+    extras: list[str] = []
+    git = shutil.which("git")
+    if git:
+        root = Path(git).parent.parent          # ...\cmd\git.exe -> raíz de Git
+        extras = [str(root / "bin" / "bash.exe"),
+                  str(root / "usr" / "bin" / "bash.exe")]
+    return extras + list(_BASH)
+
+
 _bash_path: str | None = None
 
 
@@ -29,7 +48,7 @@ def _bash() -> str:
     global _bash_path
     if _bash_path:
         return _bash_path
-    for cand in _BASH + [shutil.which("bash"), shutil.which("sh")]:
+    for cand in _bash_candidates() + [shutil.which("bash"), shutil.which("sh")]:
         if not cand:
             continue
         try:

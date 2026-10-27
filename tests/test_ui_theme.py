@@ -130,6 +130,65 @@ def test_render_index_falls_back_to_dark(appmod, monkeypatch):
     assert 'data-theme-mode="dark"' in out
 
 
+# ─── Superficies que aún eran de fondo oscuro ───────────────────────
+
+def test_modal_background_is_theme_aware():
+    """El modal era translúcido sobre un scrim negro: en claro, texto oscuro
+    sobre panel casi negro = ilegible. En claro debe ser opaco."""
+    dark = _block(":root")
+    light = _block(LIGHT)
+    assert "var(--modal-bg)" in _css(), ".modal debe usar var(--modal-bg)"
+    assert "--modal-bg" in dark and "--modal-bg" in light
+    # En claro el fondo del modal tiene que ser opaco.
+    assert "var(--panel)" in _var(light, "modal-bg")
+
+
+def test_scrim_is_theme_aware():
+    dark = _block(":root")
+    light = _block(LIGHT)
+    assert "var(--scrim)" in _css(), ".modal-overlay debe usar var(--scrim)"
+    assert _var(dark, "scrim") != _var(light, "scrim")
+
+
+def test_code_chip_is_theme_aware():
+    dark = _block(":root")
+    light = _block(LIGHT)
+    assert "var(--code-bg)" in _css()
+    assert _var(dark, "code-bg") != _var(light, "code-bg")
+
+
+def test_gradient_text_is_darkened_in_the_light_theme():
+    """Los degradados de texto del dashboard eran pastel: ilegibles en claro."""
+    dark = _block(":root")
+    light = _block(LIGHT)
+    for name in ("hero-grad", "usage-grad"):
+        assert f"var(--{name})" in _css()
+        assert _var(dark, name) != _var(light, name)
+
+
+def test_light_gradient_text_is_readable_on_the_light_background():
+    def lum(h):
+        h = h.lstrip("#")
+        r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+        def lin(c):
+            return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+        return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+    def ratio(a, b):
+        l1, l2 = lum(a), lum(b)
+        hi, lo = max(l1, l2), min(l1, l2)
+        return (hi + 0.05) / (lo + 0.05)
+
+    light = _block(LIGHT)
+    bg = _var(light, "bg")
+    for name in ("hero-grad", "usage-grad"):
+        for hexcolor in re.findall(r"#[0-9a-fA-F]{6}", _var(light, name)):
+            r = ratio(hexcolor, bg)
+            assert r >= 4.5, f"claro: {hexcolor} en --{name} sobre --bg: {r:.2f} < 4.5"
+
+
 # ─── Conmutador, selector y script inline ───────────────────────────
 
 def test_inline_script_resolves_auto_before_paint():

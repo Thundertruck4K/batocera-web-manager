@@ -99,6 +99,59 @@ def test_post_does_not_mutate_current(appmod):
     assert current["ra_api_key"] == "abcd1234efgh5678"
 
 
+# ─── Umbral y forma de la máscara ───────────────────────────────────
+
+def test_mask_hides_short_keys_entirely(appmod):
+    """Una key de 9 caracteres no puede quedar visible en 8 de sus 9 posiciones."""
+    for key in ("abc", "abcdefgh", "abcdefghi", "abcdefghij"):
+        out = appmod.mask_ra_api_key(key)
+        assert out == "•" * 8, f"key de {len(key)} caracteres: {out}"
+
+
+def test_mask_shows_extremes_for_long_keys(appmod):
+    out = appmod.mask_ra_api_key("abcd1234efgh5678")
+    assert out.startswith("abcd")
+    assert out.endswith("5678")
+
+
+def test_stale_mask_from_another_device_does_not_corrupt_the_key(appmod):
+    """Una mascara que no es la de la key actual no puede pisar la key real.
+
+    Es el caso multi-dispositivo: el movil tiene una mascara vieja, la key se
+    rota en el PC y al guardar desde el movil se mandaba la mascara como si
+    fuera la key nueva.
+    """
+    stored = {"ra_api_key": "ZZZZ3333CCCC4444"}
+    stale_mask = appmod.mask_ra_api_key("AAAA1111BBBB2222")
+    out = appmod.apply_settings_update({"ra_api_key": stale_mask}, dict(stored))
+    assert out["ra_api_key"] == "ZZZZ3333CCCC4444", "la key real se ha corrompido"
+
+
+def test_looks_like_ra_mask(appmod):
+    assert appmod.looks_like_ra_mask(appmod.mask_ra_api_key("abcd1234efgh5678"))
+    assert not appmod.looks_like_ra_mask("abcd1234efgh5678")
+    assert not appmod.looks_like_ra_mask("")
+
+
+def test_public_settings_normalises_ui_theme(appmod):
+    assert appmod.public_settings({"ui_theme": "futurol"})["ui_theme"] == "dark"
+    assert appmod.public_settings({"ui_theme": "light"})["ui_theme"] == "light"
+    assert appmod.public_settings({"ui_theme": "auto"})["ui_theme"] == "auto"
+    assert appmod.public_settings({})["ui_theme"] == "dark"
+
+
+def test_post_whitespace_only_clears_the_key(appmod):
+    stored = {"ra_api_key": "abcd1234efgh5678"}
+    out = appmod.apply_settings_update({"ra_api_key": "   "}, dict(stored))
+    assert out["ra_api_key"] == ""
+
+
+def test_post_keeps_a_key_that_already_has_spaces(appmod):
+    stored = {"ra_api_key": "  abcd1234efgh5678  "}
+    out = appmod.apply_settings_update({"ra_user": "otro"}, dict(stored))
+    assert out["ra_api_key"] == "  abcd1234efgh5678  "
+
+
 # ─── Frontend: la key se muestra enmascarada ────────────────────────
 
 def _html() -> str:

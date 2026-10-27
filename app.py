@@ -1218,14 +1218,36 @@ def save_settings_to_file(data):
 # La Web API Key de RetroAchievements nunca debe servirse en claro: el servidor
 # no tiene autenticación, así que /api/settings es legible desde la LAN.
 
+# Caracter con el que se dibuja la mascara de la key.
+RA_MASK_CHAR = "•"
+# Longitud minima a partir de la cual se muestran los extremos de la key.
+RA_MASK_MIN_LEN = 12
+
+
 def mask_ra_api_key(key):
-    """Enmascara una Web API Key dejando reconocer sus extremos."""
+    """Enmascara una Web API Key dejando reconocer sus extremos.
+
+    Las keys cortas (menos de RA_MASK_MIN_LEN) se ocultan enteras: con un
+    umbral de 8, una clave de 9 caracteres se mostraba en 8 de sus 9
+    posiciones, es decir, practicamente entera.
+    """
     k = (key or "").strip()
     if not k:
         return ""
-    if len(k) <= 8:
-        return "•" * 8
-    return k[:4] + "•" * 8 + k[-4:]
+    if len(k) < RA_MASK_MIN_LEN:
+        return RA_MASK_CHAR * 8
+    return k[:4] + RA_MASK_CHAR * 8 + k[-4:]
+
+
+def looks_like_ra_mask(value):
+    """True si el valor parece una mascara y no una key nueva.
+
+    Una mascara nunca es una credencial valida, asi que si llega una se
+    conserva la key guardada. Comparar con la mascara de la key actual
+    no basta: si la key cambio en otro dispositivo, la mascara que tiene
+    aqui seria distinta y se guardaria como si fuera la key nueva.
+    """
+    return RA_MASK_CHAR in str(value or "")
 
 
 def public_settings(settings):
@@ -1238,6 +1260,7 @@ def public_settings(settings):
     key = str(pub.get("ra_api_key") or "")
     pub["ra_api_key_set"] = bool(key.strip())
     pub["ra_api_key"] = mask_ra_api_key(key)
+    pub["ui_theme"] = normalize_ui_theme(pub.get("ui_theme"))
     return pub
 
 VALID_UI_THEMES = ("dark", "light", "auto")
@@ -1259,11 +1282,12 @@ def apply_settings_update(payload, current):
     incoming = {k: v for k, v in (payload or {}).items() if k in DEFAULT_SETTINGS}
     if "ra_api_key" in incoming:
         sent = str(incoming["ra_api_key"] or "").strip()
-        stored = str(current.get("ra_api_key") or "").strip()
         if not sent:
             current["ra_api_key"] = ""
-        elif sent != mask_ra_api_key(stored):
+        elif not looks_like_ra_mask(sent):
             current["ra_api_key"] = sent
+        # Una mascara (la nuestra o la de otro dispositivo) no es una key
+        # nueva: se conserva la que ya habia guardada.
     for k, v in incoming.items():
         if k == "ra_api_key":
             continue
