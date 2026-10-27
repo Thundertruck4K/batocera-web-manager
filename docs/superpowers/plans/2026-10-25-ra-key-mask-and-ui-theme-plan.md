@@ -508,7 +508,17 @@ Dentro del `:root` existente, después de `--navr:13px;`, añade:
   --badge-fg:#fff;
   --spinner-track:rgba(255,255,255,.2);
   --spinner-top:#fff;
-  --grid-line:rgba(255,255,255,.12);
+  --grid-line:rgba(255,255,255,.025);
+  --on-accent:#fff;
+  --on-photo:#fff;
+  --fx-dot:rgba(255,255,255,.28);
+  --fx-spark:rgba(255,255,255,.45);
+  /* fondo del modal: translucido sobre el scrim oscuro */
+  --modal-bg:linear-gradient(180deg,var(--glass),var(--glass2));
+  --scrim:rgba(0,0,0,.7);
+  --code-bg:rgba(0,0,0,.25);
+  --hero-grad:linear-gradient(120deg,#BCD0FF,#7EE6FF);
+  --usage-grad:linear-gradient(90deg,#67E8F9,#8FB4FF 55%,#A78BFA);
 ```
 
 Y sustituye las occurrences fijas por las variables:
@@ -526,8 +536,17 @@ Y sustituye las occurrences fijas por las variables:
 | spinner `border-top-color:#fff` | `border-top-color:var(--spinner-top)` |
 | `repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,…` | `repeating-linear-gradient(0deg,transparent 0 3px,var(--grid-line),…` |
 
-**No tocar** los `rgba(255,255,255,…)` de `.fx__bubble` y `.fx__spark` (fondo del landing
-siempre oscuro) ni el `color:#fff` de `.dash-random-ph span` (gradiente propio oscuro).
+**Tambien pasan por variable** (aunque el fondo del landing sea oscuro, en tema
+claro el `--bg` es claro y sus velos blancos se desvanecen): `.fx__bubble` y
+`.fx__spark` (`--fx-dot` / `--fx-spark`) y el texto de `.dash-random-ph span`
+(`--on-photo`). El degradado de la portada generica si es siempre oscuro, por
+eso `--on-photo` vale `#fff` en los dos temas.
+
+**Superficies que en tema claro quedaban ilegibles** y que tambien llevan
+variable: el modal (`--modal-bg`, opaco en claro, porque si se queda traslucido
+sobre el scrim el texto oscuro cae sobre un panel casi negro), el scrim
+(`--scrim`), el chip de codigo del aviso de servicio (`--code-bg`) y los
+degradados de texto del dashboard (`--hero-grad`, `--usage-grad`).
 
 - [ ] **Paso 4: Añade el bloque de la paleta clara**
 
@@ -572,7 +591,17 @@ Inmediatamente después del bloque `:root{...}`, añade:
   --badge-fg:#141824;
   --spinner-track:rgba(20,24,36,.15);
   --spinner-top:#3B5BDB;
-  --grid-line:rgba(20,24,36,.10);
+  --grid-line:rgba(20,24,36,.05);
+  --on-accent:#fff;
+  --on-photo:#fff;
+  --fx-dot:rgba(20,24,36,.16);
+  --fx-spark:rgba(20,24,36,.26);
+  /* el modal debe ser opaco: si no, el texto oscuro cae sobre el scrim */
+  --modal-bg:var(--panel);
+  --scrim:rgba(20,24,36,.45);
+  --code-bg:rgba(20,24,36,.07);
+  --hero-grad:linear-gradient(120deg,#2B4C9B,#0E7490);
+  --usage-grad:linear-gradient(90deg,#0E7490,#2B4C9B 55%,#5B21B6);
 }
 ```
 

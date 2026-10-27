@@ -20,6 +20,19 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ### Cambiado
 - Contador de tests del README actualizado a 384.
 
+### Corregido
+- El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
+  el scrim negro), el chip de codigo del aviso de servicio y los degradados de
+  texto del dashboard. Ahora cada uno tiene su variable de tema.
+- Una mascara de la Web API Key que venia de otro dispositivo se guardaba como
+  si fuera la key nueva, dejando la credencial rota en silencio. Ahora se
+  detecta la mascara por su forma, no comparandola con la key actual.
+- Las Web API Keys de menos de 12 caracteres se ocultan enteras: con el umbral
+  anterior, una key de 9 se mostraba en 8 de sus 9 posiciones.
+- `tests/test_install_sh.py` asumia que Git estaba en `C:\Program Files\Git`:
+  ahora deriva el `bash` real de la ruta de `git.exe`, asi que sus 10 tests no
+  se saltan si Git esta instalado en otro sitio.
+
 ### Seguridad
 - La **Web API Key de RetroAchievements ya no se sirve en claro** por `/api/settings`: se devuelve
   enmascarada (`abcd••••••••wxyz`) junto con un indicador `ra_api_key_set` de si está configurada.
