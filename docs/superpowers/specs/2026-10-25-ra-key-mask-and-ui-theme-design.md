@@ -103,9 +103,14 @@ endpoint expone la key: `/api/retroachievements` y `/api/retroachievements/test`
 | Valor enviado | Efecto |
 |---|---|
 | La clave no aparece en el payload | Se conserva la key guardada |
-| La máscara que devolvió el GET (p. ej. `"abcd••••••••wxyz"`) | Se conserva la key guardada |
+| Cualquier valor que **parezca una máscara** (contiene `•`) | Se conserva la key guardada |
 | Cadena vacía | **Borra** la key guardada |
 | Cualquier otro valor | Sustituye la key guardada |
+
+Detectar la máscara **por su forma** y no comparándola con la máscara de la key
+guardada es deliberado: si la key se rotó en otro dispositivo, la máscara que
+tiene aquí sería otra distinta, y compararlas guardaría la máscara como si
+fuera la key nueva, dejando la credencial rota en silencio.
 
 El caso "vacía = borra" es deliberado: es la única forma de quitar una key sin añadir un
 botón extra. La UI lo explica con un hint explícito.
@@ -163,9 +168,20 @@ claro:
 | `--badge-bg` / `--badge-fg` | `rgba(255,255,255,.2)` / `#fff` | `rgba(20,24,36,.14)` / `var(--text)` |
 | `--spinner-track` / `--spinner-top` | `rgba(255,255,255,.2)` / `#fff` | `rgba(20,24,36,.15)` / `#3B5BDB` |
 | `--grid-line` | `rgba(255,255,255,.025)` | `rgba(20,24,36,.05)` |
+| `--modal-bg` | `linear-gradient(180deg,var(--glass),var(--glass2))` | `var(--panel)` |
+| `--scrim` | `rgba(0,0,0,.7)` | `rgba(20,24,36,.45)` |
+| `--code-bg` | `rgba(0,0,0,.25)` | `rgba(20,24,36,.07)` |
+| `--hero-grad` | `linear-gradient(120deg,#BCD0FF,#7EE6FF)` | `linear-gradient(120deg,#2B4C9B,#0E7490)` |
+| `--usage-grad` | `linear-gradient(90deg,#67E8F9,#8FB4FF 55%,#A78BFA)` | `linear-gradient(90deg,#0E7490,#2B4C9B 55%,#5B21B6)` |
 | `--on-accent` | `#fff` | `#fff` |
 | `--on-photo` | `#fff` | `#fff` |
 | `--fx-dot` / `--fx-spark` | `rgba(255,255,255,.28)` / `.45` | `rgba(20,24,36,.16)` / `.26` |
+
+El modal necesita un fondo **opaco** en tema claro: si se queda translúcido
+sobre el scrim, el texto oscuro cae sobre un panel casi negro y el diálogo es
+ilegible. Los degradados de texto del dashboard (`--hero-grad`, `--usage-grad`)
+también se oscurecen, porque los pasteles del tema oscuro no se leen sobre
+fondo claro.
 
 **También pasan por variable:** `.fx__bubble` / `.fx__spark` (`--fx-dot` / `--fx-spark`)
 y el texto de `.dash-random-ph span` (`--on-photo`). Los tres viven sobre fondos
