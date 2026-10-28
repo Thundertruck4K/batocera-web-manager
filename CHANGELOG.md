@@ -16,9 +16,11 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   `tests/test_theme_contrast.py`).
 - **Verificación de actualizaciones mayores**: el dashboard comprueba las releases publicadas del propio repositorio (feed Atom de GitHub, cacheado 1 h) y avisa con un banner visual cuando aparece una versión **mayor** (2.0, 3.0...). Endpoint nuevo `/api/app-update`; sin conexión el aviso simplemente no aparece y la app sigue igual. El descarte se recuerda por versión, así que al llegar la 3.0 vuelve a avisar aunque el usuario ya cerrara el aviso de la 2.0.
 - 16 tests nuevos para el sistema de actualización (`tests/test_app_update.py`).
+- 20 tests nuevos (`tests/test_scraper_secrets.py`) para el enmascarado de las credenciales del
+  scraper.
 
 ### Cambiado
-- Contador de tests del README actualizado a 384.
+- Contador de tests del README actualizado a 416.
 
 ### Corregido
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
@@ -39,6 +41,12 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   Al guardar se comporta como solo-escritura: si no tocas el campo, la key se conserva; si lo vacías,
   la borra. Además `/api/settings` solo expone claves conocidas, para que el fichero de ajustes
   (editable a mano) no pueda inyectar campos extra en la respuesta.
+- Las **credenciales del scraper (ScreenScraper, TheGamesDB e IGDB) ya no se sirven en claro** por
+  la API: `/api/scraper/config` y el campo `cfg` de `/api/scraper/search` las devuelven
+  enmascaradas, con un indicador `<campo>_set` de si cada una está configurada. Al guardar se
+  comportan como solo-escritura: si no tocas el campo, la credencial no se pierde; si lo vacías,
+  se borra. Además, una máscara que llegue del cliente nunca se guarda ni se envía a las APIs
+  externas: manda la credencial que tiene el servidor.
 
 ## [1.4] - 2026-10-18
 

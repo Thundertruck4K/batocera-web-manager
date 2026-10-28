@@ -465,14 +465,21 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 336 tests (`pytest`, `tests/`, 37 ficheros) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 416 tests (`pytest`, `tests/`, 40 ficheros) sin linting ni typechecking
 2. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 3. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
 4. **Settings sin cache** — Se lee el JSON en cada request
 5. **Sin autenticación** — El servidor expone toda la API sin protección
 6. **Sin HTTPS** — Tráfico en texto plano
 7. **BIOS_DB no incluye todos los sistemas MAME** — Los BIOS de arcade/MAME están dentro de los ROMs ZIPs, no se verifican separadamente
-7b. **Credenciales del scraper expuestas en claro** — `GET /api/scraper/config` y `POST /api/scraper/search` devuelven `ss_user`, `ss_password`, `ss_devid`, `ss_devpassword`, `tgdb_apikey`, `igdb_client_id` e `igdb_client_secret` desde `batocera.conf`. Es preexistente (no lo introdujo el enmascarado de la Web API Key de RA) y estrictamente peor: son la contraseña de ScreenScraper y tres secretos de API, legibles desde la LAN sin autenticacion. Pendiente: aplicar el mismo tratamiento write-only que a la key de RA
+7b. ~~**Credenciales del scraper expuestas en claro**~~ — **RESUELTO**: `GET /api/scraper/config`
+   y el campo `cfg` de `POST /api/scraper/search` devuelven las 7 credenciales (`ss_user`,
+   `ss_password`, `ss_devid`, `ss_devpassword`, `tgdb_apikey`, `igdb_client_id`,
+   `igdb_client_secret`) **enmascaradas**, con un indicador `<campo>_set` de si cada una está
+   configurada. El guardado es write-only: una máscara conserva lo que había, y vaciar un campo
+   solo borra si el cliente manda `clear: true`. `get_scraper_config()` sigue devolviendo las
+   credenciales reales (se usan para hablar con ScreenScraper / TheGamesDB / IGDB): solo se
+   enmascara lo que sale por HTTP
 8. ~~**La Web API Key de RetroAchievements viaja en `/api/settings`**~~ — **RESUELTO**: `/api/settings`
    la devuelve enmascarada (`abcd••••••••wxyz`) con un indicador `ra_api_key_set`, y al guardar se
    comporta como solo-escritura (si no tocas el campo no se pierde; si lo vacías la borra). El
@@ -485,7 +492,7 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 
 Ver `README.md` → Roadmap y `AGENTS.md` → guía operativa.
 
-El plugin `superpowers` está instalado en `C:\Users\folk3\.minimax\plugins\superpowers/`
+El plugin `superpowers` está instalado en `C:\Users\mateo\.minimax\plugins\superpowers/`
 (port de https://github.com/obra/superpowers v7.0.1, MIT). Sus 15 skills aparecen en
 el catálogo como `superpowers:<name>` (p. ej. `superpowers:brainstorming`,
 `superpowers:writing-plans`, `superpowers:executing-plans`). Flujo: `brainstorming`
@@ -493,8 +500,8 @@ el catálogo como `superpowers:<name>` (p. ej. `superpowers:brainstorming`,
 
 Áreas prioritarias (estado real a v1.4):
 - **Autenticación básica opcional** — pendiente
-- **Autenticación de la API** (la Web API Key ya se enmascara) — pendiente
-- **Enmascarar las credenciales del scraper** (`ss_password`, `tgdb_apikey`, `igdb_client_secret`) — pendiente
+- **Autenticación de la API** (la Web API Key y las credenciales del scraper ya se enmascaran) — pendiente
+- **Enmascarar las credenciales del scraper** (`ss_password`, `tgdb_apikey`, `igdb_client_secret`) — **hecho** (`/api/scraper/config` y `/api/scraper/search`, con guardado write-only)
 - **Backup/restore de `es_systems_*.cfg`** — pendiente
 - Validación de `BIOS_DB` contra upstream — **hecho** (`tests/bios_validator.py`, `generate_bios_db.py`)
 - Scraping batch programable — **hecho** (jobs en background con cola FIFO)
