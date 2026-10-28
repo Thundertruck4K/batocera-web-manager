@@ -1218,25 +1218,30 @@ def save_settings_to_file(data):
 # La Web API Key de RetroAchievements nunca debe servirse en claro: el servidor
 # no tiene autenticación, así que /api/settings es legible desde la LAN.
 
-# Caracter con el que se dibuja la mascara de la key.
+# Caracter con el que se dibuja la mascara.
 RA_MASK_CHAR = "•"
-# Longitud minima a partir de la cual se muestran los extremos de la key.
+# Longitud minima a partir de la cual se muestran los extremos del valor.
 RA_MASK_MIN_LEN = 12
 
 
-def mask_ra_api_key(key):
-    """Enmascara una Web API Key dejando reconocer sus extremos.
+def mask_secret_value(value):
+    """Enmascara un valor sensible dejando reconocer sus extremos.
 
-    Las keys cortas (menos de RA_MASK_MIN_LEN) se ocultan enteras: con un
+    Los valores cortos (menos de RA_MASK_MIN_LEN) se ocultan enteras: con un
     umbral de 8, una clave de 9 caracteres se mostraba en 8 de sus 9
     posiciones, es decir, practicamente entera.
     """
-    k = (key or "").strip()
-    if not k:
+    v = str(value or "").strip()
+    if not v:
         return ""
-    if len(k) < RA_MASK_MIN_LEN:
+    if len(v) < RA_MASK_MIN_LEN:
         return RA_MASK_CHAR * 8
-    return k[:4] + RA_MASK_CHAR * 8 + k[-4:]
+    return v[:4] + RA_MASK_CHAR * 8 + v[-4:]
+
+
+def mask_ra_api_key(key):
+    """Enmascara una Web API Key dejando reconocer sus extremos."""
+    return mask_secret_value(key)
 
 
 def looks_like_ra_mask(value):
@@ -3886,6 +3891,39 @@ def get_scraper_config(settings):
         pass
     return _apply_ss_dev_credentials(cfg, settings)
 
+# Campos de get_scraper_config() que son credenciales: nunca se sirven en claro.
+SCRAPER_SECRET_FIELDS = (
+    "ss_user", "ss_password", "ss_devid", "ss_devpassword",
+    "tgdb_apikey", "igdb_client_id", "igdb_client_secret",
+)
+
+# Clave de batocera.conf -> campo de la config del scraper.
+SCRAPER_SECRET_CONF_KEYS = {
+    "global.scrapper.user":        "ss_user",
+    "global.scrapper.password":    "ss_password",
+    "global.scrapper.devid":       "ss_devid",
+    "global.scrapper.devpassword": "ss_devpassword",
+    "global.tgdb.apikey":          "tgdb_apikey",
+    "global.igdb.clientid":        "igdb_client_id",
+    "global.igdb.clientsecret":    "igdb_client_secret",
+}
+
+
+def public_scraper_config(cfg):
+    """Copia de la config del scraper sin credenciales en claro.
+
+    get_scraper_config() sigue devolviendo las credenciales reales (se usan
+    para hablar con ScreenScraper / TheGamesDB / IGDB); esto es lo que sale
+    por la API.
+    """
+    pub = dict(cfg or {})
+    for name in SCRAPER_SECRET_FIELDS:
+        val = str(pub.get(name) or "")
+        pub[name] = mask_secret_value(val)
+        pub[name + "_set"] = bool(val.strip())
+    return pub
+
+
 def _apply_ss_dev_credentials(cfg, settings):
     """Rellena devid/devpassword si falta alguno.
 
@@ -3924,7 +3962,9 @@ def resolve_scraper_creds(settings, client_data):
               "ss_region", "ss_lang", "ss_image_type",
               "tgdb_apikey", "igdb_client_id", "igdb_client_secret"):
         val = (client_data or {}).get(k)
-        if val:
+        # Una mascara no es una credencial: si llega una, manda la del servidor.
+        # Si no, la mascara acabaria enviada a la API de ScreenScraper.
+        if val and not looks_like_ra_mask(val):
             cfg[k] = val
     return cfg
 
@@ -3938,10 +3978,18 @@ def save_scraper_config(conf_path, lines):
         text = conf_path.read_text(errors="replace") if conf_path.exists() else ""
         conf_lines = text.splitlines()
         for item in lines or []:
-            key = (item or {}).get("key", "")
-            val = (item or {}).get("val", "")
+            item = item or {}
+            key = item.get("key", "")
+            val = str(item.get("val", "") or "")
             if not key or key not in SCRAPER_CONF_KEYS:
                 continue
+            if key in SCRAPER_SECRET_CONF_KEYS:
+                # Una mascara no es una credencial nueva: se conserva la guardada.
+                if looks_like_ra_mask(val):
+                    continue
+                # Vacio sin intencion explicita: no se toca nada.
+                if not val and not item.get("clear"):
+                    continue
             replaced = False
             for i, line in enumerate(conf_lines):
                 stripped = line.strip()
@@ -4909,7 +4957,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             else:
                 self.send_json({"ok":False,"error":"Faltan parámetros"})
         elif path == "/api/scraper/config":
-            self.send_json(get_scraper_config(s))
+            self.send_json(public_scraper_config(get_scraper_config(s)))
         elif path == "/api/scraper/batch":
             self._scraper_batch_list(s)
         elif len(parts)==4 and parts[:3]==["api","scraper","batch"]:
@@ -5362,7 +5410,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             if game:
                 meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
                 self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":["boxart"],"cfg":cfg,"source":"thegamesdb"})
+                               "img_types":["boxart"],"cfg":public_scraper_config(cfg),"source":"thegamesdb"})
             else:
                 self.send_json({"ok":False,"error":err or "Sin resultados"})
 
@@ -5373,7 +5421,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             if game:
                 meta = igdb_build_meta(game)
                 self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":["cover"],"cfg":cfg,"source":"igdb"})
+                               "img_types":["cover"],"cfg":public_scraper_config(cfg),"source":"igdb"})
             else:
                 self.send_json({"ok":False,"error":err or "Sin resultados"})
 
@@ -5398,7 +5446,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                                  if m.get("type","") in
                                  ("mixrbv1","mixrbv2","ss","box-2D","wheel","fanart","screenshot")})
                 self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":img_types,"cfg":cfg,"source":"screenscraper",
+                               "img_types":img_types,"cfg":public_scraper_config(cfg),"source":"screenscraper",
                                "quota":quota})
             else:
                 self.send_json({"ok":False,"error":err or "Sin resultados","quota":quota})

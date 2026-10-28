@@ -4166,9 +4166,14 @@ function scraperSourceChanged(scope) {
   });
 }
 
+// Config del scraper tal y como la devuelve la API (enmascarada). Se usa para
+// saber que credenciales hay guardadas y distinguirlas de un campo vaciado.
+let _scraperCfg = {};
+
 async function loadScraperConfig() {
   const cfg = await fetchJson('/api/scraper/config');
   if (!cfg) return;
+  _scraperCfg = cfg;
   const cont = document.getElementById('sc-cfg-fields');
   cont.innerHTML = [
     { key:'ss_user',           label:'ScreenScraper — Usuario',       type:'text'     },
@@ -4186,6 +4191,7 @@ async function loadScraperConfig() {
       <label>${f.label}</label>
       <input type="${f.type}" id="sccfg-${f.key}"
         value="${escHtml(cfg[f.key]||'')}" placeholder="${f.ph||''}">
+      ${cfg[f.key+'_set'] ? '<span class="hint">Configurada (enmascarada)</span>' : ''}
     </div>`).join('');
   // Prellenar tabs single/system con credenciales guardadas
   const fillIfEmpty = (id, val) => { const el=document.getElementById(id); if(el&&!el.value&&val) el.value=val; };
@@ -4226,20 +4232,29 @@ async function loadScraperConfig() {
 
 async function scraperSaveConfig() {
   const fields = ['ss_user','ss_password','ss_devid','ss_devpassword','ss_region','ss_lang','ss_image_type','tgdb_apikey','igdb_client_id','igdb_client_secret'];
+  // Campos que son credenciales: se guardan como solo-escritura.
+  const secretFields = ['ss_user','ss_password','ss_devid','ss_devpassword','tgdb_apikey','igdb_client_id','igdb_client_secret'];
+  const keyMap = {
+    ss_user:'global.scrapper.user', ss_password:'global.scrapper.password',
+    ss_devid:'global.scrapper.devid', ss_devpassword:'global.scrapper.devpassword',
+    ss_region:'global.scrapper.region', ss_lang:'global.scrapper.lang',
+    ss_image_type:'global.scrapper.imageSource',
+    tgdb_apikey:'global.tgdb.apikey',
+    igdb_client_id:'global.igdb.clientid', igdb_client_secret:'global.igdb.clientsecret',
+  };
   const lines  = [];
   fields.forEach(k => {
     const el = document.getElementById('sccfg-' + k);
-    if (el && el.value.trim()) {
-      const keyMap = {
-        ss_user:'global.scrapper.user', ss_password:'global.scrapper.password',
-        ss_devid:'global.scrapper.devid', ss_devpassword:'global.scrapper.devpassword',
-        ss_region:'global.scrapper.region', ss_lang:'global.scrapper.lang',
-        ss_image_type:'global.scrapper.imageSource',
-        tgdb_apikey:'global.tgdb.apikey',
-        igdb_client_id:'global.igdb.clientid', igdb_client_secret:'global.igdb.clientsecret',
-      };
-      const bkey = keyMap[k] || k;
-      lines.push({key: bkey, val: el.value.trim()});
+    if (!el) return;
+    const val = el.value.trim();
+    const bkey = keyMap[k] || k;
+    if (secretFields.includes(k)) {
+      // La mascara se manda tal cual: el backend la ignora y conserva lo que
+      // habia. Un campo vaciado lleva `clear` para que la credencial se borre.
+      if (!val && !(_scraperCfg[k+'_set'])) return;
+      lines.push({key: bkey, val: val, clear: !val});
+    } else if (val) {
+      lines.push({key: bkey, val: val});
     }
   });
   const res = await fetchJson('/api/scraper/save-config', {
