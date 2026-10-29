@@ -14,6 +14,10 @@
     var mq = window.matchMedia('(prefers-color-scheme: light)');
     var apply = function(){ el.dataset.theme = mq.matches ? 'light' : 'dark'; };
     apply();
+    // Se guarda el listener para poder quitarlo cuando el usuario elija un
+    // tema explicito: si no, el sistema operativo seguiria escribiendo por
+    // encima del tema elegido.
+    window.__bmAutoTheme = { mq: mq, apply: apply };
     if (mq.addEventListener) mq.addEventListener('change', apply);
     else if (mq.addListener) mq.addListener(apply);
   }
@@ -2964,6 +2968,8 @@ async function loadSettings() {
 // ─── Tema claro/oscuro ────────────────────────────────────
 const THEME_VALUES = ['dark', 'light', 'auto'];
 let _themeMode = 'dark';
+// Listener de matchMedia del modo "auto" (null si no hay ninguno activo).
+let _autoTheme = null;
 
 function _applyTheme(mode){
   _themeMode = THEME_VALUES.indexOf(mode) >= 0 ? mode : 'dark';
@@ -2972,15 +2978,31 @@ function _applyTheme(mode){
   if (_themeMode === 'auto') {
     _resolveAutoTheme();
   } else {
+    // Un tema explicito manda: el sistema operativo ya no debe escribir encima.
+    _removeAutoThemeListener();
     el.dataset.theme = _themeMode;
   }
   _syncThemeUI();
 }
 
+function _removeAutoThemeListener(){
+  const a = _autoTheme || window.__bmAutoTheme;
+  if (a) {
+    if (a.mq.removeEventListener) a.mq.removeEventListener('change', a.apply);
+    else if (a.mq.removeListener) a.mq.removeListener(a.apply);
+  }
+  _autoTheme = null;
+  window.__bmAutoTheme = null;
+}
+
 function _resolveAutoTheme(){
+  // Nunca se acumulan listeners: se quita el anterior antes de poner el nuevo.
+  _removeAutoThemeListener();
   const el = document.documentElement;
   const mq = window.matchMedia('(prefers-color-scheme: light)');
   const apply = function(){ el.dataset.theme = mq.matches ? 'light' : 'dark'; };
+  _autoTheme = { mq: mq, apply: apply };
+  window.__bmAutoTheme = _autoTheme;
   apply();
   if (mq.addEventListener) mq.addEventListener('change', apply);
   else if (mq.addListener) mq.addListener(apply);
@@ -3001,6 +3023,9 @@ function _syncThemeUI(){
 function _initTheme(){
   const el = document.documentElement;
   _themeMode = el.dataset.themeMode || 'dark';
+  // El script inline ya resolvio el tema y dejo su listener en
+  // window.__bmAutoTheme: se adopta para poder quitarlo mas adelante.
+  _autoTheme = window.__bmAutoTheme || null;
   // Si el script inline no llego a correr, se resuelve aqui.
   if (_themeMode === 'auto' && el.dataset.theme !== 'light' && el.dataset.theme !== 'dark') {
     _resolveAutoTheme();
@@ -3033,6 +3058,10 @@ function toggleRAKey() {
   if (el) el.type = el.type === 'password' ? 'text' : 'password';
 }
 
+// El campo de la key solo se manda si el usuario lo ha tocado: si no, un
+// guardado rapido (antes de que llegue la mascara) la borraria.
+let _raKeyTouched = false;
+
 async function loadRASettings() {
   const data = await fetchJson('/api/settings');
   if (!data) return;
@@ -3042,7 +3071,11 @@ async function loadRASettings() {
   const hint = document.getElementById('ra-key-hint');
   if (u) u.value = data.ra_user || '';
   // La key llega enmascarada: nunca se expone en claro por la API.
-  if (k) k.value = data.ra_api_key || '';
+  if (k) {
+    k.value = data.ra_api_key || '';
+    _raKeyTouched = false;
+    k.oninput = function(){ _raKeyTouched = true; };
+  }
   if (e) e.checked = !!data.ra_enabled;
   if (hint) {
     hint.textContent = data.ra_api_key_set
@@ -3052,11 +3085,15 @@ async function loadRASettings() {
 }
 
 async function saveRASettings() {
+  const keyVal = (document.getElementById('set-ra-api-key')?.value || '').trim();
   const payload = {
     ra_user: (document.getElementById('set-ra-user')?.value || '').trim(),
-    ra_api_key: (document.getElementById('set-ra-api-key')?.value || '').trim(),
     ra_enabled: !!document.getElementById('set-ra-enabled')?.checked,
   };
+  // La key es write-only: solo se manda si hay algo escrito o si el usuario ha
+  // vaciado el campo a proposito. Si no, un guardado rapido podria mandar ""
+  // y borrar la key que ya estaba guardada.
+  if (keyVal || _raKeyTouched) payload.ra_api_key = keyVal;
   const res = await fetchJson('/api/settings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

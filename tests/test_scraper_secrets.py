@@ -203,3 +203,61 @@ def test_frontend_never_writes_the_raw_credential_to_the_form(appmod):
     html = _html(appmod)
     assert "value=\"${escHtml(cfg[f.key]||'')}\"" in html
     assert "sc-pass',          cfg.ss_password||''" in html
+
+# ─── Un valor no puede inyectar directivas en batocera.conf ──────────
+
+def test_save_rejects_a_value_with_a_newline(appmod, tmp_path):
+    """Un salto de linea inyectaria una clave nueva en batocera.conf.
+
+    batocera.conf se escribe linea a linea, asi que un "\n" en la credencial
+    crea una directiva espuria (p. ej. global.es.foo=bar) y el servidor la
+    escribe con permisos de root.
+    """
+    conf = tmp_path / "batocera.conf"
+    conf.write_text("", encoding="utf-8")
+    ok, err = appmod.save_scraper_config(conf, [
+        {"key": "global.scrapper.password",
+         "val": "mypass\nglobal.es.foo=bar"},
+    ])
+    assert not ok, "un valor con salto de linea deberia rechazarse"
+    assert "global.es.foo" not in conf.read_text(encoding="utf-8")
+
+
+def test_save_rejects_a_value_with_a_carriage_return(appmod, tmp_path):
+    conf = tmp_path / "batocera.conf"
+    conf.write_text("", encoding="utf-8")
+    ok, _ = appmod.save_scraper_config(conf, [
+        {"key": "global.scrapper.password",
+         "val": "mypass\rglobal.es.foo=bar"},
+    ])
+    assert not ok
+    assert "global.es.foo" not in conf.read_text(encoding="utf-8")
+
+
+def test_save_still_accepts_a_password_with_spaces(appmod, tmp_path):
+    """Una contrasena puede llevar espacios: solo se rechazan los saltos."""
+    conf = tmp_path / "batocera.conf"
+    conf.write_text("", encoding="utf-8")
+    ok, err = appmod.save_scraper_config(conf, [
+        {"key": "global.scrapper.password", "val": "mi clave con espacios"},
+    ])
+    assert ok, err
+    text = conf.read_text(encoding="utf-8")
+    assert "global.scrapper.password=mi clave con espacios" in text
+
+
+# ─── La config publica solo expone campos conocidos ──────────────────
+
+def test_public_scraper_config_only_exposes_known_fields(appmod):
+    """Lista blanca: un campo nuevo no puede colarse en la respuesta.
+
+    Mismo criterio que public_settings(): si manana se anade un campo
+    sensible a get_scraper_config(), no debe servirse en claro por
+    Pioneer.
+    """
+    pub = appmod.public_scraper_config({
+        "ss_password": "secreto", "ss_region": "eu",
+        "campo_desconocido": "no_debe_salir",
+    })
+    assert "campo_desconocido" not in pub
+    assert "no_debe_salir" not in repr(pub)

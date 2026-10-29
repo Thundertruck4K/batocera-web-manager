@@ -3897,6 +3897,11 @@ SCRAPER_SECRET_FIELDS = (
     "tgdb_apikey", "igdb_client_id", "igdb_client_secret",
 )
 
+# Campos de get_scraper_config() que no son credenciales: se sirven tal cual.
+# Igual que public_settings(), la config publica usa lista blanca: si manana
+# se anade un campo sensible, no debe servirse en claro sin querer.
+SCRAPER_PUBLIC_FIELDS = ("ss_region", "ss_lang", "ss_image_type", "scraper_source")
+
 # Clave de batocera.conf -> campo de la config del scraper.
 SCRAPER_SECRET_CONF_KEYS = {
     "global.scrapper.user":        "ss_user",
@@ -3916,9 +3921,12 @@ def public_scraper_config(cfg):
     para hablar con ScreenScraper / TheGamesDB / IGDB); esto es lo que sale
     por la API.
     """
-    pub = dict(cfg or {})
+    cfg = cfg or {}
+    pub = {}
+    for name in SCRAPER_PUBLIC_FIELDS:
+        pub[name] = cfg.get(name, "")
     for name in SCRAPER_SECRET_FIELDS:
-        val = str(pub.get(name) or "")
+        val = str(cfg.get(name) or "")
         pub[name] = mask_secret_value(val)
         pub[name + "_set"] = bool(val.strip())
     return pub
@@ -3983,6 +3991,11 @@ def save_scraper_config(conf_path, lines):
             val = str(item.get("val", "") or "")
             if not key or key not in SCRAPER_CONF_KEYS:
                 continue
+            # batocera.conf se escribe linea a linea: un salto de linea en el
+            # valor inyectaria una directiva nueva (p. ej. global.es.foo=bar)
+            # y el servidor la escribe con permisos de root.
+            if "\n" in val or "\r" in val:
+                return False, f"valor de configuración inválido: {key}"
             if key in SCRAPER_SECRET_CONF_KEYS:
                 # Una mascara no es una credencial nueva: se conserva la guardada.
                 if looks_like_ra_mask(val):

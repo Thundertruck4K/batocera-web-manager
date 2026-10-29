@@ -18,9 +18,11 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - 16 tests nuevos para el sistema de actualización (`tests/test_app_update.py`).
 - 20 tests nuevos (`tests/test_scraper_secrets.py`) para el enmascarado de las credenciales del
   scraper.
+- 8 tests nuevos para las correcciones de la revisión (inyección en `batocera.conf`, lista
+  blanca de la config pública, listener del modo "auto" y borrado accidental de la key de RA).
 
 ### Cambiado
-- Contador de tests del README actualizado a 416.
+- Contador de tests del README actualizado a 424.
 
 ### Corregido
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
@@ -34,6 +36,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - `tests/test_install_sh.py` asumia que Git estaba en `C:\Program Files\Git`:
   ahora deriva el `bash` real de la ruta de `git.exe`, asi que sus 10 tests no
   se saltan si Git esta instalado en otro sitio.
+- El modo "auto" del tema ya no pisa un tema explicito elegido despues (el listener de
+  `matchMedia` seguia escribiendo encima) y ya no se acumula en cada cambio de tema.
+- La Web API Key de RetroAchievements solo se borra si el usuario vacia el campo a proposito:
+  un guardado rapido, antes de que llegue la mascara, ya no puede borrarla.
 
 ### Seguridad
 - La **Web API Key de RetroAchievements ya no se sirve en claro** por `/api/settings`: se devuelve
@@ -47,6 +53,11 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   comportan como solo-escritura: si no tocas el campo, la credencial no se pierde; si lo vacías,
   se borra. Además, una máscara que llegue del cliente nunca se guarda ni se envía a las APIs
   externas: manda la credencial que tiene el servidor.
+- Un valor con salto de linea en el formulario del scraper ya no puede inyectar directivas
+  nuevas en `batocera.conf`: el servidor escribe ese fichero con permisos de root y una sola
+  línea de más creaba una clave espuria.
+- La config publica del scraper usa lista blanca de campos, igual que `/api/settings`: un
+  campo nuevo no puede colarse en la respuesta en claro.
 
 ## [1.4] - 2026-10-18
 

@@ -179,3 +179,26 @@ def test_load_ra_settings_never_fills_the_real_key():
     assert "data.ra_api_key" in body
     assert "data.ra_api_key ||" in body
     assert "ra_api_key_set" in body
+
+
+def test_the_ra_key_is_only_sent_when_the_user_touched_it(appmod):
+    """Un guardado rapido no debe borrar la key que ya habia.
+
+    El campo de la key se rellena asincronicamente con la mascara: si el
+    usuario pulsa "Guardar" antes de que llegue, el campo esta vacio y se
+    mandaria "" (que el backend interpreta como borrar la key).
+    """
+    from pathlib import Path
+    html = (Path(appmod.__file__).parent / "templates" / "index.html").read_text(
+        encoding="utf-8")
+    assert "_raKeyTouched" in html, (
+        "el campo de la key necesita un flag de 'tocado por el usuario'")
+
+
+def test_the_ra_key_is_sent_only_if_it_has_a_value_or_was_touched(appmod):
+    """La condicion que decide si la key viaja en el POST."""
+    from pathlib import Path
+    html = (Path(appmod.__file__).parent / "templates" / "index.html").read_text(
+        encoding="utf-8")
+    assert "if (keyVal || _raKeyTouched) payload.ra_api_key = keyVal;" in html, (
+        "la key solo debe viajar si hay valor o si el usuario la vacio a proposito")

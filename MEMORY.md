@@ -465,7 +465,7 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 416 tests (`pytest`, `tests/`, 40 ficheros) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 424 tests (`pytest`, `tests/`, 40 ficheros) sin linting ni typechecking
 2. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 3. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
 4. **Settings sin cache** — Se lee el JSON en cada request

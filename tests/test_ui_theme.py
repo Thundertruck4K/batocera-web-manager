@@ -225,3 +225,26 @@ def test_settings_has_theme_selector():
 def test_theme_selector_is_wired_to_the_change_handler():
     css = _css()
     assert 'onchange="onUiThemeChange(this.value)"' in css
+
+
+# ─── El modo "auto" no puede pisar un tema explicito ─────────────────
+
+def test_the_auto_theme_listener_can_be_removed():
+    """El listener de matchMedia tiene que poder quitarse.
+
+    Con el modo "auto" activo, si el sistema operativo cambia de tema, el
+    listener escribe en data-theme. Si el usuario elige despues un tema
+    explicito, ese listener seguiria escribiendo encima y el tema volveria
+    al del sistema sin avisar.
+    """
+    css = _css()
+    assert "removeEventListener" in css, "falta quitar el listener de matchMedia"
+    assert "removeListener" in css, "falta la API antigua de matchMedia"
+
+
+def test_switching_to_an_explicit_theme_removes_the_auto_listener():
+    css = _css()
+    m = re.search(r"function\s+_applyTheme\(mode\)\s*\{(.*?)\n\}", css, re.S)
+    assert m, "no se encontro _applyTheme"
+    assert "_removeAutoThemeListener" in m.group(1), (
+        "al elegir un tema explicito hay que quitar el listener de 'auto'")
