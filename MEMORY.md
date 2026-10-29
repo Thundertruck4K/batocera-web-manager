@@ -465,7 +465,7 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 424 tests (`pytest`, `tests/`, 40 ficheros) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 425 tests (`pytest`, `tests/`, 40 ficheros) sin linting ni typechecking
 2. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 3. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
 4. **Settings sin cache** — Se lee el JSON en cada request
@@ -485,6 +485,13 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
    comporta como solo-escritura (si no tocas el campo no se pierde; si lo vacías la borra). El
    endpoint además solo expone claves conocidas de `DEFAULT_SETTINGS`. **Pendiente**: la API en sí
    sigue sin autenticación (ver 5/6), que es el problema de fondo.
+9. **`POST /api/settings` acepta rutas sin validar** — `batocera_conf`, `roms_base`, `themes_user`,
+   `themes_sys`, `es_cfg_dir` y `app_path` son ajustes escribibles y el endpoint solo filtra por
+   `DEFAULT_SETTINGS`: cualquiera en la LAN puede hacer que el servidor lea o escriba en rutas
+   arbitrarias. Es preexistente y es el mismo problema de fondo que 5/6 (la API no tiene
+   autenticación), no un fallo del enmascarado. **Pendiente de decidir**: proteger el endpoint
+   rompería la edición de rutas que ofrece la propia interfaz, así que lo natural es validar
+   (permitir solo rutas bajo `/userdata`) o resolverlo cuando haya autenticación.
 
 ---
 

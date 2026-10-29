@@ -261,3 +261,20 @@ def test_public_scraper_config_only_exposes_known_fields(appmod):
     })
     assert "campo_desconocido" not in pub
     assert "no_debe_salir" not in repr(pub)
+
+def test_the_config_tab_of_the_scraper_modal_also_loads_the_credentials():
+    """La pestaña "Configuración" del modal contiene el formulario de credenciales.
+
+    Antes solo se cargaba al abrir el modal por otras pestañas, asi que entrar
+    directamente en ella dejaba el formulario vacio.
+    """
+    import re
+    from pathlib import Path
+    html = (Path(__file__).resolve().parent.parent / "templates" / "index.html").read_text(
+        encoding="utf-8")
+    m = re.search(r"function\s+scraperTab\(tab\)\s*\{(.*?)\n\}", html, re.S)
+    assert m, "no se encontro scraperTab"
+    cond = re.search(r"if\s*\(([^)]*)\)\s*\{[^}]*loadScraperConfig", m.group(1))
+    assert cond, "scraperTab debe cargar la configuracion de credenciales"
+    assert "'config'" in cond.group(1), (
+        "la pestaña 'config' tambien debe cargar la configuracion de credenciales")

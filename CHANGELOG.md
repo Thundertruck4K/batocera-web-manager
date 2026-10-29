@@ -22,7 +22,7 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   blanca de la config pública, listener del modo "auto" y borrado accidental de la key de RA).
 
 ### Cambiado
-- Contador de tests del README actualizado a 424.
+- Contador de tests del README actualizado a 425.
 
 ### Corregido
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
@@ -40,6 +40,8 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   `matchMedia` seguia escribiendo encima) y ya no se acumula en cada cambio de tema.
 - La Web API Key de RetroAchievements solo se borra si el usuario vacia el campo a proposito:
   un guardado rapido, antes de que llegue la mascara, ya no puede borrarla.
+- El formulario de credenciales del scraper (pestaña "Configuración" del modal) se carga tambien
+  al entrar en esa pestaña: antes dependia de haber pasado antes por otra.
 
 ### Seguridad
 - La **Web API Key de RetroAchievements ya no se sirve en claro** por `/api/settings`: se devuelve

@@ -4185,8 +4185,13 @@ function scraperTab(tab) {
   document.querySelectorAll('#modal-scraper .btn').forEach(b => b.style.flex = '1');
   if (tab === 'batch') {
     batchRenderSystems();
-    loadScraperConfig();
     scraperBatchRefresh();
+  }
+  // El formulario de credenciales vive en la pestaña "config" del modal. Se
+  // carga tambien al entrar en ella para que nunca aparezca vacio (si solo
+  // se cargara al abrir el modal por otra pestaña, dependeria del camino).
+  if (tab === 'batch' || tab === 'config') {
+    loadScraperConfig();
   }
 }
 
