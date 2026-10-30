@@ -10,7 +10,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![Sin dependencias](https://img.shields.io/badge/dependencias-ninguna-16a34a)]()
-[![Tests](https://img.shields.io/badge/tests-425%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-438%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -61,11 +61,14 @@ servidor HTTP de la librería estándar de Python que sirve una única página.
 
 - **🕹️ Gestor de sistemas** — crea, edita y elimina sistemas personalizados con formulario completo,
   vista previa del XML y registro de lo que se escribe en disco.
-- **📊 Panel de control en vivo** — anillos radiales de CPU (uso, núcleos, temperatura), GPU (modelo,
+- **📊 Panel de control en vivo** — velocímetros de CPU (uso, núcleos, temperatura), GPU (modelo,
   uso, VRAM, consumo) y RAM; almacenamiento y ventiladores; estado/PID de EmulationStation y las últimas
   versiones oficiales de Batocera. Con refresco automático opcional.
 - **🎲 Juego al azar + estadísticas** — tarjeta con carátula, ficha y descripción de un juego aleatorio
   de tu biblioteca, ranking de más jugados y horas totales.
+- **🎨 Tarjetas con gráficos propios** — todo el panel usa un lenguaje de tarjetas redondeadas con
+  color propio: velocímetros de 240°, sparklines de área, un donut de reparto del disco y barras
+  redondeadas, dibujados en CSS/JS puro (sin librerías ni paso de build).
 - **🏆 RetroAchievements** — progreso y logros de tu perfil dentro del propio panel.
 - **💾 Monitor de ROMs y BIOS** — inventario por sistema (número de ROMs, extensiones, subcarpetas),
   agrupado en secciones plegables por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros)
@@ -366,7 +369,7 @@ La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **425 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **438 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
@@ -385,7 +388,7 @@ batocera_web/
 │   └── index.html            # interfaz completa (HTML + CSS + JS)
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
-├── tests/                    # 425 tests con pytest
+├── tests/                    # 438 tests con pytest
 ├── docs/
 │   ├── media/logo.png        # logo del proyecto
 │   ├── screenshots/          # capturas del README

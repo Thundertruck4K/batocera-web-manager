@@ -7,6 +7,13 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Tarjetas del panel rediseñadas al estilo «mono»**: cada tarjeta del manager pasa a un contenedor
+  redondeado de 24 px con su propio color de acento, cabecera en mayúsculas con el icono en píldora y
+  un «stage» interior de 14 px donde viven los gráficos. Los visualizadores (velocímetro de 240°,
+  sparkline de área, donut de reparto y barras redondeadas) están escritos en CSS/JS puro: ni React
+  ni Recharts ni ningún paso de build, el proyecto sigue sin dependencias.
+- 13 tests nuevos (`tests/test_mono_charts.py`) para el design system mono, sus tokens por tema y los
+  visualizadores.
 - **Tema claro/oscuro para la web del manager**: en *Configuración → Tema de la interfaz* se elige
   claro, oscuro o "seguir al sistema", y el botón del sidebar alterna al instante. La preferencia se
   guarda en los ajustes del manager (no en el navegador), así que se aplica igual desde el móvil o el
@@ -22,7 +29,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   blanca de la config pública, listener del modo "auto" y borrado accidental de la key de RA).
 
 ### Cambiado
-- Contador de tests del README actualizado a 425.
+- Contador de tests del README actualizado a 438.
+- El tacho con aguja (CPU/GPU/RAM) y el tanque de líquido (disco) los sustituyen el velocímetro y el
+  donut con paleta; el gráfico de actividad pasa a ser un área monótona con degradado. Se elimina el
+  código y el CSS de los gráficos antiguos.
 
 ### Corregido
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre

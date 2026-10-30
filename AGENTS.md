@@ -22,15 +22,19 @@
 ## Architecture
 
 - **Single-file backend**: `app.py` (~5750 lines) — HTTP handler, dashboard, scraper (ScreenScraper.fr, TheGamesDB, IGDB), autostart manager
-- **Single-file frontend**: `templates/index.html` (~5460 lines) — all CSS/JS inline, server-side rendered via `{{variable}}` string replacement
+- **Single-file frontend**: `templates/index.html` (~6536 lines) — all CSS/JS inline, server-side rendered via `{{variable}}` string replacement
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
 - `install.sh` is current (v1.4): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides
 
 ## Key notes
 
-- **Tests**: 425 con `pytest` en `tests/` (40 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 438 con `pytest` en `tests/` (41 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
+- **Design system "mono"**: las tarjetas comparten tokens (`--mono-*`) y piezas (`.mono-stage`,
+  `.mono-pill`, `.mono-foot`, `.mono-row`) en el `<style>` de `templates/index.html`. Los gráficos los
+  dibuja el objeto `MonoCharts` (gauge de 240°, barras, donut, área monótona) en JS puro: **no uses
+  React ni Recharts**, el proyecto no tiene build ni dependencias
 - Scraper sources: ScreenScraper.fr (default, needs SS user/pass), TheGamesDB (needs API key), IGDB (needs Twitch Client ID + Secret)
 - Credentials read from `batocera.conf` keys: `global.scrapper.user`, `global.scrapper.password`, etc.
 - Scraping respects rate limits (`maxthreads` from SS response, minimum 0.5s delay)

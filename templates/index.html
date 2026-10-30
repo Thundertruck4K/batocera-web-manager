@@ -570,7 +570,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .bar-track{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden}
 .bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
 .bar-val{font-size:11px;color:var(--text3);width:45px;text-align:right;flex-shrink:0}
-.kv-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+.kv-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
 .kv-row:last-child{border-bottom:none}
 .kv-key{font-size:12px;color:var(--text3)}
 .kv-val{font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono)}
@@ -620,17 +620,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .net-tag{font-size:13px;flex-shrink:0;filter:drop-shadow(0 0 4px currentColor)}
 .net-big{font-size:21px;line-height:1.08;letter-spacing:0;margin:0;text-shadow:0 0 7px currentColor}
 
-/* ── Tanque de almacenamiento (líquido animado) ── */
-.tank-item{display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
-.tank-item:last-child{border-bottom:none}
-.tank-gauge{flex-shrink:0}
-@keyframes tankWave{to{transform:translateX(-25px)}}
-.tank-mount{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
-.tank-sub{font-size:10px;color:var(--text3);margin:2px 0 7px}
-.tank-usage{font-size:12px;font-family:var(--mono);color:var(--text)}
-.tank-free{font-size:11px;color:var(--text3);margin-top:2px}
-.tacho{margin:2px auto 2px}
-.tacho svg{filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
 .needle{transition:transform .6s cubic-bezier(.3,.8,.35,1);transform-box:view-box;transform-origin:100px 98px}
 .tacho-info{margin-top:6px;display:flex;flex-direction:column;gap:4px;padding-top:6px;border-top:1px solid var(--border)}
 .batt{display:flex;align-items:center;gap:2px;margin:4px 0 2px}
@@ -883,6 +872,235 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   .fx__blob,.fx__bubble,.fx__spark{animation:none}
   .panel.active .card, .panel.active .dash-card, .panel.active .dash-hero{animation:none}
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MONO CHARTS — design system
+   Adaptación del lenguaje visual de https://amicro.dev/mono-charts:
+   tarjeta de 24px, "stage" interior de 14px, píldora de etiqueta y pie
+   monoespaciado. CSS puro (el proyecto no usa framework ni paso de build).
+   ══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --mono-radius:24px;
+  --mono-stage-radius:14px;
+  --mono-stage:rgba(0,0,0,.30);
+  --mono-stage-line:rgba(255,255,255,.07);
+  --mono-track:rgba(255,255,255,.12);
+  --mono-pill-bg:rgba(255,255,255,.10);
+  --mono-pill-fg:#E9ECF5;
+  --mono-pill-line:rgba(255,255,255,.18);
+  --mono-grid:rgba(255,255,255,.055);
+  --mono-inner-hi:rgba(255,255,255,.05);
+  --mono-ease:cubic-bezier(.16,1,.3,1);
+}
+:root[data-theme="light"]{
+  --mono-stage:rgba(15,23,42,.05);
+  --mono-stage-line:rgba(15,23,42,.07);
+  --mono-track:rgba(15,23,42,.12);
+  --mono-pill-bg:rgba(15,23,42,.06);
+  --mono-pill-fg:#141824;
+  --mono-pill-line:rgba(15,23,42,.12);
+  --mono-grid:rgba(15,23,42,.08);
+  --mono-inner-hi:rgba(255,255,255,.9);
+}
+
+/* ── Contenedor de tarjeta ────────────────────────────────────────────── */
+.card,.dash-card,.system-card,.fan-card,.service-status-box{
+  --mono-accent:var(--card-accent,var(--accent));
+  border-radius:var(--mono-radius);
+  transition:transform .3s var(--mono-ease),box-shadow .3s var(--mono-ease),
+             border-color .3s var(--mono-ease),background .3s var(--mono-ease);
+}
+.system-card:hover,.fan-card:hover{
+  transform:translateY(-3px);
+  border-color:var(--border2);
+  box-shadow:var(--shadow);
+  border-color:color-mix(in srgb,var(--mono-accent) 45%,transparent);
+  box-shadow:var(--shadow),0 0 0 1px color-mix(in srgb,var(--mono-accent) 20%,transparent);
+}
+
+/* ── Cabecera mono: etiqueta en mayúsculas + píldora ─────────────────── */
+.mono-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:12px;
+}
+.mono-label{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text3);display:flex;align-items:center;gap:8px;min-width:0;
+}
+.mono-pill{
+  display:inline-flex;align-items:center;gap:5px;flex-shrink:0;
+  padding:2px 9px;border-radius:999px;
+  font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.3px;
+  color:var(--mono-pill-fg);background:var(--mono-pill-bg);
+  border:1px solid var(--mono-pill-line);white-space:nowrap;
+}
+.mono-pill-accent{
+  color:var(--mono-accent);
+  background:rgba(124,156,255,.16);
+  border-color:rgba(124,156,255,.34);
+  color:var(--mono-accent);
+  background:color-mix(in srgb,var(--mono-accent) 16%,transparent);
+  border-color:color-mix(in srgb,var(--mono-accent) 34%,transparent);
+}
+
+/* El icono de las cabeceras existentes pasa a ser la píldora: así TODAS las
+   tarjetas (incluidas las estáticas de Ajustes) reciben el acento de color. */
+.card-title,.dash-card h3{
+  display:flex;align-items:center;gap:9px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text3);border-bottom:none;margin-bottom:14px;padding-bottom:0;
+}
+.card-title .icon,.dash-card h3 .icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:26px;height:20px;padding:0 7px;border-radius:999px;
+  font-size:12px;line-height:1;flex-shrink:0;
+  background:rgba(124,156,255,.16);
+  border:1px solid rgba(124,156,255,.34);
+  background:color-mix(in srgb,var(--mono-accent) 16%,transparent);
+  border-color:color-mix(in srgb,var(--mono-accent) 34%,transparent);
+}
+
+/* ── Stage: lienzo interior donde vive el gráfico ────────────────────── */
+.mono-stage{
+  position:relative;border-radius:var(--mono-stage-radius);
+  background:var(--mono-stage);border:1px solid var(--mono-stage-line);
+  padding:12px;overflow:hidden;
+  transition:background .3s var(--mono-ease),border-color .3s var(--mono-ease);
+}
+.mono-stage::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 1px 0 var(--mono-inner-hi);
+}
+.mono-stage-note{
+  font-family:var(--mono);font-size:10px;color:var(--text3);
+  letter-spacing:.4px;margin-top:8px;text-align:center;
+}
+
+/* ── Valor grande + pie monoespaciado ────────────────────────────────── */
+.mono-value{
+  font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.05;
+  font-variant-numeric:tabular-nums;color:var(--text);
+}
+.mono-value small{font-size:12px;font-weight:500;color:var(--text3);letter-spacing:0}
+.mono-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:12px;padding-top:9px;border-top:1px solid var(--border);
+  font-family:var(--mono);font-size:11px;color:var(--text3);
+}
+.mono-foot b{color:var(--text);font-weight:600}
+
+/* ── Gráficos mono ───────────────────────────────────────────────────── */
+.mono-gauge,.mono-donut,.mono-area{width:100%;display:block;overflow:visible}
+/* El <svg> solo lleva viewBox: sin altura declarada el navegador le
+   aplica la altura por defecto y el arco se deforma. */
+.mono-gauge{height:auto;aspect-ratio:40/21;overflow:hidden}
+.mono-gauge .arc-track{fill:none;stroke:var(--mono-track);stroke-width:9;stroke-linecap:round}
+.mono-gauge .arc-fill{
+  fill:none;stroke-width:9;stroke-linecap:round;
+  transition:stroke-dasharray .9s var(--mono-ease),stroke .4s var(--mono-ease);
+}
+.mono-gauge .arc-val{
+  font-size:15px;font-weight:800;fill:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+.mono-bars{
+  display:flex;align-items:flex-end;gap:8px;
+  height:100%;min-height:96px;
+}
+.mono-bar-col{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  gap:6px;min-width:0;
+}
+.mono-bar{
+  width:100%;max-width:22px;border-radius:8px;
+  background:rgba(124,156,255,.85);
+  background:linear-gradient(180deg,var(--mono-accent),color-mix(in srgb,var(--mono-accent) 45%,transparent));
+  min-height:4px;transition:height .8s var(--mono-ease);
+}
+.mono-bar-alt{
+  background:rgba(124,156,255,.35);
+  background:color-mix(in srgb,var(--mono-accent) 32%,transparent);
+}
+.mono-bar-label{
+  font-size:9px;color:var(--text3);font-family:var(--mono);
+  max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.mono-bar-val{font-size:10px;color:var(--text2);font-family:var(--mono);font-weight:600}
+.mono-donut circle{transition:stroke-dasharray .9s var(--mono-ease),stroke .4s var(--mono-ease)}
+.mono-donut-center-v{
+  font-size:15px;font-weight:800;fill:var(--text);font-variant-numeric:tabular-nums;
+}
+.mono-donut-center-k{font-size:9px;fill:var(--text3);font-family:var(--mono)}
+.mono-legend{
+  display:flex;align-items:center;justify-content:space-around;gap:8px;
+  margin-top:10px;font-size:10px;color:var(--text3);
+}
+.mono-legend span{display:inline-flex;align-items:center;gap:5px;min-width:0}
+.mono-legend i{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+
+/* ── Filas / barras horizontales mono ─────────────────────────────── */
+.mono-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.mono-row:last-child{border-bottom:none}
+.mono-row-label{
+  font-size:12px;color:var(--text2);flex:0 1 auto;min-width:0;max-width:46%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.mono-row-track{flex:1 1 44px;min-width:30px;height:10px;background:var(--mono-track);border-radius:5px;overflow:hidden}
+.mono-row-fill{
+  display:block;height:100%;border-radius:0 8px 8px 0;
+  background:rgba(124,156,255,.9);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--mono-accent) 45%,transparent),var(--mono-accent));
+  transition:width .8s var(--mono-ease);
+}
+.mono-row-val{
+  font-size:11px;font-family:var(--mono);font-weight:600;color:var(--text);
+  width:58px;text-align:right;flex-shrink:0;
+}
+.mono-row-sub{font-size:10px;color:var(--text3);font-family:var(--mono)}
+/* ── Paleta cromatica del sistema (series de los donuts) ─────────── */
+:root{
+  --mono-p1:#7C9CFF; --mono-p2:#3FD68B; --mono-p3:#F2C46B;
+  --mono-p4:#A98BFF; --mono-p5:#22D3EE; --mono-p6:#FFA76B;
+}
+:root[data-theme="light"]{
+  --mono-p1:#3B5BDB; --mono-p2:#14804A; --mono-p3:#8A5D00;
+  --mono-p4:#7048E3; --mono-p5:#0CA5B0; --mono-p6:#B25E12;
+}
+
+/* ── Sparklines y velocimetros ──────────────────────────────────── */
+.mono-spark{width:100%;height:56px;display:block}
+.mono-gauge-host{width:100%;max-width:190px;margin:0 auto;min-width:0}
+
+/* ── Listas de barras (mas jugados) ──────────────────────────────── */
+.ps-bar{border-radius:5px}
+.ps-bar i{border-radius:0 8px 8px 0;background:linear-gradient(90deg,color-mix(in srgb,var(--mono-accent) 40%,transparent),var(--mono-accent))}
+.ps-row{grid-template-columns:1fr 90px 34px}
+
+/* ── Icono de tarjeta de sistema: pildora mono ───────────────────── */
+.system-card-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:38px;border-radius:14px;font-size:24px;
+  background:rgba(124,156,255,.16);
+  border:1px solid rgba(124,156,255,.34);
+  background:color-mix(in srgb,var(--mono-accent) 16%,transparent);
+  border-color:color-mix(in srgb,var(--mono-accent) 32%,transparent);
+}
+.system-card-info h3{font-size:13px;font-weight:700;letter-spacing:-.01em;color:var(--text)}
+
+/* ── Estado del ventilador: pildora mono ─────────────────────────── */
+.fan-status{font-family:var(--mono);letter-spacing:.3px}
+/* ── Cabeceras mono: el titulo no debe partirse en varias lineas ─────── */
+.dash-card h3,.card-title{flex-wrap:wrap;row-gap:4px}
+.mono-note{
+  flex:1 1 100%;min-width:0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.mono-note:empty{display:none}
+/* ── Variedad cromática entre tarjetas de un mismo panel ─────────────── */
+.panel .card:nth-child(6n+1),.panel .card:nth-child(6n+2){--card-accent:var(--accent)}
+.panel .card:nth-child(6n+3),.panel .card:nth-child(6n+4){--card-accent:var(--purple2)}
+.panel .card:nth-child(6n+5),.panel .card:nth-child(6n+6){--card-accent:var(--aurora)}
 </style>
 </head>
 <body>
@@ -1055,7 +1273,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
           <!-- Actividad de juego -->
           <div class="dash-card" id="dash-playstats" style="--card-accent:var(--purple2)">
             <h3><span class="icon">📈</span>Actividad de juego
-              <span style="font-size:11px;color:var(--text3);font-weight:400" id="dash-playstats-note"></span>
+              <span class="mono-note" style="font-size:11px;color:var(--text3);font-weight:400" id="dash-playstats-note"></span>
             </h3>
             <div class="dash-playstats-grid">
               <div>
@@ -1074,7 +1292,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <!-- Récords personales (RetroAchievements) -->
         <div class="dash-card" id="dash-retro" style="--card-accent:var(--yellow)">
           <h3><span class="icon">🏆</span>Récords personales
-            <span style="font-size:11px;color:var(--text3);font-weight:400">RetroAchievements</span>
+            <span class="mono-note" style="font-size:11px;color:var(--text3);font-weight:400">RetroAchievements</span>
             <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="loadRetro()">↻</button>
           </h3>
           <div id="dash-retro-body">Cargando…</div>
@@ -1090,16 +1308,16 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <div class="dash-grid" id="dash-row2" style="grid-template-columns:1fr 1fr 1fr"></div>
 
         <!-- Fila: Almacenamiento + Ventiladores (en una sola fila) -->
-        <div class="dash-grid" id="dash-row-storage-fans" style="grid-template-columns:1.15fr 1fr;margin-bottom:14px">
+        <div class="dash-grid" id="dash-row-storage-fans" style="grid-template-columns:1.15fr 1fr;align-items:start;margin-bottom:14px">
           <div class="dash-card" style="--card-accent:var(--green)">
-            <h3><span class="icon">💾</span>Almacenamiento</h3>
+            <h3><span class="icon">💾</span>Almacenamiento<span class="mono-pill mono-pill-accent" id="dash-storage-pill">—</span></h3>
             <div style="display:grid;grid-template-columns:1fr 1.15fr;gap:16px;align-items:start">
               <div id="dash-storage"></div>
               <div id="dash-power"></div>
             </div>
           </div>
           <div class="dash-card" style="--card-accent:var(--aurora)">
-            <h3><span class="icon">🌀</span>Ventiladores</h3>
+            <h3><span class="icon">🌀</span>Ventiladores<span class="mono-pill mono-pill-accent" id="dash-fans-pill">—</span></h3>
             <div id="fan-alert"></div>
             <div class="dash-grid" id="dash-row-fans" style="grid-template-columns:repeat(auto-fit,minmax(100px,1fr));margin-bottom:0"></div>
           </div>
@@ -1108,11 +1326,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <!-- Fila: Actualizaciones de Batocera + EmulationStation -->
         <div class="dash-grid" id="dash-row-news-es" style="grid-template-columns:1.4fr 1fr;margin-bottom:14px">
           <div class="dash-card" style="--card-accent:var(--yellow)">
-            <h3><span class="icon">📰</span>Actualizaciones de Batocera <span style="font-size:11px;color:var(--text3);font-weight:400">· GitHub releases · cada 30 min</span></h3>
+            <h3><span class="icon">📰</span>Actualizaciones de Batocera <span class="mono-pill mono-pill-accent" id="dash-news-pill">—</span><span class="mono-note" style="font-size:11px;color:var(--text3);font-weight:400">· GitHub releases · cada 30 min</span></h3>
             <div id="dash-news" style="max-height:260px;overflow-y:auto"></div>
           </div>
           <div class="dash-card" style="--card-accent:var(--accent)">
-            <h3><span class="icon">🎮</span>EmulationStation</h3>
+            <h3><span class="icon">🎮</span>EmulationStation<span class="mono-pill mono-pill-accent" id="dash-es-pill">—</span></h3>
             <div id="dash-es-info"></div>
           </div>
         </div>
@@ -1290,7 +1508,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
         <div class="card">
           <div class="card-title"><span class="icon">📝</span>Descripción y Opciones</div>
           <div class="field" style="margin-bottom:14px">
-            <label>Descripción del sistema <span style="font-size:11px;color:var(--text3);font-weight:400">(opcional)</span></label>
+            <label>Descripción del sistema <span class="mono-note" style="font-size:11px;color:var(--text3);font-weight:400">(opcional)</span></label>
             <textarea id="f-description" placeholder="Descripción breve del sistema para mostrar en ES..."></textarea>
           </div>
           <div class="divider"></div>
@@ -5178,11 +5396,10 @@ function renderPlayStats(s) {
     </div>`).join('') || '<div class="ps-empty">Sin partidas registradas</div>';
   const counts = (s.activity || []).map(a => a.count);
   const maxc = Math.max(1, ...counts);
-  const step = counts.length > 1 ? 300 / (counts.length - 1) : 0;
-  const pts = counts.map((c, i) =>
-    `${(i * step).toFixed(1)},${(78 - (c / maxc) * 70).toFixed(1)}`).join(' ');
-  spark.innerHTML = counts.length
-    ? `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>`
+  spark.innerHTML = counts.length > 1
+    ? MonoCharts.areaMarkup(counts, {
+        accent: MonoCharts.accentOf(spark), width: 300, height: 80, max: maxc
+      })
     : '';
 }
 
@@ -5290,51 +5507,289 @@ function renderRetro(r) {
 // ── Fila 0: KPIs de hardware (6 tarjetas, vista rápida) ─────────
 let _kpis = {};
 
+/* ══════════════════════════════════════════════════════════════════════════
+   MONO CHARTS — visualizadores en JS puro (cero dependencias)
+   Espejo del lenguaje de https://amicro.dev/mono-charts:
+   velocímetro de 240°, barras redondeadas, donut y área monótona.
+   ══════════════════════════════════════════════════════════════════════════ */
+const MonoCharts = (() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  let _uid = 0;
+
+  function svg(tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) {
+      if (attrs[k] !== undefined && attrs[k] !== null) e.setAttribute(k, attrs[k]);
+    }
+    return e;
+  }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const n2 = (v) => (Math.round(v * 100) / 100).toString();
+
+  // Acento de la tarjeta que hospeda el gráfico.
+  function accentOf(host) {
+    if (!host) return '#7C9CFF';
+    const cs = getComputedStyle(host);
+    let v = (cs.getPropertyValue('--mono-accent') || '').trim();
+    if (!v || v.indexOf('var(') === 0) v = (cs.getPropertyValue('--card-accent') || '').trim();
+    if (!v || v.indexOf('var(') === 0) v = (cs.getPropertyValue('--accent') || '').trim();
+    return v || '#7C9CFF';
+  }
+
+  // Paleta cromatica del sistema: una entrada por serie del donut.
+  function paletteOf(host, n) {
+    const cs = getComputedStyle(host);
+    const out = [];
+    for (let i = 1; out.length < n && i <= 8; i++) {
+      const v = (cs.getPropertyValue('--mono-p' + i) || '').trim();
+      if (v && v.indexOf('var(') !== 0) out.push(v);
+    }
+    return out.length ? out : null;
+  }
+
+  // Curva cúbica monótona (equivalente a type="monotone" de Recharts).
+  function monotone(pts) {
+    const n = pts.length;
+    if (n < 2) return '';
+    const dx = [], dy = [], m = [];
+    for (let i = 0; i < n - 1; i++) {
+      dx[i] = pts[i + 1].x - pts[i].x;
+      dy[i] = pts[i + 1].y - pts[i].y;
+      m[i] = dx[i] ? dy[i] / dx[i] : 0;
+    }
+    const t = [m[0]];
+    for (let i = 1; i < n - 1; i++) {
+      t[i] = (m[i - 1] * m[i] <= 0) ? 0 : (m[i - 1] + m[i]) / 2;
+    }
+    t[n - 1] = m[n - 2];
+    for (let i = 0; i < n - 1; i++) {
+      if (!m[i]) { t[i] = 0; t[i + 1] = 0; continue; }
+      const a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
+      if (s > 9) {
+        const tau = 3 / Math.sqrt(s);
+        t[i] = tau * a * m[i]; t[i + 1] = tau * b * m[i];
+      }
+    }
+    let d = `M ${n2(pts[0].x)} ${n2(pts[0].y)}`;
+    for (let i = 0; i < n - 1; i++) {
+      const h = dx[i] / 3;
+      d += ` C ${n2(pts[i].x + h)} ${n2(pts[i].y + t[i] * h)} `
+         + `${n2(pts[i + 1].x - h)} ${n2(pts[i + 1].y - t[i + 1] * h)} `
+         + `${n2(pts[i + 1].x)} ${n2(pts[i + 1].y)}`;
+    }
+    return d;
+  }
+
+  /* ── Velocímetro de 240° (MonoRoundedGaugeArc) ──────────────────── */
+  function gauge(host, opts) {
+    opts = opts || {};
+    if (!host) return null;
+    // Arco de 240 grados: de las 7 en punto (150°) a las 5 en punto (30°),
+    // pasando por arriba. Es el angulo del velocimetro de mono-charts.
+    const cx = 80, cy = 52, r = 38, sw = 9;
+    const a0 = 150 * Math.PI / 180, a1 = 30 * Math.PI / 180;
+    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+    const d = `M ${n2(x0)} ${n2(y0)} A ${r} ${r} 0 1 1 ${n2(x1)} ${n2(y1)}`;
+
+    const s = svg('svg', {
+      viewBox: '0 0 160 84',
+      // Sin width/height propios el SVG no tiene tamaño intrinseco:
+      // el navegador le aplica una altura por defecto y el arco se
+      // dibuja fuera de su caja. Con dimensiones propias, el CSS
+      // (width:100%;height:auto) escala el contenido de forma uniforme.
+      width: '160', height: '84',
+      preserveAspectRatio: 'xMidYMid meet',
+      class: 'mono-gauge',
+      'aria-hidden': 'true'
+    });
+    s.appendChild(svg('path', {d: d, class: 'arc-track', pathLength: '100'}));
+    const fill = svg('path', {d: d, class: 'arc-fill', pathLength: '100', 'stroke-dasharray': '0 100'});
+    s.appendChild(fill);
+    const val = svg('text', {
+      x: cx, y: 66, 'text-anchor': 'middle', class: 'arc-val'
+    });
+    val.textContent = '--';
+    s.appendChild(val);
+
+    host.innerHTML = '';
+    host.appendChild(s);
+
+    const api = {
+      set(value, label, color) {
+        const p = clamp((parseFloat(value) || 0) / (opts.max || 100) * 100, 0, 100);
+        fill.setAttribute('stroke-dasharray', `${n2(p)} 100`);
+        fill.setAttribute('stroke', color || accentOf(host));
+        // Con tapa redondeada un trazo de longitud 0 se pinta como un
+        // punto suelto: a 0% se oculta el arco de color.
+        fill.setAttribute('stroke-opacity', p > 0.05 ? '1' : '0');
+        val.textContent = label !== undefined ? label : `${Math.round(p)}%`;
+      }
+    };
+    api.set(opts.value || 0, opts.label);
+    return api;
+  }
+
+  /* ── Barras horizontales redondeadas (layout "Row") ──────────────── */
+  function rows(host, opts) {
+    opts = opts || {};
+    if (!host) return null;
+    const data = opts.data || [];
+    const max = opts.max || Math.max(1, ...data.map(d => d.value || 0));
+    host.innerHTML = data.map(d => {
+      const pct = clamp((d.value || 0) / max * 100, 0, 100);
+      const txt = d.text !== undefined ? d.text : d.value;
+      return `<div class="mono-row">
+        <span class="mono-row-label" title="${d.label || ''}">${d.label || ''}</span>
+        <span class="mono-row-track"><i class="mono-row-fill" style="width:${n2(pct)}%"></i></span>
+        <span class="mono-row-val">${txt}</span>
+      </div>`;
+    }).join('') || '<div class="mono-row-sub">Sin datos</div>';
+    return true;
+  }
+
+  /* ── Donut con segmentos separados (MonoRoundedDonutChart) ───────── */
+  function donut(host, opts) {
+    opts = opts || {};
+    if (!host) return null;
+    const data = (opts.data || []).filter(d => (d.value || 0) > 0);
+    if (!data.length) { host.innerHTML = '<div class="mono-stage-note">Sin datos</div>'; return null; }
+    const total = data.reduce((a, d) => a + d.value, 0) || 1;
+    const accent = opts.accent || accentOf(host);
+    const shades = [1, .68, .42, .26];
+    const size = 120, r = 42, sw = 15;
+    const pal = opts.palette ? paletteOf(host, data.length) : null;
+
+    const s = svg('svg', {viewBox: `0 0 ${size} ${size}`, class: 'mono-donut', 'aria-hidden': 'true'});
+    const g = svg('g', {transform: `rotate(-90 ${size / 2} ${size / 2})`});
+    let acc = 0;
+    data.forEach((d, i) => {
+      const pct = d.value / total * 100;
+      const gap = data.length > 1 ? 7 : 0;
+      g.appendChild(svg('circle', {
+        cx: size / 2, cy: size / 2, r,
+        fill: 'none', 'stroke-width': sw, 'stroke-linecap': 'round',
+        pathLength: '100',
+        'stroke-dasharray': `${n2(Math.max(0, pct - gap))} 100`,
+        'stroke-dashoffset': n2(-acc),
+        stroke: pal ? pal[i % pal.length] : accent,
+        'stroke-opacity': pal ? 1 : shades[i % shades.length]
+      }));
+      acc += pct;
+    });
+    s.appendChild(g);
+    const cv = svg('text', {x: size / 2, y: size / 2 + 2, 'text-anchor': 'middle', class: 'mono-donut-center-v'});
+    cv.textContent = opts.centerValue !== undefined ? opts.centerValue : `${Math.round(total)}%`;
+    s.appendChild(cv);
+    const ck = svg('text', {x: size / 2, y: size / 2 + 16, 'text-anchor': 'middle', class: 'mono-donut-center-k'});
+    ck.textContent = opts.centerLabel || 'Total';
+    s.appendChild(ck);
+
+    host.innerHTML = '';
+    host.appendChild(s);
+    if (opts.legend !== false) {
+      const leg = document.createElement('div');
+      leg.className = 'mono-legend';
+      leg.innerHTML = data.map((d, i) => {
+        const col = pal ? pal[i % pal.length] : accent;
+        const op  = pal ? 1 : shades[i % shades.length];
+        return `<span><i style="background:${col};opacity:${op}"></i>${d.label || ''} ${d.value}</span>`;
+      }).join('');
+      host.appendChild(leg);
+    }
+    return true;
+  }
+
+  /* ── Área monótona con degradado (sparkline de mono-charts) ──────── */
+  function areaMarkup(values, opts) {
+    opts = opts || {};
+    const vals = (values || []).map(v => parseFloat(v) || 0);
+    if (vals.length < 2) return '';
+    const W = opts.width || 300, H = opts.height || 90, pad = 7;
+    const max = opts.max || Math.max(1, ...vals);
+    const min = opts.min !== undefined ? opts.min : 0;
+    const span = Math.max(1e-6, max - min);
+    const accent = opts.accent || '#7C9CFF';
+    const pts = vals.map((v, i) => ({
+      x: pad + (i * (W - pad * 2) / (vals.length - 1)),
+      y: H - pad - ((v - min) / span) * (H - pad * 2)
+    }));
+    const d = monotone(pts);
+    const id = `mg${++_uid}`;
+    return `<defs>
+      <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${accent}" stop-opacity="0.30"/>
+        <stop offset="100%" stop-color="${accent}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${d} L ${n2(pts[pts.length - 1].x)} ${H} L ${n2(pts[0].x)} ${H} Z" fill="url(#${id})"/>
+    <path d="${d}" fill="none" stroke="${accent}" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+  }
+
+  function area(host, opts) {
+    opts = opts || {};
+    if (!host) return null;
+    const markup = areaMarkup(opts.values, opts);
+    host.innerHTML = markup;
+    return !!markup;
+  }
+
+  /* ── Píldora de etiqueta mono ────────────────────────────────────── */
+  function pill(text, cls) {
+    return `<span class="mono-pill ${cls || 'mono-pill-accent'}">${text}</span>`;
+  }
+
+  return {gauge: gauge, rows: rows, donut: donut, area: area,
+          areaMarkup: areaMarkup, pill: pill, accentOf: accentOf,
+          paletteOf: paletteOf};
+})();
+
 function kpiSkeleton() {
   return `
     <div class="dash-card" id="kpi-cpu" style="--card-accent:var(--orange)">
-      <h3><span class="icon">⚙</span>CPU</h3>
+      <h3><span class="icon">⚙</span>CPU<span class="mono-pill mono-pill-accent" id="kpi-cpu-pill">—</span></h3>
       <div class="kpi-val" id="kpi-cpu-val">--</div>
       <div class="kpi-sub" id="kpi-cpu-sub">Uso</div>
-      <div class="bar-row" style="margin-top:10px"><div class="bar-track"><div class="bar-fill" id="kpi-cpu-bar" style="width:0%"></div></div></div>
+      <div class="mono-stage" style="margin-top:10px;padding:8px 10px 6px"><svg class="mono-spark" id="kpi-cpu-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg></div>
       <div class="kv-row"><span class="kv-key">Temperatura</span><span class="kv-val" id="kpi-cpu-temp">--</span></div>
       <div class="kv-row"><span class="kv-key">Fuente Tº</span><span class="kv-val" id="kpi-cpu-src">--</span></div>
     </div>
     <div class="dash-card" id="kpi-gpu" style="--card-accent:var(--purple2)">
-      <h3><span class="icon">🎨</span>GPU</h3>
+      <h3><span class="icon">🎨</span>GPU<span class="mono-pill mono-pill-accent" id="kpi-gpu-pill">—</span></h3>
       <div class="kpi-sub" id="kpi-gpu-name">—</div>
       <div class="kpi-val" id="kpi-gpu-val">--</div>
       <div class="kpi-sub">Uso</div>
-      <div class="bar-row" style="margin-top:10px"><div class="bar-track"><div class="bar-fill" id="kpi-gpu-bar" style="width:0%"></div></div></div>
+      <div class="mono-stage" style="margin-top:10px;padding:8px 10px 6px"><svg class="mono-spark" id="kpi-gpu-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg></div>
       <div class="kv-row"><span class="kv-key">Temperatura</span><span class="kv-val" id="kpi-gpu-temp">--</span></div>
       <div class="kv-row"><span class="kv-key">VRAM</span><span class="kv-val" id="kpi-gpu-vram">--</span></div>
       <div class="kv-row"><span class="kv-key">Potencia</span><span class="kv-val" id="kpi-gpu-power">--</span></div>
     </div>
     <div class="dash-card" id="kpi-ram" style="--card-accent:var(--accent)">
-      <h3><span class="icon">🧠</span>Memoria RAM</h3>
+      <h3><span class="icon">🧠</span>Memoria RAM<span class="mono-pill mono-pill-accent" id="kpi-ram-pill">—</span></h3>
       <div class="kpi-val" id="kpi-ram-val">--</div>
       <div class="kpi-sub">En uso</div>
-      <div class="bar-row" style="margin-top:10px"><div class="bar-track"><div class="bar-fill" id="kpi-ram-bar" style="width:0%"></div></div></div>
+      <div class="mono-stage" style="margin-top:10px;padding:8px 10px 6px"><svg class="mono-spark" id="kpi-ram-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg></div>
       <div class="kv-row"><span class="kv-key">Usada</span><span class="kv-val" id="kpi-ram-used">--</span></div>
       <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="kpi-ram-total">--</span></div>
     </div>
     <div class="dash-card" id="kpi-disk" style="--card-accent:var(--green)">
-      <h3><span class="icon">💾</span>Disco</h3>
+      <h3><span class="icon">💾</span>Disco<span class="mono-pill mono-pill-accent" id="kpi-disk-pill">—</span></h3>
       <div class="kpi-val" id="kpi-disk-val">--</div>
       <div class="kpi-sub" id="kpi-disk-mount">Montaje</div>
-      <div class="bar-row" style="margin-top:10px"><div class="bar-track"><div class="bar-fill" id="kpi-disk-bar" style="width:0%"></div></div></div>
+      <div class="mono-stage" style="margin-top:10px;padding:8px 10px 6px"><svg class="mono-spark" id="kpi-disk-spark" viewBox="0 0 300 90" preserveAspectRatio="none"></svg></div>
       <div class="kv-row"><span class="kv-key">Usado</span><span class="kv-val" id="kpi-disk-used">--</span></div>
       <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="kpi-disk-total">--</span></div>
     </div>
     <div class="dash-card" id="kpi-net" style="--card-accent:var(--accent)">
-      <h3><span class="icon">🌐</span>Red / IP</h3>
+      <h3><span class="icon">🌐</span>Red / IP<span class="mono-pill mono-pill-accent" id="kpi-net-pill">—</span></h3>
       <div class="kpi-val" id="kpi-net-ip" style="font-size:22px">--</div>
       <div class="kpi-sub" id="kpi-net-iface">Interfaz activa</div>
-      <div class="kv-row"><span class="kv-key">↓ Recepción</span><span class="kv-val" id="kpi-net-rx">--</span></div>
-      <div class="kv-row"><span class="kv-key">↑ Envío</span><span class="kv-val" id="kpi-net-tx">--</span></div>
+      <div class="mono-stage" style="margin-top:10px;padding:4px 10px"><div class="kv-row"><span class="kv-key">↓ Recepción</span><span class="kv-val" id="kpi-net-rx">--</span></div>
+      <div class="kv-row"><span class="kv-key">↑ Envío</span><span class="kv-val" id="kpi-net-tx">--</span></div></div>
     </div>
     <div class="dash-card" id="kpi-es" style="--card-accent:var(--red)">
-      <h3><span class="icon">🎮</span>EmulationStation</h3>
+      <h3><span class="icon">🎮</span>EmulationStation<span class="mono-pill mono-pill-accent" id="kpi-es-pill">—</span></h3>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <span class="status-dot dot-red" id="kpi-es-dot"></span>
         <span class="kpi-val" id="kpi-es-state" style="font-size:20px">--</span>
@@ -5346,18 +5801,41 @@ function kpiSkeleton() {
     </div>`;
 }
 
+/* Historial movil de uso: alimenta los sparklines de las tarjetas KPI */
+const _kpiHist = {cpu: [], ram: [], gpu: [], disk: []};
+
+function kpiAccent(cardId) {
+  const el = document.getElementById(cardId);
+  return el ? MonoCharts.accentOf(el) : '#7C9CFF';
+}
+
+function kpiPush(key, value) {
+  const a = _kpiHist[key];
+  if (!a) return null;
+  a.push(Math.max(0, Math.min(100, parseFloat(value) || 0)));
+  if (a.length > 40) a.shift();
+  return a;
+}
+
+function kpiSpark(id, values, cardId) {
+  const el = document.getElementById(id);
+  if (!el || !values || values.length < 2) return;
+  el.innerHTML = MonoCharts.areaMarkup(values, {
+    accent: kpiAccent(cardId), width: 300, height: 90, max: 100
+  });
+}
+
+function kpiPill(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = (text === undefined || text === null || text === '') ? '—' : String(text);
+}
+
 function kpiSet(id, txt) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = (txt === undefined || txt === null || txt === '') ? '--' : String(txt);
 }
 
-function kpiBar(id, pct, color) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.style.width = Math.max(0, Math.min(100, parseFloat(pct) || 0)) + '%';
-  if (color) el.style.background = color;
-}
 
 function kpiTempClass(t) {
   const v = parseFloat(t);
@@ -5400,7 +5878,8 @@ function renderKpis(d) {
   const cpuPct = parseFloat(cpu.usage) || 0;
   kpiSet('kpi-cpu-val', `${cpuPct}%`);
   kpiSet('kpi-cpu-sub', cpu.cores ? `Uso · ${cpu.cores} núcleos` : 'Uso');
-  kpiBar('kpi-cpu-bar', cpuPct, kpiRamp(cpuPct));
+  kpiSpark('kpi-cpu-spark', kpiPush('cpu', cpuPct), 'kpi-cpu');
+  kpiPill('kpi-cpu-pill', cpu.cores ? cpu.cores + ' núcleos' : 'CPU');
   kpiTemp('kpi-cpu-temp', cpu.temp);
   kpiSet('kpi-cpu-src', cpu.temp_src);
 
@@ -5412,7 +5891,7 @@ function renderKpis(d) {
   if (!g0) {
     kpiSet('kpi-gpu-name', 'No detectada');
     kpiSet('kpi-gpu-val', null);
-    kpiBar('kpi-gpu-bar', 0, null);
+    kpiSpark('kpi-gpu-spark', kpiPush('gpu', 0), 'kpi-gpu');
     kpiTemp('kpi-gpu-temp', null);
     kpiSet('kpi-gpu-vram', null);
     kpiSet('kpi-gpu-power', null);
@@ -5421,7 +5900,8 @@ function renderKpis(d) {
     const hasU = !isNaN(util);
     kpiSet('kpi-gpu-name', g0.name || 'GPU');
     kpiSet('kpi-gpu-val', hasU ? `${util}%` : null);
-    kpiBar('kpi-gpu-bar', hasU ? util : 0, kpiRamp(hasU ? util : 0));
+    kpiSpark('kpi-gpu-spark', kpiPush('gpu', util), 'kpi-gpu');
+  kpiPill('kpi-gpu-pill', g0.vendor || 'GPU');
     kpiTemp('kpi-gpu-temp', g0.temp);
     kpiSet('kpi-gpu-vram', (g0.mem_used || g0.mem_total) ? `${g0.mem_used || '?'} / ${g0.mem_total || '?'}` : null);
     kpiSet('kpi-gpu-power', g0.power);
@@ -5433,7 +5913,8 @@ function renderKpis(d) {
   const mem    = d.memory || {};
   const ramPct = parseFloat(mem.used_pct) || 0;
   kpiSet('kpi-ram-val', `${ramPct}%`);
-  kpiBar('kpi-ram-bar', ramPct, kpiRamp(ramPct));
+  kpiSpark('kpi-ram-spark', kpiPush('ram', ramPct), 'kpi-ram');
+  kpiPill('kpi-ram-pill', mem.total_mb ? kpiGb(mem.total_mb) : '—');
   kpiSet('kpi-ram-used', kpiGb(mem.used_mb));
   kpiSet('kpi-ram-total', kpiGb(mem.total_mb));
 
@@ -5442,13 +5923,14 @@ function renderKpis(d) {
   if (disk) {
     const dpct = parseFloat(disk.pct) || 0;
     kpiSet('kpi-disk-val', `${dpct}%`);
-    kpiBar('kpi-disk-bar', dpct, kpiRamp(dpct));
+    kpiSpark('kpi-disk-spark', kpiPush('disk', dpct), 'kpi-disk');
+  kpiPill('kpi-disk-pill', disk.mount || 'Disco');
     kpiSet('kpi-disk-mount', disk.mount ? `Montaje · ${disk.mount}` : 'Montaje');
     kpiSet('kpi-disk-used', disk.used_gb != null ? `${disk.used_gb} GB` : null);
     kpiSet('kpi-disk-total', disk.size_gb != null ? `${disk.size_gb} GB` : null);
   } else {
     kpiSet('kpi-disk-val', null);
-    kpiBar('kpi-disk-bar', 0, null);
+    kpiSpark('kpi-disk-spark', kpiPush('disk', 0), 'kpi-disk');
     kpiSet('kpi-disk-mount', 'Montaje');
     kpiSet('kpi-disk-used', null);
     kpiSet('kpi-disk-total', null);
@@ -5470,11 +5952,14 @@ function renderKpis(d) {
   }
 
   // EmulationStation — activo/puerto
+  kpiPill('kpi-net-pill', (active && active.iface) ? active.iface : 'Red');
+
   const es      = d.es || {};
   const running = !!es.running;
   kpiSet('kpi-es-state', running ? 'Activo' : 'Detenido');
   const dot = document.getElementById('kpi-es-dot');
   if (dot) dot.className = 'status-dot ' + (running ? 'dot-green' : 'dot-red');
+  kpiPill('kpi-es-pill', running ? 'Activo' : 'Detenido');
   const esCard = document.getElementById('kpi-es');
   if (esCard) esCard.style.setProperty('--card-accent', running ? '#1F8F57' : '#C6433A');
   kpiSet('kpi-es-pid', running ? es.pid : null);
@@ -5514,49 +5999,7 @@ function renderRow1(d) {
 }
 
 // ── Fila 2: CPU + RAM + GPU (tacómetros estilo Yaris Cross) ─────────
-let _tachos = {};
-
-function tachoArcPath(cx, cy, r, v1, v2) {
-  const t1 = Math.PI * v1 / 100, t2 = Math.PI * v2 / 100;
-  const x1 = cx + r * Math.cos(t1), y1 = cy - r * Math.sin(t1);
-  const x2 = cx + r * Math.cos(t2), y2 = cy - r * Math.sin(t2);
-  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
-}
-
-function tachoInit(id, accent, opts) {
-  opts = opts || {};
-  const maxW = opts.maxW || 130;
-  const cx = 50, cy = 50, r = 40;
-  const C = 2 * Math.PI * r;
-  const svg = `<svg viewBox="0 0 100 100" width="100%" style="display:block;max-width:${maxW}px;margin:0 auto">
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--border)" stroke-width="7" opacity="0.3"/>
-    <circle id="needle-${id}" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${accent}" stroke-width="7" stroke-linecap="round"
-      stroke-dasharray="${C}" stroke-dashoffset="${C}" transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset .6s cubic-bezier(.3,.8,.35,1)"/>
-    <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle" font-size="20" font-weight="800" fill="var(--text)" id="tacho-val-${id}">0%</text>
-    <text x="${cx}" y="${cy+22}" text-anchor="middle" font-size="9" fill="var(--text3)" id="tacho-sub-${id}"></text>
-  </svg>`;
-  const el = document.getElementById('tacho-' + id);
-  if (!el) return null;
-  el.innerHTML = svg;
-  return {
-    needle: document.getElementById('needle-' + id),
-    hub:    null,
-    val:    document.getElementById('tacho-val-' + id),
-    sub:    document.getElementById('tacho-sub-' + id),
-    C: C,
-  };
-}
-
-function tachoSet(t, value, color, label, sub) {
-  if (!t) return;
-  const v = Math.max(0, Math.min(100, value || 0));
-  const offset = t.C * (1 - v / 100);
-  t.needle.style.strokeDashoffset = offset;
-  t.needle.setAttribute('stroke', color);
-  t.val.textContent = label !== undefined ? label : `${v}%`;
-  t.val.setAttribute('fill', color);
-  if (sub !== undefined) t.sub.textContent = sub;
-}
+let _gauges = {};
 
 
 function renderRow2(d) {
@@ -5580,12 +6023,12 @@ function renderRow2(d) {
   const cpuTemp  = cpu.temp;
 
   const row = document.getElementById('dash-row2');
-  if (!_tachos.init) {
+  if (!_gauges.init) {
     row.innerHTML = `
       <div class="dash-card" style="--card-accent:var(--orange);padding:10px 12px">
         <h3><span class="icon">⚙</span>CPU</h3>
         <div class="ring-wrap">
-          <div class="tacho" id="tacho-cpu"></div>
+          <div class="mono-gauge-host" id="gauge-cpu"></div>
           <div class="tacho-info" style="border-top:none;margin-top:2px;padding-top:2px;gap:2px">
             <div class="kv-row"><span class="kv-key">Temp</span><span class="kv-val" id="cpu-temp">—</span></div>
           </div>
@@ -5594,7 +6037,7 @@ function renderRow2(d) {
       <div class="dash-card" style="--card-accent:var(--accent);padding:10px 12px">
         <h3><span class="icon">🧠</span>Memoria RAM</h3>
         <div class="ring-wrap">
-          <div class="tacho" id="tacho-ram"></div>
+          <div class="mono-gauge-host" id="gauge-ram"></div>
           <div class="tacho-info" style="border-top:none;margin-top:2px;padding-top:2px;gap:2px">
             <div class="kv-row"><span class="kv-key">Usada</span><span class="kv-val" id="ram-used">—</span></div>
             <div class="kv-row"><span class="kv-key">Total</span><span class="kv-val" id="ram-total">—</span></div>
@@ -5606,7 +6049,7 @@ function renderRow2(d) {
         <h3><span class="icon">🎨</span>GPU</h3>
         <div style="font-size:10px;font-weight:600;margin-bottom:4px;color:var(--text2);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g0.name||'')}</div>
         <div class="ring-wrap">
-          <div class="tacho" id="tacho-gpu"></div>
+          <div class="mono-gauge-host" id="gauge-gpu"></div>
           <div class="tacho-info" style="border-top:none;margin-top:2px;padding-top:2px;gap:2px">
             <div class="kv-row"><span class="kv-key">Temp</span><span class="kv-val" id="gpu-temp">—</span></div>
           </div>
@@ -5617,16 +6060,16 @@ function renderRow2(d) {
         <div style="color:var(--text3);font-size:12px;text-align:center;padding:16px 0">No detectada</div>
       </div>`}
     `;
-    _tachos.init = true;
-    _tachos.cpu  = tachoInit('cpu', '#FFA76B');
-    _tachos.ram  = tachoInit('ram', '#7C9CFF');
-    _tachos.gpu  = g0 ? tachoInit('gpu', accentG) : null;
+    _gauges.init = true;
+    _gauges.cpu  = MonoCharts.gauge(document.getElementById('gauge-cpu'));
+    _gauges.ram  = MonoCharts.gauge(document.getElementById('gauge-ram'));
+    _gauges.gpu  = g0 ? MonoCharts.gauge(document.getElementById('gauge-gpu')) : null;
   }
 
   // Actualizar anillos
-  tachoSet(_tachos.cpu, cpuPct, cpuColor, `${cpuPct}%`, 'CPU');
-  tachoSet(_tachos.ram, ramPct, ramColor, `${ramPct}%`, 'RAM');
-  if (g0 && _tachos.gpu) tachoSet(_tachos.gpu, gUtil, gColor, `${gUtil}%`, 'GPU');
+  if (_gauges.cpu) _gauges.cpu.set(cpuPct, `${cpuPct}%`, cpuColor);
+  if (_gauges.ram) _gauges.ram.set(ramPct, `${ramPct}%`, ramColor);
+  if (g0 && _gauges.gpu) _gauges.gpu.set(gUtil, `${gUtil}%`, gColor);
 
   // Temperatura de CPU
   const ct = document.getElementById('cpu-temp');
@@ -5653,26 +6096,44 @@ function renderStorage(d) {
   const disk = d.disk || [];
   if (sig === _storageSig && box.firstChild) return;
   _storageSig = sig;
-  const html = disk.length ? disk.map((p, i) => {
-    const pct   = p.pct || 0;
-    const color = pct < 70 ? '#3FD68B' : pct < 85 ? '#F2C46B' : '#FF6B6B';
-    return `<div class="tank-item">
-      <div class="tank-gauge">${tankGauge(pct, i)}</div>
-      <div style="flex:1;min-width:0">
-        <div class="tank-mount">${escHtml(p.mount)}
-          <span style="font-size:10px;color:${color};border:1px solid ${color};border-radius:20px;padding:0 6px;font-weight:700">${pct}%</span>
-        </div>
-        <div class="tank-sub">${escHtml(p.fs)}</div>
-        <div class="tank-usage">${p.used_gb} / ${p.size_gb} GB usados</div>
-        <div class="tank-free">${p.free_gb} GB libres</div>
-      </div>
-    </div>`;
-  }).join('') : '<div style="color:var(--text3);font-size:12px">Sin datos de disco</div>';
-  box.innerHTML = `<div style="font-size:10px;color:var(--text3);margin:-6px 0 4px">Actualizado: ${escHtml(d.disk_updated||'—')} · diario 18:00</div>${html}`;
-}
 
-// ── Batería y energía (laptop, se actualiza cada poll) ──
-let _powerHist = [];
+  const pill = document.getElementById('dash-storage-pill');
+  if (pill) pill.textContent = disk.length + (disk.length === 1 ? ' disco' : ' discos');
+
+  if (!disk.length) {
+    box.innerHTML = '<div class="mono-stage"><div class="mono-stage-note">Sin datos de disco</div></div>';
+    return;
+  }
+
+  const used = disk.reduce((a, p) => a + (parseFloat(p.used_gb) || 0), 0);
+  const size = disk.reduce((a, p) => a + (parseFloat(p.size_gb) || 0), 0);
+
+  box.innerHTML = `
+    <div class="mono-stage" style="display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:center">
+      <div id="dash-storage-donut"></div>
+      <div id="dash-storage-rows"></div>
+    </div>
+    <div class="mono-foot">
+      <span>Actualizado: ${escHtml(d.disk_updated || '—')}</span>
+      <b>${used.toFixed(0)} / ${size.toFixed(0)} GB usados</b>
+    </div>`;
+
+  MonoCharts.donut(document.getElementById('dash-storage-donut'), {
+    data: disk.map(p => ({label: p.mount, value: parseFloat(p.used_gb) || 0})),
+    palette: true,
+    centerValue: used.toFixed(0),
+    centerLabel: 'GB usados',
+    legend: false
+  });
+
+  MonoCharts.rows(document.getElementById('dash-storage-rows'), {
+    data: disk.map(p => ({
+      label: p.mount,
+      value: parseFloat(p.pct) || 0,
+      text: (p.used_gb || 0) + '/' + (p.size_gb || 0) + ' GB'
+    }))
+  });
+}
 function renderPower(d) {
   const box = document.getElementById('dash-power');
   if (!box) return;
@@ -5732,6 +6193,8 @@ function relTime(ts) {
 function renderNews(items) {
   const box = document.getElementById('dash-news');
   if (!box) return;
+  const newsPill = document.getElementById('dash-news-pill');
+  if (newsPill && items) newsPill.textContent = items.length + ' versiones';
   if (!items || !items.length) {
     box.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0">Sin actualizaciones (revisa la conexión a internet)</div>';
     return;
@@ -5817,6 +6280,8 @@ function initAppUpdate() {
 function renderEsInfo(d) {
   const box = document.getElementById('dash-es-info');
   if (!box) return;
+  const esPill = document.getElementById('dash-es-pill');
+  if (esPill) esPill.textContent = (d.es && d.es.running) ? 'Activo' : 'Detenido';
   const es = d.es || {};
   const running = !!es.running;
   const dot = running ? '<span class="status-dot dot-green"></span>' : '<span class="status-dot dot-red"></span>';
@@ -5844,38 +6309,6 @@ let _netRaw   = {};
 let _netTs    = null;
 let _procHist = {};
 
-// Tanque de almacenamiento: líquido con olas animadas y nivel = pct
-function tankGauge(pct, idx) {
-  const level = Math.max(6, Math.min(94, 100 - pct));   // superficie del líquido
-  const Y     = level;
-  const id    = idx;
-  const isOk  = pct < 70, isWarn = pct < 85;
-  const cTop  = isOk ? '#3FD68B' : isWarn ? '#F2C46B' : '#FF6B6B';
-  const cBot  = isOk ? '#1F7A4D' : isWarn ? '#8A6A1F' : '#A8342F';
-  const wave  = `M0 ${Y} Q 6.25 ${Y-4} 12.5 ${Y} T 25 ${Y} T 37.5 ${Y} T 50 ${Y} T 62.5 ${Y} T 75 ${Y} T 87.5 ${Y} T 100 ${Y} T 112.5 ${Y} T 125 ${Y} L 125 112 L 0 112 Z`;
-  return `
-  <svg viewBox="0 0 100 100" width="88" height="88" style="display:block;filter:drop-shadow(0 0 6px ${isOk?'rgba(63,214,139,.45)':isWarn?'rgba(242,196,107,.45)':'rgba(255,107,107,.5)'})">
-    <defs>
-      <linearGradient id="tg-${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="${cTop}"/>
-        <stop offset="1" stop-color="${cBot}"/>
-      </linearGradient>
-      <clipPath id="tankClip-${id}"><rect x="6" y="6" width="88" height="88" rx="22"/></clipPath>
-    </defs>
-    <rect x="6" y="6" width="88" height="88" rx="22" fill="rgba(255,255,255,.03)" stroke="var(--border)" stroke-width="2"/>
-    <g clip-path="url(#tankClip-${id})">
-      <rect x="6" y="${level}" width="88" height="${100-level}" fill="url(#tg-${id})"/>
-      <g style="transform-box:view-box;animation:tankWave 2.4s linear infinite">
-        <path d="${wave}" fill="rgba(255,255,255,.25)"/>
-      </g>
-      <g style="transform-box:view-box;animation:tankWave 3.6s linear infinite">
-        <path d="${wave}" fill="rgba(255,255,255,.12)"/>
-      </g>
-    </g>
-    <circle cx="50" cy="50" r="17" fill="rgba(0,0,0,.35)"/>
-    <text x="50" y="55" text-anchor="middle" font-size="17" font-weight="800" fill="#fff">${pct}%</text>
-  </svg>`;
-}
 
 function fmtRate(bps) {
   if (bps > 1048576) return (bps/1048576).toFixed(2) + ' MB/s';
@@ -5975,6 +6408,10 @@ function renderFans(fans) {
 
   const faults  = fans.filter(f => f.status === 'fault');
   const stopped = fans.filter(f => f.status === 'stopped');
+  const fanPill = document.getElementById('dash-fans-pill');
+  if (fanPill) fanPill.textContent = faults.length
+    ? faults.length + ' con fallo'
+    : fans.length + (fans.length === 1 ? ' ventilador' : ' ventiladores');
   let alert = '';
   if (faults.length) {
     alert = `<div class="fan-alert">⚠️ FALLO DETECTADO: ${escHtml(faults.map(f=>f.label).join(', '))} — revisa los ventiladores</div>`;

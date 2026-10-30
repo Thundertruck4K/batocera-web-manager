@@ -24,7 +24,7 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 batocera_web/
 ├── app.py                 # ~5750 líneas — servidor HTTP + API REST + scraper + dashboard
 ├── templates/
-│   └── index.html         # ~5460 líneas — SPA con todo el CSS/JS inline (l10n: es)
+│   └── index.html         # ~6536 líneas — SPA con todo el CSS/JS inline (l10n: es)
 ├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
 ├── AGENTS.md              # Guía operativa para asistentes de IA
 ├── install.sh             # Script de instalación (v1.4: sin Flask, instala en `batocera_web/`)
@@ -463,9 +463,37 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 
 ---
 
+### `49ba312..` — Rediseño de las tarjetas al lenguaje visual de mono-charts
+
+**Petición:** sustituir las tarjetas del manager por componentes tipo
+[amicro.dev/mono-charts](https://amicro.dev/mono-charts), dándoles color.
+
+**Decisión clave:** mono-charts es React + `motion/react` + Recharts; este proyecto no tiene
+paso de build ni dependencias, así que **se reimplementa el lenguaje visual** en CSS/JS puro
+en lugar de instalar nada:
+
+| Pieza | Implementación |
+|-------|----------------|
+| Contenedor | Radio 24 px (`--mono-radius`), color por tarjeta vía `--card-accent` |
+| Stage interior | Radio 14 px (`--mono-stage-radius`), con brillo interno (`--mono-inner-hi`) |
+| Velocímetro | Arco de 240° (de las 7 a las 5 en punto, por arriba), `pathLength=100` + `stroke-dasharray` |
+| Área / sparkline | Curva monótona propia (cúbica de Fritsch-Carlson, equivalente a Recharts `type="monotone"`) con degradado |
+| Donut | `pathLength=100`, tapa blanda, gap 7, centro con valor y paleta `--mono-p1..p6` |
+| Barras | Filas redondeadas (radio 0 8px 8px 0) con degradado de acento |
+
+- Objeto `MonoCharts` (IIFE) dentro de `templates/index.html`.
+- Las cabeceras pasan a mayúsculas con tracking y el icono se convierte en píldora de acento: así
+  también las tarjetas estáticas (Ajustes) reciben color sin tocar su HTML.
+- Se eliminaron los gráficos sustituidos (tacho con aguja, tanque de líquido) y su CSS muerto.
+- Los KPIs pasaron a sparkline de área con historial móvil de 40 muestras en el cliente.
+- La fila de almacenamiento usa donut de reparto + filas de barras; la de actividad, área monótona.
+- Tests: 425 → **438** (`tests/test_mono_charts.py`, 13 tests nuevos).
+
+---
+
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 425 tests (`pytest`, `tests/`, 40 ficheros) sin linting ni typechecking
+1. **Infraestructura de pruebas** — 438 tests (`pytest`, `tests/`, 41 ficheros) sin linting ni typechecking
 2. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
 3. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
 4. **Settings sin cache** — Se lee el JSON en cada request
