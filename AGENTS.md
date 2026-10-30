@@ -21,20 +21,44 @@
 
 ## Architecture
 
-- **Single-file backend**: `app.py` (~5750 lines) — HTTP handler, dashboard, scraper (ScreenScraper.fr, TheGamesDB, IGDB), autostart manager
-- **Single-file frontend**: `templates/index.html` (~6536 lines) — all CSS/JS inline, server-side rendered via `{{variable}}` string replacement
+- **Single-file backend**: `app.py` (~5780 lines) — HTTP handler, dashboard, scraper (ScreenScraper.fr, TheGamesDB, IGDB), autostart manager
+- **Frontend React**: `frontend/` — React 19 + TypeScript + Vite 6 + Tailwind CSS v4. El backend sirve
+  `frontend/dist/` cuando está compilado; si no lo está, cae a la interfaz clásica de un solo fichero
+  (`templates/index.html`), que sigue siendo el respaldo. Ver «Frontend» más abajo.
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
 - `install.sh` is current (v1.4): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides
+
+## Frontend (React + Tailwind)
+
+- `frontend/` es un proyecto Vite independiente: `npm install` y `npm run build` (salida en
+  `frontend/dist/`, que **sí se versiona** porque el dispositivo no tiene Node).
+- **Tokens del design system**: `frontend/src/index.css` — tema oscuro `#121212` / claro `#f8f9fa`,
+  tarjeta `#161616` / blanco, escenario `#0d0d0d`, escala monocroma para gráficos (`--chart-1..4`).
+  Se alternan con la clase `.dark` en `<html>`. Curva de movimiento única
+  `cubic-bezier(0.16, 1, 0.3, 1)`, duraciones < 300 ms.
+- **La API no cambia**: el frontend consume los mismos endpoints `/api/*` que la interfaz clásica.
+  `frontend/src/lib/api.ts` es el cliente tipado; `frontend/src/lib/normalize.ts` rellena los campos
+  que faltan cuando el backend las deja vacíos (fuera de Linux no hay `/proc` ni `/sys`) para que la
+  interfaz degrade en lugar de romperse con una pantalla en blanco.
+- En desarrollo: `npm run dev` (Vite en :5173) hace de proxy de `/api` hacia el backend en :5000.
+  Variable `BATOCERA_BACKEND` para cambiar el destino del proxy.
+- **La interfaz clásica sigue viva**: `templates/index.html` y sus tests (`tests/test_mono_charts.py`,
+  `tests/test_ui_theme.py`) no se tocan. `render_index()` no ha cambiado; `render_app()` elige la SPA
+  si `frontend/dist/index.html` existe y si no, la clásica.
 
 ## Key notes
 
 - **Tests**: 438 con `pytest` en `tests/` (41 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
-- **Design system "mono"**: las tarjetas comparten tokens (`--mono-*`) y piezas (`.mono-stage`,
-  `.mono-pill`, `.mono-foot`, `.mono-row`) en el `<style>` de `templates/index.html`. Los gráficos los
-  dibuja el objeto `MonoCharts` (gauge de 240°, barras, donut, área monótona) en JS puro: **no uses
-  React ni Recharts**, el proyecto no tiene build ni dependencias
+- **Design system "mono"**: dos capas conviven.
+  - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
+    `.mono-foot`, `.mono-row`) en el `<style>` inline. Los gráficos los dibuja el objeto `MonoCharts`
+    (gauge de 240°, barras, donut, área monótona) en JS puro.
+  - *React* (`frontend/src/index.css`): los mismos tokens traducidos a variables CSS de Tailwind v4
+    (`--color-card`, `--color-stage`, `--color-chart-1..4`…) y componentes en `frontend/src/components/`.
+    Los gráficos usan **Recharts** (`animationDuration={280}`, el límite del design system).
+  - Al tocar un token, tócalo en las dos capas para que no se desincronicen.
 - Scraper sources: ScreenScraper.fr (default, needs SS user/pass), TheGamesDB (needs API key), IGDB (needs Twitch Client ID + Secret)
 - Credentials read from `batocera.conf` keys: `global.scrapper.user`, `global.scrapper.password`, etc.
 - Scraping respects rate limits (`maxthreads` from SS response, minimum 0.5s delay)

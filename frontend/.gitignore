@@ -1,0 +1,7 @@
+# Dependencias y artefactos de desarrollo del frontend React.
+# El bundle compilado (dist/) sí se versiona en el repositorio raíz: el
+# dispositivo Batocera no tiene Node y despliega el bundle tal cual.
+node_modules/
+.vite/
+*.local
+*.tsbuildinfo

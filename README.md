@@ -384,8 +384,16 @@ python -m pytest
 ```
 batocera_web/
 ├── app.py                    # servidor HTTP y toda la lógica (stdlib)
+├── frontend/                 # interfaz React + Tailwind (SPA)
+│   ├── src/
+│   │   ├── components/       # UI, layout y gráficos
+│   │   ├── pages/            # panel, sistemas, formulario y configuración
+│   │   ├── hooks/            # tema, toasts, haptics y carga de datos
+│   │   └── lib/              # cliente API tipado, tipos y normalizadores
+│   ├── dist/                 # bundle compilado (se versiona: el dispositivo no tiene Node)
+│   └── package.json
 ├── templates/
-│   └── index.html            # interfaz completa (HTML + CSS + JS)
+│   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
 ├── tests/                    # 438 tests con pytest
@@ -396,6 +404,21 @@ batocera_web/
 ├── CHANGELOG.md              # historial de cambios por versión
 └── README.md
 ```
+
+### 🧑‍💻 Desarrollar el frontend
+
+La interfaz se compila con Node; **el dispositivo Batocera no lo necesita**, porque el bundle ya está
+versionado en `frontend/dist/` y el backend lo sirve tal cual.
+
+```bash
+cd frontend
+npm install          # sólo la primera vez
+npm run dev          # Vite en http://localhost:5173, hace de proxy de /api hacia :5000
+npm run build        # genera frontend/dist/
+```
+
+Arranca el backend en otra terminal (`python3 app.py`) para tener datos reales. La API es la misma que
+usa la interfaz clásica, así que no hay nada nuevo que desplegar en el backend.
 
 ---
 

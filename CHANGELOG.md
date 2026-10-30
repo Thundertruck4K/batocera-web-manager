@@ -7,11 +7,30 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Frontend React + Tailwind CSS** (`frontend/`): la interfaz del manager se reescribe como SPA en
+  React 19 + TypeScript + Vite 6 + Tailwind CSS v4, con el design system **amicro-design-system**
+  (tokens `--color-card` / `--color-stage` / `--color-chart-1..4`, tema claro y oscuro, curva de
+  movimiento `cubic-bezier(0.16, 1, 0.3, 1)`, Recharts con `animationDuration={280}`).
+  - Pantallas nuevas: **panel de control** (CPU/RAM/temperatura/disco con gráficos, procesos, red,
+    ventiladores, GPU, batería, almacenamiento, juego al azar y más jugados, con refresco automático
+    configurable), **sistemas** (listado con búsqueda, alta/edición/borrado, vista del XML generado),
+    **formulario de sistema** (catálogo de referencia de Batocera buscable, vista previa del XML en
+    vivo contra `/api/preview`, simulación sin escritura) y **configuración** (tema, rutas, claves de
+    RetroAchievements y arranque automático).
+  - `app.py` sirve `frontend/dist/` cuando está compilado y cae a la interfaz clásica si no lo está.
+    Las rutas del enrutador del cliente (`/sistemas`, `/configuracion`…) se resuelven con un fallback
+    a `index.html`, así que recargar no devuelve 404.
+  - El bundle compilado (`frontend/dist/`) se versiona en el repositorio: el dispositivo Batocera no
+    tiene Node y despliega el bundle tal cual.
+  - **La API no cambia**: el frontend consume los mismos endpoints `/api/*`. `frontend/src/lib/normalize.ts`
+    rellena los campos que el backend deja vacíos cuando no hay `/proc` ni `/sys` (fuera de Linux) para
+    que la interfaz degrade en lugar de quedar en blanco.
 - **Tarjetas del panel rediseñadas al estilo «mono»**: cada tarjeta del manager pasa a un contenedor
   redondeado de 24 px con su propio color de acento, cabecera en mayúsculas con el icono en píldora y
   un «stage» interior de 14 px donde viven los gráficos. Los visualizadores (velocímetro de 240°,
-  sparkline de área, donut de reparto y barras redondeadas) están escritos en CSS/JS puro: ni React
-  ni Recharts ni ningún paso de build, el proyecto sigue sin dependencias.
+  sparkline de área, donut de reparto y barras redondeadas) están escritos en CSS/JS puro en la
+  interfaz clásica: ni React ni Recharts ni ningún paso de build, el proyecto sigue sin dependencias
+  **en el backend y en la interfaz clásica**.
 - 13 tests nuevos (`tests/test_mono_charts.py`) para el design system mono, sus tokens por tema y los
   visualizadores.
 - **Tema claro/oscuro para la web del manager**: en *Configuración → Tema de la interfaz* se elige

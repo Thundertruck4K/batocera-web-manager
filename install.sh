@@ -118,6 +118,11 @@ else
     n=$(find "$SCRIPT_DIR/templates" -type f 2>/dev/null | wc -l | tr -d ' ')
     TOTAL=$(( TOTAL + n ))
   fi
+  # Bundle del frontend React: se despliega ya compilado (el dispositivo no tiene Node).
+  if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+    n=$(find "$SCRIPT_DIR/frontend/dist" -type f 2>/dev/null | wc -l | tr -d ' ')
+    TOTAL=$(( TOTAL + n ))
+  fi
   if [ "$TOTAL" -gt 0 ]; then
     printf '  %s◆%s Copiando ficheros\n' "$CU" "$C0"
     for f in app.py batocera_systems.json; do
@@ -133,6 +138,14 @@ else
         cp "$f" "$INSTALL_DIR/$rel"
         COPIED=$(( COPIED + 1 )); copy_tick
       done < <(find "$SCRIPT_DIR/templates" -type f)
+    fi
+    if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
+      while IFS= read -r f; do
+        rel="${f#"$SCRIPT_DIR"/}"
+        mkdir -p "$INSTALL_DIR/$(dirname "$rel")"
+        cp "$f" "$INSTALL_DIR/$rel"
+        COPIED=$(( COPIED + 1 )); copy_tick
+      done < <(find "$SCRIPT_DIR/frontend/dist" -type f)
     fi
     if [ "$IS_TTY" = 1 ]; then printf '\r\033[K'; fi
     ok "Ficheros copiados a $INSTALL_DIR"

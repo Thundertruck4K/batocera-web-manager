@@ -5,6 +5,12 @@ __pycache__/
 dist/
 build/
 
+# Frontend React: el bundle compilado sí se versiona porque el dispositivo
+# Batocera no tiene Node — se despliega tal cual. El código fuente y sus
+# dependencias van en frontend/ con su propio .gitignore.
+!frontend/dist/
+!frontend/dist/**
+
 # IDE
 .vscode/
 .idea/

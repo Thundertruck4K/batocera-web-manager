@@ -7,6 +7,7 @@ import hashlib
 import http.server
 import io
 import json
+import mimetypes
 import os
 import random
 import re
@@ -28,6 +29,12 @@ except ImportError:
 
 HOST, PORT = "0.0.0.0", 5000
 APP_VERSION = "1.4"   # única fuente: la portada y el banner la reciben de aquí
+
+# Frontend React compilado (`frontend/dist`). Si no está compilado se sirve
+# la interfaz clásica de un solo fichero (`templates/index.html`).
+FRONTEND_DIR  = Path(__file__).parent / "frontend"
+FRONTEND_DIST = FRONTEND_DIR / "dist"
+SPA_INDEX     = FRONTEND_DIST / "index.html"
 
 SETTINGS_FILE = Path("/userdata/system/batocera_manager_settings.json")
 
@@ -4872,7 +4879,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         parts = [p for p in path.split("/") if p]
         s     = load_settings()
         if path == "/":
-            self.send_html(render_index())
+            self.send_html(render_app())
         elif path == "/api/info":
             self.send_json({"active_theme":detect_active_theme(s),
                 "themes":list_themes(s),"systems_count":len(list_custom_systems(s)),
@@ -5016,8 +5023,16 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             system   = urllib.parse.unquote(parts[2])
             filename = urllib.parse.unquote(parts[3])
             self._serve_rom_image(system, filename, s)
+        elif path.startswith("/assets/") and spa_available():
+            self._serve_spa_asset(path[len("/assets/"):])
         else:
-            self.send_json({"error":"Not found"},404)
+            # Rutas del enrutador del cliente (React Router): sin extensión y
+            # con la SPA compilada se devuelve el index para que el cliente
+            # resuelva la ruta (recargar /sistemas no puede dar 404).
+            if spa_available() and parts and "." not in parts[-1]:
+                self.send_html(render_app())
+            else:
+                self.send_json({"error":"Not found"},404)
 
     @_safe_api
     def do_POST(self):
@@ -5776,6 +5791,35 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(204)
         self.end_headers()
 
+    def _serve_spa_asset(self, rel):
+        """Sirve un fichero estático del bundle compilado (frontend/dist/assets).
+
+        La ruta se confina al directorio de assets: cualquier intento de
+        salir de ahí (`..`) se responde con 404.
+        """
+        base = (FRONTEND_DIST / "assets").resolve()
+        try:
+            target = (base / rel).resolve()
+            target.relative_to(base)
+        except (ValueError, OSError):
+            self.send_json({"error":"Not found"},404); return
+        if not target.is_file():
+            self.send_json({"error":"Not found"},404); return
+        try:
+            body = target.read_bytes()
+        except OSError:
+            self.send_json({"error":"Not found"},404); return
+        ctype = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        if ctype in ("text/javascript","text/css","application/javascript","image/svg+xml"):
+            ctype += "; charset=utf-8"
+        self.send_response(200)
+        self.send_header("Content-Type",ctype)
+        # Los nombres llevan hash: se pueden cachear para siempre.
+        self.send_header("Cache-Control","public, max-age=31536000, immutable")
+        self.send_header("Content-Length",len(body))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _update_rom_meta(self, s):
         """Actualiza o crea entrada en gamelist.xml con los nuevos metadatos.
         Soporta ROMs dentro de subcarpetas via el campo 'subpath' en el JSON.
@@ -5846,6 +5890,33 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"ok":False,"error":str(e)})
 
 # ─── Render HTML ──────────────────────────────────────────────────
+def spa_available():
+    """True si el frontend React está compilado y se puede servir."""
+    try:
+        return SPA_INDEX.is_file()
+    except OSError:
+        return False
+
+
+def render_spa():
+    """Devuelve el index.html de la SPA con la versión del manager puesta.
+
+    Devuelve None si el frontend no está compilado.
+    """
+    if not spa_available():
+        return None
+    try:
+        html = SPA_INDEX.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    return html.replace("{{app_version}}", APP_VERSION)
+
+
+def render_app():
+    """La SPA compilada si existe; si no, la interfaz clásica de un fichero."""
+    return render_spa() or render_index()
+
+
 def render_index():
     s = load_settings()
     active_theme = detect_active_theme(s)
