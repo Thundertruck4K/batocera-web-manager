@@ -63,19 +63,32 @@ def test_showpanel_still_toggles_single_active():
     assert ".nav-item" in body and "remove('active')" in body and "add('active')" in body
 
 
+def _theme_var(name: str) -> str:
+    """Valor de una variable CSS en el bloque :root (tema oscuro)."""
+    css = HTML.read_text(encoding="utf-8")
+    m = re.search(r":root\s*\{([^}]*)\}", css, re.S)
+    assert m, "falta el bloque :root"
+    v = re.search(rf"{re.escape(name)}\s*:\s*([^;]+);", m.group(1))
+    assert v, f"falta la variable {name} en :root"
+    return v.group(1).strip()
+
+
 def test_active_item_is_flat_highlight():
     css = HTML.read_text(encoding="utf-8")
     m = re.search(r"\.nav-item\.active\s*\{([^}]*)\}", css, re.S)
     assert m, "falta la regla .nav-item.active"
     body = m.group(1)
-    assert "background" in body and "rgba(255,255,255" in body, "el activo es un realce plano y claro"
+    assert "background" in body and "var(--active-bg)" in body, "el activo es un realce plano y claro"
     assert "gradient" not in body, "Aurora Glass: el activo no lleva degradado"
     assert "box-shadow" not in body, "sin relieve"
     assert "border" not in body, "sin borde"
+    # El realce sigue siendo un velo blanco translucido en el tema oscuro.
+    assert _theme_var("--active-bg") == "rgba(255,255,255,.085)"
 
 
 def test_nav_hover_lightens_background():
     css = HTML.read_text(encoding="utf-8")
     m = re.search(r"\.nav-item:hover\s*\{([^}]*)\}", css, re.S)
     assert m, "falta la regla .nav-item:hover"
-    assert "background" in m.group(1) and "rgba(255,255,255" in m.group(1), "el hover ilumina el botón"
+    assert "background" in m.group(1) and "var(--hover-bg)" in m.group(1), "el hover ilumina el botón"
+    assert _theme_var("--hover-bg") == "rgba(255,255,255,.055)"

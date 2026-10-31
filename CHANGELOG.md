@@ -7,11 +7,73 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **El proyecto se independiza**: la versión con interfaz **React + Tailwind CSS** pasa a su propio
+  repositorio, `Thundertruck4K/batocera-web-manager-react`. Este repositorio se queda con la versión
+  Python pura (interfaz de un solo fichero, sin build ni dependencias), con el mismo backend y la
+  misma API. Se añade una nota en el README y en AGENTS.md que enlaza las dos versiones.
+- **Tarjetas del panel rediseñadas al estilo «mono»**: cada tarjeta del manager pasa a un contenedor
+  redondeado de 24 px con su propio color de acento, cabecera en mayúsculas con el icono en píldora y
+  un «stage» interior de 14 px donde viven los gráficos. Los visualizadores (velocímetro de 240°,
+  sparkline de área, donut de reparto y barras redondeadas) están escritos en CSS/JS puro: ni React
+  ni Recharts ni ningún paso de build, el proyecto sigue sin dependencias.
+- 13 tests nuevos (`tests/test_mono_charts.py`) para el design system mono, sus tokens por tema y los
+  visualizadores.
+- **Tema claro/oscuro para la web del manager**: en *Configuración → Tema de la interfaz* se elige
+  claro, oscuro o "seguir al sistema", y el botón del sidebar alterna al instante. La preferencia se
+  guarda en los ajustes del manager (no en el navegador), así que se aplica igual desde el móvil o el
+  PC, y se inyecta en el HTML al servir la página: no hay parpadeo al cargar. La paleta clara cumple
+  contraste WCAG AA (verificado por tests).
+- 48 tests nuevos (`tests/test_ra_key_mask.py`, `tests/test_ui_theme.py` y ampliación de
+  `tests/test_theme_contrast.py`).
 - **Verificación de actualizaciones mayores**: el dashboard comprueba las releases publicadas del propio repositorio (feed Atom de GitHub, cacheado 1 h) y avisa con un banner visual cuando aparece una versión **mayor** (2.0, 3.0...). Endpoint nuevo `/api/app-update`; sin conexión el aviso simplemente no aparece y la app sigue igual. El descarte se recuerda por versión, así que al llegar la 3.0 vuelve a avisar aunque el usuario ya cerrara el aviso de la 2.0.
 - 16 tests nuevos para el sistema de actualización (`tests/test_app_update.py`).
+- 20 tests nuevos (`tests/test_scraper_secrets.py`) para el enmascarado de las credenciales del
+  scraper.
+- 8 tests nuevos para las correcciones de la revisión (inyección en `batocera.conf`, lista
+  blanca de la config pública, listener del modo "auto" y borrado accidental de la key de RA).
 
 ### Cambiado
-- Contador de tests del README actualizado a 336.
+- Contador de tests del README actualizado a 438.
+- El tacho con aguja (CPU/GPU/RAM) y el tanque de líquido (disco) los sustituyen el velocímetro y el
+  donut con paleta; el gráfico de actividad pasa a ser un área monótona con degradado. Se elimina el
+  código y el CSS de los gráficos antiguos.
+
+### Corregido
+- El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
+  el scrim negro), el chip de codigo del aviso de servicio y los degradados de
+  texto del dashboard. Ahora cada uno tiene su variable de tema.
+- Una mascara de la Web API Key que venia de otro dispositivo se guardaba como
+  si fuera la key nueva, dejando la credencial rota en silencio. Ahora se
+  detecta la mascara por su forma, no comparandola con la key actual.
+- Las Web API Keys de menos de 12 caracteres se ocultan enteras: con el umbral
+  anterior, una key de 9 se mostraba en 8 de sus 9 posiciones.
+- `tests/test_install_sh.py` asumia que Git estaba en `C:\Program Files\Git`:
+  ahora deriva el `bash` real de la ruta de `git.exe`, asi que sus 10 tests no
+  se saltan si Git esta instalado en otro sitio.
+- El modo "auto" del tema ya no pisa un tema explicito elegido despues (el listener de
+  `matchMedia` seguia escribiendo encima) y ya no se acumula en cada cambio de tema.
+- La Web API Key de RetroAchievements solo se borra si el usuario vacia el campo a proposito:
+  un guardado rapido, antes de que llegue la mascara, ya no puede borrarla.
+- El formulario de credenciales del scraper (pestaña "Configuración" del modal) se carga tambien
+  al entrar en esa pestaña: antes dependia de haber pasado antes por otra.
+
+### Seguridad
+- La **Web API Key de RetroAchievements ya no se sirve en claro** por `/api/settings`: se devuelve
+  enmascarada (`abcd••••••••wxyz`) junto con un indicador `ra_api_key_set` de si está configurada.
+  Al guardar se comporta como solo-escritura: si no tocas el campo, la key se conserva; si lo vacías,
+  la borra. Además `/api/settings` solo expone claves conocidas, para que el fichero de ajustes
+  (editable a mano) no pueda inyectar campos extra en la respuesta.
+- Las **credenciales del scraper (ScreenScraper, TheGamesDB e IGDB) ya no se sirven en claro** por
+  la API: `/api/scraper/config` y el campo `cfg` de `/api/scraper/search` las devuelven
+  enmascaradas, con un indicador `<campo>_set` de si cada una está configurada. Al guardar se
+  comportan como solo-escritura: si no tocas el campo, la credencial no se pierde; si lo vacías,
+  se borra. Además, una máscara que llegue del cliente nunca se guarda ni se envía a las APIs
+  externas: manda la credencial que tiene el servidor.
+- Un valor con salto de linea en el formulario del scraper ya no puede inyectar directivas
+  nuevas en `batocera.conf`: el servidor escribe ese fichero con permisos de root y una sola
+  línea de más creaba una clave espuria.
+- La config publica del scraper usa lista blanca de campos, igual que `/api/settings`: un
+  campo nuevo no puede colarse en la respuesta en claro.
 
 ## [1.4] - 2026-10-18
 

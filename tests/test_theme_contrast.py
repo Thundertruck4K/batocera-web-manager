@@ -34,3 +34,44 @@ def _contrast(fg: str, bg: str) -> float:
 def test_text_contrast_meets_wcag_aa(fg: str, bg: str):
     ratio = _contrast(_root_var(fg), _root_var(bg))
     assert ratio >= 4.5, f"--{fg} sobre --{bg}: ratio {ratio:.2f} < 4.5"
+
+
+# ─── Paleta clara ───────────────────────────────────────────────────
+
+def _block(selector: str) -> str:
+    css = HTML.read_text(encoding="utf-8")
+    m = re.search(rf"{re.escape(selector)}\s*\{{([^}}]*)\}}", css)
+    assert m, f"bloque {selector} no encontrado"
+    return m.group(1)
+
+
+def _block_var(block: str, name: str) -> str:
+    m = re.search(rf"--{re.escape(name)}\s*:\s*(#[0-9a-fA-F]{{6}})", block)
+    assert m, f"variable --{name} no encontrada en el bloque"
+    return m.group(1)
+
+
+_LIGHT = ':root[data-theme="light"]'
+
+
+@pytest.mark.parametrize("fg", ["text", "text2", "text3"])
+@pytest.mark.parametrize("bg", ["bg", "panel", "bg3"])
+def test_light_palette_contrast_meets_wcag_aa(fg: str, bg: str):
+    block = _block(_LIGHT)
+    ratio = _contrast(_block_var(block, fg), _block_var(block, bg))
+    assert ratio >= 4.5, f"claro: --{fg} sobre --{bg}: ratio {ratio:.2f} < 4.5"
+
+
+@pytest.mark.parametrize("bg", ["bg", "panel", "bg3"])
+def test_accent_is_readable_on_light_backgrounds(bg: str):
+    block = _block(_LIGHT)
+    ratio = _contrast(_block_var(block, "accent"), _block_var(block, bg))
+    assert ratio >= 4.5, f"claro: --accent sobre --{bg}: ratio {ratio:.2f} < 4.5"
+
+
+@pytest.mark.parametrize("name", ["accent", "accent2", "green2", "red2"])
+def test_white_text_is_readable_on_saturated_light_colors(name: str):
+    """El texto blanco sobre botones y badges debe alcanzar 4.5:1 en claro."""
+    block = _block(_LIGHT)
+    ratio = _contrast("#FFFFFF", _block_var(block, name))
+    assert ratio >= 4.5, f"claro: blanco sobre --{name}: ratio {ratio:.2f} < 4.5"

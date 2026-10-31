@@ -105,8 +105,10 @@ def test_playstats_markup():
 
 
 def test_activity_svg_path():
+    """La actividad se dibuja como area monotona con degradado (componente mono)."""
     h = _html()
-    assert "polyline points=" in h
+    assert "MonoCharts.areaMarkup(counts" in h
+    assert "polyline points=" not in h
 
 
 # ─── C4: monitoreo técnico conservado ──────────────────────────────────

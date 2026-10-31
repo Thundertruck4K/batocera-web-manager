@@ -73,6 +73,8 @@ DEFAULT_SETTINGS = {
     "ra_user":       "",
     "ra_api_key":    "",
     "ra_enabled":    True,
+    # Tema de la interfaz del manager: "dark" | "light" | "auto"
+    "ui_theme":      "dark",
 }
 
 PLATFORM_IDS = [
@@ -1210,6 +1212,92 @@ def load_settings():
 def save_settings_to_file(data):
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+# ─── Enmascarado de credenciales ─────────────────────────────
+# La Web API Key de RetroAchievements nunca debe servirse en claro: el servidor
+# no tiene autenticación, así que /api/settings es legible desde la LAN.
+
+# Caracter con el que se dibuja la mascara.
+RA_MASK_CHAR = "•"
+# Longitud minima a partir de la cual se muestran los extremos del valor.
+RA_MASK_MIN_LEN = 12
+
+
+def mask_secret_value(value):
+    """Enmascara un valor sensible dejando reconocer sus extremos.
+
+    Los valores cortos (menos de RA_MASK_MIN_LEN) se ocultan enteras: con un
+    umbral de 8, una clave de 9 caracteres se mostraba en 8 de sus 9
+    posiciones, es decir, practicamente entera.
+    """
+    v = str(value or "").strip()
+    if not v:
+        return ""
+    if len(v) < RA_MASK_MIN_LEN:
+        return RA_MASK_CHAR * 8
+    return v[:4] + RA_MASK_CHAR * 8 + v[-4:]
+
+
+def mask_ra_api_key(key):
+    """Enmascara una Web API Key dejando reconocer sus extremos."""
+    return mask_secret_value(key)
+
+
+def looks_like_ra_mask(value):
+    """True si el valor parece una mascara y no una key nueva.
+
+    Una mascara nunca es una credencial valida, asi que si llega una se
+    conserva la key guardada. Comparar con la mascara de la key actual
+    no basta: si la key cambio en otro dispositivo, la mascara que tiene
+    aqui seria distinta y se guardaria como si fuera la key nueva.
+    """
+    return RA_MASK_CHAR in str(value or "")
+
+
+def public_settings(settings):
+    """Copia de los ajustes sin credenciales en claro.
+
+    Solo se exponen las claves conocidas: el fichero de ajustes se edita a
+    mano, así que no debe poder inyectar campos extra en la respuesta.
+    """
+    pub = {k: v for k, v in (settings or {}).items() if k in DEFAULT_SETTINGS}
+    key = str(pub.get("ra_api_key") or "")
+    pub["ra_api_key_set"] = bool(key.strip())
+    pub["ra_api_key"] = mask_ra_api_key(key)
+    pub["ui_theme"] = normalize_ui_theme(pub.get("ui_theme"))
+    return pub
+
+VALID_UI_THEMES = ("dark", "light", "auto")
+
+
+def normalize_ui_theme(value):
+    """Normaliza el tema de interfaz a un valor conocido."""
+    t = str(value or "").strip().lower()
+    return t if t in VALID_UI_THEMES else "dark"
+
+
+def apply_settings_update(payload, current):
+    """Aplica un POST /api/settings sobre los ajustes actuales.
+
+    La Web API Key es write-only: si no viene se conserva, si viene la mascara
+    se conserva, si viene vacia se borra y cualquier otro valor la sustituye.
+    """
+    current = dict(current or {})
+    incoming = {k: v for k, v in (payload or {}).items() if k in DEFAULT_SETTINGS}
+    if "ra_api_key" in incoming:
+        sent = str(incoming["ra_api_key"] or "").strip()
+        if not sent:
+            current["ra_api_key"] = ""
+        elif not looks_like_ra_mask(sent):
+            current["ra_api_key"] = sent
+        # Una mascara (la nuestra o la de otro dispositivo) no es una key
+        # nueva: se conserva la que ya habia guardada.
+    for k, v in incoming.items():
+        if k == "ra_api_key":
+            continue
+        current[k] = normalize_ui_theme(v) if k == "ui_theme" else v
+    return current
 
 def human_size(n):
     for u in ["B","KB","MB","GB","TB"]:
@@ -3803,6 +3891,47 @@ def get_scraper_config(settings):
         pass
     return _apply_ss_dev_credentials(cfg, settings)
 
+# Campos de get_scraper_config() que son credenciales: nunca se sirven en claro.
+SCRAPER_SECRET_FIELDS = (
+    "ss_user", "ss_password", "ss_devid", "ss_devpassword",
+    "tgdb_apikey", "igdb_client_id", "igdb_client_secret",
+)
+
+# Campos de get_scraper_config() que no son credenciales: se sirven tal cual.
+# Igual que public_settings(), la config publica usa lista blanca: si manana
+# se anade un campo sensible, no debe servirse en claro sin querer.
+SCRAPER_PUBLIC_FIELDS = ("ss_region", "ss_lang", "ss_image_type", "scraper_source")
+
+# Clave de batocera.conf -> campo de la config del scraper.
+SCRAPER_SECRET_CONF_KEYS = {
+    "global.scrapper.user":        "ss_user",
+    "global.scrapper.password":    "ss_password",
+    "global.scrapper.devid":       "ss_devid",
+    "global.scrapper.devpassword": "ss_devpassword",
+    "global.tgdb.apikey":          "tgdb_apikey",
+    "global.igdb.clientid":        "igdb_client_id",
+    "global.igdb.clientsecret":    "igdb_client_secret",
+}
+
+
+def public_scraper_config(cfg):
+    """Copia de la config del scraper sin credenciales en claro.
+
+    get_scraper_config() sigue devolviendo las credenciales reales (se usan
+    para hablar con ScreenScraper / TheGamesDB / IGDB); esto es lo que sale
+    por la API.
+    """
+    cfg = cfg or {}
+    pub = {}
+    for name in SCRAPER_PUBLIC_FIELDS:
+        pub[name] = cfg.get(name, "")
+    for name in SCRAPER_SECRET_FIELDS:
+        val = str(cfg.get(name) or "")
+        pub[name] = mask_secret_value(val)
+        pub[name + "_set"] = bool(val.strip())
+    return pub
+
+
 def _apply_ss_dev_credentials(cfg, settings):
     """Rellena devid/devpassword si falta alguno.
 
@@ -3841,7 +3970,9 @@ def resolve_scraper_creds(settings, client_data):
               "ss_region", "ss_lang", "ss_image_type",
               "tgdb_apikey", "igdb_client_id", "igdb_client_secret"):
         val = (client_data or {}).get(k)
-        if val:
+        # Una mascara no es una credencial: si llega una, manda la del servidor.
+        # Si no, la mascara acabaria enviada a la API de ScreenScraper.
+        if val and not looks_like_ra_mask(val):
             cfg[k] = val
     return cfg
 
@@ -3855,10 +3986,23 @@ def save_scraper_config(conf_path, lines):
         text = conf_path.read_text(errors="replace") if conf_path.exists() else ""
         conf_lines = text.splitlines()
         for item in lines or []:
-            key = (item or {}).get("key", "")
-            val = (item or {}).get("val", "")
+            item = item or {}
+            key = item.get("key", "")
+            val = str(item.get("val", "") or "")
             if not key or key not in SCRAPER_CONF_KEYS:
                 continue
+            # batocera.conf se escribe linea a linea: un salto de linea en el
+            # valor inyectaria una directiva nueva (p. ej. global.es.foo=bar)
+            # y el servidor la escribe con permisos de root.
+            if "\n" in val or "\r" in val:
+                return False, f"valor de configuración inválido: {key}"
+            if key in SCRAPER_SECRET_CONF_KEYS:
+                # Una mascara no es una credencial nueva: se conserva la guardada.
+                if looks_like_ra_mask(val):
+                    continue
+                # Vacio sin intencion explicita: no se toca nada.
+                if not val and not item.get("clear"):
+                    continue
             replaced = False
             for i, line in enumerate(conf_lines):
                 stripped = line.strip()
@@ -4742,7 +4886,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/themes":
             self.send_json({"active":detect_active_theme(s),"list":list_themes(s)})
         elif path == "/api/settings":
-            self.send_json(s)
+            self.send_json(public_settings(s))
         elif len(parts)==3 and parts[:2]==["api","system"] and path.endswith("/xml"):
             name = parts[2]
             systems = list_custom_systems(s)
@@ -4826,7 +4970,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             else:
                 self.send_json({"ok":False,"error":"Faltan parámetros"})
         elif path == "/api/scraper/config":
-            self.send_json(get_scraper_config(s))
+            self.send_json(public_scraper_config(get_scraper_config(s)))
         elif path == "/api/scraper/batch":
             self._scraper_batch_list(s)
         elif len(parts)==4 and parts[:3]==["api","scraper","batch"]:
@@ -4891,8 +5035,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/settings":
             data = self.read_json()
             current = load_settings()
-            current.update({k:v for k,v in data.items() if k in DEFAULT_SETTINGS})
-            save_settings_to_file(current)
+            updated = apply_settings_update(data, current)
+            save_settings_to_file(updated)
             if any(k.startswith("ra_") for k in data):
                 _ra_cache.update({"ts": 0, "data": None, "user": ""})
             self.send_json({"ok":True})
@@ -5279,7 +5423,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             if game:
                 meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
                 self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":["boxart"],"cfg":cfg,"source":"thegamesdb"})
+                               "img_types":["boxart"],"cfg":public_scraper_config(cfg),"source":"thegamesdb"})
             else:
                 self.send_json({"ok":False,"error":err or "Sin resultados"})
 
@@ -5290,7 +5434,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             if game:
                 meta = igdb_build_meta(game)
                 self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":["cover"],"cfg":cfg,"source":"igdb"})
+                               "img_types":["cover"],"cfg":public_scraper_config(cfg),"source":"igdb"})
             else:
                 self.send_json({"ok":False,"error":err or "Sin resultados"})
 
@@ -5315,7 +5459,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                                  if m.get("type","") in
                                  ("mixrbv1","mixrbv2","ss","box-2D","wheel","fanart","screenshot")})
                 self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":img_types,"cfg":cfg,"source":"screenscraper",
+                               "img_types":img_types,"cfg":public_scraper_config(cfg),"source":"screenscraper",
                                "quota":quota})
             else:
                 self.send_json({"ok":False,"error":err or "Sin resultados","quota":quota})
@@ -5710,6 +5854,7 @@ def render_index():
         html = tpl.read_text(encoding="utf-8")
         html = html.replace("{{app_version}}", APP_VERSION)
         html = html.replace("{{active_theme}}", active_theme)
+        html = html.replace("{{ui_theme}}", normalize_ui_theme(s.get("ui_theme")))
         html = html.replace("{{themes_user}}",  s.get("themes_user",""))
         html = html.replace("{{platform_opts}}",
             "\n".join(f'<option value="{p}">{p}</option>' for p in PLATFORM_IDS))

@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "amicro-design-system": {
+      "source": "Subhan-code/Amicro--Micro-transitions-",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/amicro-design-system/SKILL.md",
+      "computedHash": "0313d4b233b0a3e60bc540c486c753daa5b9fd75ac7f294b0c470b3162640cb3"
+    }
+  }
+}

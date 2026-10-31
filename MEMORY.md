@@ -1,7 +1,7 @@
 # MEMORY — Batocera System Manager Web
 
-Proyecto: `batocera_web` v1.2  
-Repositorio: `C:\Users\folk3\Downloads\batocera_web`  
+Proyecto: `batocera_web` v1.4  
+Repositorio: `D:\UTILS\batocera_web`  
 Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ---
@@ -22,12 +22,14 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ```
 batocera_web/
-├── app.py                 # ~4250 líneas — servidor HTTP + API REST + scraper + dashboard
+├── app.py                 # ~5750 líneas — servidor HTTP + API REST + scraper + dashboard
 ├── templates/
-│   └── index.html         # ~4440 líneas — SPA con todo el CSS/JS inline (l10n: es)
+│   └── index.html         # ~6536 líneas — SPA con todo el CSS/JS inline (l10n: es)
 ├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
 ├── AGENTS.md              # Guía operativa para asistentes de IA
-├── install.sh             # Script de instalación (heredado de v1.0)
+├── install.sh             # Script de instalación (v1.4: sin Flask, instala en `batocera_web/`)
+├── CHANGELOG.md           # Keep a Changelog
+├── generate_bios_db.py    # Regenerador de BIOS_DB contra upstream `batocera-systems`
 ├── LICENSE                # MIT
 ├── MEMORY.md              # Este archivo
 └── README.md              # Documentación de usuario
@@ -448,24 +450,76 @@ lo pintaba.
 Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 100`.
 
 **Observado, no incluido (fuera del alcance del fix):**
-- La pestaña "Por sistema" del scraper es **síncrona** (pinta 5% y salta a 100%,
-  sin progreso real).
-- Sistemas sin mapear a ScreenScraper (`SS_SYSTEMS` con valor `0`, p. ej.
-  `triforce`) fallan con `HTTP 400: Champ systemeid obligatoire si aucun CRC`.
+- ~~La pestaña "Por sistema" del scraper es **síncrona** (pinta 5% y salta a 100%,
+  sin progreso real).~~ → **RESUELTO**: la pestaña "Sistema completo" ahora crea un
+  job de lote con un único sistema (`POST /api/scraper/batch` con
+  `systems: [_scraperCurrentSystem]`) y hace polling real cada 2 s con
+  `scraperJobView()` — misma barra y contadores que el lote múltiple. El endpoint
+  síncrono `/api/scraper/scrape-system` se conserva por compatibilidad.
+- ~~Sistemas sin mapear a ScreenScraper (`SS_SYSTEMS` con valor `0`, p. ej.
+  `triforce`) fallan con `HTTP 400: Champ systemeid obligatoire si aucun CRC`.~~
+  → **RESUELTO**: `skip_jeuinfos` (`app.py`) salta `jeuInfos.php` cuando no hay
+  CRC y cae directo a `jeuRecherche.php`, que no exige `systemeid`.
+
+---
+
+### `49ba312..` — Rediseño de las tarjetas al lenguaje visual de mono-charts
+
+**Petición:** sustituir las tarjetas del manager por componentes tipo
+[amicro.dev/mono-charts](https://amicro.dev/mono-charts), dándoles color.
+
+**Decisión clave:** mono-charts es React + `motion/react` + Recharts; este proyecto no tiene
+paso de build ni dependencias, así que **se reimplementa el lenguaje visual** en CSS/JS puro
+en lugar de instalar nada:
+
+| Pieza | Implementación |
+|-------|----------------|
+| Contenedor | Radio 24 px (`--mono-radius`), color por tarjeta vía `--card-accent` |
+| Stage interior | Radio 14 px (`--mono-stage-radius`), con brillo interno (`--mono-inner-hi`) |
+| Velocímetro | Arco de 240° (de las 7 a las 5 en punto, por arriba), `pathLength=100` + `stroke-dasharray` |
+| Área / sparkline | Curva monótona propia (cúbica de Fritsch-Carlson, equivalente a Recharts `type="monotone"`) con degradado |
+| Donut | `pathLength=100`, tapa blanda, gap 7, centro con valor y paleta `--mono-p1..p6` |
+| Barras | Filas redondeadas (radio 0 8px 8px 0) con degradado de acento |
+
+- Objeto `MonoCharts` (IIFE) dentro de `templates/index.html`.
+- Las cabeceras pasan a mayúsculas con tracking y el icono se convierte en píldora de acento: así
+  también las tarjetas estáticas (Ajustes) reciben color sin tocar su HTML.
+- Se eliminaron los gráficos sustituidos (tacho con aguja, tanque de líquido) y su CSS muerto.
+- Los KPIs pasaron a sparkline de área con historial móvil de 40 muestras en el cliente.
+- La fila de almacenamiento usa donut de reparto + filas de barras; la de actividad, área monótona.
+- Tests: 425 → **438** (`tests/test_mono_charts.py`, 13 tests nuevos).
 
 ---
 
 ## Issues conocidos
 
-1. **Infraestructura de pruebas** — 175 tests (`pytest`, `tests/`) sin linting ni typechecking
-2. **`install.sh` desactualizado** — Instala a `/userdata/system/batocera-manager/` pero `app_path` por defecto es `/userdata/system/batocera_web/app.py`
-3. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
-4. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
-5. **Settings sin cache** — Se lee el JSON en cada request
-6. **Sin autenticación** — El servidor expone toda la API sin protección
-7. **Sin HTTPS** — Tráfico en texto plano
-8. **BIOS_DB no incluye todos los sistemas MAME** — Los BIOS de arcade/MAME están dentro de los ROMs ZIPs, no se verifican separadamente
-9. **La Web API Key de RetroAchievements viaja en `/api/settings`** — Como no hay autenticación (ver 6/7), la key es visible para cualquiera en la LAN. Se mitigó usando la Web API Key (revocable) en vez de la contraseña, pero idealmente `/api/settings` debería ocultarla y exponer solo un indicador de "configurada".
+1. **Infraestructura de pruebas** — 438 tests (`pytest`, `tests/`, 41 ficheros) sin linting ni typechecking
+2. **ScreenScraper sin devid** — SS exige `devid`/`devpassword` de desarrollador (la cuenta normal da 403). El gestor los acepta opcionales; sin ellos usar TGDB/IGDB
+3. **Cache de ROMs en memoria** — `_rom_cache` con TTL de 60s, no persiste entre reinicios del servidor
+4. **Settings sin cache** — Se lee el JSON en cada request
+5. **Sin autenticación** — El servidor expone toda la API sin protección
+6. **Sin HTTPS** — Tráfico en texto plano
+7. **BIOS_DB no incluye todos los sistemas MAME** — Los BIOS de arcade/MAME están dentro de los ROMs ZIPs, no se verifican separadamente
+7b. ~~**Credenciales del scraper expuestas en claro**~~ — **RESUELTO**: `GET /api/scraper/config`
+   y el campo `cfg` de `POST /api/scraper/search` devuelven las 7 credenciales (`ss_user`,
+   `ss_password`, `ss_devid`, `ss_devpassword`, `tgdb_apikey`, `igdb_client_id`,
+   `igdb_client_secret`) **enmascaradas**, con un indicador `<campo>_set` de si cada una está
+   configurada. El guardado es write-only: una máscara conserva lo que había, y vaciar un campo
+   solo borra si el cliente manda `clear: true`. `get_scraper_config()` sigue devolviendo las
+   credenciales reales (se usan para hablar con ScreenScraper / TheGamesDB / IGDB): solo se
+   enmascara lo que sale por HTTP
+8. ~~**La Web API Key de RetroAchievements viaja en `/api/settings`**~~ — **RESUELTO**: `/api/settings`
+   la devuelve enmascarada (`abcd••••••••wxyz`) con un indicador `ra_api_key_set`, y al guardar se
+   comporta como solo-escritura (si no tocas el campo no se pierde; si lo vacías la borra). El
+   endpoint además solo expone claves conocidas de `DEFAULT_SETTINGS`. **Pendiente**: la API en sí
+   sigue sin autenticación (ver 5/6), que es el problema de fondo.
+9. **`POST /api/settings` acepta rutas sin validar** — `batocera_conf`, `roms_base`, `themes_user`,
+   `themes_sys`, `es_cfg_dir` y `app_path` son ajustes escribibles y el endpoint solo filtra por
+   `DEFAULT_SETTINGS`: cualquiera en la LAN puede hacer que el servidor lea o escriba en rutas
+   arbitrarias. Es preexistente y es el mismo problema de fondo que 5/6 (la API no tiene
+   autenticación), no un fallo del enmascarado. **Pendiente de decidir**: proteger el endpoint
+   rompería la edición de rutas que ofrece la propia interfaz, así que lo natural es validar
+   (permitir solo rutas bajo `/userdata`) o resolverlo cuando haya autenticación.
 
 ---
 
@@ -473,8 +527,16 @@ Verificado en el dispositivo: `0 → 14 → 28 → 42 → 57 → 71 → 85 → 1
 
 Ver `README.md` → Roadmap y `AGENTS.md` → guía operativa.
 
-Áreas prioritarias:
-- Autenticación básica opcional
-- Scraping batch programable
-- Tests (al menos validación de BIOS_DB contra upstream)
-- Script de actualización de BIOS_DB (re-ejecutar generador contra `batocera-systems`)
+El plugin `superpowers` está instalado en `C:\Users\mateo\.minimax\plugins\superpowers/`
+(port de https://github.com/obra/superpowers v7.0.1, MIT). Sus 15 skills aparecen en
+el catálogo como `superpowers:<name>` (p. ej. `superpowers:brainstorming`,
+`superpowers:writing-plans`, `superpowers:executing-plans`). Flujo: `brainstorming`
+→ `writing-plans` (specs y planes en `docs/superpowers/`) → `executing-plans`.
+
+Áreas prioritarias (estado real a v1.4):
+- **Autenticación básica opcional** — pendiente
+- **Autenticación de la API** (la Web API Key y las credenciales del scraper ya se enmascaran) — pendiente
+- **Enmascarar las credenciales del scraper** (`ss_password`, `tgdb_apikey`, `igdb_client_secret`) — **hecho** (`/api/scraper/config` y `/api/scraper/search`, con guardado write-only)
+- **Backup/restore de `es_systems_*.cfg`** — pendiente
+- Validación de `BIOS_DB` contra upstream — **hecho** (`tests/bios_validator.py`, `generate_bios_db.py`)
+- Scraping batch programable — **hecho** (jobs en background con cola FIFO)
