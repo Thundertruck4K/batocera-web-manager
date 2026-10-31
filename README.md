@@ -24,6 +24,11 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 
 </div>
 
+> **Este repositorio es la versión Python pura**: la interfaz es un único fichero `templates/index.html`
+> con su CSS y su JS dentro, sin build y sin dependencias. La versión con interfaz **React + Tailwind
+> CSS** está en [Thundertruck4K/batocera-web-manager-react](https://github.com/Thundertruck4K/batocera-web-manager-react).
+> El backend es el mismo en los dos: sólo cambia la interfaz.
+
 ---
 
 ## 🧭 Índice

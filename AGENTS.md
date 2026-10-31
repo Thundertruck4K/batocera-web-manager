@@ -1,5 +1,10 @@
 # Batocera System Manager Web — Agent Guide
 
+> **Este repo es la versión Python pura**: interfaz de un solo fichero (`templates/index.html`), sin
+> build ni dependencias. La versión con interfaz React + Tailwind CSS vive en
+> `Thundertruck4K/batocera-web-manager-react`, con el mismo backend y la misma API. Aquí **no uses
+> React ni Recharts**: este proyecto no tiene build.
+
 ## Run
 
 - Start server: `python3 app.py` (default port 5000, listens on `0.0.0.0`)

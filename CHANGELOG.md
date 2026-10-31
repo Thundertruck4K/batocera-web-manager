@@ -7,6 +7,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **El proyecto se independiza**: la versión con interfaz **React + Tailwind CSS** pasa a su propio
+  repositorio, `Thundertruck4K/batocera-web-manager-react`. Este repositorio se queda con la versión
+  Python pura (interfaz de un solo fichero, sin build ni dependencias), con el mismo backend y la
+  misma API. Se añade una nota en el README y en AGENTS.md que enlaza las dos versiones.
 - **Tarjetas del panel rediseñadas al estilo «mono»**: cada tarjeta del manager pasa a un contenedor
   redondeado de 24 px con su propio color de acento, cabecera en mayúsculas con el icono en píldora y
   un «stage» interior de 14 px donde viven los gráficos. Los visualizadores (velocímetro de 240°,
