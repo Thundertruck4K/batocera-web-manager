@@ -44,6 +44,15 @@ El proyecto se trabaja en **dos repositorios independientes** que comparten el m
   - Autostart: `/userdata/system/custom.sh` (marker `# [batocera-manager]` / `# [/batocera-manager]`)
   - `python_path` default: detectado por glob (`/usr/lib/python3*/site-packages/configgen/emulatorlauncher.py`); fallback `python3.12`
 - After creating a system CFG, restart ES: `batocera-es-swissknife --restart` (también `POST /api/es/restart`; `get_es_status()` expone `restart_pending`)
+- **Node.js en el dispositivo (opcional)**: la Batocera de desarrollo tiene Node v26 LTS en
+  `/userdata/system/node/current` (enlazado en `/usr/bin/node` y `/usr/bin/npm`). Se instaló desde el
+  tarball oficial de nodejs.org porque Batocera es **Buildroot** y no tiene `apt`/`dpkg`: no se puede
+  instalar nada por gestor de paquetes. El bloque `# [batocera-node]` de
+  `/userdata/system/custom.sh` rehace los enlaces en cada arranque (la partición `/usr` es un overlay
+  que se pierde al reiniciar). Con eso se puede recompilar el frontend en la propia consola:
+  `cd /userdata/system/batocera_web/frontend && npm ci && npm run build` → el bundle sale con los
+  **mismos hashes** que el versionado en el repo. **No hace falta para usar la app**: el despliegue
+  normal sigue siendo subir `frontend/dist/` ya compilado.
 
 ## Architecture
 

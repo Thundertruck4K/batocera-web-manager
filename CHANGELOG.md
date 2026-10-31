@@ -7,6 +7,11 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Node.js opcional en el dispositivo**: la Batocera de desarrollo ya tiene Node v26 LTS
+  (`/userdata/system/node/current`, enlazado en `/usr/bin/node`), instalado desde el tarball oficial
+  porque Batocera es Buildroot y no tiene gestor de paquetes. Permite recompilar el frontend en la
+  propia consola; el bundle sale con los mismos hashes que el versionado. **Sigue sin ser necesario**:
+  el despliegue normal es subir `frontend/dist/` ya compilado.
 - **Backend unificado con la versión Python pura**: el `app.py` de este repositorio pasa a ser
   **idéntico** al del repositorio hermano (`batocera-web-manager`), salvo la constante `APP_REPO` (el
   repo del que se leen las releases). Los dos proyectos comparten backend y API sin riesgo de

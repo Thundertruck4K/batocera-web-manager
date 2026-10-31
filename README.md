@@ -429,6 +429,20 @@ npm run build        # genera frontend/dist/
 Arranca el backend en otra terminal (`python3 app.py`) para tener datos reales. La API es la misma que
 usa la interfaz clásica, así que no hay nada nuevo que desplegar en el backend.
 
+> **¿Y en la propia consola?** La Batocera de desarrollo ya tiene **Node v26 LTS** instalado
+> (`/userdata/system/node/current`, enlazado en `/usr/bin/node`), así que también puedes recompilar
+> el frontend allí mismo:
+>
+> ```bash
+> cd /userdata/system/batocera_web/frontend
+> npm ci
+> npm run build
+> ```
+>
+> El bundle sale con los **mismos hashes** que el versionado en el repositorio. Aun así, el despliegue
+> normal sigue siendo subir `frontend/dist/` ya compilado: la app no debe necesitar Node para
+> funcionar.
+
 ### 🧑‍💻 Proceso de desarrollo
 
 Este repositorio es **una de las dos instancias** del proyecto. La otra es la versión **Python pura**
