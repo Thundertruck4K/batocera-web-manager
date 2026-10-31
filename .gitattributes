@@ -2,4 +2,5 @@
 # los rompe (bash no encuentra el intérprete con un «#!/bin/bash\r»).
 # Git los guarda con LF y los deja con LF también en el working copy.
 frontend/dist/** text eol=lf
+*.sh text eol=lf
 install.sh text eol=lf
