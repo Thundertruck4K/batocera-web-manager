@@ -7,6 +7,13 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Backend unificado con la versión Python pura**: el `app.py` de este repositorio pasa a ser
+  **idéntico** al del repositorio hermano (`batocera-web-manager`), salvo la constante `APP_REPO` (el
+  repo del que se leen las releases). Los dos proyectos comparten backend y API sin riesgo de
+  divergencia: un comprobador automático verifica que los dos ficheros siguen siendo iguales.
+- **Proceso de desarrollo documentado**: el README y AGENTS.md explican ahora la relación entre las dos
+  instancias, los puertos en uso (`:5001` React / `:5000` Python / `:5173` Vite), los comandos
+  habituales y la política de ramas: nunca `push` directo a `master`, siempre rama + pull request.
 - **El proyecto se independiza en su propio repositorio**: `batocera-web-manager-react`. A partir de
   aquí este repositorio contiene la versión con interfaz **React + Tailwind CSS**; la versión Python
   pura (interfaz de un solo fichero, sin build ni dependencias) se queda en

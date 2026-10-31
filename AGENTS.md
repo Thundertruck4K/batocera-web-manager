@@ -4,6 +4,28 @@
 > de un solo fichero, sin build) vive en `Thundertruck4K/batocera-web-manager`, con el mismo backend.
 > Los enlaces públicos de este repo apuntan a `batocera-web-manager-react`.
 
+## Entorno de desarrollo local (dos instancias)
+
+El proyecto se trabaja en **dos repositorios independientes** que comparten el mismo backend:
+
+| | React + Tailwind (este repo) | Python puro |
+|---|---|---|
+| GitHub | `Thundertruck4K/batocera-web-manager-react` | `Thundertruck4K/batocera-web-manager` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web` |
+| Backend | `:5001` | `:5000` |
+| Interfaz | `frontend/` (Vite en `:5173`) | `templates/index.html` |
+
+- **El `app.py` de los dos repos debe quedar idéntico salvo `APP_REPO`** (el repo del que se leen las
+  releases). Si tocas el backend aquí, propaga el cambio al otro repo en la misma tanda.
+- Herramientas de desarrollo, fuera de los repos, en `D:\UTILS\batocera_web`: `dev.ps1` / `dev.cmd`
+  (`react`, `python`, `both`, `stop`, `status`, `check`) y `check-backend-sync.py`, que compara los dos
+  `app.py`, exige los repos limpios y subidos, y vigila que el bundle y los `.sh` no lleven CRLF.
+- **Nunca `push` directo a `master`**: rama `feature/...` o `fix/...` → PR → merge.
+- `frontend/dist/` **se versiona** (el dispositivo no tiene Node): recompila con `npm run build` y
+  sube el bundle en el mismo commit que los cambios del frontend.
+- Windows: la ExecutionPolicy bloquea los `.ps1` → usa `dev.cmd`. Los `.cmd` necesitan **CRLF** y sin
+  acentos. El `bash` de este entorno es **PowerShell 5.1** (sin `&&`, sin `cmd`, `npm` → `npm.cmd`).
+
 ## Run
 
 - Start server: `python3 app.py` (default port 5000, listens on `0.0.0.0`)
@@ -46,7 +68,8 @@
   que faltan cuando el backend las deja vacíos (fuera de Linux no hay `/proc` ni `/sys`) para que la
   interfaz degrade en lugar de romperse con una pantalla en blanco.
 - En desarrollo: `npm run dev` (Vite en :5173) hace de proxy de `/api` hacia el backend en :5000.
-  Variable `BATOCERA_BACKEND` para cambiar el destino del proxy.
+  Variable `BATOCERA_BACKEND` para cambiar el destino del proxy; con las dos instancias en marcha,
+  apúntala a `http://127.0.0.1:5001` (el backend de **este** repo) para no mezclarlas con el :5000.
 - **La interfaz clásica sigue viva**: `templates/index.html` y sus tests (`tests/test_mono_charts.py`,
   `tests/test_ui_theme.py`) no se tocan. `render_index()` no ha cambiado; `render_app()` elige la SPA
   si `frontend/dist/index.html` existe y si no, la clásica.

@@ -3199,8 +3199,10 @@ def get_news():
 #  hay una versión mayor (2.0, 3.0...) disponible. Se apoya en el feed Atom
 #  de GitHub, el mismo mecanismo que ya usa get_news() para Batocera.
 #  Todo falla en silencio: sin red, el dashboard sigue funcionando igual.
-APP_RELEASES_FEED = ("https://github.com/Thundertruck4K/"
-                     "batocera-web-manager-react/releases.atom")
+# Repositorio del que se leen las releases. Cada proyecto vigila el suyo:
+# el backend es idéntico en los dos repos, sólo cambia esta línea.
+APP_REPO = "Thundertruck4K/batocera-web-manager-react"
+APP_RELEASES_FEED = f"https://github.com/{APP_REPO}/releases.atom"
 APP_UPDATE_TTL = 3600          # 1 h entre comprobaciones
 _app_update_cache = {"ts": 0, "data": None}
 

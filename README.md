@@ -429,6 +429,57 @@ npm run build        # genera frontend/dist/
 Arranca el backend en otra terminal (`python3 app.py`) para tener datos reales. La API es la misma que
 usa la interfaz clásica, así que no hay nada nuevo que desplegar en el backend.
 
+### 🧑‍💻 Proceso de desarrollo
+
+Este repositorio es **una de las dos instancias** del proyecto. La otra es la versión **Python pura**
+(interfaz de un solo fichero, sin build), con el mismo backend y la misma API:
+
+| | Versión React + Tailwind (este repo) | Versión Python pura |
+|:--|:--|:--|
+| GitHub | `Thundertruck4K/batocera-web-manager-react` | `Thundertruck4K/batocera-web-manager` |
+| Interfaz | `frontend/` — React 19 + Vite + Tailwind v4 | `templates/index.html` — un fichero, sin build |
+| Backend | `app.py` | `app.py` (idéntico) |
+
+Los dos `app.py` se mantienen **byte a byte idénticos** salvo una constante (`APP_REPO`, el
+repositorio del que se leen las releases). Un comprobador automático lo verifica, para que ninguno de
+los dos se desincronice en silencio.
+
+#### Puertos en desarrollo
+
+| Puerto | Qué es |
+|:--|:--|
+| `5001` | backend de esta instancia (React) |
+| `5000` | backend de la instancia Python pura |
+| `5173` | Vite — dev server del frontend; hace de proxy de `/api` hacia `:5001` |
+
+Con las dos instancias en marcha, `BATOCERA_BACKEND=http://127.0.0.1:5001` hace que Vite apunte al
+backend de **este** repo y no al del otro:
+
+```bash
+cd frontend
+BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
+```
+
+#### Comandos habituales
+
+```bash
+# Backend de esta instancia
+python app.py --port 5001
+
+# Tests del backend (438)
+python -m pytest
+
+# Frontend
+cd frontend && npm run build      # regenera frontend/dist/ (se versiona)
+npx tsc -b --noEmit               # comprobación de tipos
+```
+
+#### Ramas y pull requests
+
+Cada repositorio tiene su propio ciclo y **no se hace `push` directo a `master`**: se crea una rama
+(`feature/...` o `fix/...`), se sube y se abre un *pull request* contra `master`. Cuando cambie el
+backend, el cambio se aplica en los dos repositorios para que los `app.py` sigan siendo idénticos.
+
 ---
 
 ## 💻 Requisitos y compatibilidad
@@ -531,6 +582,11 @@ Ideas anotadas, sin fechas:
 
 Se agradece un estilo de código acorde con el resto (comentarios en español, sin dependencias
 nuevas en el servidor) y que los cambios de interfaz conserven los identificadores de los tests.
+
+Si el cambio toca el backend (`app.py`), hay que **aplicarlo también en el repositorio hermano**
+([Python puro](https://github.com/Thundertruck4K/batocera-web-manager)) para que los dos `app.py`
+sigan siendo idénticos: un comprobador automático lo verifica. Y si toca el frontend, recuerda
+subir también el bundle recompilado (`frontend/dist/`), porque el dispositivo no tiene Node.
 
 ---
 
