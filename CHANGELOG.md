@@ -7,6 +7,12 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **El proyecto se independiza en su propio repositorio**: `batocera-web-manager-react`. A partir de
+  aquí este repositorio contiene la versión con interfaz **React + Tailwind CSS**; la versión Python
+  pura (interfaz de un solo fichero, sin build ni dependencias) se queda en
+  `Thundertruck4K/batocera-web-manager`, con el mismo backend y la misma API.
+  - Las URLs públicas (README, `install.sh`, feed de actualizaciones, instrucciones del panel y
+    sus tests) apuntan al repositorio nuevo.
 - **Frontend React + Tailwind CSS** (`frontend/`): la interfaz del manager se reescribe como SPA en
   React 19 + TypeScript + Vite 6 + Tailwind CSS v4, con el design system **amicro-design-system**
   (tokens `--color-card` / `--color-stage` / `--color-chart-1..4`, tema claro y oscuro, curva de
@@ -166,9 +172,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Primera versión: servidor HTTP puro (stdlib), sin dependencias, gestor de sistemas personalizados, dashboard básico, monitor de ROMs/BIOS, scraper, temas y arranque automático.
 - Licencia MIT.
 
-[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager/compare/v1.4...HEAD
-[1.4]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.4
-[1.3]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.3
+[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager-react/compare/v1.4...HEAD
+[1.4]: https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v1.4
+[1.3]: https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v1.3
 
 > Las versiones anteriores a v1.3 no están etiquetadas en Git; se referencian por
 > su commit inicial (`44effde` para v1.2, `589bfc7` para el README v1.2).

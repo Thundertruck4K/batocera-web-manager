@@ -1,4 +1,10 @@
-@import "tailwindcss";
+/* Sólo se escanea el código de la SPA. Sin `source(none)`, Tailwind recorre
+   todo el repositorio (el template clásico, el README, docs/) y genera
+   utilidades que la interfaz React no usa: ~11 kB de CSS de más. */
+@import "tailwindcss" source(none);
+
+@source "./**/*.{ts,tsx}";
+@source "../index.html";
 
 /* El tema se alterna con la clase `.dark` en <html>. */
 @custom-variant dark (&:where(.dark, .dark *));

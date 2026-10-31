@@ -1,25 +1,32 @@
 <div align="center">
 
-# 🕹️ Batocera System Manager Web
+# 🕹️ Batocera System Manager Web — React
 
 **Interfaz web para gestionar tu Batocera desde el navegador**: sistemas personalizados,
 ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.4-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager/releases)
+> **Este repositorio es la versión con interfaz React + Tailwind CSS.** La versión Python pura
+> (interfaz de un solo fichero, sin build ni dependencias) está en
+> [Thundertruck4K/batocera-web-manager](https://github.com/Thundertruck4K/batocera-web-manager).
+> El backend es el mismo en los dos: sólo cambia la interfaz.
+
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.4-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager-react/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
-[![Sin dependencias](https://img.shields.io/badge/dependencias-ninguna-16a34a)]()
+[![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
+[![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
 [![Tests](https://img.shields.io/badge/tests-438%20OK-success)](tests)
-[![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
-[![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
-[![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
-[![Último commit](https://img.shields.io/github/last-commit/Thundertruck4K/batocera-web-manager?label=%C3%BAltimo%20commit)](https://github.com/Thundertruck4K/batocera-web-manager/commits/master)
-[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager)
+[![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager-react?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager-react/stargazers)
+[![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager-react?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager-react/forks)
+[![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager-react?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager-react/issues)
+[![Último commit](https://img.shields.io/github/last-commit/Thundertruck4K/batocera-web-manager-react?label=%C3%BAltimo%20commit)](https://github.com/Thundertruck4K/batocera-web-manager-react/commits/master)
+[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager-react?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager)
 
 ![Batocera System Manager](docs/media/logo.png)
 
-**Proyecto de código abierto** · Licencia MIT · Hecho con Python puro (sin dependencias)  
+**Proyecto de código abierto** · Licencia MIT · Backend en Python puro (sin dependencias) · Interfaz en React + Tailwind CSS  
 [Instalación](#-instalación) · [Capturas](#-capturas) · [API](#-api-rest) · [FAQ](#-preguntas-frecuentes) · [Apoyar el proyecto](#-apoyar-el-proyecto)
 
 </div>
@@ -54,8 +61,10 @@ ventiladores, más el estado de EmulationStation y las últimas versiones de Bat
 `/proc` y `/sys`), un **monitor de ROMs y BIOS** que agrupa los sistemas por tipo de equipo y detecta
 qué BIOS faltan en cada uno, un **scraper multi-fuente** y un asistente de **arranque automático**.
 
-No hay que compilar nada, ni instalar dependencias, ni tocar Node, Docker o bases de datos: es un
-servidor HTTP de la librería estándar de Python que sirve una única página.
+En el dispositivo **no hay que compilar nada**: el bundle de la interfaz ya viene compilado en el
+repositorio y el backend lo sirve tal cual. El backend **no tiene ni una dependencia**: es un
+servidor HTTP de la librería estándar de Python. Node sólo hace falta si quieres tocar la interfaz;
+para usarla en Batocera, ni siquiera eso.
 
 ### Características
 
@@ -179,7 +188,7 @@ viene incluido en el sistema.
 ```bash
 ssh root@BATOCERA
 
-git clone https://github.com/Thundertruck4K/batocera-web-manager.git /userdata/system/batocera_web
+git clone https://github.com/Thundertruck4K/batocera-web-manager-react.git /userdata/system/batocera_web
 cd /userdata/system/batocera_web
 bash install.sh
 ```
@@ -191,7 +200,7 @@ extráela (la carpeta queda lista, sin renombrar):
 
 ```bash
 cd /userdata/system
-wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/releases/latest/download/batocera_web.tar.gz
+wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager-react/releases/latest/download/batocera_web.tar.gz
 tar -xzf batocera_web.tar.gz
 chmod +x batocera_web/install.sh
 cd batocera_web
@@ -254,7 +263,7 @@ así que no se pierden):
 ```bash
 cd /userdata/system
 mv batocera_web batocera_web.bak
-wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/releases/latest/download/batocera_web.tar.gz
+wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager-react/releases/latest/download/batocera_web.tar.gz
 tar -xzf batocera_web.tar.gz
 chmod +x batocera_web/install.sh
 cd batocera_web

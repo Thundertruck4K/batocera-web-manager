@@ -1,0 +1,5 @@
+# El bundle compilado y el instalador se despliecan en Linux: cualquier CRLF
+# los rompe (bash no encuentra el intérprete con un «#!/bin/bash\r»).
+# Git los guarda con LF y los deja con LF también en el working copy.
+frontend/dist/** text eol=lf
+install.sh text eol=lf

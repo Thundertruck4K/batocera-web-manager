@@ -5,7 +5,7 @@
 #
 #  Uso (por SSH, dentro de la propia Batocera):
 #     ssh root@batocera
-#     git clone https://github.com/Thundertruck4K/batocera-web-manager.git \
+#     git clone https://github.com/Thundertruck4K/batocera-web-manager-react.git \
 #         /userdata/system/batocera_web
 #     cd /userdata/system/batocera_web && bash install.sh
 #

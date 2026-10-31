@@ -3200,7 +3200,7 @@ def get_news():
 #  de GitHub, el mismo mecanismo que ya usa get_news() para Batocera.
 #  Todo falla en silencio: sin red, el dashboard sigue funcionando igual.
 APP_RELEASES_FEED = ("https://github.com/Thundertruck4K/"
-                     "batocera-web-manager/releases.atom")
+                     "batocera-web-manager-react/releases.atom")
 APP_UPDATE_TTL = 3600          # 1 h entre comprobaciones
 _app_update_cache = {"ts": 0, "data": None}
 
