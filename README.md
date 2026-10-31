@@ -402,6 +402,50 @@ batocera_web/
 └── README.md
 ```
 
+### 🧑‍💻 Proceso de desarrollo
+
+Este repositorio es **una de las dos instancias** del proyecto. La otra es la versión con interfaz
+**React + Tailwind CSS**, con el mismo backend y la misma API:
+
+| | Versión Python pura (este repo) | Versión React + Tailwind |
+|:--|:--|:--|
+| GitHub | `Thundertruck4K/batocera-web-manager` | `Thundertruck4K/batocera-web-manager-react` |
+| Interfaz | `templates/index.html` — un fichero, sin build | `frontend/` — React 19 + Vite + Tailwind v4 |
+| Backend | `app.py` | `app.py` (idéntico) |
+
+Los dos `app.py` se mantienen **byte a byte idénticos** salvo una constante (`APP_REPO`, el
+repositorio del que se leen las releases). Un comprobador automático lo verifica, para que ninguno de
+los dos se desincronice en silencio.
+
+#### Puertos en desarrollo
+
+| Puerto | Qué es |
+|:--|:--|
+| `5000` | backend de esta instancia (Python puro) |
+| `5001` | backend de la instancia React |
+| `5173` | Vite — dev server del frontend React; hace de proxy de `/api` hacia `:5001` |
+
+#### Comandos habituales
+
+```bash
+# Backend de esta instancia
+python app.py                  # puerto 5000
+python app.py --port 5001      # otro puerto
+
+# Tests (438)
+python -m pytest
+
+# En la instancia React
+cd frontend && npm install && npm run dev    # Vite en :5173
+cd frontend && npm run build                 # genera frontend/dist/ (se versiona)
+```
+
+#### Ramas y pull requests
+
+Cada repositorio tiene su propio ciclo y **no se hace `push` directo a `master`**: se crea una rama
+(`feature/...` o `fix/...`), se sube y se abre un *pull request* contra `master`. Cuando cambie el
+backend, el cambio se aplica en los dos repositorios para que los `app.py` sigan siendo idénticos.
+
 ---
 
 ## 💻 Requisitos y compatibilidad
@@ -504,6 +548,10 @@ Ideas anotadas, sin fechas:
 
 Se agradece un estilo de código acorde con el resto (comentarios en español, sin dependencias
 nuevas en el servidor) y que los cambios de interfaz conserven los identificadores de los tests.
+
+Si el cambio toca el backend (`app.py`), hay que **aplicarlo también en el repositorio hermano**
+([React + Tailwind](https://github.com/Thundertruck4K/batocera-web-manager-react)) para que los dos
+`app.py` sigan siendo idénticos: un comprobador automático lo verifica.
 
 ---
 

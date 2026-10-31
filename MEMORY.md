@@ -1,7 +1,8 @@
-# MEMORY — Batocera System Manager Web
+# MEMORY — Batocera System Manager Web (versión Python pura)
 
 Proyecto: `batocera_web` v1.4  
-Repositorio: `D:\UTILS\batocera_web`  
+Repositorio: `Thundertruck4K/batocera-web-manager`  
+Copia local: `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web`  
 Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ---
@@ -11,10 +12,11 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 | Capa | Tecnología |
 |------|-----------|
 | Backend | `http.server.BaseHTTPRequestHandler` (stdlib puro, sin Flask) |
-| Frontend | SPA con HTML/CSS/JS inline en `templates/index.html` |
+| Frontend | SPA con HTML/CSS/JS inline en `templates/index.html` — sin build |
 | Scraping | ScreenScraper.fr, TheGamesDB, IGDB (Twitch) |
 | Dependencias | **Cero** — solo stdlib. Pillow opcional para placeholders de logos |
 | CLI | `--port N` (único flag) |
+| Instancia hermana | La versión **React + Tailwind** vive en `Thundertruck4K/batocera-web-manager-react` (`D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react`). Comparte el `app.py` |
 
 ---
 
@@ -22,18 +24,45 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 
 ```
 batocera_web/
-├── app.py                 # ~5750 líneas — servidor HTTP + API REST + scraper + dashboard
+├── app.py                 # ~5780 líneas — servidor HTTP + API REST + scraper + dashboard
 ├── templates/
 │   └── index.html         # ~6536 líneas — SPA con todo el CSS/JS inline (l10n: es)
 ├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
+├── tests/                 # 438 tests con pytest
+├── docs/                  # logo, capturas y specs de diseño
 ├── AGENTS.md              # Guía operativa para asistentes de IA
 ├── install.sh             # Script de instalación (v1.4: sin Flask, instala en `batocera_web/`)
+├── .gitattributes         # Fuerza LF en lo que se despliega en Linux (bash rompe con CRLF)
 ├── CHANGELOG.md           # Keep a Changelog
 ├── generate_bios_db.py    # Regenerador de BIOS_DB contra upstream `batocera-systems`
 ├── LICENSE                # MIT
 ├── MEMORY.md              # Este archivo
 └── README.md              # Documentación de usuario
 ```
+
+---
+
+## Desarrollo local
+
+El proyecto se trabaja en **dos repositorios independientes** que comparten el mismo backend:
+
+| | Python puro (este repo) | React + Tailwind |
+|---|---|---|
+| GitHub | `Thundertruck4K/batocera-web-manager` | `Thundertruck4K/batocera-web-manager-react` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web` | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
+| Backend | `:5000` | `:5001` |
+| Interfaz | `templates/index.html` | `frontend/` (Vite en `:5173`) |
+
+- Los dos `app.py` deben quedar **idénticos salvo `APP_REPO`** (el repo del que se leen las releases).
+  Si se toca el backend en uno, el cambio se propaga al otro en la misma tanda.
+- Herramientas de desarrollo (fuera de los repos, en `D:\UTILS\batocera_web`): `dev.ps1` / `dev.cmd`
+  con los subcomandos `react`, `python`, `both`, `stop`, `status` y `check`, más
+  `check-backend-sync.py`, que compara los dos `app.py`, exige los repos limpios y subidos, y vigila
+  que los ficheros de shell y el bundle compilado no lleven CRLF.
+- **Nunca hay `push` directo a `master`**: rama `feature/...` o `fix/...` → PR → merge.
+- En Windows la ExecutionPolicy bloquea los `.ps1`: usar `dev.cmd`. Los `.cmd` se guardan con **CRLF**
+  y sin acentos (cmd.exe no los interpreta bien si no).
+- `bash` en este entorno es **PowerShell 5.1**: sin `&&`, sin `cmd`, y `npm` se invoca como `npm.cmd`.
 
 ---
 

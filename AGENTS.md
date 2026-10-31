@@ -5,6 +5,26 @@
 > `Thundertruck4K/batocera-web-manager-react`, con el mismo backend y la misma API. Aquí **no uses
 > React ni Recharts**: este proyecto no tiene build.
 
+## Entorno de desarrollo local (dos instancias)
+
+El proyecto se trabaja en **dos repositorios independientes** que comparten el mismo backend:
+
+| | Python puro (este repo) | React + Tailwind |
+|---|---|---|
+| GitHub | `Thundertruck4K/batocera-web-manager` | `Thundertruck4K/batocera-web-manager-react` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web` | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
+| Backend | `:5000` | `:5001` |
+| Interfaz | `templates/index.html` | `frontend/` (Vite en `:5173`) |
+
+- **El `app.py` de los dos repos debe quedar idéntico salvo `APP_REPO`** (el repo del que se leen las
+  releases). Si tocas el backend aquí, propaga el cambio al otro repo en la misma tanda.
+- Herramientas de desarrollo, fuera de los repos, en `D:\UTILS\batocera_web`: `dev.ps1` / `dev.cmd`
+  (`react`, `python`, `both`, `stop`, `status`, `check`) y `check-backend-sync.py`, que compara los dos
+  `app.py`, exige los repos limpios y subidos, y vigila que lo que se despliega en Linux no lleve CRLF.
+- **Nunca `push` directo a `master`**: rama `feature/...` o `fix/...` → PR → merge.
+- Windows: la ExecutionPolicy bloquea los `.ps1` → usa `dev.cmd`. Los `.cmd` necesitan **CRLF** y sin
+  acentos. El `bash` de este entorno es **PowerShell 5.1** (sin `&&`, sin `cmd`, `npm` → `npm.cmd`).
+
 ## Run
 
 - Start server: `python3 app.py` (default port 5000, listens on `0.0.0.0`)

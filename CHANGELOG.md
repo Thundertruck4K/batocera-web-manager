@@ -7,6 +7,13 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Backend unificado con la versión React**: el `app.py` de este repositorio pasa a ser **idéntico**
+  al del repositorio hermano (`batocera-web-manager-react`), salvo la constante `APP_REPO` (el repo del
+  que se leen las releases). Los dos proyectos comparten backend y API sin riesgo de divergencia: un
+  comprobador automático verifica que los dos ficheros siguen siendo iguales.
+- **Proceso de desarrollo documentado**: el README y AGENTS.md explican ahora la relación entre las dos
+  instancias, los puertos en uso (`:5000` Python / `:5001` React / `:5173` Vite), los comandos
+  habituales y la política de ramas: nunca `push` directo a `master`, siempre rama + pull request.
 - **El proyecto se independiza**: la versión con interfaz **React + Tailwind CSS** pasa a su propio
   repositorio, `Thundertruck4K/batocera-web-manager-react`. Este repositorio se queda con la versión
   Python pura (interfaz de un solo fichero, sin build ni dependencias), con el mismo backend y la
@@ -39,6 +46,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   código y el CSS de los gráficos antiguos.
 
 ### Corregido
+- `install.sh` se quedaba con finales **CRLF** en el working copy de Windows (por `core.autocrlf`), y
+  bash no encontraba el intérprete al desplegar en Linux. Se añade `.gitattributes` con
+  `install.sh text eol=lf` y el fichero se renormaliza a LF.
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
   el scrim negro), el chip de codigo del aviso de servicio y los degradados de
   texto del dashboard. Ahora cada uno tiene su variable de tema.

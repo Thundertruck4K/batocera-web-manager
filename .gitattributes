@@ -1,0 +1,5 @@
+# El instalador se despliega en Linux: cualquier CRLF lo rompe (bash no
+# encuentra el intérprete con un «#!/bin/bash\r»). Git lo guarda con LF y lo
+# deja con LF también en el working copy, aunque core.autocrlf esté a true.
+*.sh text eol=lf
+install.sh text eol=lf
