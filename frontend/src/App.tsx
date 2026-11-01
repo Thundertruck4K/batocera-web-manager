@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/hooks/useTheme'
 import { ToastProvider } from '@/hooks/useToast'
 import { api } from '@/lib/api'
 import { Dashboard } from '@/pages/Dashboard'
+import { DebugPage } from '@/pages/Debug'
 import { NotFound } from '@/pages/NotFound'
 import { SettingsPage } from '@/pages/Settings'
 import { SystemForm } from '@/pages/SystemForm'
@@ -44,6 +45,7 @@ function ManagerShell() {
         <Route path="/sistemas" element={<Systems />} />
         <Route path="/sistemas/nuevo" element={<SystemForm />} />
         <Route path="/sistemas/:name/editar" element={<SystemForm />} />
+        <Route path="/depuracion" element={<DebugPage />} />
         <Route path="/configuracion" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

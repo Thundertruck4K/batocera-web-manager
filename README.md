@@ -95,6 +95,9 @@ para usarla en Batocera, ni siquiera eso.
 - **🌗 Tema claro/oscuro** — la interfaz se puede ver en oscuro (por defecto) o en claro, y también
   seguir la preferencia del sistema. El botón del sidebar alterna al instante; en Configuración se
   elige el modo. Se guarda en el manager, así que se aplica igual desde el móvil o el PC.
+- **🐞 Depuración en vivo** — una vista de depuración con el flujo de eventos del manager en tiempo
+  real: cada petición, acción y aviso llega por SSE y se puede filtrar por nivel (debug, info, aviso,
+  error) y por texto. El historial vive en memoria en el servidor (los 500 últimos eventos).
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 

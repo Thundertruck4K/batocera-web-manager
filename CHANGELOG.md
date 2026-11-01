@@ -7,6 +7,12 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Vista de depuración en vivo** (`/depuracion`): nueva entrada en el sidebar con el componente
+  `LogStream` de [overtrue/ui](https://ui.overtrue.xyz/components/log-stream), instalado con el CLI de
+  shadcn (`frontend/components.json` guarda la configuración del registro). El backend mantiene un
+  historial circular de 500 eventos con nivel y los empuja por SSE (`GET /api/logs/stream`), así que
+  cada petición, acción y aviso aparece en vivo, con filtros por nivel (debug, info, aviso, error) y
+  por texto, y con el historial de la interfaz clásica intacto.
 - **Node.js opcional en el dispositivo**: la Batocera de desarrollo ya tiene Node v26 LTS
   (`/userdata/system/node/current`, enlazado en `/usr/bin/node`), instalado desde el tarball oficial
   porque Batocera es Buildroot y no tiene gestor de paquetes. Permite recompilar el frontend en la

@@ -9,6 +9,7 @@ import io
 import json
 import mimetypes
 import os
+import queue
 import random
 import re
 import shlex
@@ -18,6 +19,7 @@ import traceback
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zlib
+from collections import deque
 from pathlib import Path
 from xml.dom import minidom
 
@@ -4719,6 +4721,7 @@ def _start_batch_worker():
                         with _scraper_jobs_lock:
                             job["status"] = "failed"
                             job["error"] = str(e)
+                        log_event("error", "scraper", f"Trabajo {job.get('id','?')} falló: {e}")
                 else:
                     time.sleep(1)
         _scraper_worker_thread = threading.Thread(target=worker, daemon=True)
@@ -4791,6 +4794,10 @@ def _process_batch_job(job):
         job["status"] = "completed"
         job["progress"] = 100
         meta_saved_total = job["aggregated"].get("meta_saved", 0)
+        agg_summary = (f"ok={job['aggregated'].get('ok',0)} "
+                       f"fail={job['aggregated'].get('fail',0)} "
+                       f"skip={job['aggregated'].get('skip',0)}")
+    log_event("info", "scraper", f"Trabajo {job.get('id','?')} completado: {agg_summary}")
     # ES mantiene las gamelists en memoria: recargarlo al terminar para que los
     # textos aparezcan en la TV. Fuera del lock: el reinicio puede tardar y no
     # debe bloquear el sondeo de progreso del front-end.
@@ -4798,6 +4805,51 @@ def _process_batch_job(job):
         es_reload = reload_es_after_scrape(True)
         with _scraper_jobs_lock:
             job["es_reload"] = es_reload
+
+# ─── Stream de depuración ───────────────────────────────────────────
+# Historial circular de eventos con nivel que se sirve en vivo por SSE a la
+# pantalla de depuración del frontend. Vive solo en memoria: al reiniciar el
+# servidor el historial empieza de cero.
+#
+# El nivel lo decide quien emite el evento:
+#   debug  traza de detalle (peticiones HTTP, simulaciones)
+#   info   acciones del usuario y del sistema
+#   warn   algo salió mal pero el servidor sigue
+#   error  fallo que aborta una operación
+
+LOG_MAX_EVENTS = 500
+_log_events   = deque(maxlen=LOG_MAX_EVENTS)
+_log_seq      = 0
+_log_lock     = threading.Lock()
+_log_clients  = []          # colas de los clientes SSE conectados
+
+
+def log_event(level, source, message):
+    """Registra un evento y lo reparte a los clientes SSE conectados."""
+    global _log_seq
+    with _log_lock:
+        _log_seq += 1
+        event = {"id": str(_log_seq), "time": round(time.time(), 3),
+                 "level": level, "source": source, "message": str(message)}
+        _log_events.append(event)
+        clients = list(_log_clients)
+    for q in clients:
+        try:
+            q.put_nowait(event)
+        except queue.Full:
+            pass    # un cliente lento no puede bloquear al resto
+    return event
+
+
+def log_events_since(since=0):
+    """Eventos con id mayor que `since` (0 = todo el historial)."""
+    try:
+        since = int(since)
+    except (TypeError, ValueError):
+        since = 0
+    with _log_lock:
+        return [e for e in _log_events if int(e["id"]) > since]
+
 
 # ─── HTTP Handler ─────────────────────────────────────────────────
 
@@ -4834,6 +4886,11 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             status = 0
         if status >= 400 or status == 0:
             super().log_request(code, size)
+        # Traza para la pantalla de depuración. Es ruido a propósito: el filtro
+        # por nivel de la interfaz es quien lo deja limpio.
+        if not self.path.startswith("/api/logs/stream"):
+            level = "error" if status >= 500 else ("warn" if status >= 400 else "debug")
+            log_event(level, "http", f"{self.command} {self.path} → {code}")
 
     def log_message(self, format, *args):
         print(f"  {self.address_string()} — {format % args}")
@@ -4856,6 +4913,48 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Expires","0")
         self.send_header("Content-Length",len(body))
         self.end_headers(); self.wfile.write(body)
+
+    def _sse_write(self, event):
+        payload = json.dumps(event, ensure_ascii=False).encode()
+        self.wfile.write(b"data: " + payload + b"\n\n")
+        self.wfile.flush()
+
+    def stream_logs(self, since=0):
+        """Envía el historial pendiente y después los eventos nuevos (SSE)."""
+        try:
+            since = int(since)
+        except (TypeError, ValueError):
+            since = 0
+        q = queue.Queue(maxsize=256)
+        # El backlog y el alta del suscriptor se toman bajo el mismo candado:
+        # así no se pierde ningún evento ni se repite ninguno.
+        with _log_lock:
+            backlog = [e for e in _log_events if int(e["id"]) > since]
+            _log_clients.append(q)
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache, no-store")
+            self.send_header("X-Accel-Buffering", "no")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            for event in backlog:
+                self._sse_write(event)
+            while True:
+                try:
+                    event = q.get(timeout=15)
+                except queue.Empty:
+                    # Comentario SSE: mantiene viva la conexión frente a proxies.
+                    self.wfile.write(b": keepalive\n\n")
+                    self.wfile.flush()
+                    continue
+                self._sse_write(event)
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass    # el cliente cerró la pestaña
+        finally:
+            with _log_lock:
+                if q in _log_clients:
+                    _log_clients.remove(q)
 
     def read_body(self):
         n = parse_content_length(self.headers.get("Content-Length", 0))
@@ -4896,6 +4995,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"active":detect_active_theme(s),"list":list_themes(s)})
         elif path == "/api/settings":
             self.send_json(public_settings(s))
+        elif path == "/api/logs":
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            self.send_json({"ok": True, "events": log_events_since((query.get("since") or ["0"])[0])})
+        elif path == "/api/logs/stream":
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            self.stream_logs((query.get("since") or ["0"])[0])
         elif len(parts)==3 and parts[:2]==["api","system"] and path.endswith("/xml"):
             name = parts[2]
             systems = list_custom_systems(s)
@@ -5056,9 +5161,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             save_settings_to_file(updated)
             if any(k.startswith("ra_") for k in data):
                 _ra_cache.update({"ts": 0, "data": None, "user": ""})
+            log_event("info", "ajustes", "Ajustes guardados")
             self.send_json({"ok":True})
         elif path == "/api/es/restart":
             ok, info = restart_emulationstation()
+            log_event("info" if ok else "warn", "es",
+                      "EmulationStation reiniciado" if ok else f"No se pudo reiniciar EmulationStation: {info}")
             self.send_json({"ok": ok, **info})
         elif path == "/api/upload-logo":
             self._upload_logo(s)
@@ -5143,6 +5251,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if len(parts)==3 and parts[:2]==["api","system"]:
             name = urllib.parse.unquote(parts[2])
             ok, info = delete_custom_system(name, s)
+            log_event("info" if ok else "error", "sistemas", f"Sistema eliminado: {name}")
             self.send_json({"ok": ok, **info})
         elif len(parts)>=3 and parts[:2]==["api","rom"]:
             system   = parts[2]
@@ -5178,6 +5287,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if not d.get("rompath","").strip():    errors.append("Ruta de ROMs requerida")
         if not d.get("extensions","").strip(): errors.append("Extensiones requeridas")
         if errors:
+            log_event("warn", "sistemas", f"Creación rechazada: {', '.join(errors)}")
             self.send_json({"ok":False,"errors":errors}); return
         dry      = bool(d.get("dry_run"))
         cfg_dir  = s["es_cfg_dir"]
@@ -5213,6 +5323,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 except Exception as e: log.append(f"⚠ {e}")
         log.append(f"\n✅ Sistema '{slug}' {'simulado' if dry else 'creado'}.")
         if not dry: log.append("   Reinicia EmulationStation para que aparezca.")
+        log_event("debug" if dry else "info", "sistemas",
+                  f"Sistema {'simulado' if dry else 'creado'}: {slug}")
         self.send_json({"ok":True,"log":log,"xml":xml_str,"cfg_path":cfg_path})
 
     def _update_system(self, s):
@@ -5229,6 +5341,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if not d.get("rompath","").strip():    errors.append("Ruta de ROMs requerida")
         if not d.get("extensions","").strip(): errors.append("Extensiones requeridas")
         if errors:
+            log_event("warn", "sistemas", f"Actualización rechazada: {', '.join(errors)}")
             self.send_json({"ok":False,"errors":errors}); return
         cfg_dir  = s["es_cfg_dir"]
         old_cfg  = os.path.join(cfg_dir, f"es_systems_{old}.cfg")
@@ -5270,6 +5383,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 except Exception as e: log.append(f"⚠ {e}")
         log.append(f"\n✅ Sistema '{slug}' {'simulado' if dry else 'actualizado'}.")
         if not dry: log.append("   Reinicia EmulationStation para que los cambios tengan efecto.")
+        log_event("debug" if dry else "info", "sistemas",
+                  f"Sistema {'simulado' if dry else 'actualizado'}: {slug}")
         self.send_json({"ok":True,"log":log,"xml":xml_str,"cfg_path":new_cfg})
 
     def _upload_logo(self, s):
@@ -5639,6 +5754,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         with _scraper_jobs_lock:
             _scraper_jobs[job_id] = job
         _start_batch_worker()
+        log_event("info", "scraper",
+                  f"Trabajo {job_id} creado: {len(systems)} sistema(s) desde {source}")
         self.send_json({"ok":True,"job_id":job_id})
 
     def _scraper_batch_list(self, s):
@@ -5697,6 +5814,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":False,"error":"Job no encontrado"}); return
             if j["status"] in ("pending","running"):
                 j["status"] = "cancelled"
+                log_event("warn", "scraper", f"Trabajo {job_id} cancelado")
         self.send_json({"ok":True})
 
     def _serve_rom_image(self, system, rom_filename, s):
@@ -5960,5 +6078,8 @@ if __name__ == "__main__":
     print(f"  -> http://{local_ip}:{PORT}  (desde tu red)")
     print("="*55)
     server = http.server.ThreadingHTTPServer((HOST,PORT), BatoceraHandler)
+    log_event("info", "servidor", f"Manager v{APP_VERSION} arrancado en el puerto {PORT}")
+    log_event("info", "servidor",
+              "Frontend: SPA de React" if spa_available() else "Frontend: interfaz clásica")
     try: server.serve_forever()
     except KeyboardInterrupt: print("\n  Servidor detenido."); server.server_close()

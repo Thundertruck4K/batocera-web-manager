@@ -1,4 +1,5 @@
 import {
+  Bug,
   Gamepad2,
   Gauge,
   Palette,
@@ -26,5 +27,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/roms', label: 'ROMs y BIOS', icon: Sparkles, pending: true },
   { to: '/scraper', label: 'Scraper', icon: Palette, pending: true },
   { to: '/retroachievements', label: 'Logros', icon: Trophy, pending: true },
+  { to: '/depuracion', label: 'Depuración', icon: Bug },
   { to: '/configuracion', label: 'Configuración', icon: Settings },
 ]

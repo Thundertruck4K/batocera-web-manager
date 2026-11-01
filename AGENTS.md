@@ -82,6 +82,12 @@ El proyecto se trabaja en **dos repositorios independientes** que comparten el m
 - **La interfaz clásica sigue viva**: `templates/index.html` y sus tests (`tests/test_mono_charts.py`,
   `tests/test_ui_theme.py`) no se tocan. `render_index()` no ha cambiado; `render_app()` elige la SPA
   si `frontend/dist/index.html` existe y si no, la clásica.
+- **Vista de depuración**: el sidebar tiene una entrada «Depuración» (`/depuracion`) que monta el
+  componente `LogStream` de [`overtrue/ui`](https://ui.overtrue.xyz/components/log-stream), instalado
+  con el CLI de shadcn en `frontend/src/components/overtrue/log-stream.tsx` (y `frontend/components.json`
+  como configuración del registro). El backend mantiene un historial circular de 500 eventos con nivel
+  (`log_event()`), lo sirve por `GET /api/logs` y lo empuja en vivo por `GET /api/logs/stream` (SSE).
+  El cliente es `frontend/src/hooks/useLogStream.ts` (EventSource, con deduplicación por id).
 
 ## Key notes
 

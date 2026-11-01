@@ -11,6 +11,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@tabler/icons-react": "^3.50.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
