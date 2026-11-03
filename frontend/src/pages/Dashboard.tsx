@@ -232,6 +232,7 @@ export function Dashboard() {
                       : []
                   }
                   centerLabel="ocupado"
+                  centerValue={primaryDisk ? primaryDisk.pct : 0}
                   formatValue={(v) => `${v.toFixed(0)}%`}
                 />
               </ChartCard>

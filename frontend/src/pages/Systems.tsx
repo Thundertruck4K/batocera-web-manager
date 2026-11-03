@@ -80,8 +80,8 @@ export function Systems() {
   return (
     <>
       <Topbar
-        title="Sistemas"
-        subtitle={`${filtered.length} sistema(s) definido(s) en EmulationStation`}
+        title="Sistemas Personalizados"
+        subtitle={`${filtered.length} sistema(s) añadido(s) manualmente a EmulationStation`}
         onMenu={openMenu}
         actions={
           <Button size="sm" variant="primary" onClick={() => navigate('/sistemas/nuevo')}>

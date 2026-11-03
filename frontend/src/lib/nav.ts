@@ -22,7 +22,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Panel de control', icon: Gauge, end: true },
-  { to: '/sistemas', label: 'Sistemas', icon: Gamepad2 },
+  { to: '/sistemas', label: 'Sistemas Personalizados', icon: Gamepad2 },
   { to: '/sistemas/nuevo', label: 'Añadir sistema', icon: Plus },
   { to: '/roms', label: 'ROMs y BIOS', icon: Sparkles, pending: true },
   { to: '/scraper', label: 'Scraper', icon: Palette, pending: true },

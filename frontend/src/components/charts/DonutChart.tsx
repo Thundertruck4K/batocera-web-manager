@@ -12,6 +12,12 @@ interface DonutChartProps {
   height?: number
   /** Texto del centro cuando no hay segmento resaltado. */
   centerLabel?: string
+  /**
+   * Valor del centro cuando no hay segmento resaltado. Por defecto, la suma de
+   * los segmentos: en un reparto (usado/libre) esa suma siempre es 100 y no
+   * dice nada, así que quien lo usa debe pasar el valor que quiere destacar.
+   */
+  centerValue?: number
   /** Formatea el valor del centro. */
   formatValue?: (value: number) => string
 }
@@ -21,10 +27,12 @@ export function DonutChart({
   data,
   height = 170,
   centerLabel = 'Total',
+  centerValue,
   formatValue = (v) => `${v.toFixed(1)}%`,
 }: DonutChartProps) {
   const [hover, setHover] = useState<number | null>(null)
   const total = data.reduce((acc, item) => acc + item.value, 0)
+  const headline = centerValue ?? total
   const shades = [
     'var(--color-chart-1)',
     'var(--color-chart-2)',
@@ -76,7 +84,7 @@ export function DonutChart({
 
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-lg font-bold tabular-nums text-foreground">
-          {hover !== null ? formatValue(data[hover].value) : formatValue(total)}
+          {hover !== null ? formatValue(data[hover].value) : formatValue(headline)}
         </span>
         <span className="mt-0.5 max-w-[70%] truncate text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
           {hover !== null ? data[hover].name : centerLabel}

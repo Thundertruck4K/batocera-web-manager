@@ -68,6 +68,7 @@ export function DebugPage() {
 
         <div className="mt-4">
           <LogStream
+            className="card card-hover rounded-3xl border-border"
             entries={entries}
             title="Flujo de eventos"
             description="Acciones y avisos del backend. Activa «Debug» para ver el tráfico HTTP; pulsa / para filtrar por texto."
