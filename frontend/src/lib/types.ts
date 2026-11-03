@@ -291,15 +291,30 @@ export interface Settings {
 /* ── Servicio / arranque automático ────────────────────────────────────── */
 
 export interface AutostartStatus {
+  /** El bloque de arranque está escrito en custom.sh. */
+  registered: boolean
+  /** Alias de `registered` (mismo valor, nombre corto). */
   installed: boolean
+  /** El manager corre pero no hay bloque: se arrancó a mano. */
   manual_mode: boolean
-  marker_found?: boolean
+  /** Comando de arranque guardado en custom.sh. */
+  cmd?: string | null
+  /** Bloque completo tal y como está escrito en custom.sh. */
+  block?: string
+  /** Fichero donde vive el bloque. */
+  path?: string
 }
 
 export interface ProcessStatus {
   running: boolean
+  /** PIDs encontrados (puede haber más de uno: envoltorio y servidor). */
+  pids?: string[]
+  /** PID principal del manager. */
   pid?: number | null
-  cmd?: string
+  /** Puerto en el que está escuchando. */
+  port?: number | null
+  /** Línea de comandos real del proceso. */
+  cmd?: string | null
 }
 
 export interface ServiceStatus {
@@ -308,6 +323,31 @@ export interface ServiceStatus {
   custom_sh: string
   exists: boolean
   cmd_current: string
+}
+
+/* ── Información del sistema ─────────────────────────────────────────────── */
+
+export interface SystemInfo {
+  /** Versión del manager (la de app.py). */
+  version: string
+  /** Versión del intérprete de Python de la consola. */
+  python_version: string
+  /** Qué interfaz se está sirviendo. */
+  frontend: 'react' | 'clasica'
+  /** Carpeta del frontend en la consola. */
+  frontend_dir: string
+  /** Carpeta del bundle compilado. */
+  dist_dir: string
+  /** Ruta de app.py. */
+  app_path: string
+  /** Ruta del script de arranque automático. */
+  custom_sh: string
+  /** Versión de Node si está instalado; null si no. */
+  node_version: string | null
+  /** Puerto configurado. */
+  port: number
+  /** Si Pillow está disponible (logos de relleno). */
+  has_pil: boolean
 }
 
 /* ── Información general ──────────────────────────────────────────────── */

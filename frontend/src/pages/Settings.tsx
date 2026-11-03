@@ -1,10 +1,12 @@
 import { motion } from 'motion/react'
 import {
   FolderCog,
+  Info,
   Power,
   RefreshCw,
   Save,
   Server,
+  Terminal,
   Trophy,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -47,6 +49,7 @@ export function SettingsPage() {
 
   const settings = useApi(() => api.getSettings(), [])
   const service = useApi(() => api.serviceStatus(), [])
+  const info = useApi(() => api.systemInfo(), [])
 
   const [draft, setDraft] = useState<Partial<Settings>>({})
   const [raKey, setRaKey] = useState('')
@@ -108,6 +111,11 @@ export function SettingsPage() {
   }
 
   const status: ServiceStatus | null = service.data
+  // Carpeta de instalación: la ruta de app.py sin el nombre del fichero.
+  const installDir = (info.data?.app_path || '/userdata/system/batocera_web/app.py').replace(
+    /\/app\.py$/,
+    '',
+  )
 
   return (
     <>
@@ -190,11 +198,19 @@ export function SettingsPage() {
             <div className="space-y-1">
               <StatRow
                 label="Estado"
-                value={status?.autostart.installed ? 'Activo' : 'Inactivo'}
+                value={status?.autostart.installed ? 'Instalado' : 'No instalado'}
               />
               <StatRow
                 label="Proceso"
-                value={status?.process.running ? `PID ${status.process.pid ?? '—'}` : 'Detenido'}
+                value={
+                  status?.process.running
+                    ? `Activo · PID ${status.process.pid ?? '—'}`
+                    : 'Detenido'
+                }
+              />
+              <StatRow
+                label="Puerto en marcha"
+                value={status?.process.port ? String(status.process.port) : '—'}
               />
               <StatRow label="Fichero" value={status?.custom_sh ?? '—'} />
             </div>
@@ -203,11 +219,98 @@ export function SettingsPage() {
                 El manager se está ejecutando en modo manual: no arrancó con el sistema.
               </p>
             )}
-            {status?.cmd_current && (
-              <pre className="mt-3 overflow-auto rounded-xl border border-border bg-stage p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
-                {status.cmd_current}
+            <div className="mt-3">
+              <p className="text-xs font-medium text-foreground">Bloque en custom.sh</p>
+              <pre className="mt-1 overflow-auto rounded-xl border border-border bg-stage p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                {status?.autostart.block?.trim() || '(sin bloque)'}
               </pre>
-            )}
+            </div>
+          </PanelCard>
+
+          {/* Información del sistema */}
+          <PanelCard
+            title="Información del sistema"
+            subtitle="Qué está sirviendo ahora mismo el manager"
+            icon={<Info className="size-4" />}
+          >
+            <div className="space-y-1">
+              <StatRow label="Versión del manager" value={info.data ? `v${info.data.version}` : '—'} />
+              <StatRow
+                label="Interfaz"
+                value={
+                  !info.data
+                    ? '—'
+                    : info.data.frontend === 'react'
+                      ? 'SPA de React + Tailwind'
+                      : 'Interfaz clásica (un fichero)'
+                }
+              />
+              <StatRow label="Python" value={info.data?.python_version ?? '—'} />
+              <StatRow
+                label="Node"
+                value={
+                  !info.data
+                    ? '—'
+                    : info.data.node_version
+                      ? `${info.data.node_version} · instalado`
+                      : 'no instalado · no hace falta'
+                }
+              />
+              <StatRow
+                label="Pillow (logos)"
+                value={
+                  !info.data ? '—' : info.data.has_pil ? 'disponible' : 'no disponible'
+                }
+              />
+              <StatRow label="Puerto" value={info.data ? String(info.data.port) : '—'} />
+              <StatRow label="Bundle del frontend" value={info.data?.dist_dir ?? '—'} />
+              <StatRow label="Script de arranque" value={info.data?.custom_sh ?? '—'} />
+            </div>
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              {info.data?.frontend === 'react'
+                ? 'El frontend se sirve ya compilado desde frontend/dist: la consola no necesita Node para funcionar.'
+                : 'No hay bundle compilado en frontend/dist, así que se sirve la interfaz clásica de un solo fichero. Compila el frontend para usar la versión React.'}
+            </p>
+          </PanelCard>
+
+          {/* Instrucciones */}
+          <PanelCard
+            title="Instrucciones"
+            subtitle="Instalar, actualizar y recompilar"
+            icon={<Terminal className="size-4" />}
+          >
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-medium text-foreground">Acceso</p>
+                <pre className="mt-1 overflow-auto rounded-xl border border-border bg-stage p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                  {`http://<IP-DE-LA-CONSOLA>:${info.data?.port ?? 5000}`}
+                </pre>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-foreground">Instalar o actualizar (por SSH)</p>
+                <pre className="mt-1 overflow-auto rounded-xl border border-border bg-stage p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                  {`cd ${installDir}
+git pull
+bash install.sh`}
+                </pre>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-foreground">
+                  Recompilar el frontend en la consola (opcional, requiere Node)
+                </p>
+                <pre className="mt-1 overflow-auto rounded-xl border border-border bg-stage p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                  {`cd ${installDir}/frontend
+npm ci
+npm run build`}
+                </pre>
+              </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                La consola no trae Node de serie: <code className="font-mono text-foreground">bash install.sh</code>{' '}
+                lo puede instalar por ti (tarball oficial de nodejs.org, con el sha256 verificado) y
+                dejar los enlaces listos para cada arranque. El bundle se despliega compilado, así que
+                el manager funciona igual sin Node.
+              </p>
+            </div>
           </PanelCard>
 
           {/* Rutas */}
@@ -285,17 +388,33 @@ export function SettingsPage() {
           {/* Servidor */}
           <PanelCard
             title="Servidor"
-            subtitle="Información del manager en ejecución"
+            subtitle="Proceso del manager en ejecución"
             icon={<Server className="size-4" />}
           >
             <div className="space-y-1">
-              <StatRow label="Puerto configurado" value={value('server_port')} />
               <StatRow label="Estado del servicio" value={status?.process.running ? 'Activo' : 'Detenido'} />
               <StatRow
                 label="Modo"
                 value={status?.autostart.manual_mode ? 'Manual' : 'Arranque automático'}
               />
+              <StatRow
+                label="PID"
+                value={status?.process.pid ? String(status.process.pid) : '—'}
+              />
+              <StatRow
+                label="Puerto en marcha"
+                value={status?.process.port ? String(status.process.port) : '—'}
+              />
+              <StatRow
+                label="Puerto configurado"
+                value={value('server_port') || '—'}
+              />
             </div>
+            {status?.process.cmd && (
+              <pre className="mt-3 overflow-auto rounded-xl border border-border bg-stage p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                {status.process.cmd}
+              </pre>
+            )}
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

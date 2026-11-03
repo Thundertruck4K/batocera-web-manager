@@ -14,6 +14,7 @@ import random
 import re
 import shlex
 import shutil
+import sys
 import time
 import traceback
 import urllib.parse
@@ -3683,6 +3684,9 @@ def get_dashboard():
 CUSTOM_SH       = Path("/userdata/system/custom.sh")
 SERVICE_MARKER  = "# [batocera-manager]"
 SERVICE_TAG_END = "# [/batocera-manager]"
+# Patrón con el que se localizan los procesos del manager. El punto va
+# escapado para que `app.py` no se lea como un comodín.
+SERVICE_KILL_PATTERN = r"python3.*app\.py"
 
 def get_service_cmd(settings):
     """Genera el comando de inicio según la ruta real del app.py (seguro para shell)."""
@@ -3695,26 +3699,48 @@ def get_service_cmd(settings):
         port = 5000
     return f"python3 {shlex.quote(app_path)} --port {port}"
 
+def extract_service_cmd(block):
+    """Saca la línea de arranque del bloque de custom.sh.
+
+    El bloque lleva delante un `pkill` (para no dejar otra instancia
+    ocupando el puerto), así que la línea del manager es la que menciona
+    app.py y no la primera línea sin comentario.
+    """
+    fallback = None
+    for raw in (block or "").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        line = line.rstrip("&").strip()
+        if "app.py" in line:
+            return line
+        if fallback is None:
+            fallback = line
+    return fallback
+
 def get_autostart_status(settings):
-    """Lee custom.sh y detecta si el servicio está registrado."""
+    """Lee custom.sh y detecta si el servicio está registrado.
+
+    La respuesta tiene siempre la misma forma para que el frontend no tenga
+    que adivinar: `registered`/`installed` (el bloque está escrito),
+    `cmd` (la línea de arranque), `block` (el bloque entero) y `path`.
+    """
+    empty = {"registered": False, "installed": False, "cmd": None,
+             "block": "", "path": str(CUSTOM_SH)}
     if not CUSTOM_SH.exists():
-        return {"registered": False, "cmd": None, "line": None}
+        return empty
     content = CUSTOM_SH.read_text(errors="replace")
     if SERVICE_MARKER not in content:
-        return {"registered": False, "cmd": None, "line": None}
-    # Extraer el bloque
+        return empty
     try:
         start = content.index(SERVICE_MARKER)
         end   = content.index(SERVICE_TAG_END) + len(SERVICE_TAG_END)
         block = content[start:end]
-        # Extraer línea de comando
-        for line in block.splitlines():
-            line = line.strip()
-            if line and not line.startswith("#"):
-                return {"registered": True, "cmd": line, "block": block}
     except ValueError:
-        pass
-    return {"registered": True, "cmd": None, "block": ""}
+        return empty
+    return {"registered": True, "installed": True,
+            "cmd": extract_service_cmd(block),
+            "block": block, "path": str(CUSTOM_SH)}
 
 def _read_proc_cmdline(pid):
     """Devuelve /proc/<pid>/cmdline como texto (cadena vacía si no se puede)."""
@@ -3754,38 +3780,88 @@ def get_process_status():
     `ss -tlnp`: cualquier otro servicio escrito en Python que escuchara en
     otro puerto (wsdd, por ejemplo) salía como si fuera el puerto del manager,
     aunque su línea de comandos dijera 5000.
+
+    Devuelve además `pid` y `cmd` (la línea de comandos real del proceso),
+    que es lo que muestra la pantalla de Configuración.
     """
-    pids = _run('pgrep -f "python3.*app.py"').split()
+    pids = _run(f'pgrep -f "{SERVICE_KILL_PATTERN}"').split()
     if not pids:
-        return {"running": False, "pids": [], "port": None}
+        return {"running": False, "pids": [], "pid": None, "port": None, "cmd": None}
 
     port = None
+    cmd  = None
     for pid in pids:
-        port = _port_from_cmdline(_read_proc_cmdline(pid))
-        if port:
+        raw = _read_proc_cmdline(pid)
+        if cmd is None and raw:
+            cmd = " ".join(a for a in raw.split("\0") if a)
+        found = _port_from_cmdline(raw)
+        if found:
+            port = found
             break
     if not port:
         for pid in pids:
             port = _es_listen_port(pid)
             if port:
                 break
-    return {"running": True, "pids": pids, "port": port}
+    pid_value = None
+    for pid in pids:
+        if pid.isdigit():
+            pid_value = int(pid)
+            break
+    return {"running": True, "pids": pids, "pid": pid_value, "port": port, "cmd": cmd}
+
+def get_service_status(settings):
+    """Estado completo del servicio: bloque de arranque y proceso en marcha."""
+    auto = get_autostart_status(settings)
+    proc = get_process_status()
+    # Modo manual: el manager corre, pero no hay bloque de arranque en
+    # custom.sh (así se detecta que se arrancó a mano).
+    auto["manual_mode"] = bool(proc.get("running") and not auto.get("registered"))
+    return {
+        "autostart":  auto,
+        "process":    proc,
+        "custom_sh":  str(CUSTOM_SH),
+        "exists":     CUSTOM_SH.exists(),
+        "cmd_current": get_service_cmd(settings),
+    }
+
+def build_service_block(cmd):
+    """Construye el bloque de arranque automático que vive en custom.sh.
+
+    El `pkill` previo mata la instancia anterior: si el manager ya estaba
+    corriendo (arrancado a mano, por ejemplo), la instancia nueva se
+    encontraría el puerto ocupado y no levantaría.
+    """
+    return (
+        f"{SERVICE_MARKER}\n"
+        "# Batocera System Manager Web - arranque automatico\n"
+        f"pkill -f \"{SERVICE_KILL_PATTERN}\" 2>/dev/null\n"
+        f"{cmd} &\n"
+        f"{SERVICE_TAG_END}\n"
+    )
+
+def _replace_service_block(content, block):
+    """Sustituye el bloque de autostart por otro nuevo (o lo añade si no había)."""
+    try:
+        start = content.index(SERVICE_MARKER)
+        end   = content.index(SERVICE_TAG_END) + len(SERVICE_TAG_END)
+    except ValueError:
+        return content.rstrip("\n") + "\n\n" + block
+    if end < len(content) and content[end] == "\n":
+        end += 1
+    return content[:start] + block + content[end:]
 
 def install_autostart(cmd):
-    """Instala o actualiza el bloque de autostart en custom.sh."""
-    block = f"{SERVICE_MARKER}\n{cmd} &\n{SERVICE_TAG_END}\n"
+    """Instala o actualiza el bloque de autostart en custom.sh.
+
+    Es idempotente y reescribible: si el bloque ya existe se sustituye por
+    uno con el comando actual, de forma que cambiar el puerto o la ruta en
+    Configuración se aplique al reiniciar la consola.
+    """
+    block = build_service_block(cmd)
     if CUSTOM_SH.exists():
         content = CUSTOM_SH.read_text(errors="replace")
-        if SERVICE_MARKER in content:
-            # Reemplazar bloque existente
-            try:
-                start = content.index(SERVICE_MARKER)
-                end   = content.index(SERVICE_TAG_END) + len(SERVICE_TAG_END) + 1
-                content = content[:start] + block + content[end:]
-            except ValueError:
-                content += "\n" + block
-        else:
-            content += "\n" + block
+        content = _replace_service_block(content, block)
     else:
         content = "#!/bin/bash\n" + block
     CUSTOM_SH.write_text(content, encoding="utf-8")
@@ -3801,20 +3877,21 @@ def remove_autostart():
     try:
         start = content.index(SERVICE_MARKER)
         end   = content.index(SERVICE_TAG_END) + len(SERVICE_TAG_END)
-        # Quitar también el \n previo si existe
-        if start > 0 and content[start-1] == "\n":
-            start -= 1
-        content = content[:start] + content[end:]
-        CUSTOM_SH.write_text(content.rstrip() + "\n", encoding="utf-8")
-        return True
     except ValueError:
         return False
+    if end < len(content) and content[end] == "\n":
+        end += 1
+    # Quitar también el \n previo si existe
+    if start > 0 and content[start-1] == "\n":
+        start -= 1
+    CUSTOM_SH.write_text((content[:start] + content[end:]).rstrip() + "\n", encoding="utf-8")
+    return True
 
 def kill_service():
     """Mata el proceso del servidor."""
     import subprocess
     try:
-        r = subprocess.run(["pkill", "-f", "python3.*app.py"],
+        r = subprocess.run(["pkill", "-f", SERVICE_KILL_PATTERN],
                            capture_output=True, timeout=5)
         return r.returncode in (0, 1)
     except Exception:
@@ -4851,6 +4928,40 @@ def log_events_since(since=0):
         return [e for e in _log_events if int(e["id"]) > since]
 
 
+def detect_node_version():
+    """Versión de Node si está en el sistema, o None.
+
+    Node no hace falta para usar el manager (el frontend se despliega ya
+    compilado), pero sí para recompilarlo en la propia consola.
+    """
+    exe = shutil.which("node")
+    if not exe:
+        return None
+    try:
+        out = subprocess.run([exe, "-v"], capture_output=True, text=True, timeout=5)
+        version = out.stdout.strip()
+        return version if version.startswith("v") else None
+    except Exception:
+        return None
+
+
+def system_info():
+    """Datos del entorno para la pantalla de Configuración."""
+    s = load_settings()
+    return {
+        "version":        APP_VERSION,
+        "python_version": sys.version.split()[0],
+        "frontend":       "react" if spa_available() else "clasica",
+        "frontend_dir":   str(FRONTEND_DIR),
+        "dist_dir":       str(FRONTEND_DIST),
+        "app_path":       s.get("app_path", ""),
+        "custom_sh":      str(CUSTOM_SH),
+        "node_version":   detect_node_version(),
+        "port":           s.get("server_port", PORT),
+        "has_pil":        HAS_PIL,
+    }
+
+
 # ─── HTTP Handler ─────────────────────────────────────────────────
 
 def _safe_api(fn):
@@ -5113,14 +5224,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_json({"ok":False,"error":str(e)})
         elif path == "/api/service/status":
-            s2 = load_settings()
-            self.send_json({
-                "autostart":  get_autostart_status(s2),
-                "process":    get_process_status(),
-                "custom_sh":  str(CUSTOM_SH),
-                "exists":     CUSTOM_SH.exists(),
-                "cmd_current": get_service_cmd(s2),
-            })
+            self.send_json(get_service_status(load_settings()))
+        elif path == "/api/system-info":
+            self.send_json(system_info())
         elif path == "/favicon.ico":
             self.send_response(204); self.end_headers()
         elif len(parts)==3 and parts[:2]==["api","system-logo"]:
@@ -5205,7 +5311,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self._rename_rom(s)
         elif path == "/api/service/install":
             d   = self.read_json()
-            cmd = d.get("cmd", "").strip() or get_service_cmd(load_settings())
+            cmd = (d.get("cmd") or "").strip() or get_service_cmd(load_settings())
             try:
                 install_autostart(cmd)
                 self.send_json({"ok":True, "cmd":cmd, "file":str(CUSTOM_SH)})
@@ -5222,7 +5328,15 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             kill_service()
             import time as _time; _time.sleep(1)
             d    = self.read_json()
-            cmd  = d.get("cmd", get_service_cmd(load_settings()))
+            cmd  = (d.get("cmd") or "").strip() or get_service_cmd(load_settings())
+            # Si el arranque automático ya estaba instalado, se reescribe el
+            # bloque para que custom.sh quede con el puerto y la ruta
+            # actuales: si no, se seguiría levantando con el puerto viejo.
+            if get_autostart_status(load_settings()).get("registered"):
+                try:
+                    install_autostart(cmd)
+                except Exception:
+                    pass
             try:
                 _sp.Popen(shlex.split(cmd), close_fds=True)
                 self.send_json({"ok":True, "cmd":cmd})
