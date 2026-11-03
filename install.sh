@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════
 #  Batocera System Manager — Instalador
-#  v1.5 — Interfaz React + Tailwind (bundle precompilado) · Python stdlib
+#  v1.6 — Interfaz React + Tailwind (bundle precompilado) · Python stdlib
 #
 #  Uso (por SSH, dentro de la propia Batocera):
 #     ssh root@batocera
@@ -9,22 +9,34 @@
 #         /userdata/system/batocera_web
 #     cd /userdata/system/batocera_web && bash install.sh
 #
+#  Batocera es Buildroot: no trae gestor de paquetes, así que **ni git
+#  ni node vienen de serie**. El instalador los valida al principio:
+#  - si están, sigue con la instalación sin preguntar nada;
+#  - si faltan, avisa de que es necesario instalarlos y los instala.
+#
+#  Node es opcional de verdad: el frontend se despliega ya compilado,
+#  así que sólo hace falta para recompilar el bundle en la consola.
+#  Git sirve para actualizar el manager con «git pull».
+#
 #  Variables (instalaciones desatendidas y pruebas):
 #     BM_BASE_DIR      base de Batocera         (def. /userdata/system)
 #     BM_CUSTOM_SH     ruta de custom.sh        (def. $BM_BASE_DIR/custom.sh)
 #     BM_PYTHON        intérprete de Python     (def. python3)
 #     BM_PORT          puerto del servidor      (def. 5000)
 #     BM_AUTOSTART     s / n: responde ya, sin preguntar
+#     BM_GIT           auto / install / skip    (def. auto)
 #     BM_NODE          auto / install / skip    (def. auto)
-#     BM_NODE_VERSION  versión concreta de Node (def. la última LTS)
+#     BM_GIT_DIR       dónde se instala Git     (def. $BM_BASE_DIR/mamba)
+#     BM_GIT_BIN_DIR   dónde se enlazan los binarios (def. /usr/bin)
 #     BM_NODE_DIR      dónde se instala Node    (def. $BM_BASE_DIR/node)
 #     BM_NODE_BIN_DIR  dónde se enlazan los binarios (def. /usr/bin)
+#     BM_NODE_VERSION  versión concreta de Node (def. la última LTS)
 #     BM_NODE_URL      espejo de nodejs.org     (def. https://nodejs.org/dist)
+#     BM_MICROMAMBA_URL    espejo de micromamba (def. https://micro.mamba.pm/api/micromamba)
+#     BM_MICROMAMBA_VERSION versión de micromamba (def. 2.10.0)
+#     BM_MICROMAMBA_SHA256  sha256 esperado     (def. el de conda-forge)
+#     BM_CONDA_CHANNEL canal de conda           (def. conda-forge)
 #     NO_COLOR         desactiva el color
-#
-#  Node es OPCIONAL: el frontend se despliega ya compilado, así que el
-#  manager funciona sin Node. Sólo hace falta para recompilar el bundle
-#  en la propia consola.
 # ═══════════════════════════════════════════════════════════════
 set -e
 
@@ -37,10 +49,25 @@ MARKER="# [batocera-manager]"
 TAG_END="# [/batocera-manager]"
 NODE_MARKER="# [batocera-node]"
 NODE_TAG_END="# [/batocera-node]"
+GIT_MARKER="# [batocera-git]"
+GIT_TAG_END="# [/batocera-git]"
 # Patrón con el que se localizan los procesos del manager. El punto va
 # escapado para que `app.py` no se lea como un comodín.
 KILL_PATTERN='python3.*app\.py'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Git (vía micromamba + conda-forge: Batocera no tiene gestor de paquetes)
+GIT_MODE="${BM_GIT:-auto}"
+GIT_DIR="${BM_GIT_DIR:-$BASE_DIR/mamba}"
+GIT_BIN_DIR="${BM_GIT_BIN_DIR:-/usr/bin}"
+GIT_ENV="$GIT_DIR/envs/git"
+MICROMAMBA_URL="${BM_MICROMAMBA_URL:-https://micro.mamba.pm/api/micromamba}"
+MICROMAMBA_VERSION="${BM_MICROMAMBA_VERSION:-2.10.0}"
+CONDA_CHANNEL="${BM_CONDA_CHANNEL:-conda-forge}"
+# sha256 de micromamba $MICROMAMBA_VERSION (paquetes de conda-forge, inmutables)
+MICROMAMBA_SHA256_LINUX_64="9a97976244929bbae28fb1fae504e74a3e7e6d1932870e3a03321f01b7fbd07b"
+MICROMAMBA_SHA256_LINUX_AARCH64="890bc4906e6ab17f1b393f0da21547f75e000078e573a156316ec925b92a4a4c"
+MICROMAMBA_SHA256_LINUX_PPC64LE="6a143602e15bbf10b2345d7a8e322af6ffc7c057bec23d0a73382bd93176c2c9"
 
 # Node
 NODE_MODE="${BM_NODE:-auto}"
@@ -152,6 +179,138 @@ detect_node_arch() {   # x64 | arm64 | armv7l | armv6l
   esac
 }
 
+detect_conda_platform() {   # linux-64 | linux-aarch64 | linux-ppc64le
+  case "$(uname -m)" in
+    x86_64|amd64)   echo "linux-64" ;;
+    aarch64|arm64)  echo "linux-aarch64" ;;
+    ppc64le)        echo "linux-ppc64le" ;;
+    *)              echo "" ;;
+  esac
+}
+
+micromamba_sha256_for() {   # micromamba_sha256_for <plataforma>
+  case "$1" in
+    linux-64)      echo "$MICROMAMBA_SHA256_LINUX_64" ;;
+    linux-aarch64) echo "$MICROMAMBA_SHA256_LINUX_AARCH64" ;;
+    linux-ppc64le) echo "$MICROMAMBA_SHA256_LINUX_PPC64LE" ;;
+    *)             echo "" ;;
+  esac
+}
+
+# ═══════════════════════════════════════════════════════════════
+#  Git — vía micromamba + conda-forge
+#
+#  Batocera no tiene gestor de paquetes ni compilador, así que Git se
+#  instala con micromamba (un único binario estático) contra el canal
+#  conda-forge. micromamba comprueba el sha256 de cada paquete que
+#  descarga; el propio micromamba se verifica con el hash fijado aquí.
+# ═══════════════════════════════════════════════════════════════
+
+link_git_binary() {
+  if [ -w "$GIT_BIN_DIR" ] 2>/dev/null; then
+    if ln -sf "$GIT_ENV/bin/git" "$GIT_BIN_DIR/git" 2>/dev/null; then
+      ok "Enlazado en $GIT_BIN_DIR/git"
+      return 0
+    fi
+  fi
+  warn "No se pudo enlazar en $GIT_BIN_DIR (¿sin permisos?)"
+  tip "Añade $GIT_ENV/bin al PATH para usar git."
+  return 1
+}
+
+# El bloque # [batocera-git] se ejecuta en cada arranque: /usr es un
+# overlay que se pierde al reiniciar, así que el enlace hay que
+# recrearlo.
+write_git_block() {
+  local tmp="$SERVICE_SCRIPT.gitblock.$$"
+  {
+    printf '%s\n' "$GIT_MARKER"
+    printf '%s\n' '# Git (opcional) - enlace para actualizar el manager con git pull'
+    printf '%s\n' "GIT_HOME=\"$GIT_DIR\""
+    printf '%s\n' 'if [ -x "$GIT_HOME/envs/git/bin/git" ]; then'
+    printf '%s\n' "  [ -w \"$GIT_BIN_DIR\" ] && ln -sf \"\$GIT_HOME/envs/git/bin/git\" \"$GIT_BIN_DIR/git\" || true"
+    printf '%s\n' 'fi'
+    printf '%s\n' "$GIT_TAG_END"
+  } > "$tmp"
+  write_block "$GIT_MARKER" "$GIT_TAG_END" "$tmp"
+  rm -f "$tmp"
+}
+
+install_git() {
+  local platform url tmp mm expected actual
+
+  platform="$(detect_conda_platform)"
+  if [ -z "$platform" ]; then
+    bad "No hay Git para la arquitectura $(uname -m)."
+    tip "Actualiza el manager con el tarball de la release."
+    return 1
+  fi
+  if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+    bad "Necesito curl o wget para descargar Git."
+    return 1
+  fi
+
+  expected="${BM_MICROMAMBA_SHA256:-$(micromamba_sha256_for "$platform")}"
+  if [ -z "$expected" ]; then
+    bad "No conozco el sha256 de micromamba para $platform."
+    tip "Indícalo con BM_MICROMAMBA_SHA256=<hash> para continuar."
+    return 1
+  fi
+
+  tmp="$(mktemp -d 2>/dev/null || printf '%s' "/tmp/bwm-mm-$$")"
+  mkdir -p "$tmp"
+  url="$MICROMAMBA_URL/$platform/$MICROMAMBA_VERSION"
+
+  printf '     %sDescargando micromamba %s…%s\n' "$CD" "$MICROMAMBA_VERSION" "$C0"
+  if ! fetch "$url" "$tmp/mm.tar.bz2"; then
+    bad "No se pudo descargar $url"
+    rm -rf "$tmp"
+    return 1
+  fi
+  actual="$(sha256sum "$tmp/mm.tar.bz2" 2>/dev/null | awk '{ print $1 }')"
+  if [ "$actual" != "$expected" ]; then
+    bad "sha256 incorrecto: esperaba $expected y obtuve $actual"
+    rm -rf "$tmp"
+    return 1
+  fi
+  ok "sha256 verificado"
+
+  if ! tar -xjf "$tmp/mm.tar.bz2" -C "$tmp" bin/micromamba 2>/dev/null \
+     && ! tar -xzf "$tmp/mm.tar.bz2" -C "$tmp" bin/micromamba 2>/dev/null; then
+    bad "No se pudo descomprimir micromamba"
+    rm -rf "$tmp"
+    return 1
+  fi
+  chmod +x "$tmp/bin/micromamba" 2>/dev/null || true
+  mm="$tmp/bin/micromamba"
+
+  printf '     %sInstalando Git desde %s…%s\n' "$CD" "$CONDA_CHANNEL" "$C0"
+  if ! MAMBA_ROOT_PREFIX="$GIT_DIR/root" "$mm" create -y -p "$GIT_ENV" \
+        -c "$CONDA_CHANNEL" git >"$tmp/mm.log" 2>&1; then
+    bad "No se pudo instalar Git"
+    if [ -f "$tmp/mm.log" ]; then
+      tail -n 10 "$tmp/mm.log" 2>/dev/null | while IFS= read -r l; do printf '     %s\n' "$l"; done
+    fi
+    rm -rf "$tmp"
+    return 1
+  fi
+  # La caché de paquetes ocupa cientos de MB: se va al terminar.
+  MAMBA_ROOT_PREFIX="$GIT_DIR/root" "$mm" clean --all --yes >/dev/null 2>&1 || true
+  rm -rf "$tmp"
+
+  if [ ! -x "$GIT_ENV/bin/git" ]; then
+    bad "Git no quedó instalado en $GIT_ENV"
+    return 1
+  fi
+  link_git_binary || true
+  write_git_block
+  ok "Git $("$GIT_ENV/bin/git" --version 2>/dev/null | awk '{ print $3 }') instalado"
+}
+
+# ═══════════════════════════════════════════════════════════════
+#  Node.js (opcional)
+# ═══════════════════════════════════════════════════════════════
+
 latest_lts() {   # latest_lts <index.json>  →  vX.Y.Z
   "$PYTHON" - "$1" <<'PY' 2>/dev/null || true
 import json, sys
@@ -208,9 +367,6 @@ write_node_block() {
   rm -f "$tmp"
 }
 
-# ═══════════════════════════════════════════════════════════════
-#  Node.js (opcional)
-# ═══════════════════════════════════════════════════════════════
 install_node() {
   local arch dist tarball url tmp expected actual dir
 
@@ -296,6 +452,103 @@ install_node() {
   ok "Bloque $NODE_MARKER escrito en $SERVICE_SCRIPT"
 }
 
+# ═══════════════════════════════════════════════════════════════
+#  Validación de utilidades
+#
+#  Si git y node están, se sigue sin preguntar nada. Si faltan, se
+#  avisa de que es necesario instalarlos y se instalan.
+# ═══════════════════════════════════════════════════════════════
+
+# Dónde está el git: el del PATH o, si no, el que instaló este mismo
+# script. El enlace de /usr/bin se pierde al reiniciar (/usr es un
+# overlay), así que el prefijo es la fuente de verdad.
+git_bin() {
+  local b
+  b="$(command -v git 2>/dev/null || true)"
+  if [ -z "$b" ] && [ -x "$GIT_ENV/bin/git" ]; then
+    b="$GIT_ENV/bin/git"
+  fi
+  printf '%s' "$b"
+}
+
+ensure_git() {
+  local bin ver
+  bin="$(git_bin)"
+  if [ -n "$bin" ] && [ "$GIT_MODE" != "install" ]; then
+    ver="$("$bin" --version 2>/dev/null | head -n 1)"
+    kv "Git" "✔ ${ver:-instalado} · $bin"
+    # Si el git es el nuestro, se deja el bloque escrito: recrea el
+    # enlace en cada arranque (/usr es un overlay).
+    if [ -x "$GIT_ENV/bin/git" ]; then
+      write_git_block
+    fi
+    return 0
+  fi
+  if [ -z "$bin" ]; then
+    warn "No se encontró git en el sistema: es necesario instalarlo para continuar."
+    tip "Git actualiza el manager con «git pull» (si no, descarga el tarball de la release)."
+  fi
+  if [ "$GIT_MODE" = "skip" ]; then
+    warn "Omitida la instalación de git (BM_GIT=skip)"
+    return 1
+  fi
+  if install_git; then
+    bin="$(git_bin)"
+    if [ -n "$bin" ]; then
+      ver="$("$bin" --version 2>/dev/null | head -n 1)"
+      kv "Git" "✔ ${ver:-instalado} · $bin"
+      return 0
+    fi
+  fi
+  warn "Git no está disponible: el manager funciona igual, pero para actualizarlo"
+  tip "tendrás que descargar el tarball de la release."
+  return 1
+}
+
+# Lo mismo con node: el del PATH o el que instaló el script.
+node_bin() {
+  local b
+  b="$(command -v node 2>/dev/null || true)"
+  if [ -z "$b" ] && [ -x "$NODE_DIR/current/bin/node" ]; then
+    b="$NODE_DIR/current/bin/node"
+  fi
+  printf '%s' "$b"
+}
+
+ensure_node() {
+  local bin ver
+  bin="$(node_bin)"
+  if [ -n "$bin" ] && [ "$NODE_MODE" != "install" ]; then
+    ver="$("$bin" -v 2>/dev/null || true)"
+    kv "Node.js" "✔ ${ver:-instalado} · $bin"
+    # Si el node es el nuestro, se deja el bloque escrito: recrea los
+    # enlaces en cada arranque (/usr es un overlay).
+    if [ -x "$NODE_DIR/current/bin/node" ]; then
+      write_node_block
+    fi
+    return 0
+  fi
+  if [ -z "$bin" ]; then
+    warn "No se encontró node en el sistema: es necesario instalarlo para continuar."
+    tip "Node sólo hace falta para recompilar el frontend en la consola."
+  fi
+  if [ "$NODE_MODE" = "skip" ]; then
+    warn "Omitida la instalación de node (BM_NODE=skip)"
+    return 1
+  fi
+  if install_node; then
+    bin="$(node_bin)"
+    if [ -n "$bin" ]; then
+      ver="$("$bin" -v 2>/dev/null || true)"
+      kv "Node.js" "✔ ${ver:-instalado} · $bin"
+      return 0
+    fi
+  fi
+  warn "Node no está disponible: el manager funciona igual (el frontend va compilado),"
+  tip "pero no podrás recompilarlo aquí."
+  return 1
+}
+
 hdr
 sub "Batocera System Manager · instalador"
 sub "destino: $INSTALL_DIR"
@@ -335,52 +588,20 @@ else
   kv "Pillow (logos)" "◌ no instalado · opcional"
 fi
 
-# ── 4 · Node.js (opcional) ──────────────────────────────────────
-# El frontend se despliega ya compilado: Node sólo hace falta para
-# recompilar el bundle en la propia consola.
-NODE_BIN="$(command -v node 2>/dev/null || true)"
-if [ -n "$NODE_BIN" ]; then
-  kv "Node.js" "✔ $(node -v 2>/dev/null || echo 'instalado') · $NODE_BIN"
-  NODE_STATE=1
-elif [ -x "$NODE_DIR/current/bin/node" ]; then
-  kv "Node.js" "✔ $($NODE_DIR/current/bin/node -v 2>/dev/null || echo 'instalado') · $NODE_DIR/current"
-  NODE_STATE=1
+# ── 4 · Utilidades: git y node ───────────────────────────────────
+# Si están, se sigue sin preguntar nada. Si faltan, se avisa y se
+# instalan (son necesarias para actualizar y recompilar el manager).
+GIT_OK=0
+NODE_OK=0
+ensure_git  || GIT_OK=1
+ensure_node || NODE_OK=1
+if [ "$GIT_OK" = 0 ] && [ "$NODE_OK" = 0 ]; then
+  kv "Utilidades" "✔ git y node listos"
 else
-  kv "Node.js" "◌ no instalado · opcional"
-  NODE_STATE=0
-fi
-
-if [ "$NODE_MODE" = "install" ]; then
-  # «install» fuerza la instalación aunque ya haya un node en el PATH.
-  if install_node; then
-    NODE_STATE=1
-  else
-    warn "Node no se pudo instalar · el manager funciona igual sin él"
-  fi
-elif [ "$NODE_STATE" = 0 ] && [ "$NODE_MODE" != "skip" ]; then
-  NODE_ANSWER=''
-  if [ -t 0 ]; then
-    printf '\n  %s¿Instalar Node.js en la consola?%s\n' "$CY" "$C0"
-    tip "Sólo hace falta si quieres recompilar el frontend aquí."
-    tip "Se baja el tarball oficial de nodejs.org y se comprueba su sha256."
-    printf '  %s[S]í / [n]o:%s ' "$CY" "$C0"
-    read -r NODE_ANSWER || NODE_ANSWER=''
-  else
-    warn "Sin terminal interactiva: no instalo Node"
-  fi
-  NODE_ANSWER="${NODE_ANSWER//[$'\r\n\t ']/}"
-  case "$NODE_ANSWER" in
-    s|S|si|sí|Si|Sí|y|Y|yes|YES)
-      if install_node; then
-        NODE_STATE=1
-      else
-        warn "Node no se pudo instalar · el manager funciona igual sin él"
-      fi
-      ;;
-    *)
-      warn "Node no instalado · el manager funciona igual sin él"
-      ;;
-  esac
+  MISSING=""
+  [ "$GIT_OK" != 0 ]  && MISSING="git"
+  [ "$NODE_OK" != 0 ] && MISSING="${MISSING:+$MISSING, }node"
+  kv "Utilidades" "◌ sin $MISSING (el manager funciona igual)"
 fi
 
 # ── 5 · Ficheros ────────────────────────────────────────────────
@@ -458,7 +679,7 @@ if [ -n "${BM_AUTOSTART:-}" ]; then
   ANSWER="$BM_AUTOSTART"
 elif [ -t 0 ]; then
   printf '\n  %s¿Añadir el manager al inicio de Batocera?%s\n' "$CY" "$C0"
-  tip "Así se levanta solo cada vez que enciendas la consola."
+  tip "Así se levanta solo cada vez que enciendes la consola."
   printf '  %s[S]í / [n]o:%s ' "$CY" "$C0"
   read -r ANSWER || ANSWER=''
 else

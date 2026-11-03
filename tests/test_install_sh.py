@@ -299,3 +299,265 @@ def test_un_sha256_que_no_cuadra_no_instala_nada(base, tmp_path):
 
     assert "sha256 incorrecto" in r.stdout
     assert not (base / "node" / name).exists(), "no debe descomprimir nada"
+
+
+# ── Utilidades: git y node ─────────────────────────────────────────────
+# La fase 4 del instalador valida que estén git y node. Si están, sigue
+# sin preguntar; si faltan, avisa y los instala. Estas pruebas simulan
+# una consola sin ellos recortando el PATH: bash mete /ucrt64/bin en el
+# PATH siempre, así que se recorta desde BASH_ENV (que bash carga al
+# arrancar sin terminal).
+
+def _tool_path(tool: str) -> str:
+    """Ruta absoluta de una utilidad tal y como la ve bash."""
+    out = subprocess.run([_bash(), "-c", f"command -v {tool}"], capture_output=True,
+                         text=True, timeout=30).stdout.strip()
+    return out
+
+
+def _shim(base: Path, tools: list[str]) -> dict:
+    """Entorno con un PATH donde sólo están las utilidades indicadas.
+
+    Cada herramienta es un lanzador que invoca la real, así que git (o
+    node) desaparecen del PATH sin tocar el sistema.
+    """
+    shim = base / "shim"
+    shim.mkdir(parents=True, exist_ok=True)
+    for tool in tools:
+        src = _tool_path(tool)
+        if not src:
+            continue
+        launcher = shim / tool
+        launcher.write_text(f'#!/usr/bin/env bash\nexec "{src}" "$@"\n',
+                            encoding="utf-8")
+        launcher.chmod(0o755)
+    rc = base / "shimrc.sh"
+    rc.write_text(f'export PATH="{_msys(shim)}:/usr/bin"\n', encoding="utf-8")
+    return {"BASH_ENV": _msys(rc)}
+
+
+def _conda_platform() -> str:
+    """Plataforma de conda que elegirá el instalador (según uname -m)."""
+    out = subprocess.run([_bash(), "-c", "uname -m"], capture_output=True,
+                         text=True, timeout=30).stdout.strip()
+    return {"x86_64": "linux-64", "amd64": "linux-64",
+            "aarch64": "linux-aarch64", "arm64": "linux-aarch64",
+            "ppc64le": "linux-ppc64le"}.get(out, "linux-64")
+
+
+# Doble de micromamba: no descarga nada, pero deja el entorno tal y como
+# el instalador espera encontrarlo y anota los argumentos que recibió.
+_STUB_MM = r"""#!/usr/bin/env bash
+cmd="${1:-}"; shift || true
+root="${MAMBA_ROOT_PREFIX:-/tmp}"
+mkdir -p "$root" 2>/dev/null || true
+printf '%s %s\n' "$cmd" "$*" >> "$root/mm-args.txt" 2>/dev/null || true
+case "$cmd" in
+  create|install)
+    prefix=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -p) prefix="$2"; shift 2 ;;
+        -c|--channel) shift 2 ;;
+        -y|--yes) shift ;;
+        *) shift ;;
+      esac
+    done
+    if [ -n "$prefix" ]; then
+      mkdir -p "$prefix/bin"
+      printf '#!/bin/sh\necho "git version 2.56.0"\n' > "$prefix/bin/git"
+      chmod +x "$prefix/bin/git"
+    fi
+    ;;
+esac
+exit 0
+"""
+
+
+def _fake_micromamba(tmp_path: Path) -> tuple[Path, str]:
+    """Espejo local de micro.mamba.pm: un tar.bz2 con bin/micromamba.
+
+    Devuelve (directorio del espejo, sha256 del tarball).
+    """
+    stage = tmp_path / "mmstage"
+    (stage / "bin").mkdir(parents=True)
+    mm = stage / "bin" / "micromamba"
+    # Con CRLF el shebang acaba en "\r" y el binario no arranca.
+    mm.write_text(_STUB_MM.replace("\r\n", "\n"), encoding="utf-8")
+    mm.chmod(0o755)
+
+    tarball = tmp_path / "mm.tar.bz2"
+    subprocess.run([_bash(), "-c",
+                    f"tar -cjf {_msys(tarball)} -C {_msys(stage)} bin/micromamba"],
+                   check=True, capture_output=True, timeout=120)
+    digest = hashlib.sha256(tarball.read_bytes()).hexdigest()
+
+    mirror = tmp_path / "mirror"
+    (mirror / _conda_platform()).mkdir(parents=True)
+    shutil.copy2(tarball, mirror / _conda_platform() / "2.10.0")
+    return mirror, digest
+
+
+def _git_env(base: Path, mirror: Path, sha: str, **extra) -> dict:
+    bindir = base / "gitbin"
+    bindir.mkdir(exist_ok=True)
+    env = {
+        "BM_GIT": "auto",
+        "BM_GIT_DIR": _msys(base / "mamba"),
+        "BM_GIT_BIN_DIR": _msys(bindir),
+        "BM_MICROMAMBA_URL": _file_url(mirror),
+        "BM_MICROMAMBA_SHA256": sha,
+    }
+    env.update(extra)
+    return env
+
+
+def test_git_y_node_ya_estan_no_se_instala_nada(base):
+    """Si están los dos, la instalación sigue sin preguntar nada."""
+    env = _shim(base, ["git", "node", "curl"])
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "No se encontró" not in r.stdout, r.stdout
+    assert "git y node listos" in r.stdout, r.stdout
+    assert not (base / "mamba").exists(), "no debe instalar git si ya está"
+    assert not (base / "node").exists(), "no debe instalar node si ya está"
+
+
+def test_sin_git_avisa_que_hay_que_instalarlo_y_lo_instala(base, tmp_path):
+    mirror, sha = _fake_micromamba(tmp_path)
+    env = _shim(base, ["node", "curl", "bzip2"])
+    env.update(_git_env(base, mirror, sha))
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert ("No se encontró git en el sistema: es necesario instalarlo "
+            "para continuar.") in r.stdout, r.stdout
+    assert "sha256 verificado" in r.stdout, r.stdout
+    assert (base / "mamba" / "envs" / "git" / "bin" / "git").exists(), \
+        "no se creó el entorno de git"
+    assert (base / "gitbin" / "git").exists(), "no se enlazó git en BM_GIT_BIN_DIR"
+
+
+def test_sin_node_avisa_que_hay_que_instalarlo_y_lo_instala(base, tmp_path):
+    dist, name = _fake_node_dist(tmp_path)
+    env = _shim(base, ["git", "curl"])
+    env.update(_node_env(base, dist))
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert ("No se encontró node en el sistema: es necesario instalarlo "
+            "para continuar.") in r.stdout, r.stdout
+    assert (base / "node" / name / "bin" / "node").exists(), "no se instaló node"
+
+
+def test_sin_git_y_sin_node_avisa_de_las_dos_utilidades(base, tmp_path):
+    dist, name = _fake_node_dist(tmp_path)
+    mirror, sha = _fake_micromamba(tmp_path)
+    env = _shim(base, ["curl", "bzip2"])
+    env.update(_node_env(base, dist))
+    env.update(_git_env(base, mirror, sha))
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "No se encontró git en el sistema" in r.stdout, r.stdout
+    assert "No se encontró node en el sistema" in r.stdout, r.stdout
+    assert "git y node listos" in r.stdout, r.stdout
+
+
+def test_el_gestor_sigue_adelante_aunque_falten_utilidades(base, tmp_path):
+    """Faltar git o node no puede parar la instalación del manager."""
+    mirror, sha = _fake_micromamba(tmp_path)
+    env = _shim(base, ["curl", "bzip2"])
+    env.update(_git_env(base, mirror, sha, BM_GIT="skip"))
+    env.update({"BM_NODE": "skip"})
+    r = _run(base, answer="s", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "sin git" in r.stdout, r.stdout
+    assert (base / "batocera_web" / "app.py").exists(), "no copió los ficheros"
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "# [batocera-manager]" in sh, "no registró el arranque automático"
+
+
+def test_bm_git_skip_no_instala_git(base):
+    env = _shim(base, ["node", "curl"])
+    env.update({"BM_GIT": "skip"})
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "No se encontró git en el sistema" in r.stdout, r.stdout
+    assert "Omitida la instalación de git (BM_GIT=skip)" in r.stdout, r.stdout
+    assert not (base / "mamba").exists(), "no debe instalar git con BM_GIT=skip"
+
+
+def test_un_sha256_de_micromamba_que_no_cuadra_no_instala_nada(base, tmp_path):
+    mirror, sha = _fake_micromamba(tmp_path)
+    env = _shim(base, ["node", "curl", "bzip2"])
+    env.update(_git_env(base, mirror, sha))
+    env["BM_MICROMAMBA_SHA256"] = "0" * 64
+    r = _run(base, answer="n", env_extra=env)
+    assert "sha256 incorrecto" in r.stdout, r.stdout
+    assert not (base / "mamba" / "envs" / "git").exists(), \
+        "no debe instalar git con un sha256 que no cuadra"
+
+
+def test_git_se_instala_desde_el_canal_conda_forge(base, tmp_path):
+    mirror, sha = _fake_micromamba(tmp_path)
+    env = _shim(base, ["node", "curl", "bzip2"])
+    env.update(_git_env(base, mirror, sha))
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    args = (base / "mamba" / "root" / "mm-args.txt").read_text(encoding="utf-8")
+    assert "create" in args, args
+    assert "-c conda-forge" in args, args
+
+
+def test_el_bloque_de_git_recrea_el_enlace_al_arrancar(base, tmp_path):
+    """El bloque se escribe en custom.sh: /usr es un overlay y se pierde."""
+    mirror, sha = _fake_micromamba(tmp_path)
+    env = _shim(base, ["node", "curl", "bzip2"])
+    env.update(_git_env(base, mirror, sha))
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "# [batocera-git]" in sh
+    assert "# [/batocera-git]" in sh
+    assert "envs/git/bin/git" in sh, sh
+    assert "ln -sf" in sh, sh
+
+
+def test_el_bloque_de_git_se_escribe_aunque_git_ya_estuviera(base):
+    """Git ya instalado: no se reinstala, pero el bloque queda escrito."""
+    prefix = base / "mamba" / "envs" / "git" / "bin"
+    prefix.mkdir(parents=True)
+    git = prefix / "git"
+    git.write_text('#!/bin/sh\necho "git version 2.56.0"\n', encoding="utf-8")
+    git.chmod(0o755)
+    env = _shim(base, ["git", "node", "curl"])
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "No se encontró" not in r.stdout, r.stdout
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "# [batocera-git]" in sh, sh
+
+
+def test_el_bloque_de_git_no_se_duplica(base, tmp_path):
+    mirror, sha = _fake_micromamba(tmp_path)
+    env = _shim(base, ["node", "curl", "bzip2"])
+    env.update(_git_env(base, mirror, sha))
+    _run(base, answer="n", env_extra=env)
+    _run(base, answer="n", env_extra=env)
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert sh.count("# [batocera-git]") == 1, sh
+
+
+def test_el_bloque_de_node_se_escribe_si_el_node_ya_esta(base):
+    """Node ya instalado: no se reinstala, pero el bloque queda escrito."""
+    node_dir = base / "node"
+    (node_dir / "current" / "bin").mkdir(parents=True)
+    node = node_dir / "current" / "bin" / "node"
+    node.write_text('#!/bin/sh\necho v26.13.0\n', encoding="utf-8")
+    node.chmod(0o755)
+    env = _shim(base, ["git", "node", "curl"])
+    env.update({"BM_NODE_DIR": _msys(node_dir)})
+    r = _run(base, answer="n", env_extra=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "No se encontró" not in r.stdout, r.stdout
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "# [batocera-node]" in sh, sh
+    assert "npm_config_prefix" in sh, sh

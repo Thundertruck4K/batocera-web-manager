@@ -17,7 +17,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-461%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-473%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager-react?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager-react/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager-react?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager-react/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager-react?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager-react/issues)
@@ -198,8 +198,8 @@ bash install.sh
 
 (También puedes ejecutarlo directamente: `./install.sh`, ya es ejecutable.)
 
-**Sin git** (Batocera no lo trae por defecto): descarga la última release y
-extráela (la carpeta queda lista, sin renombrar):
+**Sin git** (Batocera no lo trae por defecto): puedes descargar la última release y
+extraerla (la carpeta queda lista, sin renombrar):
 
 ```bash
 cd /userdata/system
@@ -210,7 +210,9 @@ cd batocera_web
 ./install.sh
 ```
 
-El instalador comprueba Python y Pillow (opcional), valida el puerto, deja los ficheros en
+El instalador valida primero las **utilidades** (Git y Node): si ya están, sigue con la
+instalación sin preguntar nada; si faltan, avisa de que es necesario instalarlas y las
+instala. Después comprueba Python y Pillow (opcional), valida el puerto, deja los ficheros en
 `/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, escribe un
 bloque marcado en `/userdata/system/custom.sh` y arranca el manager en ese momento.
 
@@ -229,7 +231,9 @@ Al terminar verás algo así:
 
   ◆ Python 3               ✔ Python 3.12.x
   ◆ Pillow (logos)         ✔ disponible
+  ◆ Git                    ✔ git version 2.56.0 · /usr/bin/git
   ◆ Node.js                ✔ v26.13.0 · /usr/bin/node
+  ◆ Utilidades             ✔ git y node listos
 
   ¿Añadir el manager al inicio de Batocera?
      Así se levanta solo cada vez que enciendas la consola.
@@ -239,6 +243,25 @@ Al terminar verás algo así:
 
   ╰─ Listo. Abre http://BATOCERA:5000
 ```
+
+### Git (opcional)
+
+Git no es necesario para **usar** el manager, pero sí es la forma cómoda de actualizarlo
+(`git pull`). Batocera es **Buildroot**: no trae `git`, ni gestor de paquetes, ni compilador.
+
+Si no lo encuentra, el instalador avisa de que hace falta y lo instala con **micromamba**, un
+binario estático, contra el canal `conda-forge`:
+
+1. Se descarga micromamba (2.10.0) y se **verifica su sha256** contra el hash fijado en el
+   propio script: si no cuadra, no se descomprime nada.
+2. Se crea el entorno en `/userdata/system/mamba/envs/git` con `micromamba create` (que
+   comprueba el sha256 de cada paquete que descarga).
+3. Se enlaza `git` en `/usr/bin` y se borra la caché de paquetes, que ocupa cientos de MB.
+4. Se escribe un bloque `# [batocera-git]` en `custom.sh` para que el enlace se recree en
+   cada arranque (`/usr` es un overlay que se pierde al reiniciar).
+
+Ojo: el paquete `git` de conda-forge arrastra unas 250 MB (trae Perl, OpenSSL, curl…).
+Si prefieres no instalar nada, usa la vía del tarball de la release y actualiza a mano.
 
 ### Node.js (opcional)
 
@@ -266,6 +289,13 @@ Si no lo encuentra, el instalador pregunta si quieres instalarlo. La consola es 
 | `BM_CUSTOM_SH` | `$BM_BASE_DIR/custom.sh` | Script de arranque que se modifica |
 | `BM_PYTHON` | `python3` | Intérprete a usar |
 | `BM_AUTOSTART` | *(pregunta)* | `s` / `n` para instalaciones desatendidas |
+| `BM_GIT` | `auto` | `auto` (lo instala si no está), `install` (lo instala sí o sí) o `skip` |
+| `BM_GIT_DIR` | `$BM_BASE_DIR/mamba` | Dónde se instala Git (el entorno queda en `$BM_GIT_DIR/envs/git`) |
+| `BM_GIT_BIN_DIR` | `/usr/bin` | Dónde se enlazan los binarios |
+| `BM_MICROMAMBA_URL` | `https://micro.mamba.pm/api/micromamba` | Espejo de micromamba (por si hace falta otro) |
+| `BM_MICROMAMBA_VERSION` | `2.10.0` | Versión de micromamba |
+| `BM_MICROMAMBA_SHA256` | *(el de conda-forge)* | Hash esperado: si no cuadra, no se instala nada |
+| `BM_CONDA_CHANNEL` | `conda-forge` | Canal de conda del que se toma Git |
 | `BM_NODE` | `auto` | `auto` (pregunta si no hay Node), `install` (lo instala sí o sí) o `skip` |
 | `BM_NODE_VERSION` | *(última LTS)* | Versión concreta de Node, p. ej. `v26.13.0` |
 | `BM_NODE_DIR` | `$BM_BASE_DIR/node` | Dónde se instala Node |
@@ -275,7 +305,9 @@ Si no lo encuentra, el instalador pregunta si quieres instalarlo. La consola es 
 
 Ejemplo sin interacción: `BM_PORT=8080 BM_AUTOSTART=s bash install.sh`
 
-Con Node instalado a la fuerza, sin preguntas: `BM_NODE=install BM_AUTOSTART=s bash install.sh`
+Con Git y Node instalados a la fuerza, sin preguntas: `BM_GIT=install BM_NODE=install BM_AUTOSTART=s bash install.sh`
+
+Sin instalar Git (o Node): `BM_GIT=skip BM_NODE=skip BM_AUTOSTART=s bash install.sh`
 
 ### Actualizar a la última versión
 
@@ -412,7 +444,7 @@ La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **461 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **473 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
@@ -439,7 +471,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
-├── tests/                    # 461 tests con pytest
+├── tests/                    # 473 tests con pytest
 ├── docs/
 │   ├── media/logo.png        # logo del proyecto
 │   ├── screenshots/          # capturas del README

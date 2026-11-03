@@ -7,6 +7,27 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- 12 tests nuevos (`tests/test_install_sh.py`) que cubren la fase de validación de
+  utilidades: git y node presentes, ausentes (con aviso e instalación desde un espejo local de
+  micromamba), sha256 que no cuadra, canal de conda, `BM_GIT=skip` y el bloque `# [batocera-git]`
+  de `custom.sh`.
+- **Git opcional en el `install.sh`**: el instalador comprueba si hay git y, si no lo encuentra,
+  avisa de que es necesario instalarlo y lo instala. Batocera es Buildroot (sin gestor de
+  paquetes ni compilador), así que se hace con **micromamba**, un binario estático, contra el
+  canal `conda-forge`: se **verifica el sha256 de micromamba contra el hash fijado en el propio
+  script** (si no cuadra, no se descomprime nada), se crea el entorno en
+  `$BASE_DIR/mamba/envs/git` con `micromamba create` —que a su vez comprueba el sha256 de cada
+  paquete— se enlaza `git` en `/usr/bin`, se borra la caché de paquetes (cientos de MB) y se
+  escribe un bloque `# [batocera-git]` en `custom.sh` para que el enlace se recree en cada
+  arranque (`/usr` es un overlay que se pierde al reiniciar).
+  - Variables nuevas: `BM_GIT` (`auto` / `install` / `skip`), `BM_GIT_DIR`, `BM_GIT_BIN_DIR`,
+    `BM_MICROMAMBA_URL`, `BM_MICROMAMBA_VERSION`, `BM_MICROMAMBA_SHA256` y `BM_CONDA_CHANNEL`.
+- **Proceso de validación de utilidades** en el `install.sh` (v1.6): antes de instalar nada se
+  comprueban **git** y **node**. Si ya están, la instalación continúa sin preguntar nada; si
+  faltan, se avisa («no se encontró X en el sistema: es necesario instalarlo para continuar») y
+  se instalan. Con `BM_GIT=skip` / `BM_NODE=skip` se salta la instalación de esa utilidad, y con
+  `=install` se fuerza aunque ya esté. Que falte git **no** impide instalar el manager: la web
+  funciona igual, sólo se pierde la actualización con `git pull`.
 - **Node.js opcional en el `install.sh`**: el instalador detecta si hay Node y, si no lo encuentra,
   ofrece instalarlo: descarga el tarball oficial de nodejs.org (la última LTS por defecto, o la que
   fije `BM_NODE_VERSION`), **comprueba el sha256 contra el `SHASUMS256.txt` oficial antes de

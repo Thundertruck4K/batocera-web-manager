@@ -53,10 +53,22 @@ El proyecto se trabaja en **dos repositorios independientes** que comparten el m
   `cd /userdata/system/batocera_web/frontend && npm ci && npm run build` → el bundle sale con los
   **mismos hashes** que el versionado en el repo. **No hace falta para usar la app**: el despliegue
   normal sigue siendo subir `frontend/dist/` ya compilado.
-  - `install.sh` (v1.5) sabe instalarlo solo: descarga el tarball oficial, **verifica el sha256
+  - `install.sh` (v1.6) sabe instalarlo solo: descarga el tarball oficial, **verifica el sha256
     contra el `SHASUMS256.txt`**, lo deja en `$BASE_DIR/node/current` y escribe el bloque
     `# [batocera-node]`. Se fuerza con `BM_NODE=install`; `BM_NODE=skip` lo salta; por defecto
     (`auto`) pregunta, y sin terminal interactiva no instala nada.
+- **Git en el dispositivo (opcional)**: Batocera es Buildroot y **no trae git**. Se instaló con
+  **micromamba** (binario estático) contra el canal `conda-forge`: el entorno queda en
+  `/userdata/system/mamba/envs/git` y se enlaza en `/usr/bin/git`. El bloque `# [batocera-git]` de
+  `/userdata/system/custom.sh` rehace el enlace en cada arranque (la partición `/usr` es un overlay
+  que se pierde al reiniciar). Ojo: el paquete de conda-forge arrastra ~250 MB (Perl, OpenSSL,
+  curl…), aunque la caché de paquetes se borra al terminar.
+  - `install.sh` (v1.6) lo instala solo si falta: descarga micromamba, **verifica su sha256** contra
+    el hash fijado en el script, crea el entorno con `micromamba create` y escribe el bloque
+    `# [batocera-git]`. Se fuerza con `BM_GIT=install`; `BM_GIT=skip` lo salta; por defecto
+    (`auto`) avisa de que falta y lo instala.
+  - El `sha256` de micromamba 2.10.0 está **contrastado con la API de anaconda.org** para
+    `linux-64`, `linux-aarch64` y `linux-ppc64le` (no hay build para `armv7l`).
 
 ## Architecture
 
@@ -66,7 +78,8 @@ El proyecto se trabaja en **dos repositorios independientes** que comparten el m
   (`templates/index.html`), que sigue siendo el respaldo. Ver «Frontend» más abajo.
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
-- `install.sh` is current (v1.5): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
+- `install.sh` is current (v1.6): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
+- **Fase de validación de utilidades** (`install.sh` v1.6): el instalador comprueba **git** y **node** antes de instalar nada. Si están, sigue sin preguntar; si faltan, avisa («no se encontró X en el sistema: es necesario instalarlo para continuar») y los instala. Git se instala con micromamba + `conda-forge` (sha256 fijado en el script, `BM_MICROMAMBA_SHA256` lo puede sobrescribir); Node con el tarball oficial de nodejs.org. `BM_GIT`/`BM_NODE` aceptan `auto`, `install` y `skip`.
 - **Contrato del servicio**: `/api/service/status` devuelve `autostart` (`registered`/`installed`,
   `manual_mode`, `cmd`, `block`, `path`) y `process` (`running`, `pids`, `pid`, `port`, `cmd`). El
   frontend React y la interfaz clásica leen **las mismas claves**: si se toca uno, se toca el otro
