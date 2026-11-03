@@ -1,5 +1,13 @@
 "use client";
 
+// Copia local del componente `LogStream` de overtrue/ui (instalada con el CLI
+// de shadcn). Parcheado a mano para el design system del manager:
+// en Tailwind v4 la utilidad `border` a secas pinta el borde con
+// currentColor (blanco), así que las líneas divisorias internas llevan
+// `border-border` para usar el mismo token que la tarjeta que las contiene.
+// Si se reinstala con `npx shadcn@latest add ...`, hay que volver a aplicar
+// estos `border-border`.
+
 import * as React from "react";
 import {
   IconArrowDown as ArrowDown,
@@ -410,7 +418,7 @@ export function LogStream({
               aria-label={following ? "Pause following" : "Resume following"}
               onClick={() => setFollowing(!following)}
               className={cn(
-                "ml-1 inline-flex h-7 items-center gap-1.5 rounded-md border bg-card px-2 text-xs font-medium shadow-xs transition-colors hover:bg-muted motion-reduce:transition-none @md/log:px-2.5",
+                "ml-1 inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-xs font-medium shadow-xs transition-colors hover:bg-muted motion-reduce:transition-none @md/log:px-2.5",
                 focusRing,
               )}
             >
@@ -425,7 +433,7 @@ export function LogStream({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-y bg-muted/30 px-4 py-2">
+      <div className="flex flex-wrap items-center gap-2 border-y border-border bg-muted/30 px-4 py-2">
         <div role="group" aria-label="Levels" className="flex flex-wrap items-center gap-1">
           {LEVELS.map((level) => {
             const active = levels.has(level);
@@ -493,7 +501,7 @@ export function LogStream({
               <span className="sr-only">Clear filter</span>
             </button>
           ) : (
-            <kbd className="pointer-events-none absolute top-1/2 right-1.5 hidden -translate-y-1/2 rounded border bg-muted px-1 font-mono text-[10px] leading-4 text-muted-foreground @md/log:block">
+            <kbd className="pointer-events-none absolute top-1/2 right-1.5 hidden -translate-y-1/2 rounded border border-border bg-muted px-1 font-mono text-[10px] leading-4 text-muted-foreground @md/log:block">
               /
             </kbd>
           )}
@@ -574,7 +582,7 @@ export function LogStream({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t px-4 py-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
+      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
         <span>
           {filtered ? `${matching.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}` : total.toLocaleString("en-US")}{" "}
           {total === 1 ? "event" : "events"}

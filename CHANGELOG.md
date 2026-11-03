@@ -125,7 +125,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   manager en un puerto que ya no es el configurado.
 - **La tarjeta «Flujo de eventos» de *Depuración* tenía un borde más claro** que las de encima: el
   componente `LogStream` pinta su propio borde con el color actual; ahora la tarjeta usa el mismo
-  `border-border` que las demás.
+  `border-border` que las demás. **Sus líneas divisorias internas** (la barra de filtros, la del pie y
+  el borde del botón «Pausa») también heredaban ese color claro: llevan `border-border`, el mismo
+  token que la tarjeta que las contiene.
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
   el scrim negro), el chip de codigo del aviso de servicio y los degradados de
   texto del dashboard. Ahora cada uno tiene su variable de tema.
