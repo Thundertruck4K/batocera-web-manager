@@ -6,6 +6,7 @@ El instalador se prueba de verdad: se lanza con bash sobre una carpeta temporal
 levantar nada. Si no hay un bash utilizable en la máquina, los tests se saltan.
 """
 from __future__ import annotations
+import hashlib
 import os
 import re
 import shutil
@@ -70,7 +71,7 @@ def _msys(p: Path) -> str:
 
 
 def _run(base: Path, answer: str | None = None, cwd: Path | None = None,
-         script: Path | None = None) -> subprocess.CompletedProcess:
+         script: Path | None = None, env_extra: dict | None = None) -> subprocess.CompletedProcess:
     if "BM_BASE_DIR" not in INSTALL.read_text(encoding="utf-8"):
         pytest.fail("install.sh debe aceptar BM_BASE_DIR para poder probarlo sin "
                     "escribir en /userdata/system")
@@ -80,9 +81,11 @@ def _run(base: Path, answer: str | None = None, cwd: Path | None = None,
     env.pop("BM_AUTOSTART", None)
     if answer is not None:
         env["BM_AUTOSTART"] = answer
+    if env_extra:
+        env.update({k: v for k, v in env_extra.items() if v is not None})
     return subprocess.run([_bash(), str(script or INSTALL)], capture_output=True,
                           text=True, encoding="utf-8", cwd=str(cwd or ROOT),
-                          env=env, timeout=120)
+                          env=env, timeout=180)
 
 
 @pytest.fixture
@@ -176,3 +179,123 @@ def test_it_asks_about_autostart(base):
     assert "¿Añadir el manager al inicio de Batocera?" in txt
     r = _run(base)          # sin TTY
     assert "terminal interactiva" in r.stdout.lower()
+
+
+# ── El bloque de arranque automático ───────────────────────────────────
+def test_el_bloque_mata_la_instancia_anterior(base):
+    """Sin el pkill, la instancia nueva no encontraría el puerto libre."""
+    r = _run(base, answer="s")
+    assert r.returncode == 0, r.stdout + r.stderr
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert 'pkill -f "python3.*app\\.py"' in sh
+    assert "app.py --port 5000 &" in sh
+
+
+def test_el_bloque_se_reescribe_si_cambia_el_puerto(base):
+    _run(base, answer="s")
+    _run(base, answer="s", env_extra={"BM_PORT": "8080"})
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert sh.count("# [batocera-manager]") == 1, "no debe duplicar el bloque"
+    assert "app.py --port 8080 &" in sh
+    assert "app.py --port 5000" not in sh, "el puerto viejo se queda ahí"
+
+
+def test_el_bloque_no_pisa_el_resto_de_custom_sh(base):
+    (base / "custom.sh").write_text("#!/bin/bash\n# cosas del usuario\n", encoding="utf-8")
+    _run(base, answer="s")
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "cosas del usuario" in sh
+
+
+# ── El puerto ──────────────────────────────────────────────────────────
+def test_un_puerto_que_no_es_numero_falla(base):
+    r = _run(base, answer="s", env_extra={"BM_PORT": "abc"})
+    assert r.returncode != 0
+    assert "no es un número" in r.stdout
+
+
+def test_un_puerto_fuera_de_rango_falla(base):
+    r = _run(base, answer="s", env_extra={"BM_PORT": "99999"})
+    assert r.returncode != 0
+    assert "fuera de rango" in r.stdout
+
+
+# ── Node.js (opcional) ─────────────────────────────────────────────────
+def _node_arch() -> str:
+    """Arquitectura tal y como la ve el script (uname -m → nombre de Node)."""
+    out = subprocess.run([_bash(), "-c", "uname -m"], capture_output=True,
+                         text=True, timeout=30).stdout.strip()
+    return {"x86_64": "x64", "amd64": "x64", "aarch64": "arm64", "arm64": "arm64",
+            "armv7l": "armv7l", "armv6l": "armv6l"}.get(out, "x64")
+
+
+def _fake_node_dist(tmp_path: Path, version: str = "v26.13.0") -> tuple[Path, str]:
+    """Espejo local de nodejs.org: SHASUMS256.txt y el tarball."""
+    arch = _node_arch()
+    name = f"node-{version}-linux-{arch}"
+    stage = tmp_path / "stage"
+    (stage / name / "bin").mkdir(parents=True)
+    node = stage / name / "bin" / "node"
+    node.write_text(f"#!/bin/sh\necho {version}\n", encoding="utf-8")
+    node.chmod(0o755)
+
+    dist = tmp_path / "dist"
+    (dist / version).mkdir(parents=True)
+    tarball = dist / version / f"{name}.tar.gz"
+    subprocess.run([_bash(), "-c",
+                    f"tar -czf {_msys(tarball)} -C {_msys(stage)} {name}"],
+                   check=True, capture_output=True, timeout=120)
+    digest = hashlib.sha256(tarball.read_bytes()).hexdigest()
+    (dist / version / "SHASUMS256.txt").write_text(f"{digest}  {name}.tar.gz\n",
+                                                    encoding="utf-8")
+    return dist, name
+
+
+def _file_url(p: Path) -> str:
+    """URL file:// con ruta Windows: el curl de Windows no entiende /c/... ."""
+    return "file:///" + str(p).replace("\\", "/")
+
+
+def _node_env(base: Path, dist: Path, **extra) -> dict:
+    bindir = base / "bin"
+    bindir.mkdir(exist_ok=True)
+    env = {
+        "BM_NODE": "install",
+        "BM_NODE_VERSION": "v26.13.0",
+        "BM_NODE_URL": _file_url(dist),
+        "BM_NODE_BIN_DIR": _msys(bindir),
+        "BM_NODE_DIR": _msys(base / "node"),
+    }
+    env.update(extra)
+    return env
+
+
+def test_node_es_opcional_y_no_se_instala_sin_preguntar(base):
+    r = _run(base, answer="n")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "Node" in r.stdout
+    assert not (base / "node").exists(), "sin tocar nada no se instala Node"
+
+
+def test_node_se_instala_desde_el_espejo_local(base, tmp_path):
+    dist, name = _fake_node_dist(tmp_path)
+    r = _run(base, answer="n", env_extra=_node_env(base, dist))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (base / "node" / name / "bin" / "node").exists(), "no se descomprimió"
+    assert (base / "node" / "current").exists(), "no se creó el enlace current"
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "# [batocera-node]" in sh
+    assert "# [/batocera-node]" in sh
+    assert "NODE_HOME=" in sh
+    assert "npm_config_prefix" in sh
+
+
+def test_un_sha256_que_no_cuadra_no_instala_nada(base, tmp_path):
+    dist, name = _fake_node_dist(tmp_path)
+    tarball = dist / "v26.13.0" / f"{name}.tar.gz"
+    tarball.write_bytes(b"esto no es un tarball")
+
+    r = _run(base, answer="n", env_extra=_node_env(base, dist))
+
+    assert "sha256 incorrecto" in r.stdout
+    assert not (base / "node" / name).exists(), "no debe descomprimir nada"
