@@ -53,6 +53,10 @@ El proyecto se trabaja en **dos repositorios independientes** que comparten el m
   `cd /userdata/system/batocera_web/frontend && npm ci && npm run build` → el bundle sale con los
   **mismos hashes** que el versionado en el repo. **No hace falta para usar la app**: el despliegue
   normal sigue siendo subir `frontend/dist/` ya compilado.
+  - `install.sh` (v1.5) sabe instalarlo solo: descarga el tarball oficial, **verifica el sha256
+    contra el `SHASUMS256.txt`**, lo deja en `$BASE_DIR/node/current` y escribe el bloque
+    `# [batocera-node]`. Se fuerza con `BM_NODE=install`; `BM_NODE=skip` lo salta; por defecto
+    (`auto`) pregunta, y sin terminal interactiva no instala nada.
 
 ## Architecture
 
@@ -62,7 +66,11 @@ El proyecto se trabaja en **dos repositorios independientes** que comparten el m
   (`templates/index.html`), que sigue siendo el respaldo. Ver «Frontend» más abajo.
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
-- `install.sh` is current (v1.4): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides
+- `install.sh` is current (v1.5): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
+- **Contrato del servicio**: `/api/service/status` devuelve `autostart` (`registered`/`installed`,
+  `manual_mode`, `cmd`, `block`, `path`) y `process` (`running`, `pids`, `pid`, `port`, `cmd`). El
+  frontend React y la interfaz clásica leen **las mismas claves**: si se toca uno, se toca el otro
+  (`frontend/src/lib/types.ts` y `app.py` van de la mano).
 
 ## Frontend (React + Tailwind)
 

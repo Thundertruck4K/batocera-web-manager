@@ -17,7 +17,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-438%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-461%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager-react?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager-react/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager-react?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager-react/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager-react?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager-react/issues)
@@ -210,9 +210,14 @@ cd batocera_web
 ./install.sh
 ```
 
-El instalador comprueba Python y Pillow (opcional), deja los ficheros en
-`/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, añade un
-bloque marcado a `/userdata/system/custom.sh` y arranca el manager en ese momento.
+El instalador comprueba Python y Pillow (opcional), valida el puerto, deja los ficheros en
+`/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, escribe un
+bloque marcado en `/userdata/system/custom.sh` y arranca el manager en ese momento.
+
+El bloque de arranque se **reescribe** en cada instalación (no se duplica ni se queda con el puerto
+antiguo) y empieza con un `pkill` que mata la instancia anterior, para que el manager nuevo no se
+quede sin puerto si estaba levantado a mano. Si el manager ya estaba corriendo, el instalador lo
+para y lo vuelve a arrancar con el código nuevo.
 
 Al terminar verás algo así:
 
@@ -224,28 +229,53 @@ Al terminar verás algo así:
 
   ◆ Python 3               ✔ Python 3.12.x
   ◆ Pillow (logos)         ✔ disponible
+  ◆ Node.js                ✔ v26.13.0 · /usr/bin/node
 
   ¿Añadir el manager al inicio de Batocera?
      Así se levanta solo cada vez que enciendas la consola.
   [S]í / [n]o: s
-  ◆ Arranque automático    ✔ añadido a /userdata/system/custom.sh
+  ◆ Arranque automático    ✔ bloque en /userdata/system/custom.sh
   ✔ Arrancado ahora mismo en el puerto 5000
 
   ╰─ Listo. Abre http://BATOCERA:5000
 ```
 
+### Node.js (opcional)
+
+**No hace falta para usar el manager**: el frontend se despliega ya compilado en `frontend/dist/`, así
+que la consola no necesita Node ni un paso de build. Node sólo sirve para *recompilar* el bundle en la
+propia consola.
+
+Si no lo encuentra, el instalador pregunta si quieres instalarlo. La consola es **Buildroot** (sin
+`apt`, `dpkg` ni gestor de paquetes), así que se hace con el tarball oficial de nodejs.org:
+
+1. Se descarga el tarball de la **última LTS** (o la que fije `BM_NODE_VERSION`).
+2. Se **verifica el sha256 contra el `SHASUMS256.txt` oficial**: si no cuadra, no se descomprime nada.
+3. Se extrae en `/userdata/system/node/` y se crea el enlace `current`.
+4. Se enlazan `node`, `npm`, `npx` y `corepack` en `/usr/bin`.
+5. Se escribe un bloque `# [batocera-node]` en `custom.sh` para que los enlaces se recreen en cada
+   arranque (`/usr` es un overlay que se pierde al reiniciar) y para persistir `npm_config_prefix` y
+   `npm_config_cache` en la SD.
+
 ### Opciones del instalador
 
 | Variable | Por defecto | Para qué sirve |
 |---|---|---|
-| `BM_PORT` | `5000` | Puerto del servidor web |
+| `BM_PORT` | `5000` | Puerto del servidor web (debe estar entre 1 y 65535) |
 | `BM_BASE_DIR` | `/userdata/system` | Carpeta base de Batocera |
 | `BM_CUSTOM_SH` | `$BM_BASE_DIR/custom.sh` | Script de arranque que se modifica |
 | `BM_PYTHON` | `python3` | Intérprete a usar |
 | `BM_AUTOSTART` | *(pregunta)* | `s` / `n` para instalaciones desatendidas |
+| `BM_NODE` | `auto` | `auto` (pregunta si no hay Node), `install` (lo instala sí o sí) o `skip` |
+| `BM_NODE_VERSION` | *(última LTS)* | Versión concreta de Node, p. ej. `v26.13.0` |
+| `BM_NODE_DIR` | `$BM_BASE_DIR/node` | Dónde se instala Node |
+| `BM_NODE_BIN_DIR` | `/usr/bin` | Dónde se enlazan los binarios |
+| `BM_NODE_URL` | `https://nodejs.org/dist` | Espejo de nodejs.org (por si hace falta otro) |
 | `NO_COLOR` | — | Desactiva el color de la salida |
 
 Ejemplo sin interacción: `BM_PORT=8080 BM_AUTOSTART=s bash install.sh`
+
+Con Node instalado a la fuerza, sin preguntas: `BM_NODE=install BM_AUTOSTART=s bash install.sh`
 
 ### Actualizar a la última versión
 
@@ -254,10 +284,11 @@ Si ya lo tienes instalado y **tienes git** en la consola:
 ```bash
 cd /userdata/system/batocera_web
 git pull
-pkill -f "python3.*app.py"
-sleep 1
 ./install.sh
 ```
+
+El instalador para la instancia que estuviera corriendo y arranca la nueva con el código recién
+descargado, así que no hace falta matar nada a mano.
 
 Si **no tienes git** (Batocera no lo trae por defecto), descarga la última
 versión y sustituye la carpeta (tus ajustes, temas y ROMs están fuera de ella,
@@ -310,7 +341,7 @@ El servidor escucha en `0.0.0.0`, así que también funciona desde el móvil.
 | **Sistemas Creados** | Sistemas personalizados: editar, ver su XML o eliminar |
 | **Agregar / Editar** | Asistente para crear un sistema nuevo a partir de uno de referencia |
 | **Temas & Assets** | Temas instalados, tema activo, estructura de assets y subida de logos |
-| **Configuración** | Estado del servicio, arranque automático, rutas de Batocera y RetroAchievements |
+| **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), información del sistema, rutas de Batocera y RetroAchievements |
 
 Tras crear o modificar un sistema, Batocera necesita releer su configuración: el manager ofrece
 reiniciar EmulationStation desde la propia interfaz.
@@ -381,7 +412,7 @@ La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **438 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **461 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
@@ -408,7 +439,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
-├── tests/                    # 438 tests con pytest
+├── tests/                    # 461 tests con pytest
 ├── docs/
 │   ├── media/logo.png        # logo del proyecto
 │   ├── screenshots/          # capturas del README
@@ -483,7 +514,7 @@ BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
 # Backend de esta instancia
 python app.py --port 5001
 
-# Tests del backend (438)
+# Tests del backend (461)
 python -m pytest
 
 # Frontend

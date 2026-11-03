@@ -7,6 +7,28 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Node.js opcional en el `install.sh`**: el instalador detecta si hay Node y, si no lo encuentra,
+  ofrece instalarlo: descarga el tarball oficial de nodejs.org (la última LTS por defecto, o la que
+  fije `BM_NODE_VERSION`), **comprueba el sha256 contra el `SHASUMS256.txt` oficial antes de
+  descomprimir nada**, lo deja en `$BASE_DIR/node/current`, enlaza `node`, `npm`, `npx` y `corepack`
+  en `/usr/bin` y escribe un bloque `# [batocera-node]` en `custom.sh` para que los enlaces se
+  recreen en cada arranque (`/usr` es un overlay que se pierde al reiniciar) y para persistir
+  `npm_config_prefix` y `npm_config_cache` en la SD. **Sigue siendo opcional**: el frontend se
+  despliega ya compilado, así que el manager funciona igual sin Node.
+- **Tarjetas «Información del sistema» e «Instrucciones»** en *Configuración* de la versión React:
+  versión del manager, qué interfaz se está sirviendo (SPA de React o interfaz clásica), versión de
+  Python y de Node, disponibilidad de Pillow, puerto, carpeta del bundle compilado y ruta de
+  `custom.sh`; y las instrucciones de acceso, de instalación/actualización y de recompilación del
+  frontend, coherentes con el stack React + Tailwind (antes el manual de la interfaz clásica se
+  quedaba corto y con rutas de un proyecto que ya no es el que se despliega).
+- **`GET /api/system-info`**: endpoint nuevo con esos mismos datos del entorno, para la pantalla de
+  Configuración.
+- **Bloque de arranque automático con `pkill`**: el bloque de `custom.sh` empieza matando la
+  instancia anterior del manager, de modo que la nueva no se queda sin puerto si el servicio ya
+  estaba levantado a mano.
+- 21 tests nuevos (`tests/test_autostart_block.py` y ampliación de `tests/test_install_sh.py`) que
+  cubren el bloque de `custom.sh`, el contrato del servicio, la validación del puerto y la
+  instalación de Node contra un espejo local de nodejs.org (sin red).
 - **Vista de depuración en vivo** (`/depuracion`): nueva entrada en el sidebar con el componente
   `LogStream` de [overtrue/ui](https://ui.overtrue.xyz/components/log-stream), instalado con el CLI de
   shadcn (`frontend/components.json` guarda la configuración del registro). El backend mantiene un
@@ -72,12 +94,38 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   blanca de la config pública, listener del modo "auto" y borrado accidental de la key de RA).
 
 ### Cambiado
-- Contador de tests del README actualizado a 438.
+- **«Sistemas» pasa a llamarse «Sistemas Personalizados»** en el sidebar y en el título de la página,
+  con el subtítulo «N sistema(s) añadido(s) manualmente a EmulationStation»: son los sistemas
+  agregados a mano al manager, no el catálogo de sistemas de Batocera.
+- **`install.sh` v1.5**: valida el puerto (debe ser un número entre 1 y 65535) y avisa si ya está
+  ocupado por otro servicio; al ejecutarlo con el manager corriendo, para la instancia anterior y
+  arranca la nueva, que si no seguiría sirviendo el código de antes de la actualización. El bloque de
+  `custom.sh` se **reescribe** en cada instalación: antes se quedaba con el puerto y la ruta
+  antiguos.
+- **El estado del servicio tiene una forma única**: `/api/service/status` devuelve siempre
+  `registered`/`installed`, `manual_mode`, `cmd` y `block` para el arranque automático, y `running`,
+  `pids`, `pid`, `port` y `cmd` para el proceso. La interfaz clásica y la React leen lo mismo.
+- Contador de tests del README actualizado a 461.
 - El tacho con aguja (CPU/GPU/RAM) y el tanque de líquido (disco) los sustituyen el velocímetro y el
   donut con paleta; el gráfico de actividad pasa a ser un área monótona con degradado. Se elimina el
   código y el CSS de los gráficos antiguos.
 
 ### Corregido
+- **La tarjeta «Disco Principal» del panel mostraba siempre 100 %**: el centro del donut pintaba la
+  suma de los porcentajes de todas las particiones (que siempre suma 100) en lugar del valor
+  destacado, y sólo se corregía al pasar el ratón por la tarjeta. Ahora el centro muestra el uso real
+  del disco principal y el resto de los valores se leen al pasar el ratón.
+- **El estado del servicio en *Configuración* era siempre «Inactivo / Detenido / —»**: el frontend
+  pedía `autostart.installed` y `process.pid`, pero el backend devolvía `autostart.registered` y
+  `process.pids`, así que los tres campos salían vacíos aunque el manager estuviera en marcha. El
+  contrato se ha igualado en ambos lados.
+- **El bloque de arranque automático se quedaba con el puerto o la ruta antiguos**: `install.sh`
+  ahora reescribe el bloque en vez de dejarlo como estaba, y el botón «Reiniciar» de *Configuración*
+  también lo reescribe con los valores actuales, de forma que `custom.sh` nunca pide arrancar el
+  manager en un puerto que ya no es el configurado.
+- **La tarjeta «Flujo de eventos» de *Depuración* tenía un borde más claro** que las de encima: el
+  componente `LogStream` pinta su propio borde con el color actual; ahora la tarjeta usa el mismo
+  `border-border` que las demás.
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
   el scrim negro), el chip de codigo del aviso de servicio y los degradados de
   texto del dashboard. Ahora cada uno tiene su variable de tema.
