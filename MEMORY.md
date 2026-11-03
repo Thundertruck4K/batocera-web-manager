@@ -1,6 +1,6 @@
-# MEMORY — Batocera System Manager Web (versión React + Tailwind)
+# MEMORY — Batocera System Manager Web
 
-Proyecto: `batocera_web` v1.4  
+Proyecto: `batocera_web` v1.5  
 Repositorio: `Thundertruck4K/batocera-web-manager-react`  
 Copia local: `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react`  
 Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
@@ -16,7 +16,7 @@ Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)
 | Scraping | ScreenScraper.fr, TheGamesDB, IGDB (Twitch) |
 | Dependencias | Backend: **cero** — solo stdlib. Pillow opcional para placeholders de logos. Frontend: npm |
 | CLI | `--port N` (único flag) |
-| Instancia hermana | La versión **Python puro** vive en `Thundertruck4K/batocera-web-manager` (`D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web`). Comparte el `app.py` |
+| Interfaz de respaldo | `templates/index.html` — un solo fichero, sin build; se sirve si el bundle no está compilado |
 
 ---
 
@@ -32,10 +32,10 @@ batocera_web/
 ├── templates/
 │   └── index.html         # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json  # 220 sistemas oficiales con emuladores y cores
-├── tests/                 # 438 tests con pytest
+├── tests/                 # 473 tests con pytest
 ├── docs/                  # logo, capturas y specs de diseño
 ├── AGENTS.md              # Guía operativa para asistentes de IA
-├── install.sh             # Script de instalación (v1.4: sin Flask, instala en `batocera_web/`)
+├── install.sh             # Script de instalación (v1.6: sin Flask, instala en `batocera_web/`)
 ├── .gitattributes         # Fuerza LF en el bundle compilado y en el instalador
 ├── CHANGELOG.md           # Keep a Changelog
 ├── LICENSE                # MIT
@@ -47,26 +47,28 @@ batocera_web/
 
 ## Desarrollo local
 
-El proyecto se trabaja en **dos repositorios independientes** que comparten el mismo backend:
+El proyecto se trabaja en **un solo repositorio**:
 
-| | React + Tailwind (este repo) | Python puro |
-|---|---|---|
-| GitHub | `Thundertruck4K/batocera-web-manager-react` | `Thundertruck4K/batocera-web-manager` |
-| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web` |
-| Backend | `:5001` | `:5000` |
-| Interfaz | `frontend/` (Vite en `:5173`) | `templates/index.html` |
+| | |
+|---|---|
+| GitHub | `Thundertruck4K/batocera-web-manager-react` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
+| Backend | `:5001` |
+| Interfaz | `frontend/` (Vite en `:5173`) |
+| Respaldo | `templates/index.html` |
 
-- Los dos `app.py` deben quedar **idénticos salvo `APP_REPO`** (el repo del que se leen las releases).
-  Si se toca el backend en uno, el cambio se propaga al otro en la misma tanda.
+- No hay repo hermano: `app.py` es único y no hay que propagar el backend a otro sitio.
 - Herramientas de desarrollo (fuera de los repos, en `D:\UTILS\batocera_web`): `dev.ps1` / `dev.cmd`
-  con los subcomandos `react`, `python`, `both`, `stop`, `status` y `check`, más
-  `check-backend-sync.py`, que compara los dos `app.py`, exige los repos limpios y subidos, y vigila
-  que los ficheros de shell y el bundle compilado no lleven CRLF.
+  con los subcomandos `dev`, `backend`, `stop`, `status` y `check`, más
+  `check-dev-env.py`, que exige el repo limpio y subido, vigila que los ficheros de shell y el bundle
+  compilado no lleven CRLF, y comprueba que el `APP_REPO` del backend y la URL de clone del
+  `install.sh` apunten a este mismo repositorio.
 - **Nunca hay `push` directo a `master`**: rama `feature/...` o `fix/...` → PR → merge.
 - El bundle `frontend/dist/` **se versiona**: el dispositivo Batocera no tiene Node. Hay que
   recompilar (`npm run build`) y subirlos en el mismo commit que los cambios del frontend.
 - `npm run dev` hace de proxy de `/api` hacia `BATOCERA_BACKEND` (por defecto `http://127.0.0.1:5000`).
-  Con las dos instancias en marcha, apuntarlo a `:5001` para no mezclarlas.
+  En desarrollo, `dev.cmd dev` levanta el backend en `:5001` y le apunta con
+  `BATOCERA_BACKEND=http://127.0.0.1:5001`.
 - En Windows la ExecutionPolicy bloquea los `.ps1`: usar `dev.cmd`. Los `.cmd` se guardan con **CRLF**
   y sin acentos (cmd.exe no los interpreta bien si no).
 - `bash` en este entorno es **PowerShell 5.1**: sin `&&`, sin `cmd`, y `npm` se invoca como `npm.cmd`.

@@ -1,25 +1,25 @@
 # Batocera System Manager Web — Agent Guide
 
-> **Este repo es la versión con interfaz React + Tailwind CSS.** La versión Python pura (interfaz
-> de un solo fichero, sin build) vive en `Thundertruck4K/batocera-web-manager`, con el mismo backend.
-> Los enlaces públicos de este repo apuntan a `batocera-web-manager-react`.
+> **Este repo es el proyecto único.** Interfaz React + Tailwind CSS, backend Python puro y la
+> interfaz clásica de un solo fichero (`templates/index.html`) como respaldo.
 
-## Entorno de desarrollo local (dos instancias)
+## Entorno de desarrollo local (una instancia)
 
-El proyecto se trabaja en **dos repositorios independientes** que comparten el mismo backend:
+El proyecto se trabaja en **un solo repositorio**:
 
-| | React + Tailwind (este repo) | Python puro |
-|---|---|---|
-| GitHub | `Thundertruck4K/batocera-web-manager-react` | `Thundertruck4K/batocera-web-manager` |
-| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web` |
-| Backend | `:5001` | `:5000` |
-| Interfaz | `frontend/` (Vite en `:5173`) | `templates/index.html` |
+| | |
+|---|---|
+| GitHub | `Thundertruck4K/batocera-web-manager-react` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
+| Backend | `:5001` |
+| Interfaz | `frontend/` (Vite en `:5173`) |
+| Respaldo | `templates/index.html` |
 
-- **El `app.py` de los dos repos debe quedar idéntico salvo `APP_REPO`** (el repo del que se leen las
-  releases). Si tocas el backend aquí, propaga el cambio al otro repo en la misma tanda.
+- No hay repo hermano al que propagar el backend: `app.py` es único.
 - Herramientas de desarrollo, fuera de los repos, en `D:\UTILS\batocera_web`: `dev.ps1` / `dev.cmd`
-  (`react`, `python`, `both`, `stop`, `status`, `check`) y `check-backend-sync.py`, que compara los dos
-  `app.py`, exige los repos limpios y subidos, y vigila que el bundle y los `.sh` no lleven CRLF.
+  (`dev`, `backend`, `stop`, `status`, `check`) y `check-dev-env.py`, que exige el repo limpio y
+  subido, vigila que el bundle y los `.sh` no lleven CRLF y comprueba que el `APP_REPO` del backend
+  y la URL de clone del `install.sh` apunten a este mismo repositorio.
 - **Nunca `push` directo a `master`**: rama `feature/...` o `fix/...` → PR → merge.
 - `frontend/dist/` **se versiona** (el dispositivo no tiene Node): recompila con `npm run build` y
   sube el bundle en el mismo commit que los cambios del frontend.

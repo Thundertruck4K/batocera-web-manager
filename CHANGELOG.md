@@ -6,6 +6,18 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Cambiado
+- **El proyecto vuelve a vivir en un solo repositorio.** Durante un tiempo se mantuvo en dos
+  repositorios independientes con el mismo backend: la interfaz React + Tailwind CSS y la variante
+  «Python puro» (interfaz de un solo fichero). La variante se retira: su repositorio
+  `Thundertruck4K/batocera-web-manager` se elimina y todo el trabajo sigue aquí, en
+  `Thundertruck4K/batocera-web-manager-react`.
+  - La **interfaz clásica** (`templates/index.html`) no desaparece: se queda como **respaldo** y el
+    backend la sirve automáticamente cuando el bundle compilado no está en la consola.
+  - La documentación (README, AGENTS, CHANGELOG y MEMORY) describe ya un único proyecto, sin
+    referencias al repositorio hermano ni a la sincronización de dos `app.py`.
+  - `APP_REPO` no cambia: sigue apuntando a este repositorio.
+
 ### Añadido
 - 12 tests nuevos (`tests/test_install_sh.py`) que cubren la fase de validación de
   utilidades: git y node presentes, ausentes (con aviso e instalación desde un espejo local de

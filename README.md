@@ -1,16 +1,16 @@
 <div align="center">
 
-# 🕹️ Batocera System Manager Web — React
+# 🕹️ Batocera System Manager Web
 
 **Interfaz web para gestionar tu Batocera desde el navegador**: sistemas personalizados,
 ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 
-> **Este repositorio es la versión con interfaz React + Tailwind CSS.** La versión Python pura
-> (interfaz de un solo fichero, sin build ni dependencias) está en
-> [Thundertruck4K/batocera-web-manager](https://github.com/Thundertruck4K/batocera-web-manager).
-> El backend es el mismo en los dos: sólo cambia la interfaz.
+> **Un solo proyecto, un solo repositorio.** La interfaz es una SPA en React + Tailwind CSS y el
+> backend sigue siendo **Python puro** (sin dependencias). La interfaz clásica de un solo
+> fichero (`templates/index.html`) se conserva como **respaldo**: si el bundle compilado no está
+> en la consola, el backend sirve esa en su lugar.
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.4-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager-react/releases)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.5-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager-react/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager-react?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager-react/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager-react?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager-react/issues)
 [![Último commit](https://img.shields.io/github/last-commit/Thundertruck4K/batocera-web-manager-react?label=%C3%BAltimo%20commit)](https://github.com/Thundertruck4K/batocera-web-manager-react/commits/master)
-[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager-react?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager)
+[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager-react?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager-react)
 
 ![Batocera System Manager](docs/media/logo.png)
 
@@ -511,29 +511,24 @@ usa la interfaz clásica, así que no hay nada nuevo que desplegar en el backend
 
 ### 🧑‍💻 Proceso de desarrollo
 
-Este repositorio es **una de las dos instancias** del proyecto. La otra es la versión **Python pura**
-(interfaz de un solo fichero, sin build), con el mismo backend y la misma API:
+El proyecto vive en **un solo repositorio** con las dos interfaces conviviendo:
 
-| | Versión React + Tailwind (este repo) | Versión Python pura |
-|:--|:--|:--|
-| GitHub | `Thundertruck4K/batocera-web-manager-react` | `Thundertruck4K/batocera-web-manager` |
-| Interfaz | `frontend/` — React 19 + Vite + Tailwind v4 | `templates/index.html` — un fichero, sin build |
-| Backend | `app.py` | `app.py` (idéntico) |
-
-Los dos `app.py` se mantienen **byte a byte idénticos** salvo una constante (`APP_REPO`, el
-repositorio del que se leen las releases). Un comprobador automático lo verifica, para que ninguno de
-los dos se desincronice en silencio.
+| | Dónde está |
+|:--|:--|
+| GitHub | `Thundertruck4K/batocera-web-manager-react` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
+| Interfaz principal | `frontend/` — React 19 + Vite + Tailwind v4 |
+| Interfaz de respaldo | `templates/index.html` — un fichero, sin build |
+| Backend | `app.py` — Python stdlib, cero dependencias |
 
 #### Puertos en desarrollo
 
 | Puerto | Qué es |
 |:--|:--|
-| `5001` | backend de esta instancia (React) |
-| `5000` | backend de la instancia Python pura |
+| `5001` | backend en desarrollo |
 | `5173` | Vite — dev server del frontend; hace de proxy de `/api` hacia `:5001` |
 
-Con las dos instancias en marcha, `BATOCERA_BACKEND=http://127.0.0.1:5001` hace que Vite apunte al
-backend de **este** repo y no al del otro:
+Para levantar el frontend contra el backend local:
 
 ```bash
 cd frontend
@@ -543,10 +538,10 @@ BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
 #### Comandos habituales
 
 ```bash
-# Backend de esta instancia
+# Backend en desarrollo
 python app.py --port 5001
 
-# Tests del backend (461)
+# Tests del backend (473)
 python -m pytest
 
 # Frontend
@@ -556,9 +551,8 @@ npx tsc -b --noEmit               # comprobación de tipos
 
 #### Ramas y pull requests
 
-Cada repositorio tiene su propio ciclo y **no se hace `push` directo a `master`**: se crea una rama
-(`feature/...` o `fix/...`), se sube y se abre un *pull request* contra `master`. Cuando cambie el
-backend, el cambio se aplica en los dos repositorios para que los `app.py` sigan siendo idénticos.
+El ciclo es el de siempre y **no se hace `push` directo a `master`**: se crea una rama
+(`feature/...` o `fix/...`), se sube y se abre un *pull request* contra `master`.
 
 ---
 
@@ -663,10 +657,8 @@ Ideas anotadas, sin fechas:
 Se agradece un estilo de código acorde con el resto (comentarios en español, sin dependencias
 nuevas en el servidor) y que los cambios de interfaz conserven los identificadores de los tests.
 
-Si el cambio toca el backend (`app.py`), hay que **aplicarlo también en el repositorio hermano**
-([Python puro](https://github.com/Thundertruck4K/batocera-web-manager)) para que los dos `app.py`
-sigan siendo idénticos: un comprobador automático lo verifica. Y si toca el frontend, recuerda
-subir también el bundle recompilado (`frontend/dist/`), porque el dispositivo no tiene Node.
+Si el cambio toca el frontend, recuerda subir también el bundle recompilado (`frontend/dist/`),
+porque el dispositivo no tiene Node.
 
 ---
 
