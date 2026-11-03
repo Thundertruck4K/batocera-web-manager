@@ -1,8 +1,30 @@
 # Batocera System Manager Web — Agent Guide
 
-> **Este repo es la versión con interfaz React + Tailwind CSS.** La versión Python pura (interfaz
-> de un solo fichero, sin build) vive en `Thundertruck4K/batocera-web-manager`, con el mismo backend.
-> Los enlaces públicos de este repo apuntan a `batocera-web-manager-react`.
+> **Este repo es el proyecto único.** Interfaz React + Tailwind CSS, backend Python puro y la
+> interfaz clásica de un solo fichero (`templates/index.html`) como respaldo.
+
+## Entorno de desarrollo local (una instancia)
+
+El proyecto se trabaja en **un solo repositorio**:
+
+| | |
+|---|---|
+| GitHub | `Thundertruck4K/batocera-web-manager-react` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
+| Backend | `:5001` |
+| Interfaz | `frontend/` (Vite en `:5173`) |
+| Respaldo | `templates/index.html` |
+
+- No hay repo hermano al que propagar el backend: `app.py` es único.
+- Herramientas de desarrollo, fuera de los repos, en `D:\UTILS\batocera_web`: `dev.ps1` / `dev.cmd`
+  (`dev`, `backend`, `stop`, `status`, `check`) y `check-dev-env.py`, que exige el repo limpio y
+  subido, vigila que el bundle y los `.sh` no lleven CRLF y comprueba que el `APP_REPO` del backend
+  y la URL de clone del `install.sh` apunten a este mismo repositorio.
+- **Nunca `push` directo a `master`**: rama `feature/...` o `fix/...` → PR → merge.
+- `frontend/dist/` **se versiona** (el dispositivo no tiene Node): recompila con `npm run build` y
+  sube el bundle en el mismo commit que los cambios del frontend.
+- Windows: la ExecutionPolicy bloquea los `.ps1` → usa `dev.cmd`. Los `.cmd` necesitan **CRLF** y sin
+  acentos. El `bash` de este entorno es **PowerShell 5.1** (sin `&&`, sin `cmd`, `npm` → `npm.cmd`).
 
 ## Run
 
@@ -22,6 +44,31 @@
   - Autostart: `/userdata/system/custom.sh` (marker `# [batocera-manager]` / `# [/batocera-manager]`)
   - `python_path` default: detectado por glob (`/usr/lib/python3*/site-packages/configgen/emulatorlauncher.py`); fallback `python3.12`
 - After creating a system CFG, restart ES: `batocera-es-swissknife --restart` (también `POST /api/es/restart`; `get_es_status()` expone `restart_pending`)
+- **Node.js en el dispositivo (opcional)**: la Batocera de desarrollo tiene Node v26 LTS en
+  `/userdata/system/node/current` (enlazado en `/usr/bin/node` y `/usr/bin/npm`). Se instaló desde el
+  tarball oficial de nodejs.org porque Batocera es **Buildroot** y no tiene `apt`/`dpkg`: no se puede
+  instalar nada por gestor de paquetes. El bloque `# [batocera-node]` de
+  `/userdata/system/custom.sh` rehace los enlaces en cada arranque (la partición `/usr` es un overlay
+  que se pierde al reiniciar). Con eso se puede recompilar el frontend en la propia consola:
+  `cd /userdata/system/batocera_web/frontend && npm ci && npm run build` → el bundle sale con los
+  **mismos hashes** que el versionado en el repo. **No hace falta para usar la app**: el despliegue
+  normal sigue siendo subir `frontend/dist/` ya compilado.
+  - `install.sh` (v1.6) sabe instalarlo solo: descarga el tarball oficial, **verifica el sha256
+    contra el `SHASUMS256.txt`**, lo deja en `$BASE_DIR/node/current` y escribe el bloque
+    `# [batocera-node]`. Se fuerza con `BM_NODE=install`; `BM_NODE=skip` lo salta; por defecto
+    (`auto`) pregunta, y sin terminal interactiva no instala nada.
+- **Git en el dispositivo (opcional)**: Batocera es Buildroot y **no trae git**. Se instaló con
+  **micromamba** (binario estático) contra el canal `conda-forge`: el entorno queda en
+  `/userdata/system/mamba/envs/git` y se enlaza en `/usr/bin/git`. El bloque `# [batocera-git]` de
+  `/userdata/system/custom.sh` rehace el enlace en cada arranque (la partición `/usr` es un overlay
+  que se pierde al reiniciar). Ojo: el paquete de conda-forge arrastra ~250 MB (Perl, OpenSSL,
+  curl…), aunque la caché de paquetes se borra al terminar.
+  - `install.sh` (v1.6) lo instala solo si falta: descarga micromamba, **verifica su sha256** contra
+    el hash fijado en el script, crea el entorno con `micromamba create` y escribe el bloque
+    `# [batocera-git]`. Se fuerza con `BM_GIT=install`; `BM_GIT=skip` lo salta; por defecto
+    (`auto`) avisa de que falta y lo instala.
+  - El `sha256` de micromamba 2.10.0 está **contrastado con la API de anaconda.org** para
+    `linux-64`, `linux-aarch64` y `linux-ppc64le` (no hay build para `armv7l`).
 
 ## Architecture
 
@@ -31,7 +78,12 @@
   (`templates/index.html`), que sigue siendo el respaldo. Ver «Frontend» más abajo.
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
-- `install.sh` is current (v1.4): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides
+- `install.sh` is current (v1.6): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
+- **Fase de validación de utilidades** (`install.sh` v1.6): el instalador comprueba **git** y **node** antes de instalar nada. Si están, sigue sin preguntar; si faltan, avisa («no se encontró X en el sistema: es necesario instalarlo para continuar») y los instala. Git se instala con micromamba + `conda-forge` (sha256 fijado en el script, `BM_MICROMAMBA_SHA256` lo puede sobrescribir); Node con el tarball oficial de nodejs.org. `BM_GIT`/`BM_NODE` aceptan `auto`, `install` y `skip`.
+- **Contrato del servicio**: `/api/service/status` devuelve `autostart` (`registered`/`installed`,
+  `manual_mode`, `cmd`, `block`, `path`) y `process` (`running`, `pids`, `pid`, `port`, `cmd`). El
+  frontend React y la interfaz clásica leen **las mismas claves**: si se toca uno, se toca el otro
+  (`frontend/src/lib/types.ts` y `app.py` van de la mano).
 
 ## Frontend (React + Tailwind)
 
@@ -46,10 +98,17 @@
   que faltan cuando el backend las deja vacíos (fuera de Linux no hay `/proc` ni `/sys`) para que la
   interfaz degrade en lugar de romperse con una pantalla en blanco.
 - En desarrollo: `npm run dev` (Vite en :5173) hace de proxy de `/api` hacia el backend en :5000.
-  Variable `BATOCERA_BACKEND` para cambiar el destino del proxy.
+  Variable `BATOCERA_BACKEND` para cambiar el destino del proxy; con las dos instancias en marcha,
+  apúntala a `http://127.0.0.1:5001` (el backend de **este** repo) para no mezclarlas con el :5000.
 - **La interfaz clásica sigue viva**: `templates/index.html` y sus tests (`tests/test_mono_charts.py`,
   `tests/test_ui_theme.py`) no se tocan. `render_index()` no ha cambiado; `render_app()` elige la SPA
   si `frontend/dist/index.html` existe y si no, la clásica.
+- **Vista de depuración**: el sidebar tiene una entrada «Depuración» (`/depuracion`) que monta el
+  componente `LogStream` de [`overtrue/ui`](https://ui.overtrue.xyz/components/log-stream), instalado
+  con el CLI de shadcn en `frontend/src/components/overtrue/log-stream.tsx` (y `frontend/components.json`
+  como configuración del registro). El backend mantiene un historial circular de 500 eventos con nivel
+  (`log_event()`), lo sirve por `GET /api/logs` y lo empuja en vivo por `GET /api/logs/stream` (SSE).
+  El cliente es `frontend/src/hooks/useLogStream.ts` (EventSource, con deduplicación por id).
 
 ## Key notes
 

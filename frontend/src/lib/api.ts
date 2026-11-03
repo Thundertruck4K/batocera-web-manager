@@ -7,6 +7,7 @@ import type {
   RomSystemSummary,
   ServiceStatus,
   Settings,
+  SystemInfo,
   SystemPayload,
   SystemWriteResult,
   ThemesPayload,
@@ -101,6 +102,9 @@ export const api = {
   serviceInstall: (cmd?: string) => post<{ ok: boolean; cmd?: string; file?: string }>('/api/service/install', { cmd }),
   serviceRemove: () => post<{ ok: boolean; removed: boolean }>('/api/service/remove'),
   serviceRestart: (cmd?: string) => post<{ ok: boolean; cmd?: string }>('/api/service/restart', { cmd }),
+
+  /* Entorno */
+  systemInfo: () => get<SystemInfo>('/api/system-info'),
 
   /* Sistemas personalizados */
   systems: () => get<CustomSystem[]>('/api/systems'),

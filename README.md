@@ -1,28 +1,28 @@
 <div align="center">
 
-# 🕹️ Batocera System Manager Web — React
+# 🕹️ Batocera System Manager Web
 
 **Interfaz web para gestionar tu Batocera desde el navegador**: sistemas personalizados,
 ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 
-> **Este repositorio es la versión con interfaz React + Tailwind CSS.** La versión Python pura
-> (interfaz de un solo fichero, sin build ni dependencias) está en
-> [Thundertruck4K/batocera-web-manager](https://github.com/Thundertruck4K/batocera-web-manager).
-> El backend es el mismo en los dos: sólo cambia la interfaz.
+> **Un solo proyecto, un solo repositorio.** La interfaz es una SPA en React + Tailwind CSS y el
+> backend sigue siendo **Python puro** (sin dependencias). La interfaz clásica de un solo
+> fichero (`templates/index.html`) se conserva como **respaldo**: si el bundle compilado no está
+> en la consola, el backend sirve esa en su lugar.
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.4-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager-react/releases)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.5-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager-react/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-438%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-473%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager-react?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager-react/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager-react?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager-react/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager-react?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager-react/issues)
 [![Último commit](https://img.shields.io/github/last-commit/Thundertruck4K/batocera-web-manager-react?label=%C3%BAltimo%20commit)](https://github.com/Thundertruck4K/batocera-web-manager-react/commits/master)
-[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager-react?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager)
+[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager-react?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager-react)
 
 ![Batocera System Manager](docs/media/logo.png)
 
@@ -95,6 +95,9 @@ para usarla en Batocera, ni siquiera eso.
 - **🌗 Tema claro/oscuro** — la interfaz se puede ver en oscuro (por defecto) o en claro, y también
   seguir la preferencia del sistema. El botón del sidebar alterna al instante; en Configuración se
   elige el modo. Se guarda en el manager, así que se aplica igual desde el móvil o el PC.
+- **🐞 Depuración en vivo** — una vista de depuración con el flujo de eventos del manager en tiempo
+  real: cada petición, acción y aviso llega por SSE y se puede filtrar por nivel (debug, info, aviso,
+  error) y por texto. El historial vive en memoria en el servidor (los 500 últimos eventos).
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 
@@ -195,8 +198,8 @@ bash install.sh
 
 (También puedes ejecutarlo directamente: `./install.sh`, ya es ejecutable.)
 
-**Sin git** (Batocera no lo trae por defecto): descarga la última release y
-extráela (la carpeta queda lista, sin renombrar):
+**Sin git** (Batocera no lo trae por defecto): puedes descargar la última release y
+extraerla (la carpeta queda lista, sin renombrar):
 
 ```bash
 cd /userdata/system
@@ -207,9 +210,16 @@ cd batocera_web
 ./install.sh
 ```
 
-El instalador comprueba Python y Pillow (opcional), deja los ficheros en
-`/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, añade un
-bloque marcado a `/userdata/system/custom.sh` y arranca el manager en ese momento.
+El instalador valida primero las **utilidades** (Git y Node): si ya están, sigue con la
+instalación sin preguntar nada; si faltan, avisa de que es necesario instalarlas y las
+instala. Después comprueba Python y Pillow (opcional), valida el puerto, deja los ficheros en
+`/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, escribe un
+bloque marcado en `/userdata/system/custom.sh` y arranca el manager en ese momento.
+
+El bloque de arranque se **reescribe** en cada instalación (no se duplica ni se queda con el puerto
+antiguo) y empieza con un `pkill` que mata la instancia anterior, para que el manager nuevo no se
+quede sin puerto si estaba levantado a mano. Si el manager ya estaba corriendo, el instalador lo
+para y lo vuelve a arrancar con el código nuevo.
 
 Al terminar verás algo así:
 
@@ -221,28 +231,83 @@ Al terminar verás algo así:
 
   ◆ Python 3               ✔ Python 3.12.x
   ◆ Pillow (logos)         ✔ disponible
+  ◆ Git                    ✔ git version 2.56.0 · /usr/bin/git
+  ◆ Node.js                ✔ v26.13.0 · /usr/bin/node
+  ◆ Utilidades             ✔ git y node listos
 
   ¿Añadir el manager al inicio de Batocera?
      Así se levanta solo cada vez que enciendas la consola.
   [S]í / [n]o: s
-  ◆ Arranque automático    ✔ añadido a /userdata/system/custom.sh
+  ◆ Arranque automático    ✔ bloque en /userdata/system/custom.sh
   ✔ Arrancado ahora mismo en el puerto 5000
 
   ╰─ Listo. Abre http://BATOCERA:5000
 ```
 
+### Git (opcional)
+
+Git no es necesario para **usar** el manager, pero sí es la forma cómoda de actualizarlo
+(`git pull`). Batocera es **Buildroot**: no trae `git`, ni gestor de paquetes, ni compilador.
+
+Si no lo encuentra, el instalador avisa de que hace falta y lo instala con **micromamba**, un
+binario estático, contra el canal `conda-forge`:
+
+1. Se descarga micromamba (2.10.0) y se **verifica su sha256** contra el hash fijado en el
+   propio script: si no cuadra, no se descomprime nada.
+2. Se crea el entorno en `/userdata/system/mamba/envs/git` con `micromamba create` (que
+   comprueba el sha256 de cada paquete que descarga).
+3. Se enlaza `git` en `/usr/bin` y se borra la caché de paquetes, que ocupa cientos de MB.
+4. Se escribe un bloque `# [batocera-git]` en `custom.sh` para que el enlace se recree en
+   cada arranque (`/usr` es un overlay que se pierde al reiniciar).
+
+Ojo: el paquete `git` de conda-forge arrastra unas 250 MB (trae Perl, OpenSSL, curl…).
+Si prefieres no instalar nada, usa la vía del tarball de la release y actualiza a mano.
+
+### Node.js (opcional)
+
+**No hace falta para usar el manager**: el frontend se despliega ya compilado en `frontend/dist/`, así
+que la consola no necesita Node ni un paso de build. Node sólo sirve para *recompilar* el bundle en la
+propia consola.
+
+Si no lo encuentra, el instalador pregunta si quieres instalarlo. La consola es **Buildroot** (sin
+`apt`, `dpkg` ni gestor de paquetes), así que se hace con el tarball oficial de nodejs.org:
+
+1. Se descarga el tarball de la **última LTS** (o la que fije `BM_NODE_VERSION`).
+2. Se **verifica el sha256 contra el `SHASUMS256.txt` oficial**: si no cuadra, no se descomprime nada.
+3. Se extrae en `/userdata/system/node/` y se crea el enlace `current`.
+4. Se enlazan `node`, `npm`, `npx` y `corepack` en `/usr/bin`.
+5. Se escribe un bloque `# [batocera-node]` en `custom.sh` para que los enlaces se recreen en cada
+   arranque (`/usr` es un overlay que se pierde al reiniciar) y para persistir `npm_config_prefix` y
+   `npm_config_cache` en la SD.
+
 ### Opciones del instalador
 
 | Variable | Por defecto | Para qué sirve |
 |---|---|---|
-| `BM_PORT` | `5000` | Puerto del servidor web |
+| `BM_PORT` | `5000` | Puerto del servidor web (debe estar entre 1 y 65535) |
 | `BM_BASE_DIR` | `/userdata/system` | Carpeta base de Batocera |
 | `BM_CUSTOM_SH` | `$BM_BASE_DIR/custom.sh` | Script de arranque que se modifica |
 | `BM_PYTHON` | `python3` | Intérprete a usar |
 | `BM_AUTOSTART` | *(pregunta)* | `s` / `n` para instalaciones desatendidas |
+| `BM_GIT` | `auto` | `auto` (lo instala si no está), `install` (lo instala sí o sí) o `skip` |
+| `BM_GIT_DIR` | `$BM_BASE_DIR/mamba` | Dónde se instala Git (el entorno queda en `$BM_GIT_DIR/envs/git`) |
+| `BM_GIT_BIN_DIR` | `/usr/bin` | Dónde se enlazan los binarios |
+| `BM_MICROMAMBA_URL` | `https://micro.mamba.pm/api/micromamba` | Espejo de micromamba (por si hace falta otro) |
+| `BM_MICROMAMBA_VERSION` | `2.10.0` | Versión de micromamba |
+| `BM_MICROMAMBA_SHA256` | *(el de conda-forge)* | Hash esperado: si no cuadra, no se instala nada |
+| `BM_CONDA_CHANNEL` | `conda-forge` | Canal de conda del que se toma Git |
+| `BM_NODE` | `auto` | `auto` (pregunta si no hay Node), `install` (lo instala sí o sí) o `skip` |
+| `BM_NODE_VERSION` | *(última LTS)* | Versión concreta de Node, p. ej. `v26.13.0` |
+| `BM_NODE_DIR` | `$BM_BASE_DIR/node` | Dónde se instala Node |
+| `BM_NODE_BIN_DIR` | `/usr/bin` | Dónde se enlazan los binarios |
+| `BM_NODE_URL` | `https://nodejs.org/dist` | Espejo de nodejs.org (por si hace falta otro) |
 | `NO_COLOR` | — | Desactiva el color de la salida |
 
 Ejemplo sin interacción: `BM_PORT=8080 BM_AUTOSTART=s bash install.sh`
+
+Con Git y Node instalados a la fuerza, sin preguntas: `BM_GIT=install BM_NODE=install BM_AUTOSTART=s bash install.sh`
+
+Sin instalar Git (o Node): `BM_GIT=skip BM_NODE=skip BM_AUTOSTART=s bash install.sh`
 
 ### Actualizar a la última versión
 
@@ -251,10 +316,11 @@ Si ya lo tienes instalado y **tienes git** en la consola:
 ```bash
 cd /userdata/system/batocera_web
 git pull
-pkill -f "python3.*app.py"
-sleep 1
 ./install.sh
 ```
+
+El instalador para la instancia que estuviera corriendo y arranca la nueva con el código recién
+descargado, así que no hace falta matar nada a mano.
 
 Si **no tienes git** (Batocera no lo trae por defecto), descarga la última
 versión y sustituye la carpeta (tus ajustes, temas y ROMs están fuera de ella,
@@ -307,7 +373,7 @@ El servidor escucha en `0.0.0.0`, así que también funciona desde el móvil.
 | **Sistemas Creados** | Sistemas personalizados: editar, ver su XML o eliminar |
 | **Agregar / Editar** | Asistente para crear un sistema nuevo a partir de uno de referencia |
 | **Temas & Assets** | Temas instalados, tema activo, estructura de assets y subida de logos |
-| **Configuración** | Estado del servicio, arranque automático, rutas de Batocera y RetroAchievements |
+| **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), información del sistema, rutas de Batocera y RetroAchievements |
 
 Tras crear o modificar un sistema, Batocera necesita releer su configuración: el manager ofrece
 reiniciar EmulationStation desde la propia interfaz.
@@ -378,7 +444,7 @@ La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **438 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **473 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
@@ -405,7 +471,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (Python, ficheros y arranque automático)
-├── tests/                    # 438 tests con pytest
+├── tests/                    # 473 tests con pytest
 ├── docs/
 │   ├── media/logo.png        # logo del proyecto
 │   ├── screenshots/          # capturas del README
@@ -428,6 +494,65 @@ npm run build        # genera frontend/dist/
 
 Arranca el backend en otra terminal (`python3 app.py`) para tener datos reales. La API es la misma que
 usa la interfaz clásica, así que no hay nada nuevo que desplegar en el backend.
+
+> **¿Y en la propia consola?** La Batocera de desarrollo ya tiene **Node v26 LTS** instalado
+> (`/userdata/system/node/current`, enlazado en `/usr/bin/node`), así que también puedes recompilar
+> el frontend allí mismo:
+>
+> ```bash
+> cd /userdata/system/batocera_web/frontend
+> npm ci
+> npm run build
+> ```
+>
+> El bundle sale con los **mismos hashes** que el versionado en el repositorio. Aun así, el despliegue
+> normal sigue siendo subir `frontend/dist/` ya compilado: la app no debe necesitar Node para
+> funcionar.
+
+### 🧑‍💻 Proceso de desarrollo
+
+El proyecto vive en **un solo repositorio** con las dos interfaces conviviendo:
+
+| | Dónde está |
+|:--|:--|
+| GitHub | `Thundertruck4K/batocera-web-manager-react` |
+| Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
+| Interfaz principal | `frontend/` — React 19 + Vite + Tailwind v4 |
+| Interfaz de respaldo | `templates/index.html` — un fichero, sin build |
+| Backend | `app.py` — Python stdlib, cero dependencias |
+
+#### Puertos en desarrollo
+
+| Puerto | Qué es |
+|:--|:--|
+| `5001` | backend en desarrollo |
+| `5173` | Vite — dev server del frontend; hace de proxy de `/api` hacia `:5001` |
+
+Para levantar el frontend contra el backend local:
+
+```bash
+cd frontend
+BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
+```
+
+#### Comandos habituales
+
+```bash
+# Backend en desarrollo
+python app.py --port 5001
+
+# Tests del backend (473)
+python -m pytest
+
+# Frontend
+cd frontend && npm run build      # regenera frontend/dist/ (se versiona)
+npx tsc -b --noEmit               # comprobación de tipos
+```
+
+#### Ramas y pull requests
+
+El ciclo es el de siempre y **no se hace `push` directo a `master`**: se crea una rama
+(`feature/...` o `fix/...`), se sube y se abre un *pull request* contra `master`.
 
 ---
 
@@ -531,6 +656,9 @@ Ideas anotadas, sin fechas:
 
 Se agradece un estilo de código acorde con el resto (comentarios en español, sin dependencias
 nuevas en el servidor) y que los cambios de interfaz conserven los identificadores de los tests.
+
+Si el cambio toca el frontend, recuerda subir también el bundle recompilado (`frontend/dist/`),
+porque el dispositivo no tiene Node.
 
 ---
 

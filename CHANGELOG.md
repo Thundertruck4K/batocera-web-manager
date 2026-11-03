@@ -6,7 +6,80 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Cambiado
+- **El proyecto vuelve a vivir en un solo repositorio.** Durante un tiempo se mantuvo en dos
+  repositorios independientes con el mismo backend: la interfaz React + Tailwind CSS y la variante
+  «Python puro» (interfaz de un solo fichero). La variante se retira: su repositorio
+  `Thundertruck4K/batocera-web-manager` se elimina y todo el trabajo sigue aquí, en
+  `Thundertruck4K/batocera-web-manager-react`.
+  - La **interfaz clásica** (`templates/index.html`) no desaparece: se queda como **respaldo** y el
+    backend la sirve automáticamente cuando el bundle compilado no está en la consola.
+  - La documentación (README, AGENTS, CHANGELOG y MEMORY) describe ya un único proyecto, sin
+    referencias al repositorio hermano ni a la sincronización de dos `app.py`.
+  - `APP_REPO` no cambia: sigue apuntando a este repositorio.
+
 ### Añadido
+- 12 tests nuevos (`tests/test_install_sh.py`) que cubren la fase de validación de
+  utilidades: git y node presentes, ausentes (con aviso e instalación desde un espejo local de
+  micromamba), sha256 que no cuadra, canal de conda, `BM_GIT=skip` y el bloque `# [batocera-git]`
+  de `custom.sh`.
+- **Git opcional en el `install.sh`**: el instalador comprueba si hay git y, si no lo encuentra,
+  avisa de que es necesario instalarlo y lo instala. Batocera es Buildroot (sin gestor de
+  paquetes ni compilador), así que se hace con **micromamba**, un binario estático, contra el
+  canal `conda-forge`: se **verifica el sha256 de micromamba contra el hash fijado en el propio
+  script** (si no cuadra, no se descomprime nada), se crea el entorno en
+  `$BASE_DIR/mamba/envs/git` con `micromamba create` —que a su vez comprueba el sha256 de cada
+  paquete— se enlaza `git` en `/usr/bin`, se borra la caché de paquetes (cientos de MB) y se
+  escribe un bloque `# [batocera-git]` en `custom.sh` para que el enlace se recree en cada
+  arranque (`/usr` es un overlay que se pierde al reiniciar).
+  - Variables nuevas: `BM_GIT` (`auto` / `install` / `skip`), `BM_GIT_DIR`, `BM_GIT_BIN_DIR`,
+    `BM_MICROMAMBA_URL`, `BM_MICROMAMBA_VERSION`, `BM_MICROMAMBA_SHA256` y `BM_CONDA_CHANNEL`.
+- **Proceso de validación de utilidades** en el `install.sh` (v1.6): antes de instalar nada se
+  comprueban **git** y **node**. Si ya están, la instalación continúa sin preguntar nada; si
+  faltan, se avisa («no se encontró X en el sistema: es necesario instalarlo para continuar») y
+  se instalan. Con `BM_GIT=skip` / `BM_NODE=skip` se salta la instalación de esa utilidad, y con
+  `=install` se fuerza aunque ya esté. Que falte git **no** impide instalar el manager: la web
+  funciona igual, sólo se pierde la actualización con `git pull`.
+- **Node.js opcional en el `install.sh`**: el instalador detecta si hay Node y, si no lo encuentra,
+  ofrece instalarlo: descarga el tarball oficial de nodejs.org (la última LTS por defecto, o la que
+  fije `BM_NODE_VERSION`), **comprueba el sha256 contra el `SHASUMS256.txt` oficial antes de
+  descomprimir nada**, lo deja en `$BASE_DIR/node/current`, enlaza `node`, `npm`, `npx` y `corepack`
+  en `/usr/bin` y escribe un bloque `# [batocera-node]` en `custom.sh` para que los enlaces se
+  recreen en cada arranque (`/usr` es un overlay que se pierde al reiniciar) y para persistir
+  `npm_config_prefix` y `npm_config_cache` en la SD. **Sigue siendo opcional**: el frontend se
+  despliega ya compilado, así que el manager funciona igual sin Node.
+- **Tarjetas «Información del sistema» e «Instrucciones»** en *Configuración* de la versión React:
+  versión del manager, qué interfaz se está sirviendo (SPA de React o interfaz clásica), versión de
+  Python y de Node, disponibilidad de Pillow, puerto, carpeta del bundle compilado y ruta de
+  `custom.sh`; y las instrucciones de acceso, de instalación/actualización y de recompilación del
+  frontend, coherentes con el stack React + Tailwind (antes el manual de la interfaz clásica se
+  quedaba corto y con rutas de un proyecto que ya no es el que se despliega).
+- **`GET /api/system-info`**: endpoint nuevo con esos mismos datos del entorno, para la pantalla de
+  Configuración.
+- **Bloque de arranque automático con `pkill`**: el bloque de `custom.sh` empieza matando la
+  instancia anterior del manager, de modo que la nueva no se queda sin puerto si el servicio ya
+  estaba levantado a mano.
+- 21 tests nuevos (`tests/test_autostart_block.py` y ampliación de `tests/test_install_sh.py`) que
+  cubren el bloque de `custom.sh`, el contrato del servicio, la validación del puerto y la
+  instalación de Node contra un espejo local de nodejs.org (sin red).
+- **Vista de depuración en vivo** (`/depuracion`): nueva entrada en el sidebar con el componente
+  `LogStream` de [overtrue/ui](https://ui.overtrue.xyz/components/log-stream), instalado con el CLI de
+  shadcn (`frontend/components.json` guarda la configuración del registro). El backend mantiene un
+  historial circular de 500 eventos con nivel y los empuja por SSE (`GET /api/logs/stream`), así que
+  cada petición, acción y aviso aparece en vivo, con filtros por nivel (debug, info, aviso, error) y
+  por texto, y con el historial de la interfaz clásica intacto.
+- **Node.js opcional en el dispositivo**: la Batocera de desarrollo ya tiene Node v26 LTS
+  (`/userdata/system/node/current`, enlazado en `/usr/bin/node`), instalado desde el tarball oficial
+  porque Batocera es Buildroot y no tiene gestor de paquetes. Permite recompilar el frontend en la
+  propia consola; el bundle sale con los mismos hashes que el versionado. **Sigue sin ser necesario**:
+  el despliegue normal es subir `frontend/dist/` ya compilado.
+- **Backend unificado con la versión Python pura**: el `app.py` de este repositorio pasa a ser
+  **idéntico** al del repositorio hermano (`batocera-web-manager`), salvo la constante `APP_REPO` (el
+  repo del que se leen las releases). Los dos proyectos comparten backend y API sin riesgo de
+  divergencia: un comprobador automático verifica que los dos ficheros siguen siendo iguales.
+- **Proceso de desarrollo documentado**: el README y AGENTS.md explican ahora la relación entre las dos
+  instancias, los puertos en uso (`:5001` React / `:5000` Python / `:5173` Vite), los comandos
+  habituales y la política de ramas: nunca `push` directo a `master`, siempre rama + pull request.
 - **El proyecto se independiza en su propio repositorio**: `batocera-web-manager-react`. A partir de
   aquí este repositorio contiene la versión con interfaz **React + Tailwind CSS**; la versión Python
   pura (interfaz de un solo fichero, sin build ni dependencias) se queda en
@@ -54,12 +127,40 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   blanca de la config pública, listener del modo "auto" y borrado accidental de la key de RA).
 
 ### Cambiado
-- Contador de tests del README actualizado a 438.
+- **«Sistemas» pasa a llamarse «Sistemas Personalizados»** en el sidebar y en el título de la página,
+  con el subtítulo «N sistema(s) añadido(s) manualmente a EmulationStation»: son los sistemas
+  agregados a mano al manager, no el catálogo de sistemas de Batocera.
+- **`install.sh` v1.5**: valida el puerto (debe ser un número entre 1 y 65535) y avisa si ya está
+  ocupado por otro servicio; al ejecutarlo con el manager corriendo, para la instancia anterior y
+  arranca la nueva, que si no seguiría sirviendo el código de antes de la actualización. El bloque de
+  `custom.sh` se **reescribe** en cada instalación: antes se quedaba con el puerto y la ruta
+  antiguos.
+- **El estado del servicio tiene una forma única**: `/api/service/status` devuelve siempre
+  `registered`/`installed`, `manual_mode`, `cmd` y `block` para el arranque automático, y `running`,
+  `pids`, `pid`, `port` y `cmd` para el proceso. La interfaz clásica y la React leen lo mismo.
+- Contador de tests del README actualizado a 461.
 - El tacho con aguja (CPU/GPU/RAM) y el tanque de líquido (disco) los sustituyen el velocímetro y el
   donut con paleta; el gráfico de actividad pasa a ser un área monótona con degradado. Se elimina el
   código y el CSS de los gráficos antiguos.
 
 ### Corregido
+- **La tarjeta «Disco Principal» del panel mostraba siempre 100 %**: el centro del donut pintaba la
+  suma de los porcentajes de todas las particiones (que siempre suma 100) en lugar del valor
+  destacado, y sólo se corregía al pasar el ratón por la tarjeta. Ahora el centro muestra el uso real
+  del disco principal y el resto de los valores se leen al pasar el ratón.
+- **El estado del servicio en *Configuración* era siempre «Inactivo / Detenido / —»**: el frontend
+  pedía `autostart.installed` y `process.pid`, pero el backend devolvía `autostart.registered` y
+  `process.pids`, así que los tres campos salían vacíos aunque el manager estuviera en marcha. El
+  contrato se ha igualado en ambos lados.
+- **El bloque de arranque automático se quedaba con el puerto o la ruta antiguos**: `install.sh`
+  ahora reescribe el bloque en vez de dejarlo como estaba, y el botón «Reiniciar» de *Configuración*
+  también lo reescribe con los valores actuales, de forma que `custom.sh` nunca pide arrancar el
+  manager en un puerto que ya no es el configurado.
+- **La tarjeta «Flujo de eventos» de *Depuración* tenía un borde más claro** que las de encima: el
+  componente `LogStream` pinta su propio borde con el color actual; ahora la tarjeta usa el mismo
+  `border-border` que las demás. **Sus líneas divisorias internas** (la barra de filtros, la del pie y
+  el borde del botón «Pausa») también heredaban ese color claro: llevan `border-border`, el mismo
+  token que la tarjeta que las contiene.
 - El tema claro dejaba ilegibles algunos elementos: el modal (translucido sobre
   el scrim negro), el chip de codigo del aviso de servicio y los degradados de
   texto del dashboard. Ahora cada uno tiene su variable de tema.

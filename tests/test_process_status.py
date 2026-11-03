@@ -51,7 +51,11 @@ def test_read_proc_cmdline_tolera_la_ausencia_de_proc(appmod):
 
 def test_sin_procesos_no_esta_corriendo(appmod, monkeypatch):
     monkeypatch.setattr(appmod, "_run", lambda cmd, default="": "")
-    assert appmod.get_process_status() == {"running": False, "pids": [], "port": None}
+    st = appmod.get_process_status()
+    assert st["running"] is False
+    assert st["pids"] == []
+    assert st["pid"] is None
+    assert st["port"] is None
 
 
 def test_puerto_sale_del_propio_proceso(appmod, monkeypatch):
