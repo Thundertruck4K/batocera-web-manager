@@ -6,6 +6,27 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Añadido
+- **Dashboard de logros en la SPA**: la sección *Logros* deja de estar marcada como *Pronto* y muestra
+  los juegos de RetroAchievements en los que más has desbloqueado, en tarjetas con **la carátula que
+  dejó el scraper** en tu biblioteca, el porcentaje de completitud y el estado de cada juego
+  (dominado, completado, batido, en progreso). Se puede ordenar por logros obtenidos, por porcentaje
+  o por logros totales.
+  - Si no hay usuario o Web API Key configurados, la sección avisa y lleva a *Configuración*; si la
+    integración está apagada, avisa de eso también.
+  - Cada juego se empareja con un ROM de la biblioteca local por título normalizado (se ignoran las
+    etiquetas de región y disco, como «(USA)», y los acentos), prefiriendo el que tiene carátula. Si
+    no hay coincidencia, la tarjeta usa el icono de RetroAchievements y el panel indica cuántos
+    juegos han quedado emparejados.
+  - Endpoint nuevo `GET /api/retroachievements/games`, que reutiliza la caché de 10 min de la API de
+    RA. El rango de juegos sube de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
+
+### Corregido
+- **El instalador limpia el bundle anterior**: los assets del bundle llevan hash en el nombre, así que
+  los de la versión anterior se quedaban ocupando sitio en la SD sin usarse. Ahora el bundle se copia
+  a un temporal y se sustituye la carpeta entera, de modo que no quedan restos (y sin borrar el bundle
+  de origen cuando el instalador se ejecuta dentro de la propia carpeta de destino).
+
 ## [1.5] — 2026-11-03
 
 ### Cambiado

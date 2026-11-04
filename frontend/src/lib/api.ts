@@ -4,6 +4,7 @@ import type {
   CustomSystem,
   CustomSystemDetail,
   RandomGame,
+  RaGamesPayload,
   RomSystemSummary,
   ServiceStatus,
   Settings,
@@ -124,4 +125,7 @@ export const api = {
   romSystems: () => get<RomSystemSummary[]>('/api/rom-systems'),
   gameStats: () => request<unknown>('/api/game-stats').then(normalizeGameStats),
   randomGame: () => get<{ ok: boolean; game: RandomGame | null }>('/api/random-game'),
+
+  /* Logros (RetroAchievements) */
+  raGames: () => get<RaGamesPayload>('/api/retroachievements/games'),
 }

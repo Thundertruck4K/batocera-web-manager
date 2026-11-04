@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-473%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-504%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -124,6 +124,11 @@ La unificación deja las cosas así:
 - **🐞 Depuración en vivo** — una vista de depuración con el flujo de eventos del manager en tiempo
   real: cada petición, acción y aviso llega por SSE y se puede filtrar por nivel (debug, info, aviso,
   error) y por texto. El historial vive en memoria en el servidor (los 500 últimos eventos).
+- **🏆 Dashboard de logros** — los juegos de RetroAchievements en los que más has desbloqueado, en
+  tarjetas con **la carátula que dejó el scraper** en tu biblioteca, el porcentaje de completitud y el
+  estado de cada juego (dominado, completado, batido, en progreso). Se puede ordenar por logros
+  obtenidos, por porcentaje o por logros totales. Si no hay cuenta configurada, la sección avisa y te
+  lleva a Configuración.
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 
@@ -139,7 +144,6 @@ sigue sirviendo:
   con subida manual, descarga automática y lista de omisiones.
 - **🧲 Scraper multi-fuente** — ScreenScraper.fr, TheGamesDB e IGDB (Twitch), con imágenes guardadas
   como EmulationStation espera (`images/<rom>-image`, `-box`, `-wheel`, `-fanart`…).
-- **🏆 RetroAchievements** — progreso y logros de tu perfil dentro del propio panel.
 - **🎨 Temas y assets** — temas instalados, tema activo, estructura de assets esperada y subida de
   logos, que se guardan como `art/logo.png` dentro del tema activo (si no tienes uno, Pillow genera
   un logo de relleno).
@@ -184,6 +188,17 @@ escribirá, y se puede **simular sin escribir nada**.
 ![Añadir sistema](docs/screenshots/03-anadir-sistema.png)
 
 *Formulario de creación de un sistema personalizado, con la vista previa del `es_systems_<slug>.cfg`.*
+
+### 🏆 Logros
+
+Los juegos de RetroAchievements donde más has desbloqueado. Cada tarjeta lleva **la carátula que dejó
+el scraper** en tu biblioteca (si el juego no está emparejado con un ROM local, se usa el icono de
+RetroAchievements), los logros conseguidos sobre el total, el porcentaje, el estado y cuándo
+conseguiste el último.
+
+![Logros](docs/screenshots/06-logros.png)
+
+*Dashboard de logros: las carátulas son las del scraper y el anillo marca el porcentaje completado.*
 
 ### 🐞 Depuración
 
@@ -404,7 +419,8 @@ El servidor escucha en `0.0.0.0`, así que también funciona desde el móvil.
 | **Añadir sistema** | Formulario para crear un sistema a partir de uno de referencia del catálogo |
 | **Depuración** | Flujo de eventos del manager en vivo, filtrable por nivel y por texto |
 | **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), tema de la interfaz, información del sistema e instrucciones |
-| *ROMs y BIOS · Scraper · Logros* | Marcadas como *Pronto* en la SPA; están en la interfaz clásica y en la API |
+| **Logros** | Dashboard de RetroAchievements: los juegos con más logros, con la carátula de tu biblioteca |
+| *ROMs y BIOS · Scraper* | Marcadas como *Pronto* en la SPA; están en la interfaz clásica y en la API |
 
 Tras crear o modificar un sistema, Batocera necesita releer su configuración: el manager ofrece
 reiniciar EmulationStation desde la propia interfaz.
@@ -482,12 +498,12 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **473 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **504 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 473 passed in ~15s
+# 504 passed in ~15s
 ```
 
 ---
@@ -509,7 +525,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 473 tests con pytest
+├── tests/                    # 504 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto
@@ -582,7 +598,7 @@ BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
 # Backend en desarrollo
 python app.py --port 5001
 
-# Tests del backend (473)
+# Tests del backend (504)
 python -m pytest
 
 # Frontend
@@ -641,8 +657,8 @@ No. Usa sólo la librería estándar de Python 3, la que ya trae Batocera.
 **¿Qué diferencia hay entre la interfaz React y la clásica?**  
 La SPA de React es la que se sirve por defecto; la clásica (un único fichero HTML) queda de
 respaldo y el backend la sirve automáticamente si el bundle compilado no está en la consola. Las dos
-hablan con la misma API, así que lo que hace una lo hace la otra. Hay secciones (ROMs y BIOS,
-Scraper y Logros) que todavía sólo están en la clásica: en la SPA aparecen marcadas como *Pronto*.
+hablan con la misma API, así que lo que hace una lo hace la otra. Hay secciones (ROMs y BIOS y
+Scraper) que todavía sólo están en la clásica: en la SPA aparecen marcadas como *Pronto*.
 
 **¿Por qué antes había dos repositorios y ahora hay uno?**  
 Durante el desarrollo sí los hubo: este era el de la interfaz React y el otro el de la variante
@@ -693,7 +709,6 @@ están marcadas como *Pronto*):
 
 - **ROMs y BIOS** — inventario por sistema y verificación de BIOS.
 - **Scraper** — las tres fuentes y la descarga de imágenes.
-- **Logros** — progreso de RetroAchievements en el panel.
 - **Temas y assets** — temas instalados, tema activo y subida de logos.
 - **Edición de ROMs** — renombrar, metadatos y carátulas.
 
