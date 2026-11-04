@@ -6,17 +6,6 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-### Cambiado
-- **El repositorio se renombra a `batocera-web-manager`.** Este repositorio, que hasta ahora se
-  llamaba `batocera-web-manager-react`, recupera el nombre corto: es el que ya se compartía en la
-  comunidad y el que no debe convertirse en un 404. GitHub guarda una redirección desde el nombre
-  antiguo, así que los enlaces compartidos antes del renombrado siguen funcionando.
-  - Se actualizan la URL de clone del `install.sh`, la constante `APP_REPO` del `app.py` (de la
-    que se leen las releases para la comprobación de actualizaciones), las instrucciones de la
-    interfaz clásica de respaldo y los tests que las verifican.
-  - El historial no se toca: el `master` de la variante «Python puro» —el repositorio que se
-    eliminó al unificar— sigue siendo un ancestro directo de este.
-
 ## [1.5] — 2026-11-03
 
 ### Cambiado
@@ -37,6 +26,16 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   - La documentación (README, AGENTS, CHANGELOG y MEMORY) describe ya un único proyecto, sin
     referencias al repositorio hermano ni a la sincronización de dos `app.py`.
   - `APP_REPO` no cambia: sigue apuntando a este repositorio.
+- **El repositorio se renombra a `batocera-web-manager`.** Este repositorio, que hasta ahora se
+  llamaba `batocera-web-manager-react`, recupera el nombre corto: es el que ya se compartía en la
+  comunidad y el que no debe convertirse en un 404 para quien ya lo tiene enlazado. GitHub guarda
+  una redirección desde el nombre antiguo, así que los enlaces compartidos antes del renombrado
+  siguen funcionando.
+  - La constante `APP_REPO` del `app.py` pasa a apuntar al nombre nuevo (de ahí se leen las
+    releases para la comprobación de actualizaciones), igual que la URL de clone del `install.sh`,
+    las instrucciones de la interfaz clásica de respaldo y los tests que las verifican.
+  - El historial no se toca: el `master` de la variante «Python puro» —el repositorio que se
+    eliminó al unificar— sigue siendo un ancestro directo de este.
 
 ### Añadido
 - 12 tests nuevos (`tests/test_install_sh.py`) que cubren la fase de validación de
@@ -148,6 +147,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - **Capturas nuevas de la interfaz actual** (`docs/screenshots/`): panel de control, Sistemas
   Personalizados, Añadir sistema, Depuración y Configuración, tomadas sobre una instalación real
   de Batocera 43.1. Las 13 capturas anteriores, de la interfaz clásica, se sustituyen por estas.
+- **Banner del proyecto** (`docs/media/banner.png`): sustituye al logo como cabecera del README.
+  Resume lo que hace el manager (gestión de sistemas, panel en vivo, depuración con SSE, ROMs y
+  BIOS, scraper y arranque automático) con las etiquetas de la pila técnica.
 
 ### Cambiado
 - **«Sistemas» pasa a llamarse «Sistemas Personalizados»** en el sidebar y en el título de la página,

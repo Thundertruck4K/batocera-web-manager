@@ -29,7 +29,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Último commit](https://img.shields.io/github/last-commit/Thundertruck4K/batocera-web-manager?label=%C3%BAltimo%20commit)](https://github.com/Thundertruck4K/batocera-web-manager/commits/master)
 [![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager)
 
-![Batocera System Manager](docs/media/logo.png)
+![Banner de Batocera System Manager Web](docs/media/banner.png)
 
 **Proyecto de código abierto** · Licencia MIT · Backend en Python puro (sin dependencias) · Interfaz en React + Tailwind CSS  
 [Instalación](#-instalación) · [Capturas](#-capturas) · [API](#-api-rest) · [FAQ](#-preguntas-frecuentes) · [Apoyar el proyecto](#-apoyar-el-proyecto)
@@ -511,6 +511,7 @@ batocera_web/
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
 ├── tests/                    # 473 tests con pytest
 ├── docs/
+│   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto
 │   ├── screenshots/          # capturas del README
 │   └── superpowers/          # diseño y planes del proyecto
