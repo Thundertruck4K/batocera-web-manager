@@ -3204,7 +3204,7 @@ def get_news():
 #  Todo falla en silencio: sin red, el dashboard sigue funcionando igual.
 # Repositorio del que se leen las releases. El proyecto es único: aquí
 # vive la versión con interfaz React + Tailwind CSS.
-APP_REPO = "Thundertruck4K/batocera-web-manager-react"
+APP_REPO = "Thundertruck4K/batocera-web-manager"
 APP_RELEASES_FEED = f"https://github.com/{APP_REPO}/releases.atom"
 APP_UPDATE_TTL = 3600          # 1 h entre comprobaciones
 _app_update_cache = {"ts": 0, "data": None}

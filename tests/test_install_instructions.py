@@ -40,7 +40,7 @@ def _instr() -> str:
 def test_instructions_use_the_github_clone_flow():
     blk = _instr()
     assert "ssh root@batocera" in blk
-    assert "git clone https://github.com/Thundertruck4K/batocera-web-manager-react.git" in blk
+    assert "git clone https://github.com/Thundertruck4K/batocera-web-manager.git" in blk
     assert "bash install.sh" in blk
     assert "cd /userdata/system/batocera_web" in blk
 

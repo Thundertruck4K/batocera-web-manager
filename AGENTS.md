@@ -9,7 +9,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 | | |
 |---|---|
-| GitHub | `Thundertruck4K/batocera-web-manager-react` |
+| GitHub | `Thundertruck4K/batocera-web-manager` |
 | Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
 | Backend | `:5001` |
 | Interfaz | `frontend/` (Vite en `:5173`) |

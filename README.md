@@ -15,7 +15,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 > los dos sitios. El [motivo de la unificación](#-por-qué-un-solo-repositorio) está contado más
 > abajo.
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.5-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager-react/releases)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.5-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
@@ -23,11 +23,11 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
 [![Tests](https://img.shields.io/badge/tests-473%20OK-success)](tests)
-[![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager-react?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager-react/stargazers)
-[![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager-react?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager-react/forks)
-[![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager-react?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager-react/issues)
-[![Último commit](https://img.shields.io/github/last-commit/Thundertruck4K/batocera-web-manager-react?label=%C3%BAltimo%20commit)](https://github.com/Thundertruck4K/batocera-web-manager-react/commits/master)
-[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager-react?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager-react)
+[![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
+[![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
+[![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
+[![Último commit](https://img.shields.io/github/last-commit/Thundertruck4K/batocera-web-manager?label=%C3%BAltimo%20commit)](https://github.com/Thundertruck4K/batocera-web-manager/commits/master)
+[![Tamaño](https://img.shields.io/github/repo-size/Thundertruck4K/batocera-web-manager?label=tama%C3%B1o)](https://github.com/Thundertruck4K/batocera-web-manager)
 
 ![Batocera System Manager](docs/media/logo.png)
 
@@ -97,8 +97,9 @@ La unificación deja las cosas así:
 - **Un solo backend** (`app.py`), una sola API y un solo instalador.
 - **Dos interfaces sobre ese backend**: la SPA de React es la principal; la clásica de un solo
   fichero queda como respaldo y el backend la sirve automáticamente si el bundle no está.
-- **El repositorio de la variante «Python puro» se eliminó**, y su historial quedó aquí: su
-  `master` es un ancestro directo de este, así que no se perdió ni un commit.
+- **El repositorio de la variante «Python puro» se eliminó** —era `batocera-web-manager`, el mismo
+  nombre que recupera este— y su historial quedó aquí: su `master` es un ancestro directo de
+  este, así que no se perdió ni un commit.
 - La API no cambia: las dos interfaces consumen los mismos endpoints `/api/*`.
 
 ## ✨ Características
@@ -221,7 +222,7 @@ parte.
 ```bash
 ssh root@BATOCERA
 
-git clone https://github.com/Thundertruck4K/batocera-web-manager-react.git /userdata/system/batocera_web
+git clone https://github.com/Thundertruck4K/batocera-web-manager.git /userdata/system/batocera_web
 cd /userdata/system/batocera_web
 bash install.sh
 ```
@@ -233,7 +234,7 @@ extraerla (la carpeta queda lista, sin renombrar):
 
 ```bash
 cd /userdata/system
-wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager-react/releases/latest/download/batocera_web.tar.gz
+wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/releases/latest/download/batocera_web.tar.gz
 tar -xzf batocera_web.tar.gz
 chmod +x batocera_web/install.sh
 cd batocera_web
@@ -359,7 +360,7 @@ así que no se pierden):
 ```bash
 cd /userdata/system
 mv batocera_web batocera_web.bak
-wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager-react/releases/latest/download/batocera_web.tar.gz
+wget -O batocera_web.tar.gz https://github.com/Thundertruck4K/batocera-web-manager/releases/latest/download/batocera_web.tar.gz
 tar -xzf batocera_web.tar.gz
 chmod +x batocera_web/install.sh
 cd batocera_web
@@ -554,7 +555,7 @@ El proyecto vive en **un solo repositorio** con las dos interfaces conviviendo:
 
 | | Dónde está |
 |:--|:--|
-| GitHub | `Thundertruck4K/batocera-web-manager-react` |
+| GitHub | `Thundertruck4K/batocera-web-manager` |
 | Local | `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react` |
 | Interfaz principal | `frontend/` — React 19 + Vite + Tailwind v4 |
 | Interfaz de respaldo | `templates/index.html` — un fichero, sin build |
@@ -642,12 +643,12 @@ respaldo y el backend la sirve automáticamente si el bundle compilado no está 
 hablan con la misma API, así que lo que hace una lo hace la otra. Hay secciones (ROMs y BIOS,
 Scraper y Logros) que todavía sólo están en la clásica: en la SPA aparecen marcadas como *Pronto*.
 
-**¿Por qué el repositorio se llama `-react` si ya no hay dos repositorios?**  
-Porque durante el desarrollo sí los había: este era el de la interfaz React y el otro el de la
-variante «Python puro». Al unificar se optó por conservar el nombre de este y eliminar el otro
-(que ya no existía), así que el nombre histórico se quedó. Si prefieres el nombre corto
-`batocera-web-manager`, se puede renombrar, pero hay que actualizar la URL del repositorio en el
-instalador, en la documentación y en los enlaces de la release v1.5.
+**¿Por qué antes había dos repositorios y ahora hay uno?**  
+Durante el desarrollo sí los hubo: este era el de la interfaz React y el otro el de la variante
+«Python puro». Al unificar, este recuperó el nombre corto `batocera-web-manager` y el otro se
+eliminó (su historial quedó aquí: su `master` es un ancestro directo de este). GitHub guarda una
+redirección desde el nombre antiguo, así que los enlaces que ya se habían compartido siguen
+funcionando.
 
 **¿Puedo crear sistemas sin tocar XML a mano?**  
 Sí, es justo el objetivo: eliges un sistema de referencia, ajustas los campos y el manager escribe el

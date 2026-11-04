@@ -21,13 +21,13 @@ ATOM = """<?xml version="1.0" encoding="UTF-8"?>
   <entry>
     <id>tag:github.com,2008:Repository/1/v2.0</id>
     <updated>2026-11-01T10:00:00Z</updated>
-    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v2.0"/>
+    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v2.0"/>
     <title>v2.0 — Gran rewrite</title>
   </entry>
   <entry>
     <id>tag:github.com,2008:Repository/1/v1.4</id>
     <updated>2026-10-18T03:23:05Z</updated>
-    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v1.4"/>
+    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.4"/>
     <title>v1.4 — lo anterior</title>
   </entry>
 </feed>
@@ -38,7 +38,7 @@ ATOM_OLDER = """<?xml version="1.0" encoding="UTF-8"?>
   <entry>
     <id>tag:github.com,2008:Repository/1/v1.4</id>
     <updated>2026-10-18T03:23:05Z</updated>
-    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v1.4"/>
+    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.4"/>
     <title>v1.4 — lo anterior</title>
   </entry>
 </feed>
