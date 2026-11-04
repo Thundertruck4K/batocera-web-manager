@@ -9,6 +9,11 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 > backend sigue siendo **Python puro** (sin dependencias). La interfaz clásica de un solo
 > fichero (`templates/index.html`) se conserva como **respaldo**: si el bundle compilado no está
 > en la consola, el backend sirve esa en su lugar.
+>
+> Durante el desarrollo el proyecto estuvo partido en **dos repositorios** con el mismo backend.
+> Se unificaron porque mantener dos copias del mismo `app.py` obligaba a propagar cada cambio a
+> los dos sitios. El [motivo de la unificación](#-por-qué-un-solo-repositorio) está contado más
+> abajo.
 
 [![Versión](https://img.shields.io/badge/versi%C3%B3n-1.5-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager-react/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
@@ -38,11 +43,11 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 | | | |
 |:--|:--|:--|
 | [¿Qué es?](#-qué-es) | [Instalación](#-instalación) | [API REST](#-api-rest) |
-| [Características](#características) | [Uso](#-uso) | [Tests](#-tests) |
-| [Capturas](#-capturas) | [Scraper de carátulas](#-scraper-de-carátulas) | [Estructura del proyecto](#-estructura-del-proyecto) |
-| [Arquitectura](#-arquitectura) | [Requisitos y compatibilidad](#-requisitos-y-compatibilidad) | [Seguridad](#-seguridad) |
-| [Preguntas frecuentes](#-preguntas-frecuentes) | [Roadmap](#-roadmap) | [Contribuir](#-contribuir) |
-| [Apoyar el proyecto](#-apoyar-el-proyecto) | [Licencia](#-licencia) | |
+| [Un solo repositorio](#-por-qué-un-solo-repositorio) | [Características](#-características) | [Uso](#-uso) |
+| [Capturas](#-capturas) | [Tests](#-tests) | [Scraper de carátulas](#-scraper-de-carátulas) |
+| [Estructura del proyecto](#-estructura-del-proyecto) | [Arquitectura](#-arquitectura) | [Requisitos](#-requisitos-y-compatibilidad) |
+| [Seguridad](#-seguridad) | [Preguntas frecuentes](#-preguntas-frecuentes) | [Roadmap](#-roadmap) |
+| [Contribuir](#-contribuir) | [Apoyar el proyecto](#-apoyar-el-proyecto) | [Licencia](#-licencia) |
 
 ---
 
@@ -66,7 +71,37 @@ repositorio y el backend lo sirve tal cual. El backend **no tiene ni una depende
 servidor HTTP de la librería estándar de Python. Node sólo hace falta si quieres tocar la interfaz;
 para usarla en Batocera, ni siquiera eso.
 
-### Características
+La interfaz que se sirve es una **SPA de React + Tailwind CSS** (en `frontend/`, compilada y
+versionada). La interfaz clásica de un solo fichero (`templates/index.html`) sigue viva como
+**respaldo**: si el bundle no está en la consola, el backend sirve esa en su lugar sin que te
+enteres. Las dos hablan con la misma API.
+
+## 🧩 ¿Por qué un solo repositorio?
+
+El proyecto llegó a este estado por una razón práctica: durante buena parte del desarrollo se
+mantuvieron **dos repositorios** con el mismo backend.
+
+| | Variante React | Variante «Python puro» |
+|:--|:--|:--|
+| Interfaz | `frontend/` — SPA de React + Tailwind | `templates/index.html` — todo en un fichero |
+| Backend | `app.py` | `app.py` **idéntico** salvo `APP_REPO` |
+| Instalador | `install.sh` con fase de Node | `install.sh` sin fase de Node |
+
+Mantener dos copias del mismo backend (unas 6000 líneas) no sale gratis: cada corrección tenía que
+aplicarse en los dos repositorios, y hacía falta un comprobador automático para que no se
+desincronizaran en silencio. Para un proyecto de una persona, eso es mantenimiento puro sin
+beneficio para quien lo usa.
+
+La unificación deja las cosas así:
+
+- **Un solo backend** (`app.py`), una sola API y un solo instalador.
+- **Dos interfaces sobre ese backend**: la SPA de React es la principal; la clásica de un solo
+  fichero queda como respaldo y el backend la sirve automáticamente si el bundle no está.
+- **El repositorio de la variante «Python puro» se eliminó**, y su historial quedó aquí: su
+  `master` es un ancestro directo de este, así que no se perdió ni un commit.
+- La API no cambia: las dos interfaces consumen los mismos endpoints `/api/*`.
+
+## ✨ Características
 
 - **🕹️ Gestor de sistemas** — crea, edita y elimina sistemas personalizados con formulario completo,
   vista previa del XML y registro de lo que se escribe en disco.
@@ -77,21 +112,11 @@ para usarla en Batocera, ni siquiera eso.
   de tu biblioteca, ranking de más jugados y horas totales.
 - **🎨 Tarjetas con gráficos propios** — todo el panel usa un lenguaje de tarjetas redondeadas con
   color propio: velocímetros de 240°, sparklines de área, un donut de reparto del disco y barras
-  redondeadas, dibujados en CSS/JS puro (sin librerías ni paso de build).
-- **🏆 RetroAchievements** — progreso y logros de tu perfil dentro del propio panel.
-- **💾 Monitor de ROMs y BIOS** — inventario por sistema (número de ROMs, extensiones, subcarpetas),
-  agrupado en secciones plegables por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros)
-  con filtros combinables por tipo y por fabricante, y verificación de BIOS: qué falta, en qué sistema,
-  con subida manual, descarga automática y lista de omisiones.
-- **🧲 Scraper multi-fuente** — ScreenScraper.fr, TheGamesDB e IGDB (Twitch), con imágenes guardadas
-  como EmulationStation espera (`images/<rom>-image`, `-box`, `-wheel`, `-fanart`…).
-- **🎨 Temas y assets** — temas instalados, tema activo, estructura de assets esperada y subida de
-  logos, que se guardan como `art/logo.png` dentro del tema activo (si no tienes uno, Pillow genera
-  un logo de relleno).
+  redondeadas. En la SPA se dibujan con Recharts; en la interfaz clásica, en CSS/JS puro.
 - **🚀 Arranque automático** — añade o quita el manager del `custom.sh` de Batocera con un clic, y
   avisa en pantalla si está corriendo en modo manual (lanzado a mano, sin arranque automático).
-- **✏️ Edición de ROMs** — renombrar ficheros, actualizar metadatos, ver información de imágenes y
-  subir/borrar carátulas por tipo.
+- **🧩 Dos interfaces, un backend** — la SPA de React es la que se sirve por defecto; la clásica de
+  un solo fichero queda de respaldo si el bundle no está compilado en la consola.
 - **🌗 Tema claro/oscuro** — la interfaz se puede ver en oscuro (por defecto) o en claro, y también
   seguir la preferencia del sistema. El botón del sidebar alterna al instante; en Configuración se
   elige el modo. Se guarda en el manager, así que se aplica igual desde el móvil o el PC.
@@ -101,85 +126,84 @@ para usarla en Batocera, ni siquiera eso.
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 
+### Lo que aún está en la interfaz clásica
+
+El backend y la API lo tienen todo, pero estas secciones **todavía no están en la SPA** (en el menú
+aparecen marcadas como *Pronto*). Hasta entonces se usan desde la interfaz clásica, que el backend
+sigue sirviendo:
+
+- **💾 Monitor de ROMs y BIOS** — inventario por sistema (número de ROMs, extensiones, subcarpetas),
+  agrupado en secciones plegables por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros)
+  con filtros combinables por tipo y por fabricante, y verificación de BIOS: qué falta, en qué sistema,
+  con subida manual, descarga automática y lista de omisiones.
+- **🧲 Scraper multi-fuente** — ScreenScraper.fr, TheGamesDB e IGDB (Twitch), con imágenes guardadas
+  como EmulationStation espera (`images/<rom>-image`, `-box`, `-wheel`, `-fanart`…).
+- **🏆 RetroAchievements** — progreso y logros de tu perfil dentro del propio panel.
+- **🎨 Temas y assets** — temas instalados, tema activo, estructura de assets esperada y subida de
+  logos, que se guardan como `art/logo.png` dentro del tema activo (si no tienes uno, Pillow genera
+  un logo de relleno).
+- **✏️ Edición de ROMs** — renombrar ficheros, actualizar metadatos, ver información de imágenes y
+  subir/borrar carátulas por tipo.
+
 ---
 
 ## 📸 Capturas
 
-Todas las capturas están hechas sobre una instalación real (Batocera 43.1) y la IP local aparece
-anonimizada.
+Todas están hechas sobre una **instalación real** (Batocera 43.1) de la interfaz React, que es la
+que sirve el manager por defecto.
 
 ### 📊 Panel de control
 
-La portada resume el estado de la máquina: saludo con la versión de Batocera y el tiempo encendido,
-contadores de sistemas, partidas y horas jugadas, el juego al azar y el rendimiento en vivo.
+La portada resume el estado de la máquina: velocímetros de CPU, RAM, temperatura y disco; contadores
+de sistemas, procesos, particiones y juegos; la actividad de juego de los últimos días y los procesos
+que más CPU consumen. Arriba a la derecha se elige cada cuánto se refresca (automático, cada 30 s o
+manual) y el tema (claro u oscuro).
 
 ![Panel de control](docs/screenshots/01-dashboard.png)
 
-*Panel de control con KPIs en vivo, tarjeta de juego al azar y contadores de la biblioteca.*
+*Panel de control con los velocímetros en vivo, los contadores de la biblioteca y los gráficos de
+actividad y de carga.*
 
-![Juego al azar y actividad](docs/screenshots/02-juego-al-azar.png)
+### 🕹️ Sistemas Personalizados
 
-*Juego al azar (con carátula, ficha y descripción) junto al resumen de actividad y más jugados.*
+Los sistemas personalizados creados con el manager, con su carpeta de ROMs, su tema, su tipo de
+hardware y el fichero `es_systems_<slug>.cfg` que los define. Desde aquí se editan.
 
-![Rendimiento](docs/screenshots/03-rendimiento.png)
+![Sistemas personalizados](docs/screenshots/02-sistemas.png)
 
-*Rendimiento en vivo: CPU, GPU, RAM, disco, red y estado de EmulationStation.*
+*Listado de sistemas creados, con buscador y acceso directo a editar cada uno.*
 
-![RetroAchievements](docs/screenshots/04-retroachievements.png)
+### ✏️ Añadir sistema
 
-*Progreso y logros de RetroAchievements de tu perfil, integrados en el panel.*
+El formulario de creación: eliges un sistema de referencia del catálogo de Batocera, el formulario se
+rellena solo y ajustas la identidad (nombre, slug, fabricante, año, tipo de equipo, plataforma), las
+ROMs y extensiones, el tema y la descripción. A la derecha se ve **la vista previa del XML** que se
+escribirá, y se puede **simular sin escribir nada**.
 
-### 🕹️ Sistemas
+![Añadir sistema](docs/screenshots/03-anadir-sistema.png)
 
-Los sistemas personalizados creados por el manager, con su tema, su `es_systems_<slug>.cfg` y su
-carpeta de ROMs. Desde aquí se editan, se ve el XML generado o se borran.
+*Formulario de creación de un sistema personalizado, con la vista previa del `es_systems_<slug>.cfg`.*
 
-![Sistemas personalizados](docs/screenshots/05-sistemas.png)
+### 🐞 Depuración
 
-*Listado de sistemas creados con accesos directos a editar, ver XML y eliminar.*
+El flujo de eventos del manager en tiempo real: cada petición, acción y aviso llega por SSE. Se
+filtra por nivel (debug, info, aviso, error) y por texto, se puede pausar y limpiar, y el historial
+vive en memoria en el servidor (los 500 últimos eventos).
 
-![Crear sistema](docs/screenshots/08-agregar.png)
+![Depuración](docs/screenshots/04-depuracion.png)
 
-*Formulario de creación: sistema de referencia, datos, rutas, extensiones, emulador y logo.*
+*Flujo de eventos en vivo, con los contadores por nivel y el filtro de búsqueda.*
 
-![Crear sistema: emulador y tema](docs/screenshots/09-agregar-avanzado.png)
+### ⚙️ Configuración
 
-*Parte avanzada del formulario: tema, scraping, emulador, núcleo y descripción.*
+El estado del servicio (arranque automático, PID, puerto y el bloque de `custom.sh` a la vista), el
+tema de la interfaz, la **información del sistema** (versión del manager, qué interfaz se está
+sirviendo, Python, Node, Pillow, puerto, bundle y script de arranque) y las **instrucciones**
+integradas para instalar, actualizar o recompilar.
 
-### 💾 ROMs y BIOS
+![Configuración](docs/screenshots/05-configuracion.png)
 
-![ROMs y medios](docs/screenshots/06-roms.png)
-
-*Monitor de ROMs: sistemas detectados, número de ficheros y búsqueda inmediata.*
-
-![BIOS faltantes](docs/screenshots/07-bios.png)
-
-*Verificación de BIOS: cuántas faltan, en qué sistema y subida/descarga desde la propia web.*
-
-Los sistemas se agrupan por tipo de equipo y puedes filtrarlos por tipo y por fabricante con los chips
-de la parte superior, que se combinan con la búsqueda y el orden.
-
-### 🧲 Scraper
-
-![Scraper](docs/screenshots/10-scraper.png)
-
-*Scraper de un juego concreto: fuente, búsqueda, previsualización y tipos de imagen a descargar.*
-
-### 🎨 Temas y assets
-
-![Temas](docs/screenshots/11-temas.png)
-
-*Temas instalados, tema activo y estructura de assets que espera Batocera.*
-
-### ⚙️ Configuración y arranque
-
-![Configuración](docs/screenshots/12-autostart.png)
-
-*Estado del servicio, arranque automático en `custom.sh` y aviso si corre en modo manual.*
-
-![Instrucciones](docs/screenshots/13-instrucciones.png)
-
-*Instrucciones integradas para resolver los avisos sin salir de la web.*
+*Configuración con el estado del servicio, la información del sistema y las instrucciones.*
 
 ---
 
@@ -187,6 +211,12 @@ de la parte superior, que se combinan con la búsqueda y el orden.
 
 Todo se instala desde la propia Batocera, por SSH. **No hace falta nada más que Python 3**, que ya
 viene incluido en el sistema.
+
+Antes de instalar nada el instalador **valida las utilidades**: si Git y Node ya están, sigue sin
+preguntar nada; si falta alguno, avisa de que es necesario instalarlo y lo instala (Git con
+micromamba contra el canal `conda-forge`, Node con el tarball oficial de nodejs.org; en ambos casos
+se verifica el sha256 antes de descomprimir nada). Con `BM_GIT=skip` y `BM_NODE=skip` te saltas esa
+parte.
 
 ```bash
 ssh root@BATOCERA
@@ -368,12 +398,12 @@ El servidor escucha en `0.0.0.0`, así que también funciona desde el móvil.
 
 | Sección | Para qué sirve |
 |---|---|
-| **Dashboard** | Estado del sistema en vivo, juego al azar, estadísticas y RetroAchievements |
-| **ROMs & BIOS** | Inventario de ROMs por sistema y verificación de BIOS (faltantes, subida y descarga) |
-| **Sistemas Creados** | Sistemas personalizados: editar, ver su XML o eliminar |
-| **Agregar / Editar** | Asistente para crear un sistema nuevo a partir de uno de referencia |
-| **Temas & Assets** | Temas instalados, tema activo, estructura de assets y subida de logos |
-| **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), información del sistema, rutas de Batocera y RetroAchievements |
+| **Panel de control** | Estado del sistema en vivo, juego al azar, estadísticas y actividad |
+| **Sistemas Personalizados** | Los sistemas creados con el manager: ver su XML y editarlos |
+| **Añadir sistema** | Formulario para crear un sistema a partir de uno de referencia del catálogo |
+| **Depuración** | Flujo de eventos del manager en vivo, filtrable por nivel y por texto |
+| **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), tema de la interfaz, información del sistema e instrucciones |
+| *ROMs y BIOS · Scraper · Logros* | Marcadas como *Pronto* en la SPA; están en la interfaz clásica y en la API |
 
 Tras crear o modificar un sistema, Batocera necesita releer su configuración: el manager ofrece
 reiniciar EmulationStation desde la propia interfaz.
@@ -400,22 +430,28 @@ tocar nada más. Se respetan los límites de peticiones de cada API (hilos máxi
 
 ## 🧱 Arquitectura
 
-Intencionadamente sencilla: **un proceso, un fichero de servidor y una plantilla**.
+Intencionadamente sencilla: **un proceso, un fichero de servidor y un cliente**.
 
 ```
 Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/system/…
                           │                      ├── configs/emulationstation/es_systems_<slug>.cfg
                           │                      ├── roms/<sistema>/…
-                          └── templates/         ├── batocera.conf
-                              index.html         └── batocera_manager_settings.json
+                          │                      ├── batocera.conf
+                          │                      └── batocera_manager_settings.json
+                          │
+                          ├── frontend/dist/     # SPA de React (contenido estático)
+                          └── templates/         # interfaz clásica de respaldo
+                              index.html
 ```
 
 - **`app.py`** — servidor HTTP puro (`http.server`) con todos los endpoints, lectura de
   `/proc` y `/sys` para las métricas, escritura de configuraciones de EmulationStation y los clientes
   de ScreenScraper, TheGamesDB e IGDB. Sin frameworks.
-- **`templates/index.html`** — interfaz completa (HTML, CSS y JavaScript en un solo fichero). El
-  servidor la sirve sustituyendo una serie de marcadores con los datos ya calculados, así que la
-  primera pantalla se ve sin esperas.
+- **`frontend/`** — la SPA de React + Tailwind. El servidor sirve `frontend/dist/` tal cual (con
+  la versión inyectada en un `<meta>`); si ese bundle no está, cae a `templates/index.html`.
+- **`templates/index.html`** — interfaz clásica completa (HTML, CSS y JavaScript en un solo
+  fichero). El servidor la sirve sustituyendo una serie de marcadores con los datos ya calculados,
+  así que la primera pantalla se ve sin esperas. Es el respaldo cuando no hay bundle.
 - **`batocera_systems.json`** — catálogo de referencia con los sistemas y emuladores que trae
   Batocera; alimenta el formulario de creación (extensiones, núcleos y sistema de referencia).
 - **Sin estado en memoria** más allá de la caché de ROMs (60 s), la caché de metadatos de sistemas
@@ -426,7 +462,8 @@ Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/syste
 
 ## 🔌 API REST
 
-La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado:
+La interfaz se apoya en una API HTTP propia (JSON) que puedes usar por separado. **La SPA y la
+interfaz clásica consumen exactamente los mismos endpoints**:
 
 | Grupo | Endpoints |
 |---|---|
@@ -449,7 +486,7 @@ La lógica del backend y los ayudantes de la interfaz están cubiertos con **473
 
 ```bash
 python -m pytest
-# 384 passed in ~12s
+# 473 passed in ~15s
 ```
 
 ---
@@ -470,7 +507,7 @@ batocera_web/
 ├── templates/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
-├── install.sh                # instalador (Python, ficheros y arranque automático)
+├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
 ├── tests/                    # 473 tests con pytest
 ├── docs/
 │   ├── media/logo.png        # logo del proyecto
@@ -488,12 +525,14 @@ versionado en `frontend/dist/` y el backend lo sirve tal cual.
 ```bash
 cd frontend
 npm install          # sólo la primera vez
-npm run dev          # Vite en http://localhost:5173, hace de proxy de /api hacia :5000
+npm run dev          # Vite en http://localhost:5173, hace de proxy de /api hacia el backend
 npm run build        # genera frontend/dist/
 ```
 
-Arranca el backend en otra terminal (`python3 app.py`) para tener datos reales. La API es la misma que
-usa la interfaz clásica, así que no hay nada nuevo que desplegar en el backend.
+Arranca el backend en otra terminal (`python3 app.py`) para tener datos reales. Vite hace de proxy
+hacia `http://127.0.0.1:5000` por defecto; con `BATOCERA_BACKEND` le indicas otro (el entorno de
+desarrollo local usa el `:5001`, ver [Puertos en desarrollo](#puertos-en-desarrollo)). La API es la
+misma que usa la interfaz clásica, así que no hay nada nuevo que desplegar en el backend.
 
 > **¿Y en la propia consola?** La Batocera de desarrollo ya tiene **Node v26 LTS** instalado
 > (`/userdata/system/node/current`, enlazado en `/usr/bin/node`), así que también puedes recompilar
@@ -597,6 +636,19 @@ servicios (en Batocera, el usuario es `root`).
 **¿Necesito instalar Python o alguna librería?**  
 No. Usa sólo la librería estándar de Python 3, la que ya trae Batocera.
 
+**¿Qué diferencia hay entre la interfaz React y la clásica?**  
+La SPA de React es la que se sirve por defecto; la clásica (un único fichero HTML) queda de
+respaldo y el backend la sirve automáticamente si el bundle compilado no está en la consola. Las dos
+hablan con la misma API, así que lo que hace una lo hace la otra. Hay secciones (ROMs y BIOS,
+Scraper y Logros) que todavía sólo están en la clásica: en la SPA aparecen marcadas como *Pronto*.
+
+**¿Por qué el repositorio se llama `-react` si ya no hay dos repositorios?**  
+Porque durante el desarrollo sí los había: este era el de la interfaz React y el otro el de la
+variante «Python puro». Al unificar se optó por conservar el nombre de este y eliminar el otro
+(que ya no existía), así que el nombre histórico se quedó. Si prefieres el nombre corto
+`batocera-web-manager`, se puede renombrar, pero hay que actualizar la URL del repositorio en el
+instalador, en la documentación y en los enlaces de la release v1.5.
+
 **¿Puedo crear sistemas sin tocar XML a mano?**  
 Sí, es justo el objetivo: eliges un sistema de referencia, ajustas los campos y el manager escribe el
 `es_systems_<slug>.cfg` y crea las carpetas.
@@ -634,7 +686,16 @@ mucho.
 
 ## 🗺️ Roadmap
 
-Ideas anotadas, sin fechas:
+Lo primero, **llevar a la SPA las secciones que ya existen en la interfaz clásica** (en el menú
+están marcadas como *Pronto*):
+
+- **ROMs y BIOS** — inventario por sistema y verificación de BIOS.
+- **Scraper** — las tres fuentes y la descarga de imágenes.
+- **Logros** — progreso de RetroAchievements en el panel.
+- **Temas y assets** — temas instalados, tema activo y subida de logos.
+- **Edición de ROMs** — renombrar, metadatos y carátulas.
+
+Y después, ideas anotadas, sin fechas:
 
 - Autenticación opcional (usuario y contraseña) para redes poco fiables.
 - Copia de seguridad y restauración de `es_systems_*.cfg` desde la web.
@@ -692,6 +753,7 @@ copyright.
 
 **Proyecto no oficial**: no está afiliado ni respaldado por el equipo de [Batocera](https://batocera.org).
 
-Hecho con Python puro, sin dependencias, para la comunidad de Batocera. 🕹️
+Hecho con Python puro en el servidor (sin dependencias) y React en la interfaz, para la comunidad
+de Batocera. 🕹️
 
 </div>
