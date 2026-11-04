@@ -17,6 +17,7 @@ import shutil
 import sys
 import time
 import traceback
+import unicodedata
 import urllib.parse
 import xml.etree.ElementTree as ET
 import zlib
@@ -3371,17 +3372,20 @@ def ra_completion(settings, count=20):
             continue
         maxp = g.get("MaxPossible") or 0
         num  = g.get("NumAwarded") or 0
+        hardcore = g.get("NumAwardedHardcore") or 0
         out.append({
             "game_id": g.get("GameID"),
             "title": g.get("Title") or "",
             "console": g.get("ConsoleName") or "",
             "icon": _ra_absolute(g.get("ImageIcon")),
             "num_awarded": num,
+            "num_awarded_hardcore": hardcore,
             "max_possible": maxp,
-            "hardcore": bool(g.get("NumAwardedHardcore")),
+            "hardcore": bool(hardcore),
             "percent": round(num / maxp * 100, 1) if maxp else 0.0,
             "award_kind": g.get("HighestAwardKind") or "",
             "award_date": g.get("HighestAwardDate") or "",
+            "recent_date": g.get("MostRecentAwardedDate") or "",
         })
     return out
 
@@ -3452,7 +3456,9 @@ def get_retroachievements(settings, force=False):
         "updated": now,
         "profile": profile,
         "recent": ra_recent_achievements(settings),
-        "completion": ra_completion(settings),
+        # El dashboard de logros pide hasta 100 juegos; la interfaz clásica
+        # muestra los 5 primeros (corta en el JS).
+        "completion": ra_completion(settings, count=100),
         "awards": ra_awards(settings),
     }
     if profile is not None:
@@ -3460,6 +3466,197 @@ def get_retroachievements(settings, force=False):
     return data
 
 
+
+
+# ═══════════════════════════════════════════════════════════════
+#  MÓDULO: RETROACHIEVEMENTS — JUEGOS Y BIBLIOTECA LOCAL
+# ═══════════════════════════════════════════════════════════════
+#
+# Los logros de RA se emparejan con los ROM de la biblioteca local para
+# poder enseñar la carátula que dejó el scraper. El emparejado es por
+# título normalizado: RA publica hashes del ROM *descifrado*, que no
+# sirven para un fichero comprimido en la SD.
+
+_RA_TITLE_NOISE_RE = re.compile(r"\([^)]*\)|\[[^\]]*\]|~[^~]*~")
+_LOCAL_INDEX_TTL = 300
+_local_index_cache = {"ts": 0, "data": None, "base": ""}
+
+
+def ra_normalize_title(text):
+    """Clave comparable entre el título de RA y el del ROM local.
+
+    Plegar acentos, quitar las etiquetas de región y disco («(USA)»,
+    «(Disc 1)», «[!]», «~Hack~») y dejar sólo letras y dígitos: así
+    «Pokémon Red» y «Pokemon Red (USA)» terminan en la misma clave.
+    """
+    s = str(text or "").lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = _RA_TITLE_NOISE_RE.sub(" ", s)
+    s = s.replace("'", "").replace("&", " and ")
+    s = "".join(c if (c.isalnum() or c == " ") else " " for c in s)
+    return " ".join(s.split())
+
+
+def build_local_game_index(roms_base):
+    """Índice de la biblioteca local: {clave: [(sistema, fichero, subcarpeta)]}.
+
+    Se construye con los `gamelist.xml` (el nombre que muestra
+    EmulationStation es el que mejor casa con los títulos de RA) y, si
+    un sistema no tiene gamelist, con los ficheros sueltos de la
+    carpeta. Las entradas cuyo ROM ya no existe en disco se descartan.
+    """
+    index = {}
+    base = Path(roms_base)
+    if not base.is_dir():
+        return index
+    try:
+        systems = [d.name for d in sorted(base.iterdir()) if d.is_dir()]
+    except Exception:
+        return index
+
+    for sys_name in systems:
+        sys_dir = base / sys_name
+        entries = []
+        gl = sys_dir / "gamelist.xml"
+        if gl.exists():
+            try:
+                tree = ET.parse(gl)
+            except Exception:
+                tree = None
+            if tree is not None:
+                for game in tree.findall(".//game"):
+                    rel = (game.findtext("path", "") or "").lstrip("./")
+                    if not rel:
+                        continue
+                    name = game.findtext("name", "") or Path(rel).stem
+                    entries.append((name, rel))
+        else:
+            try:
+                for item in sorted(sys_dir.iterdir()):
+                    if not item.is_file() or item.name.startswith("."):
+                        continue
+                    if item.name in FILTER_FILES:
+                        continue
+                    if item.suffix.lower() not in ROM_EXTENSIONS:
+                        continue
+                    entries.append((item.stem, item.name))
+            except Exception:
+                pass
+
+        for name, rel in entries:
+            rel_path = Path(rel)
+            try:
+                if not (sys_dir / rel_path).exists():
+                    continue
+            except OSError:
+                continue
+            sub = str(rel_path.parent)
+            sub = "" if sub in (".", "") else sub
+            # Se indexa el nombre del gamelist y también el del fichero: el de
+            # RA suele parecerse más al segundo («1942 (Capcom).zip»).
+            keys = [ra_normalize_title(name)]
+            stem_key = ra_normalize_title(rel_path.stem)
+            if stem_key and stem_key != keys[0]:
+                keys.append(stem_key)
+            for key in keys:
+                if not key:
+                    continue
+                index.setdefault(key, []).append((sys_name, rel_path.name, sub))
+    return index
+
+
+def local_game_index(roms_base):
+    """Índice de la biblioteca local, cacheado unos minutos.
+
+    La clave del caché incluye la ruta: si `roms_base` cambia, el índice
+    se reconstruye en vez de servir el de otra biblioteca.
+    """
+    now = time.time()
+    cached = _local_index_cache["data"]
+    if (cached is not None
+            and _local_index_cache["base"] == str(roms_base)
+            and now - _local_index_cache["ts"] < _LOCAL_INDEX_TTL):
+        return cached
+    data = build_local_game_index(roms_base)
+    _local_index_cache.update({"ts": now, "data": data, "base": str(roms_base)})
+    return data
+
+
+def match_local_game(index, roms_base, title):
+    """Empareja un título de RA con un ROM de la biblioteca local.
+
+    Devuelve `{system, filename, subpath, has_art}` o None si no hay
+    coincidencia exacta. Entre las coincidencias se prefiere la que tiene
+    carátula: es la que puede pintar la tarjeta.
+    """
+    hits = index.get(ra_normalize_title(title)) or []
+    best = None
+    for system, filename, sub in hits:
+        rel = f"{sub}/{filename}" if sub else filename
+        try:
+            has_art = bool(find_user_art(roms_base, system, rel))
+        except Exception:
+            has_art = False
+        cand = {"system": system, "filename": filename, "subpath": sub,
+                "has_art": has_art}
+        if best is None or (cand["has_art"] and not best["has_art"]):
+            best = cand
+        if best["has_art"]:
+            break
+    return best
+
+
+def get_ra_games(settings):
+    """Dashboard de logros: perfil, premios y juegos con más progreso.
+
+    Cada juego se empareja con un ROM de la biblioteca local para enseñar
+    su carátula (la que dejó el scraper). Si no hay coincidencia, la
+    tarjeta usa el icono de RetroAchievements.
+
+    No se toca la red si faltan credenciales o si la integración está
+    desactivada.
+    """
+    user = (settings.get("ra_user") or "").strip()
+    key = (settings.get("ra_api_key") or "").strip()
+    enabled = bool(settings.get("ra_enabled", True)) and bool(user and key)
+    base = {"ok": False, "configured": bool(user and key), "enabled": enabled,
+            "updated": None, "profile": None, "awards": None,
+            "games": [], "matched": 0, "total": 0}
+    if not base["configured"] or not enabled:
+        return base
+
+    summary = get_retroachievements(settings)
+    if not summary.get("ok"):
+        return base
+
+    roms_base = settings.get("roms_base", "/userdata/roms")
+    index = local_game_index(roms_base)
+
+    games = []
+    for g in summary.get("completion") or []:
+        item = dict(g)
+        local = match_local_game(index, roms_base, g.get("title", ""))
+        if local:
+            item.update(local)
+            item["local"] = True
+            item["system_name"] = friendly_system_name(local["system"])
+        else:
+            item.update({"system": "", "system_name": "", "filename": "",
+                         "subpath": "", "has_art": False, "local": False})
+        games.append(item)
+
+    return {
+        "ok": True,
+        "configured": True,
+        "enabled": True,
+        "updated": summary.get("updated"),
+        "profile": summary.get("profile"),
+        "awards": summary.get("awards"),
+        "games": games,
+        "matched": sum(1 for g in games if g["local"]),
+        "total": len(games),
+    }
 
 
 def get_uptime():
@@ -5163,6 +5360,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self.send_json(get_retroachievements(s))
         elif path == "/api/retroachievements/test":
             self.send_json(ra_test(s))
+        elif path == "/api/retroachievements/games":
+            self.send_json(get_ra_games(s))
         elif path == "/api/es/status":
             self.send_json(get_es_status())
         elif path == "/api/fans":

@@ -367,3 +367,70 @@ export interface ThemesPayload {
   active: string
   list: string[]
 }
+
+/* ── Logros (RetroAchievements) ────────────────────────────────────────── */
+
+export interface RaProfile {
+  user: string
+  avatar: string
+  points: number
+  true_points: number
+  softcore_points: number
+  member_since: string
+  motto: string
+  rich_presence: string
+  last_game_id: number | null
+}
+
+export interface RaAwards {
+  total: number
+  mastery: number
+  completion: number
+  beaten_hardcore: number
+  beaten_softcore: number
+  events: number
+}
+
+export interface RaGame {
+  game_id: number
+  title: string
+  console: string
+  /** Icono de RetroAchievements (respaldo si no hay ROM local). */
+  icon: string
+  /** Logros conseguidos por el usuario. */
+  num_awarded: number
+  /** De esos, los conseguidos en modo hardcore. */
+  num_awarded_hardcore: number
+  /** Logros que tiene el juego. */
+  max_possible: number
+  hardcore: boolean
+  percent: number
+  /** `mastered`, `completed`, `beaten-hardcore`, `beaten-softcore`… */
+  award_kind: string
+  award_date: string
+  recent_date: string
+  /** Sistema local donde está el ROM (vacío si no hubo coincidencia). */
+  system: string
+  system_name: string
+  filename: string
+  subpath: string
+  has_art: boolean
+  /** Si el juego se ha emparejado con un ROM de la biblioteca. */
+  local: boolean
+}
+
+export interface RaGamesPayload {
+  ok: boolean
+  /** Hay usuario y Web API Key configurados. */
+  configured: boolean
+  /** La integración está activada. */
+  enabled: boolean
+  updated: number | null
+  profile: RaProfile | null
+  awards: RaAwards | null
+  games: RaGame[]
+  /** Juegos emparejados con un ROM local. */
+  matched: number
+  /** Juegos con progreso en RetroAchievements. */
+  total: number
+}
