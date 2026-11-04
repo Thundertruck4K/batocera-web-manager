@@ -7,26 +7,31 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Cambiado
+- **El repositorio se renombra a `batocera-web-manager`.** Este repositorio, que hasta ahora se
+  llamaba `batocera-web-manager-react`, recupera el nombre corto: es el que ya se compartía en la
+  comunidad y el que no debe convertirse en un 404. GitHub guarda una redirección desde el nombre
+  antiguo, así que los enlaces compartidos antes del renombrado siguen funcionando.
+  - Se actualizan la URL de clone del `install.sh`, la constante `APP_REPO` del `app.py` (de la
+    que se leen las releases para la comprobación de actualizaciones), las instrucciones de la
+    interfaz clásica de respaldo y los tests que las verifican.
+  - El historial no se toca: el `master` de la variante «Python puro» —el repositorio que se
+    eliminó al unificar— sigue siendo un ancestro directo de este.
+
+## [1.5] — 2026-11-03
+
+### Cambiado
 - **La versión del manager pasa a 1.5.** `APP_VERSION` (en `app.py`) es la única fuente de la
   versión y ahora coincide con la release publicada.
 - **README reescrito con el funcionamiento actual.** La sección de características separa lo que
   ya está en la SPA de lo que sigue sólo en la interfaz clásica, el diagrama de arquitectura
   incluye el bundle de React, la tabla de secciones de «Uso» lista las reales del menú y se
   explica **por qué se unificaron los dos repositorios**.
-
-### Añadido
-- **Capturas nuevas de la interfaz actual** (`docs/screenshots/`): panel de control, Sistemas
-  Personalizados, Añadir sistema, Depuración y Configuración, tomadas sobre una instalación real
-  de Batocera 43.1. Las 13 capturas anteriores, de la interfaz clásica, se sustituyen por estas.
-
-## [1.5] — 2026-11-03
-
-### Cambiado
 - **El proyecto vuelve a vivir en un solo repositorio.** Durante un tiempo se mantuvo en dos
   repositorios independientes con el mismo backend: la interfaz React + Tailwind CSS y la variante
   «Python puro» (interfaz de un solo fichero). La variante se retira: su repositorio
   `Thundertruck4K/batocera-web-manager` se elimina y todo el trabajo sigue aquí, en
-  `Thundertruck4K/batocera-web-manager-react`.
+  `Thundertruck4K/batocera-web-manager-react` (que después recuperó ese mismo nombre corto; ver
+  [Unreleased]).
   - La **interfaz clásica** (`templates/index.html`) no desaparece: se queda como **respaldo** y el
     backend la sirve automáticamente cuando el bundle compilado no está en la consola.
   - La documentación (README, AGENTS, CHANGELOG y MEMORY) describe ya un único proyecto, sin
@@ -140,6 +145,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   scraper.
 - 8 tests nuevos para las correcciones de la revisión (inyección en `batocera.conf`, lista
   blanca de la config pública, listener del modo "auto" y borrado accidental de la key de RA).
+- **Capturas nuevas de la interfaz actual** (`docs/screenshots/`): panel de control, Sistemas
+  Personalizados, Añadir sistema, Depuración y Configuración, tomadas sobre una instalación real
+  de Batocera 43.1. Las 13 capturas anteriores, de la interfaz clásica, se sustituyen por estas.
 
 ### Cambiado
 - **«Sistemas» pasa a llamarse «Sistemas Personalizados»** en el sidebar y en el título de la página,
@@ -288,10 +296,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Primera versión: servidor HTTP puro (stdlib), sin dependencias, gestor de sistemas personalizados, dashboard básico, monitor de ROMs/BIOS, scraper, temas y arranque automático.
 - Licencia MIT.
 
-[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager-react/compare/v1.5...HEAD
-[1.5]: https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v1.5
-[1.4]: https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v1.4
-[1.3]: https://github.com/Thundertruck4K/batocera-web-manager-react/releases/tag/v1.3
+[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager/compare/v1.5...HEAD
+[1.5]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.5
+[1.4]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.4
+[1.3]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.3
 
 > Las versiones anteriores a v1.3 no están etiquetadas en Git; se referencian por
 > su commit inicial (`44effde` para v1.2, `589bfc7` para el README v1.2).
