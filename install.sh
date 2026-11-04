@@ -649,12 +649,24 @@ else
       done < <(find "$SCRIPT_DIR/templates" -type f)
     fi
     if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
-      while IFS= read -r f; do
-        rel="${f#"$SCRIPT_DIR"/}"
-        mkdir -p "$INSTALL_DIR/$(dirname "$rel")"
-        cp "$f" "$INSTALL_DIR/$rel"
-        COPIED=$(( COPIED + 1 )); copy_tick
-      done < <(find "$SCRIPT_DIR/frontend/dist" -type f)
+      # Los assets del bundle llevan hash en el nombre: los de la versión
+      # anterior dejan de usarse, pero se quedarían ocupando sitio en la SD.
+      # Se copia el bundle a un temporal y se sustituye la carpeta entera:
+      # así se limpian los restos y, si el instalador se ejecuta dentro de la
+      # propia carpeta de destino, no se borra el bundle de origen.
+      tmp_dist="$(mktemp -d 2>/dev/null || printf '%s' "/tmp/bwm-dist-$$")"
+      mkdir -p "$tmp_dist"
+      if cp -R "$SCRIPT_DIR/frontend/dist/." "$tmp_dist/" 2>/dev/null; then
+        rm -rf "$INSTALL_DIR/frontend/dist"
+        mkdir -p "$INSTALL_DIR/frontend"
+        mv "$tmp_dist" "$INSTALL_DIR/frontend/dist"
+        n=$(find "$INSTALL_DIR/frontend/dist" -type f 2>/dev/null | wc -l | tr -d ' ')
+        COPIED=$(( COPIED + n ))
+        copy_tick
+      else
+        rm -rf "$tmp_dist"
+        warn "No se pudo actualizar el bundle del frontend; se conserva el anterior"
+      fi
     fi
     if [ "$IS_TTY" = 1 ]; then printf '\r\033[K'; fi
     ok "Ficheros copiados a $INSTALL_DIR"
