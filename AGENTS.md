@@ -98,8 +98,8 @@ El proyecto se trabaja en **un solo repositorio**:
   que faltan cuando el backend las deja vacíos (fuera de Linux no hay `/proc` ni `/sys`) para que la
   interfaz degrade en lugar de romperse con una pantalla en blanco.
 - En desarrollo: `npm run dev` (Vite en :5173) hace de proxy de `/api` hacia el backend en :5000.
-  Variable `BATOCERA_BACKEND` para cambiar el destino del proxy; con las dos instancias en marcha,
-  apúntala a `http://127.0.0.1:5001` (el backend de **este** repo) para no mezclarlas con el :5000.
+  Variable `BATOCERA_BACKEND` para cambiar el destino del proxy; con `dev.cmd dev` (backend en :5001),
+  apúntala a `http://127.0.0.1:5001` para que Vite pegue con el backend local.
 - **La interfaz clásica sigue viva**: `templates/index.html` y sus tests (`tests/test_mono_charts.py`,
   `tests/test_ui_theme.py`) no se tocan. `render_index()` no ha cambiado; `render_app()` elige la SPA
   si `frontend/dist/index.html` existe y si no, la clásica.
