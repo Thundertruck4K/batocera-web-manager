@@ -196,6 +196,8 @@ export interface RomSystemSummary {
   name: string
   rom_count: number
   media_count: number
+  /** Juegos con imagen (los que tienen `<image>` en su gamelist.xml). */
+  image_count: number
   size_human: string
   is_empty: boolean
   has_gamelist: boolean
@@ -433,4 +435,137 @@ export interface RaGamesPayload {
   matched: number
   /** Juegos con progreso en RetroAchievements. */
   total: number
+}
+
+/* ── Scraper ─────────────────────────────────────────────────────────── */
+
+/** Fuentes de scraping admitidas por el backend. */
+export type ScraperSource = 'screenscraper' | 'thegamesdb' | 'igdb'
+
+/**
+ * Configuración pública del scraper.
+ *
+ * Las credenciales llegan **enmascaradas** y sólo se indica si hay alguna
+ * guardada (`*_set`): el frontend nunca ve la clave real en claro.
+ */
+export interface ScraperConfig {
+  ss_region: string
+  ss_lang: string
+  ss_image_type: string
+  scraper_source: string
+  ss_user: string
+  ss_password: string
+  ss_devid: string
+  ss_devpassword: string
+  tgdb_apikey: string
+  igdb_client_id: string
+  igdb_client_secret: string
+  ss_user_set: boolean
+  ss_password_set: boolean
+  ss_devid_set: boolean
+  ss_devpassword_set: boolean
+  tgdb_apikey_set: boolean
+  igdb_client_id_set: boolean
+  igdb_client_secret_set: boolean
+}
+
+/** Una entrada del listado de una carpeta de ROMs. */
+export interface RomFolderItem {
+  name: string
+  filename: string
+  ext: string
+  size: number
+  size_human: string
+  is_rom: boolean
+  is_dir: boolean
+  child_count?: number
+  has_subdirs?: boolean
+  desc: string
+  rating: string
+  genre: string
+  publisher: string
+  year: string
+  has_image: boolean
+  has_video: boolean
+}
+
+/** Contenido de una carpeta de ROMs (raíz del sistema o subcarpeta). */
+export interface RomFolder {
+  system: string
+  subpath: string
+  breadcrumb: string[]
+  items: RomFolderItem[]
+  item_count: number
+  media_count: number
+  total_size: number
+  size_human: string
+  has_gamelist: boolean
+  is_empty: boolean
+}
+
+/** Metadatos normalizados de un juego (los que se guardan en gamelist.xml). */
+export interface ScraperMeta {
+  name: string
+  desc: string
+  genre: string
+  year: string
+  publisher: string
+  rating: string
+}
+
+/** Resultado de buscar un ROM en la fuente de scraping. */
+export interface ScraperSearchResult {
+  ok: boolean
+  game: Record<string, unknown> | null
+  meta: ScraperMeta | null
+  img_types: string[]
+  source: ScraperSource
+  quota?: Record<string, unknown>
+  error?: string
+}
+
+/** Resultado de descargar imagen y metadatos de un ROM. */
+export interface ScraperDownloadResult {
+  ok: boolean
+  results: {
+    images: { type: string; path: string }[]
+    meta: boolean
+    errors: string[]
+    es_reload?: boolean
+  }
+  error?: string
+}
+
+/** Trabajo de scraping por lotes (uno o varios sistemas). */
+export interface ScraperJob {
+  id: string
+  systems: string[]
+  source: string
+  status: 'pending' | 'running' | 'completed' | 'cancelled' | 'failed'
+  progress: number
+  current_system: string
+  current_rom: string
+  progress_raw: [number, number]
+  partial: { ok?: number; fail?: number; skip?: number }
+  systems_done: number
+  aggregated: {
+    ok: number
+    fail: number
+    skip: number
+    total: number
+    errors: string[]
+    meta_saved: number
+  }
+  created_at: number
+  error?: string | null
+  es_reload?: boolean
+}
+
+/** Opciones del scrape de un sistema completo. */
+export interface ScrapeOptions {
+  source: ScraperSource
+  only_missing: boolean
+  ss_image_type: string
+  ss_region: string
+  ss_lang: string
 }

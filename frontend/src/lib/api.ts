@@ -5,7 +5,14 @@ import type {
   CustomSystemDetail,
   RandomGame,
   RaGamesPayload,
+  RomFolder,
   RomSystemSummary,
+  ScraperConfig,
+  ScraperDownloadResult,
+  ScraperJob,
+  ScraperSearchResult,
+  ScraperSource,
+  ScrapeOptions,
   ServiceStatus,
   Settings,
   SystemInfo,
@@ -76,6 +83,62 @@ export function unwrap<T extends OkEnvelope>(payload: T): T {
   return payload
 }
 
+/* ── Peticiones del scraper ─────────────────────────────────────────────── */
+
+/** Búsqueda de un ROM en la fuente de scraping. */
+export interface ScraperSearchPayload {
+  filename: string
+  system: string
+  subpath?: string
+  source: ScraperSource
+}
+
+/** Descarga de imagen y metadatos de un ROM. */
+export interface ScraperDownloadPayload {
+  system: string
+  filename: string
+  subpath?: string
+  source: ScraperSource
+  game: Record<string, unknown>
+  save_meta?: boolean
+  img_types?: string[]
+}
+
+/** Scraping de uno o varios sistemas completos. */
+export interface ScrapeSystemPayload extends ScrapeOptions {
+  systems: string[]
+}
+
+/** Actualización manual de los metadatos de un ROM. */
+export interface RomMetaPayload {
+  system: string
+  filename: string
+  subpath?: string
+  name?: string
+  desc?: string
+  year?: string
+  publisher?: string
+  genre?: string
+  rating?: string
+}
+
+/** Línea de configuración del scraper (`clave` → `valor`). */
+export interface ScraperConfigLine {
+  key: string
+  val: string
+}
+
+/** Resumen del scrape de un sistema (respuesta de `/api/scraper/scrape-system`). */
+export interface ScrapeSystemResult {
+  ok: number
+  fail: number
+  skip: number
+  errors: string[]
+  total: number
+  quota?: Record<string, unknown>
+  meta_saved?: number
+}
+
 const get = <T>(path: string) => request<T>(path)
 const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
@@ -128,4 +191,32 @@ export const api = {
 
   /* Logros (RetroAchievements) */
   raGames: () => get<RaGamesPayload>('/api/retroachievements/games'),
+
+  /* Scraper */
+  scraperConfig: () => get<ScraperConfig>('/api/scraper/config'),
+  scraperSearch: (payload: ScraperSearchPayload) =>
+    post<ScraperSearchResult>('/api/scraper/search', payload).then(unwrap),
+  scraperDownload: (payload: ScraperDownloadPayload) =>
+    post<ScraperDownloadResult>('/api/scraper/download', payload).then(unwrap),
+  scrapeSystem: (payload: ScrapeSystemPayload) =>
+    post<{ ok: boolean; results?: ScrapeSystemResult; error?: string }>(
+      '/api/scraper/scrape-system',
+      payload,
+    ).then(unwrap),
+  scrapeBatch: (payload: ScrapeSystemPayload) =>
+    post<{ ok: boolean; job_id?: string; error?: string }>('/api/scraper/batch', payload).then(unwrap),
+  scrapeJobs: () => get<{ ok: boolean; jobs: ScraperJob[] }>('/api/scraper/batch'),
+  scrapeJob: (id: string) =>
+    get<{ ok: boolean; job?: ScraperJob; error?: string }>(`/api/scraper/batch/${enc(id)}`).then(unwrap),
+  scrapeJobCancel: (id: string) => del<{ ok: boolean }>(`/api/scraper/batch/${enc(id)}`),
+  saveScraperConfig: (lines: ScraperConfigLine[]) =>
+    post<{ ok: boolean; error?: string }>('/api/scraper/save-config', { lines }).then(unwrap),
+
+  /* ROMs */
+  romFolder: (system: string, subpath = '') =>
+    get<{ ok: boolean; folder?: RomFolder; error?: string }>(
+      `/api/rom-folder/${enc(system)}${subpath ? `?path=${enc(subpath)}` : ''}`,
+    ).then(unwrap),
+  updateRomMeta: (payload: RomMetaPayload) =>
+    post<{ ok: boolean; error?: string }>('/api/rom/update-meta', payload).then(unwrap),
 }
