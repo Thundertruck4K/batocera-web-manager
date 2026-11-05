@@ -9,6 +9,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { AchievementsPage } from '@/pages/Achievements'
 import { DebugPage } from '@/pages/Debug'
 import { NotFound } from '@/pages/NotFound'
+import { ScraperPage } from '@/pages/Scraper'
 import { SettingsPage } from '@/pages/Settings'
 import { SystemForm } from '@/pages/SystemForm'
 import { Systems } from '@/pages/Systems'
@@ -48,6 +49,7 @@ function ManagerShell() {
         <Route path="/sistemas/:name/editar" element={<SystemForm />} />
         <Route path="/depuracion" element={<DebugPage />} />
         <Route path="/retroachievements" element={<AchievementsPage />} />
+        <Route path="/scraper" element={<ScraperPage />} />
         <Route path="/configuracion" element={<SettingsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

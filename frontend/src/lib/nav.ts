@@ -25,7 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/sistemas', label: 'Sistemas Personalizados', icon: Gamepad2 },
   { to: '/sistemas/nuevo', label: 'Añadir sistema', icon: Plus },
   { to: '/roms', label: 'ROMs y BIOS', icon: Sparkles, pending: true },
-  { to: '/scraper', label: 'Scraper', icon: Palette, pending: true },
+  { to: '/scraper', label: 'Scraper', icon: Palette },
   { to: '/retroachievements', label: 'Logros', icon: Trophy },
   { to: '/depuracion', label: 'Depuración', icon: Bug },
   { to: '/configuracion', label: 'Configuración', icon: Settings },

@@ -1107,6 +1107,8 @@ import threading
 _rom_cache        = {}   # {roms_base: (timestamp, data)}
 _rom_cache_lock   = threading.Lock()
 ROM_CACHE_TTL     = 60   # segundos
+# {roms_base: (timestamp, {sistema: juegos con imagen})}
+_image_count_cache = {}
 
 # Set of skipped missing BIOS entries (skip_key = "system/file"). Persistido en disco.
 _missing_bios_skipped = set()
@@ -1169,6 +1171,58 @@ def get_rom_systems_cached(settings):
 def invalidate_rom_cache():
     with _rom_cache_lock:
         _rom_cache.clear()
+        _image_count_cache.clear()
+
+
+def count_systems_with_images(settings, systems):
+    """Juegos con imagen por sistema.
+
+    Un juego cuenta como "con media" si su entrada del gamelist.xml tiene
+    `<image>` y su ROM sigue en la carpeta: el gamelist puede traer entradas
+    de ROMs ya borrados.
+
+    Sólo se mira el `<image>` del gamelist (no se lista la carpeta de
+    imágenes), que es el mismo criterio que usa `list_rom_folder` para el
+    reparto entre media presente y ausente.
+    """
+    roms_base = Path(settings["roms_base"])
+    key   = str(roms_base)
+    now   = time.time()
+    with _rom_cache_lock:
+        cached = _image_count_cache.get(key)
+        if cached and now - cached[0] < ROM_CACHE_TTL:
+            return cached[1]
+
+    counts = {}
+    for system in systems:
+        name = system.get("name", "")
+        gl   = roms_base / name / "gamelist.xml"
+        if not gl.exists():
+            counts[name] = 0
+            continue
+        with_image = set()
+        try:
+            tree = ET.parse(gl)
+            for game in tree.findall(".//game"):
+                if not (game.findtext("image", "") or "").strip():
+                    continue
+                path = (game.findtext("path", "") or "").lstrip("./")
+                if path:
+                    with_image.add(path)
+        except Exception:
+            with_image = set()
+        total = 0
+        for rom in system.get("roms", []) or []:
+            # Sólo los ROMs: los ficheros sueltos (notas, .txt…) no cuentan.
+            if rom.get("ext") == "dir" or not rom.get("is_rom", True):
+                continue
+            if rom.get("filename") in with_image or rom.get("name") in with_image:
+                total += 1
+        counts[name] = total
+
+    with _rom_cache_lock:
+        _image_count_cache[key] = (now, counts)
+    return counts
 
 
 def count_rom_systems(settings):
@@ -2434,6 +2488,7 @@ def rom_system_summary(x):
         "name": x["name"],
         "rom_count": x["rom_count"],
         "media_count": x["media_count"],
+        "image_count": x.get("image_count", 0),
         "size_human": x["size_human"],
         "is_empty": x["is_empty"],
         "has_gamelist": x["has_gamelist"],
@@ -5320,6 +5375,9 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         # ROM monitor
         elif path == "/api/rom-systems":
             systems = get_rom_systems_cached(s)
+            images  = count_systems_with_images(s, systems)
+            for x in systems:
+                x["image_count"] = images.get(x["name"], 0)
             self.send_json([rom_system_summary(x) for x in systems])
         elif len(parts)==3 and parts[:2]==["api","rom-systems"]:
             name = urllib.parse.unquote(parts[2])
