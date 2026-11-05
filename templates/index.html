@@ -4608,6 +4608,9 @@ async function scraperSearch() {
       filename: _scraperCurrentRom.filename,
       system:   _scraperCurrentSystem,
       subpath:  _scraperCurrentSubpath,
+      // La interfaz clásica muestra la imagen de ScreenScraper directamente,
+      // así que necesita las URLs con credenciales. La SPA no las pide.
+      raw_media: true,
       ...creds,
     }),
   });

@@ -91,6 +91,11 @@ export interface ScraperSearchPayload {
   system: string
   subpath?: string
   source: ScraperSource
+  /**
+   * Fuentes a probar, en orden de prioridad. El backend devuelve el primer
+   * resultado que encuentre y dice en cuál lo encontró.
+   */
+  sources?: ScraperSource[]
 }
 
 /** Descarga de imagen y metadatos de un ROM. */
@@ -107,6 +112,8 @@ export interface ScraperDownloadPayload {
 /** Scraping de uno o varios sistemas completos. */
 export interface ScrapeSystemPayload extends ScrapeOptions {
   systems: string[]
+  /** Si la fuente principal no encuentra un juego, probar con las demás. */
+  fallback_sources?: boolean
 }
 
 /** Actualización manual de los metadatos de un ROM. */

@@ -16,7 +16,11 @@ import { Field, Input, Select, Toggle } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/hooks/useToast'
 import { api, type ScraperConfigLine } from '@/lib/api'
-import { SCRAPER_SOURCES } from '@/lib/systemIcons'
+import {
+  SCRAPER_SOURCES,
+  sourceMissing,
+  sourceReady,
+} from '@/lib/scraperSources'
 import type { ScraperConfig, ScraperJob, ScraperSource } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -121,21 +125,6 @@ const CRED_FIELDS: {
 ]
 
 /** ¿La fuente elegida tiene credenciales guardadas? */
-function sourceReady(config: ScraperConfig | null, source: ScraperSource): boolean {
-  if (!config) return false
-  if (source === 'thegamesdb') return config.tgdb_apikey_set
-  if (source === 'igdb') return config.igdb_client_id_set && config.igdb_client_secret_set
-  return config.ss_user_set && config.ss_password_set
-}
-
-/** Etiqueta de lo que falta para poder usar una fuente. */
-function sourceMissing(config: ScraperConfig | null, source: ScraperSource): string {
-  if (!config) return 'Configuración desconocida'
-  if (source === 'thegamesdb') return 'Falta la API Key'
-  if (source === 'igdb') return 'Faltan Client ID y Secret'
-  if (!config.ss_user_set || !config.ss_password_set) return 'Faltan usuario y contraseña'
-  return ''
-}
 
 interface ScrapeSystemModalProps {
   open: boolean
@@ -159,6 +148,7 @@ export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSys
   const [config, setConfig] = useState<ScraperConfig | null>(null)
   const [source, setSource] = useState<ScraperSource>('screenscraper')
   const [onlyMissing, setOnlyMissing] = useState(true)
+  const [fallback, setFallback] = useState(true)
   const [imageType, setImageType] = useState('mixrbv1')
   const [region, setRegion] = useState('wor')
   const [lang, setLang] = useState('es')
@@ -242,6 +232,7 @@ export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSys
         systems,
         source,
         only_missing: onlyMissing,
+        fallback_sources: fallback,
         ss_image_type: imageType,
         ss_region: region,
         ss_lang: lang,
@@ -360,7 +351,7 @@ export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSys
             Fuente de datos
           </h3>
           <div className="flex flex-wrap gap-2">
-            {SCRAPER_SOURCES.map((option) => {
+            {SCRAPER_SOURCES.map((option, index) => {
               const configured = sourceReady(config, option.id)
               const active = source === option.id
               return (
@@ -379,6 +370,7 @@ export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSys
                       : 'border-border bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                 >
+                  <span className="tabular-nums text-[10px] font-bold text-muted-foreground">{index + 1}</span>
                   {option.label}
                   {configured ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -399,6 +391,10 @@ export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSys
               {sourceMissing(config, source)}. Pulsa «Editar» para escribirlas.
             </p>
           )}
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+            La fuente elegida es la prioridad. Con el respaldo activado, si no encuentra un juego se
+            prueban las siguientes: {SCRAPER_SOURCES.map((s) => s.label).join(' → ')}.
+          </p>
         </section>
 
         {/* Opciones */}
@@ -437,6 +433,13 @@ export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSys
           onChange={setOnlyMissing}
           label="Sólo los ROMs que faltan"
           description="No toca los juegos que ya tienen imagen; es lo habitual para no gastar cuota."
+        />
+
+        <Toggle
+          checked={fallback}
+          onChange={setFallback}
+          label="Usar las demás fuentes como respaldo"
+          description="Si la fuente principal no encuentra un juego, se prueban las siguientes por orden."
         />
 
         {/* Credenciales */}

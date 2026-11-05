@@ -26,7 +26,7 @@ import { useApi } from '@/hooks/useApi'
 import { triggerHaptic } from '@/hooks/useWebHaptics'
 import { api } from '@/lib/api'
 import { systemType } from '@/lib/systemIcons'
-import type { RomFolderItem, RomSystemSummary, ScraperSource } from '@/lib/types'
+import type { RomFolderItem, RomSystemSummary } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -50,13 +50,6 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'media-desc', label: 'Más media' },
   { key: 'coverage', label: 'Cobertura' },
 ]
-
-/** Fuente configurada en el servidor (con reserva a ScreenScraper). */
-function activeSource(config: { scraper_source?: string } | null): ScraperSource {
-  const value = config?.scraper_source
-  if (value === 'thegamesdb' || value === 'igdb') return value
-  return 'screenscraper'
-}
 
 /** ¿Alguna fuente tiene credenciales guardadas? */
 function anySourceReady(config: {
@@ -99,8 +92,6 @@ export function ScraperPage() {
   } = useApi(() => api.romFolder(selected?.name ?? '', subpath), [selected?.name, subpath], {
     enabled: Boolean(selected),
   })
-
-  const source = activeSource(config)
 
   /* Tipos de sistema presentes en la biblioteca (para el filtro). */
   const types = useMemo(() => {
@@ -418,6 +409,26 @@ export function ScraperPage() {
         title={selected.fullname || selected.name}
         subtitle={`${selected.name} · ${selected.rom_count.toLocaleString('es-ES')} ROMs · ${mediaCount} con media · ${pendingCount} sin media`}
         onMenu={openMenu}
+        leading={
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('light')
+              setSelected(null)
+              setSubpath('')
+            }}
+            aria-label="Volver a la lista de sistemas"
+            className={cn(
+              'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-border bg-card',
+              'px-2.5 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-150',
+              'hover:bg-muted hover:text-foreground',
+              'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+            )}
+          >
+            <ArrowLeft className="size-3.5" />
+            <span className="hidden sm:inline">Volver</span>
+          </button>
+        }
         actions={
           <>
             <Button
@@ -442,23 +453,6 @@ export function ScraperPage() {
       />
 
       <PageContainer>
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic('light')
-            setSelected(null)
-            setSubpath('')
-          }}
-          className={cn(
-            'mb-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-semibold',
-            'text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground',
-            'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-          )}
-        >
-          <ArrowLeft className="size-3.5" />
-          Volver a la lista
-        </button>
-
         {folderError && (
           <div className="mb-4 flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <CircleAlert className="size-4 shrink-0" />
@@ -517,7 +511,6 @@ export function ScraperPage() {
         system={selected?.name ?? ''}
         subpath={subpath}
         rom={romItem}
-        source={source}
         onSaved={handleSaved}
       />
     </>
