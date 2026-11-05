@@ -131,7 +131,9 @@ La unificación deja las cosas así:
   lleva a Configuración.
 - **🧲 Scraper en la SPA** — los sistemas de tu biblioteca en tarjetas con un icono temático, su
   nombre, una breve descripción y el número de ROMs. Al abrir uno, sus ROMs se reparten en *media
-  presente* y *media ausente*; con un modal flotante se escapea el sistema entero o un juego suelto.
+  presente* y *media ausente*; con un modal flotante se escapea el sistema entero o un juego suelto,
+  con la carátula a la vista y las tres fuentes en orden de prioridad (ScreenScraper primero y
+  TheGamesDB e IGDB como respaldo).
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 
@@ -223,6 +225,16 @@ Desde ahí, un modal flotante permite **escapear el sistema entero** o un juego 
 ScreenScraper, TheGamesDB o IGDB: se elige la fuente y las opciones, y con **Actualizar**, **Editar**
 y **Guardar** se verifican y validan las credenciales, que se guardan en la consola y nunca se
 muestran.
+
+En el modal de un juego se ve **la carátula** que ofrece la fuente (la que se descargará), de qué
+fuelle viene y qué imágenes hay disponibles para bajar (caja 2D, fanart, captura, logo…). Las fuentes
+se pueden activar o desactivar una a una y aparecen **numeradas por orden de prioridad**: primero
+ScreenScraper y, si no encuentra el juego, TheGamesDB e IGDB como respaldo. El botón **Volver** está
+siempre en la barra superior, así que no hay que subir hasta arriba para cambiar de sistema.
+
+![Modal de scraping](docs/screenshots/09-scraper-modal.png)
+
+*El modal de un juego: la carátula, las fuentes por orden de prioridad y las imágenes a descargar.*
 
 ### 🐞 Depuración
 
@@ -463,6 +475,11 @@ soporta tres fuentes:
 | **TheGamesDB** | API key |
 | **IGDB (Twitch)** | Client ID y Client Secret |
 
+**ScreenScraper va siempre primero** y TheGamesDB e IGDB actúan de respaldo: si la
+primera fuente no tiene datos del juego, se prueban las siguientes en orden y gana la
+primera que lo encuentre. En la SPA cada fuente se puede activar o desactivar desde
+el propio modal, y se indica cuál acertó y cuáles no tenían información.
+
 Las credenciales se leen de la configuración de Batocera (`batocera.conf`) y se guardan desde la
 propia web. Las imágenes se escriben con la nomenclatura de EmulationStation
 (`images/<rom>-image.png`, `-box`, `-wheel`, `-fanart`, `-marquee`, `-thumbnail`…), así que aparecen sin
@@ -515,7 +532,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
 | **BIOS** | `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
-| **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` |
+| **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` |
 | **Actualización** | `/api/update` · `/api/app-update` |
 
@@ -671,6 +688,9 @@ servicios (en Batocera, el usuario es `root`).
   desarrollador y las API keys de TheGamesDB e IGDB **enmascaradas**, cada una con su indicador
   de si está configurada. Al guardar se comportan como solo-escritura: si no tocas el campo, la
   credencial no se pierde; si lo vacías, se borra.
+- Las **URLs de las carátulas tampoco viajan con credenciales**: ScreenScraper las devuelve con la
+  contraseña incrustada, así que al navegador se mandan limpias y es el servidor el que las firma
+  al descargarlas (`/api/scraper/image` sólo sirve los hosts de las fuentes de scraping).
 
 ---
 
