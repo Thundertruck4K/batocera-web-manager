@@ -7,6 +7,28 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Sección de Scraper en la SPA**: la sección *Scraper* deja de estar marcada como *Pronto*.
+  - Los sistemas de la biblioteca se muestran en tarjetas con un **icono temático** (palanca para
+    los arcade, mando para las consolas, pantalla para los portátiles, disco para las consolas de CD…),
+    el nombre del sistema, una breve descripción y el **número de ROMs**. Los filtros acotan por
+    texto, por tipo de equipo y por estado (con media, sin media, vacíos, con gamelist) y el orden
+    es por nombre, por número de ROMs o por cobertura de carátulas.
+  - Al abrir un sistema, la pantalla cambia con un **fundido de fusión** y sus ROMs se reparten en
+    **media presente** y **media ausente**, con las carátulas que dejó el scraper. Se puede entrar en
+    las subcarpetas con las migas de pan.
+  - El **scraping va en modales flotantes**: uno para el sistema completo (con el progreso del
+    trabajo por lotes en vivo) y otro para un juego suelto (búsqueda, descarga de la imagen y
+    edición de metadatos). Los tres botones del pie son **Actualizar** (releer y verificar la
+    configuración del servidor), **Editar** (las credenciales) y **Guardar** (validar, persistir y
+    cerrar el modal, volviendo a la lista de sistemas).
+  - Se pueden usar las **tres fuentes** —ScreenScraper, TheGamesDB e IGDB—: la que no tenga
+    credenciales queda marcada y avisa de lo que falta.
+  - **Las credenciales nunca se muestran**: la interfaz sólo sabe si hay alguna guardada (el backend
+    devuelve los valores enmascarados y los indicadores `_set`), y al scrapear no se envía ninguna.
+  - La tarjeta de cada sistema indica cuántos juegos tienen ya su imagen, contando las entradas
+    `<image>` del `gamelist.xml` de los ROMs que siguen en la carpeta (nuevo campo `image_count` en
+    `GET /api/rom-systems`, con caché de 60 s). Antes se contaba la carpeta `media/`, que
+    EmulationStation no usa, y por eso salía siempre a 0.
 - **Dashboard de logros en la SPA**: la sección *Logros* deja de estar marcada como *Pronto* y muestra
   los juegos de RetroAchievements en los que más has desbloqueado, en tarjetas con **la carátula que
   dejó el scraper** en tu biblioteca, el porcentaje de completitud y el estado de cada juego

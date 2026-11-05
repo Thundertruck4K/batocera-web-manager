@@ -129,6 +129,9 @@ La unificación deja las cosas así:
   estado de cada juego (dominado, completado, batido, en progreso). Se puede ordenar por logros
   obtenidos, por porcentaje o por logros totales. Si no hay cuenta configurada, la sección avisa y te
   lleva a Configuración.
+- **🧲 Scraper en la SPA** — los sistemas de tu biblioteca en tarjetas con un icono temático, su
+  nombre, una breve descripción y el número de ROMs. Al abrir uno, sus ROMs se reparten en *media
+  presente* y *media ausente*; con un modal flotante se escapea el sistema entero o un juego suelto.
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 
@@ -142,8 +145,6 @@ sigue sirviendo:
   agrupado en secciones plegables por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros)
   con filtros combinables por tipo y por fabricante, y verificación de BIOS: qué falta, en qué sistema,
   con subida manual, descarga automática y lista de omisiones.
-- **🧲 Scraper multi-fuente** — ScreenScraper.fr, TheGamesDB e IGDB (Twitch), con imágenes guardadas
-  como EmulationStation espera (`images/<rom>-image`, `-box`, `-wheel`, `-fanart`…).
 - **🎨 Temas y assets** — temas instalados, tema activo, estructura de assets esperada y subida de
   logos, que se guardan como `art/logo.png` dentro del tema activo (si no tienes uno, Pillow genera
   un logo de relleno).
@@ -199,6 +200,29 @@ conseguiste el último.
 ![Logros](docs/screenshots/06-logros.png)
 
 *Dashboard de logros: las carátulas son las del scraper y el anillo marca el porcentaje completado.*
+
+### 🧲 Scraper
+
+Los sistemas de tu biblioteca en tarjetas: cada una con un icono temático (una palanca para los
+arcade, un mando para las consolas, una pantalla para los portátiles, un disco para las consolas de
+CD), el nombre del sistema, una breve descripción y el número de ROMs. Los filtros acotan por texto,
+por tipo de equipo y por estado (con media, sin media, vacíos) y el orden es por número de ROMs o
+por cobertura de carátulas.
+
+![Scraper](docs/screenshots/07-scraper.png)
+
+*Tarjetas de los sistemas con su icono temático, el número de ROMs y la cobertura de carátulas.*
+
+Al abrir un sistema, sus ROMs se reparten en **media presente** y **media ausente**:
+
+![ROMs del sistema](docs/screenshots/08-scraper-roms.png)
+
+*Los ROMs del sistema con su carátula, y el reparto entre los que ya tienen imagen y los que no.*
+
+Desde ahí, un modal flotante permite **escapear el sistema entero** o un juego suelto con
+ScreenScraper, TheGamesDB o IGDB: se elige la fuente y las opciones, y con **Actualizar**, **Editar**
+y **Guardar** se verifican y validan las credenciales, que se guardan en la consola y nunca se
+muestran.
 
 ### 🐞 Depuración
 
@@ -420,7 +444,8 @@ El servidor escucha en `0.0.0.0`, así que también funciona desde el móvil.
 | **Depuración** | Flujo de eventos del manager en vivo, filtrable por nivel y por texto |
 | **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), tema de la interfaz, información del sistema e instrucciones |
 | **Logros** | Dashboard de RetroAchievements: los juegos con más logros, con la carátula de tu biblioteca |
-| *ROMs y BIOS · Scraper* | Marcadas como *Pronto* en la SPA; están en la interfaz clásica y en la API |
+| **Scraper** | Scrapea carátulas y metadatos, por sistema completo o por juego, desde ScreenScraper, TheGamesDB o IGDB |
+| *ROMs y BIOS* | Marcada como *Pronto* en la SPA; está en la interfaz clásica y en la API |
 
 Tras crear o modificar un sistema, Batocera necesita releer su configuración: el manager ofrece
 reiniciar EmulationStation desde la propia interfaz.
@@ -657,8 +682,8 @@ No. Usa sólo la librería estándar de Python 3, la que ya trae Batocera.
 **¿Qué diferencia hay entre la interfaz React y la clásica?**  
 La SPA de React es la que se sirve por defecto; la clásica (un único fichero HTML) queda de
 respaldo y el backend la sirve automáticamente si el bundle compilado no está en la consola. Las dos
-hablan con la misma API, así que lo que hace una lo hace la otra. Hay secciones (ROMs y BIOS y
-Scraper) que todavía sólo están en la clásica: en la SPA aparecen marcadas como *Pronto*.
+hablan con la misma API, así que lo que hace una lo hace la otra. La sección de ROMs y BIOS
+todavía sólo está en la clásica: en la SPA aparece marcada como *Pronto*.
 
 **¿Por qué antes había dos repositorios y ahora hay uno?**  
 Durante el desarrollo sí los hubo: este era el de la interfaz React y el otro el de la variante
@@ -708,9 +733,11 @@ Lo primero, **llevar a la SPA las secciones que ya existen en la interfaz clási
 están marcadas como *Pronto*):
 
 - **ROMs y BIOS** — inventario por sistema y verificación de BIOS.
-- **Scraper** — las tres fuentes y la descarga de imágenes.
 - **Temas y assets** — temas instalados, tema activo y subida de logos.
 - **Edición de ROMs** — renombrar, metadatos y carátulas.
+
+Y ~~**Scraper** — las tres fuentes y la descarga de imágenes~~ — **hecho**: la sección del scraper ya
+está en la SPA, con las tres fuentes, el scrape por sistema y por juego y la edición de metadatos.
 
 Y después, ideas anotadas, sin fechas:
 
