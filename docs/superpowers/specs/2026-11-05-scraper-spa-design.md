@@ -127,3 +127,82 @@ Coste medido en la consola real: 55 ms para los 257 sistemas (42 con
   ofrece).
 - Editar la lista de sistemas desde el modal.
 - Escapear un sistema sin credenciales: el modal avisa y deja configurarlas.
+
+---
+
+# Segunda tanda: pulido (2026-11-05)
+
+## Qué pedía el usuario
+
+1. En el modal de scraping **sólo aparecía el texto y no la imagen**.
+2. **No aparecían opciones de scraping por servicios** (qué fuente usar).
+3. El flujo debía ser **ScreenScraper primero** y, si el primero no tiene datos,
+   **TheGamesDB e IGDB como respaldo**.
+4. El **botón de volver tenía que estar siempre en pantalla**, sin obligar a
+   subir hasta arriba.
+
+## Decisiones
+
+9. **La cadena de fuentes va en el backend**, no en el navegador:
+   `scrape_search_cascade()` prueba las fuentes en el orden pedido y gana el
+   primer resultado. Así el modal de ROM y el scrape de sistema comparten
+   exactamente el mismo criterio. `POST /api/scraper/search` acepta `sources`
+   (lista, por orden de prioridad) y devuelve `source` (la que acertó) y
+   `tried` (las que se probaron). Sin `sources` el contrato no cambia: la
+   interfaz clásica se comporta como antes.
+10. **Las fuentes son activables desde el modal**, con chips numerados que
+    muestran el orden de prioridad y el estado (Activa / Inactiva / faltan
+    credenciales). El scrape de sistema añade la opción «usar las demás
+    fuentes como respaldo» (`fallback_sources`), activada por defecto en la
+    SPA y no en la interfaz clásica.
+11. **La carátula se sirve por un proxy del backend**
+    (`GET /api/scraper/image?url=…`): ScreenScraper no entrega sus imágenes si
+    la petición no llega con su referer. El proxy pone el referer, cachea la
+    imagen en memoria (24 imágenes / 3 MB máximo) y sólo admite los hosts de
+    las fuentes de scraping, para no ser un proxy abierto.
+12. **La descarga se pide en segundo plano** al terminar la búsqueda
+    (`warm_scraper_image`): cuando el modal abre la carátula, ya suele estar
+    en la caché. Medido en la consola real: 7,4 s la primera vez y 0,00 s la
+    segunda.
+13. **El modal avisa mientras la imagen llega** (spinner + «Cargando
+    carátula…»), en vez de dejar un hueco en blanco.
+14. **El botón de volver vive en la barra superior** (`Topbar` acepta una
+    prop `leading`), no en el contenido con scroll: así siempre está visible.
+15. **Las URLs de medios no viajan con credenciales.** ScreenScraper las
+    devuelve incrustadas (`devpassword`, `sspassword`…), así que al enviar el
+    juego al navegador se quitan (`ss_media_public_url`) y el servidor las
+    vuelve a poner al descargar (`ss_media_signed_url`). La interfaz clásica,
+    que muestra la imagen directamente y puede estar usando credenciales sin
+    guardar, lo pide explícitamente con `raw_media: true` en la búsqueda.
+16. **La búsqueda en TheGamesDB tiene que ser tolerante.** Su API busca por
+    título exacto: «007 Agent Under Fire» no encuentra el «007: Agent Under
+    Fire» que hay catalogado. Se prueban variantes del nombre (sin el prefijo
+    numérico, tras los dos puntos) y, si hace falta, se busca sin filtro de
+    plataforma y se elige el juego de la plataforma del sistema. Sin esto, la
+    cadena de fuentes se quedaba sin respuesta aunque el juego estuviera.
+
+## Contrato ampliado
+
+```json
+// POST /api/scraper/search  (con "sources": ["screenscraper","thegamesdb","igdb"])
+{
+  "ok": true,
+  "source": "screenscraper",          // la fuente que encontró el juego
+  "tried": ["screenscraper"],         // las que se probaron, en orden
+  "image_url": "https://…/mediaJeu.php?systemeid=13&jeuid=4880&media=mixrbv1%28wor%29",
+  "img_types": ["box-2D", "fanart", "mixrbv1", "mixrbv2", "ss", "wheel"],
+  "game": { … }, "meta": { … }, "quota": { … }
+}
+```
+
+`POST /api/scraper/batch` acepta `fallback_sources` para encadenar las
+fuentes en el scrape de sistema.
+
+## Tests
+
+- `tests/test_scraper_sources.py`: credenciales por fuente, prioridad de
+  ScreenScraper, cascada y salto de fuentes sin credenciales, el respaldo del
+  scrape de sistema, el proxy (lista de hosts, caché, no cachear imágenes
+  grandes) y **que las credenciales no lleguen al navegador**.
+- `tests/test_scraper_ui.py`: los chips de fuentes, el aviso de carátula
+  cargando, el botón de volver en la barra y la caché del proxy.

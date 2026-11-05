@@ -8,10 +8,12 @@ interface TopbarProps {
   title: string
   subtitle?: string
   onMenu?: () => void
+  /** Contenido a la izquierda del título (p. ej. un botón de «volver»). */
+  leading?: React.ReactNode
   actions?: React.ReactNode
 }
 
-export function Topbar({ title, subtitle, onMenu, actions }: TopbarProps) {
+export function Topbar({ title, subtitle, onMenu, leading, actions }: TopbarProps) {
   const { resolved, toggle } = useTheme()
 
   return (
@@ -27,6 +29,8 @@ export function Topbar({ title, subtitle, onMenu, actions }: TopbarProps) {
             <Menu className="size-4" />
           </button>
         )}
+
+        {leading}
 
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-semibold tracking-[-0.019em] text-foreground sm:text-xl">

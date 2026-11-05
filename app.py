@@ -4537,6 +4537,81 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
     msg2 = hdr2.get("message", "") or hdr2.get("error", "Sin resultados")
     return None, msg2, (quota2 or quota or {})
 
+# ── Vista previa de carátulas (proxy + caché en memoria) ───────────────
+# ScreenScraper no entrega sus imágenes si la petición no llega con su
+# referer y, además, su descarga desde la consola tarda más de 10 s. El proxy
+# guarda en memoria lo descargado para que el modal abra la carátula al
+# instante la segunda vez, y las búsquedas la piden en segundo plano para que
+# ya esté lista cuando el usuario la abre.
+_SCRAPER_IMAGE_HOSTS = ("screenscraper.fr", "thegamesdb.com", "thegamesdb.net", "igdb.com")
+_IMG_PROXY_CACHE     = {}   # {url: (content_type, bytes)}
+_IMG_PROXY_LOCKS     = {}   # {url: Lock} para no descargar dos veces la misma
+_IMG_PROXY_GUARD     = threading.Lock()
+_IMG_PROXY_MAX_ITEMS = 24          # imágenes guardadas
+_IMG_PROXY_MAX_BYTES = 3 * 1024 * 1024
+
+def scraper_proxy_allowed(url):
+    """¿Se puede servir esta URL a través del proxy? Sólo los hosts de las
+    fuentes de scraping, para no convertir el manager en un proxy abierto."""
+    host = (urllib.parse.urlparse(url).hostname or "").lower()
+    return any(host == domain or host.endswith("." + domain)
+               for domain in _SCRAPER_IMAGE_HOSTS)
+
+def scraper_proxy_image(url, cfg=None):
+    """Descarga (o saca de la caché) una imagen para la vista previa.
+
+    Devuelve (content_type, data, err). No cachea ficheros grandes para no
+    cargar la memoria de la consola. La URL se cachea sin credenciales (la
+    que envía el cliente) y se firma al descargar.
+    """
+    with _IMG_PROXY_GUARD:
+        hit = _IMG_PROXY_CACHE.get(url)
+        if hit:
+            # Se mueve al final para evictar por antigüedad (LRU).
+            _IMG_PROXY_CACHE.pop(url)
+            _IMG_PROXY_CACHE[url] = hit
+            return hit[0], hit[1], None
+        lock = _IMG_PROXY_LOCKS.setdefault(url, threading.Lock())
+
+    with lock:
+        # Puede haberse descargado mientras se esperaba el lock.
+        with _IMG_PROXY_GUARD:
+            hit = _IMG_PROXY_CACHE.get(url)
+        if hit:
+            return hit[0], hit[1], None
+
+        headers = {"User-Agent": "BatoceraManager/1.0"}
+        destino = ss_media_signed_url(url, cfg) if cfg else url
+        if "screenscraper" in destino:
+            headers["Referer"] = "https://www.screenscraper.fr/gameinfos.php"
+        try:
+            req = _ureq.Request(destino, headers=headers)
+            with _ureq.urlopen(req, timeout=20) as r:
+                data  = r.read()
+                ctype = r.headers.get("Content-Type", "image/png")
+        except Exception as e:
+            return None, None, str(e)
+        if not ctype.startswith("image/"):
+            ctype = "image/png"
+
+        if len(data) <= _IMG_PROXY_MAX_BYTES:
+            with _IMG_PROXY_GUARD:
+                _IMG_PROXY_CACHE[url] = (ctype, data)
+                while len(_IMG_PROXY_CACHE) > _IMG_PROXY_MAX_ITEMS:
+                    _IMG_PROXY_CACHE.pop(next(iter(_IMG_PROXY_CACHE)))
+        return ctype, data, None
+
+def warm_scraper_image(url, cfg=None):
+    """Pide la imagen en segundo plano (para tenerla lista en la caché)."""
+    if not url or not scraper_proxy_allowed(url):
+        return
+    def _run():
+        try:
+            scraper_proxy_image(url, cfg)
+        except Exception:
+            pass
+    threading.Thread(target=_run, daemon=True).start()
+
 def ss_media_url(game_data, image_type, region="wor"):
     """Devuelve (url, extension) del mejor medio SS para el tipo solicitado,
     replicando la preferencia de región de Batocera (region → wor → us → eu → jp)."""
@@ -4564,11 +4639,62 @@ def ss_media_url(game_data, image_type, region="wor"):
         ext = "jpg"
     return url, ("." + ext if ext else "")
 
-def ss_download_image(game_data, image_type, dest_path, region="wor"):
+# Las URLs de medios de ScreenScraper llegan con las credenciales incrustadas
+# (devpassword, sspassword…). Al navegador no deben viajar: se quitan al
+# enviar el juego y el proxy del servidor las vuelve a poner al descargar.
+_SS_MEDIA_CRED_PARAMS = ("devid", "devpassword", "ssid", "sspassword")
+
+def ss_media_public_url(url):
+    """Quita de una URL de ScreenScraper las credenciales incrustadas."""
+    if not url:
+        return url
+    try:
+        partes = _uparse.urlsplit(url)
+    except Exception:
+        return url
+    q = [(k, v) for k, v in _uparse.parse_qsl(partes.query, keep_blank_values=True)
+         if k.lower() not in _SS_MEDIA_CRED_PARAMS]
+    return _uparse.urlunsplit((partes.scheme, partes.netloc, partes.path,
+                                _uparse.urlencode(q), partes.fragment))
+
+def ss_media_signed_url(url, cfg):
+    """Vuelve a poner las credenciales de ScreenScraper en una URL de medios."""
+    if not url:
+        return url
+    try:
+        partes = _uparse.urlsplit(url)
+    except Exception:
+        return url
+    q = [(k, v) for k, v in _uparse.parse_qsl(partes.query, keep_blank_values=True)
+         if k.lower() not in _SS_MEDIA_CRED_PARAMS]
+    for clave, cfg_clave in (("devid", "ss_devid"),
+                             ("devpassword", "ss_devpassword"),
+                             ("ssid", "ss_user"),
+                             ("sspassword", "ss_password")):
+        valor = (cfg or {}).get(cfg_clave) or ""
+        if valor:
+            q.append((clave, valor))
+    return _uparse.urlunsplit((partes.scheme, partes.netloc, partes.path,
+                                _uparse.urlencode(q), partes.fragment))
+
+def ss_media_public_game(game):
+    """Copia del juego con las URLs de medios sin credenciales."""
+    if not isinstance(game, dict):
+        return game
+    copia = dict(game)
+    medias = game.get("medias")
+    if isinstance(medias, list):
+        copia["medias"] = [dict(m, url=ss_media_public_url(m.get("url", "")))
+                            if isinstance(m, dict) else m
+                            for m in medias]
+    return copia
+
+def ss_download_image(game_data, image_type, dest_path, region="wor", cfg=None):
     """Descarga una imagen de ScreenScraper y la guarda."""
     url, _ext = ss_media_url(game_data, image_type, region)
     if not url:
         return False, "Sin imagen disponible en ScreenScraper"
+    url = ss_media_signed_url(url, cfg)
     ok, msg = download_image_generic(url, dest_path, referer_for=url)
     return ok, msg
 
@@ -4654,14 +4780,31 @@ IGDB_PLATFORMS = {
     "xbox":11,"xbox360":12,"ps3":9,
 }
 
-def tgdb_search_game(rom_filename, system_name, api_key, clean_name=None):
-    """Busca un juego en TheGamesDB."""
-    if not api_key:
-        return None, "Falta API Key de TheGamesDB"
-    if not clean_name:
-        clean_name = _clean_rom_name(rom_filename)
-    platform_id = TGDB_PLATFORMS.get(system_name.lower())
-    params = {"apikey": api_key, "name": clean_name, "fields": "players,publishers,genres,overview"}
+def _tgdb_name_variants(name):
+    """Variantes del nombre de un ROM para buscar en TheGamesDB.
+
+    La API busca por título: "007 Agent Under Fire" no encuentra nada, pero
+    "Agent Under Fire" sí. Se prueban de más específica a más genérica.
+    """
+    variantes = []
+    base = (name or "").strip()
+    if not base:
+        return variantes
+    variantes.append(base)
+    # Sin el prefijo numérico ("007 Agent Under Fire" -> "Agent Under Fire")
+    sin_num = _re.sub(r"^\d+\s+", "", base).strip()
+    if sin_num and sin_num not in variantes:
+        variantes.append(sin_num)
+    # Después de los dos puntos ("007: Agent Under Fire")
+    if ":" in base:
+        tras = base.split(":", 1)[1].strip()
+        if tras and tras not in variantes:
+            variantes.append(tras)
+    return variantes
+
+def _tgdb_query(nombre, api_key, platform_id=None):
+    """Consulta TheGamesDB por nombre. Devuelve (juegos, error)."""
+    params = {"apikey": api_key, "name": nombre, "fields": "players,publishers,genres,overview"}
     if platform_id:
         params["filter[platform]"] = str(platform_id)
     url = f"{TGDB_API}/Games/ByGameName?" + _uparse.urlencode(params)
@@ -4669,14 +4812,48 @@ def tgdb_search_game(rom_filename, system_name, api_key, clean_name=None):
         req = _ureq.Request(url, headers={"User-Agent":"BatoceraManager/1.0"})
         with _ureq.urlopen(req, timeout=12) as r:
             data  = json.loads(r.read())
-            games = data.get("data", {}).get("games", [])
-            if not games:
-                return None, "Sin resultados en TheGamesDB"
-            return games[0], None
+        return data.get("data", {}).get("games", []) or [], None
     except _ureq.HTTPError as e:
         return None, f"HTTP {e.code}: {e.reason}"
     except Exception as e:
         return None, str(e)
+
+def tgdb_search_game(rom_filename, system_name, api_key, clean_name=None):
+    """Busca un juego en TheGamesDB.
+
+    Primero prueba el nombre tal cual con el filtro de plataforma; si no
+    aparece, prueba las variantes del nombre y, en último caso, busca sin
+    filtro y se queda con el juego de la plataforma del sistema (o con el
+    primero, si no hay ninguno de esa plataforma).
+    """
+    if not api_key:
+        return None, "Falta API Key de TheGamesDB"
+    if not clean_name:
+        clean_name = _clean_rom_name(rom_filename)
+    platform_id = TGDB_PLATFORMS.get(system_name.lower())
+    ultimo_error = None
+    sueltos = []
+    for nombre in _tgdb_name_variants(clean_name):
+        juegos, err = _tgdb_query(nombre, api_key, platform_id)
+        if err:
+            ultimo_error = err
+            break
+        if juegos:
+            return juegos[0], None
+        if not sueltos:
+            # Sin filtro de plataforma: el título puede estar catalogado con
+            # otro nombre exacto o en otra plataforma.
+            sueltos, err = _tgdb_query(nombre, api_key, None)
+            if err:
+                ultimo_error = err
+                break
+    if sueltos:
+        if platform_id:
+            for juego in sueltos:
+                if str(juego.get("platform")) == str(platform_id):
+                    return juego, None
+        return sueltos[0], None
+    return None, ultimo_error or "Sin resultados en TheGamesDB"
 
 def tgdb_get_image(game_id, api_key):
     """Obtiene la URL de boxart/imagen de un juego TGDB."""
@@ -4923,6 +5100,118 @@ def save_gamelist_entry(roms_base, meta):
         print(f"  {log_message}")
         raise
 
+# ─── Fuentes de scraping: prioridad y respaldo ─────────────────────────
+# ScreenScraper es la fuente con más información, así que es la prioridad; si
+# no encuentra el juego se prueban TheGamesDB e IGDB.
+SCRAPER_SOURCE_ORDER = ("screenscraper", "thegamesdb", "igdb")
+
+def source_has_creds(source, cfg):
+    """¿La fuente tiene credenciales guardadas?"""
+    if source == "thegamesdb":
+        return bool((cfg.get("tgdb_apikey") or "").strip())
+    if source == "igdb":
+        return bool((cfg.get("igdb_client_id") or "").strip()
+                    and (cfg.get("igdb_client_secret") or "").strip())
+    return bool((cfg.get("ss_user") or "").strip()
+                and (cfg.get("ss_password") or "").strip())
+
+def scrape_search_one(source, filename, system, cfg, rom_path=None, public=True):
+    """Busca un juego en una sola fuente.
+
+    Devuelve (game, meta, img_types, image_url, err, quota) con la forma ya
+    normalizada, para que el resto del código no tenga que distinguir entre
+    fuentes. Con `public` las URLs de medios van sin credenciales (es lo que
+    se envía al navegador); la interfaz clásica pide las originales.
+    """
+    if not source_has_creds(source, cfg):
+        return None, None, [], None, f"Faltan credenciales para {source}", {}
+    if source == "thegamesdb":
+        game, err = tgdb_search_game(filename, system, cfg.get("tgdb_apikey",""))
+        if not game:
+            return None, None, [], None, (err or "Sin resultados"), {}
+        meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
+        img_url = None
+        try:
+            url, _err = tgdb_get_image(game.get("id"), cfg.get("tgdb_apikey",""))
+            img_url = url or None
+        except Exception:
+            img_url = None
+        return game, meta, ["boxart"], img_url, None, {}
+
+    if source == "igdb":
+        game, err = igdb_search_game(filename, system,
+                                     cfg.get("igdb_client_id",""),
+                                     cfg.get("igdb_client_secret",""))
+        if not game:
+            return None, None, [], None, (err or "Sin resultados"), {}
+        meta = igdb_build_meta(game)
+        return game, meta, ["cover"], igdb_get_image_url(game), None, {}
+
+    # ScreenScraper (por defecto)
+    game, err, quota = ss_search_game(filename, system,
+                                      cfg.get("ss_user",""), cfg.get("ss_password",""),
+                                      cfg.get("ss_region","wor"), cfg.get("ss_lang","es"),
+                                      rom_path=rom_path,
+                                      devid=cfg.get("ss_devid",""),
+                                      devpassword=cfg.get("ss_devpassword",""))
+    if not game:
+        return None, None, [], None, (err or "Sin resultados"), (quota or {})
+    meta    = ss_build_meta(game, cfg.get("ss_region","wor"), cfg.get("ss_lang","es"))
+    medias  = game.get("medias", []) or []
+    img_types = sorted({m.get("type","") for m in medias
+                        if m.get("type","") in
+                        ("mixrbv1","mixrbv2","ss","box-2D","wheel","fanart","screenshot")})
+    # URL de la carátula para la vista previa: primero la que el usuario tiene
+    # configurada y, si no hay, la primera disponible.
+    image_url = None
+    preferred = cfg.get("ss_image_type","mixrbv1")
+    for candidate in [preferred] + [t for t in ("mixrbv1","mixrbv2","box-2D","ss",
+                                                 "screenshot","wheel","fanart")
+                                    if t != preferred]:
+        url, _ext = ss_media_url(game, candidate, cfg.get("ss_region","wor"))
+        if url:
+            image_url = url
+            break
+    # Al cliente se manda el juego sin credenciales en las URLs de medios.
+    if public:
+        return (ss_media_public_game(game), meta, img_types,
+                ss_media_public_url(image_url), None, (quota or {}))
+    return game, meta, img_types, image_url, None, (quota or {})
+
+def scrape_search_cascade(filename, system, cfg, sources=None, rom_path=None, public=True):
+    """Busca un juego en las fuentes indicadas, por orden de prioridad.
+
+    ScreenScraper es la prioridad (es la que más información da); si no
+    encuentra el juego se prueban TheGamesDB e IGDB. Devuelve el primer
+    resultado que aparezca:
+
+        (game, meta, img_types, image_url, source, tried, err, quota)
+    """
+    pedidas = list(sources) if sources else [cfg.get("scraper_source", "screenscraper")]
+    chain = []
+    for src in pedidas:
+        if src in SCRAPER_SOURCE_ORDER and src not in chain:
+            chain.append(src)
+    if not chain:
+        chain = ["screenscraper"]
+    tried    = []
+    last_err = None
+    quota    = {}
+    for src in chain:
+        if not source_has_creds(src, cfg):
+            tried.append(src)
+            last_err = f"Faltan credenciales para {src}"
+            continue
+        game, meta, img_types, image_url, err, src_quota = scrape_search_one(
+            src, filename, system, cfg, rom_path=rom_path, public=public)
+        tried.append(src)
+        if src_quota:
+            quota = src_quota
+        if game:
+            return game, meta, img_types, image_url, src, tried, None, quota
+        last_err = err
+    return None, None, [], None, None, tried, (last_err or "Sin resultados"), quota
+
 def do_scrape_system(settings, system, source, creds, options, progress_cb=None):
     """Scrapea todos los ROMs de un sistema. Reusable desde sync y background."""
     import time as _t
@@ -4949,54 +5238,70 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
         ok_img   = False
         meta     = {}
         err      = None
-        if source == "thegamesdb":
-            game, err = tgdb_search_game(rom["filename"], system, creds.get("tgdb_apikey",""))
+        game     = None
+        # Cadena de fuentes: la principal y, si se pide, las demás como
+        # respaldo cuando la principal no encuentra el juego.
+        chain = [source]
+        if options.get("fallback_sources"):
+            chain += [x for x in SCRAPER_SOURCE_ORDER if x != source]
+        for src in chain:
+            if not source_has_creds(src, creds):
+                err = f"Faltan credenciales para {src}"
+                continue
+            if src == "thegamesdb":
+                game, err = tgdb_search_game(rom["filename"], system, creds.get("tgdb_apikey",""))
+                if game:
+                    meta = tgdb_build_meta(game, creds.get("tgdb_apikey",""))
+                    img_url, _ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
+                    if img_url:
+                        dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
+                        ok_img, _ = download_image_generic(img_url, dest)
+                        if ok_img:
+                            meta["image_path"] = rel
+                _t.sleep(0.3)
+            elif src == "igdb":
+                game, err = igdb_search_game(rom["filename"], system,
+                                             creds.get("igdb_client_id",""), creds.get("igdb_client_secret",""))
+                if game:
+                    meta = igdb_build_meta(game)
+                    img_url = igdb_get_image_url(game)
+                    if img_url:
+                        dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
+                        ok_img, _ = download_image_generic(img_url, dest)
+                        if ok_img:
+                            meta["image_path"] = rel
+                _t.sleep(0.3)
+            else:  # screenscraper
+                game, err, sq = ss_search_game(rom["filename"], system,
+                                            creds.get("ss_user",""), creds.get("ss_password",""),
+                                            region, lang, rom_path=str(rom_abspath),
+                                            devid=creds.get("ss_devid",""),
+                                            devpassword=creds.get("ss_devpassword",""))
+                if game:
+                    meta = ss_build_meta(game, region, lang)
+                    url, ext = ss_media_url(game, img_type, region)
+                    if url:
+                        dest, rel = batocera_media_path(sys_root, rom_stem, img_type, ext)
+                        url = ss_media_signed_url(url, creds)
+                        ok_img, _ = download_image_generic(url, dest, referer_for=url)
+                        if ok_img:
+                            meta["image_path"] = rel
+                if sq:
+                    results["quota"] = sq
+                if "429" in str(err) or "quota" in str(err or "").lower():
+                    _t.sleep(5)
+                else:
+                    try:
+                        maxthreads = int(sq.get("maxthreads", 1) or 1)
+                        delay = max(1.0 / maxthreads, 0.5)
+                    except Exception:
+                        delay = 1.0
+                    _t.sleep(delay)
             if game:
-                meta = tgdb_build_meta(game, creds.get("tgdb_apikey",""))
-                img_url, _ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
-                if img_url:
-                    dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
-                    ok_img, _ = download_image_generic(img_url, dest)
-                    if ok_img:
-                        meta["image_path"] = rel
-            _t.sleep(0.3)
-        elif source == "igdb":
-            game, err = igdb_search_game(rom["filename"], system,
-                                         creds.get("igdb_client_id",""), creds.get("igdb_client_secret",""))
-            if game:
-                meta = igdb_build_meta(game)
-                img_url = igdb_get_image_url(game)
-                if img_url:
-                    dest, rel = batocera_media_path(sys_root, rom_stem, "image", ".jpg")
-                    ok_img, _ = download_image_generic(img_url, dest)
-                    if ok_img:
-                        meta["image_path"] = rel
-            _t.sleep(0.3)
-        else:  # screenscraper
-            game, err, sq = ss_search_game(rom["filename"], system,
-                                        creds.get("ss_user",""), creds.get("ss_password",""),
-                                        region, lang, rom_path=str(rom_abspath),
-                                        devid=creds.get("ss_devid",""),
-                                        devpassword=creds.get("ss_devpassword",""))
-            if game:
-                meta = ss_build_meta(game, region, lang)
-                url, ext = ss_media_url(game, img_type, region)
-                if url:
-                    dest, rel = batocera_media_path(sys_root, rom_stem, img_type, ext)
-                    ok_img, _ = download_image_generic(url, dest, referer_for=url)
-                    if ok_img:
-                        meta["image_path"] = rel
-            if sq:
-                results["quota"] = sq
-            if "429" in str(err) or "quota" in str(err or "").lower():
-                _t.sleep(5)
-            else:
-                try:
-                    maxthreads = int(sq.get("maxthreads", 1) or 1)
-                    delay = max(1.0 / maxthreads, 0.5)
-                except Exception:
-                    delay = 1.0
-                _t.sleep(delay)
+                break
+            # La fuente no encontró nada: se prepara el siguiente intento.
+            ok_img = False
+            meta   = {}
         if not game:
             results["fail"] += 1
             results["errors"].append(f"{rom['name']}: {(err or 'Sin resultados')[:80]}")
@@ -5453,6 +5758,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok":False,"error":"Faltan parámetros"})
         elif path == "/api/scraper/config":
             self.send_json(public_scraper_config(get_scraper_config(s)))
+        elif path == "/api/scraper/image":
+            self._scraper_image_proxy(s)
         elif path == "/api/scraper/batch":
             self._scraper_batch_list(s)
         elif len(parts)==4 and parts[:3]==["api","scraper","batch"]:
@@ -5912,8 +6219,38 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
 
 
 
+    def _scraper_image_proxy(self, s):
+        """Sirve la carátula de una fuente para la vista previa del modal.
+
+        ScreenScraper no entrega sus imágenes si la petición no llega con su
+        referer, así que se descargan aquí y se pasan al navegador. Se cachean
+        en memoria y sólo se admiten los hosts de las fuentes de scraping.
+        """
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        url = urllib.parse.unquote((query.get("url") or [""])[0]).strip()
+        if urllib.parse.urlparse(url).scheme not in ("http", "https"):
+            self.send_json({"ok":False,"error":"URL no válida"}, 400); return
+        if not scraper_proxy_allowed(url):
+            self.send_json({"ok":False,"error":"Host no permitido"}, 400); return
+        cfg = resolve_scraper_creds(s, {})
+        ctype, data, err = scraper_proxy_image(url, cfg)
+        if err or data is None:
+            self.send_json({"ok":False,"error":err or "No se pudo descargar la imagen"}, 502); return
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "private, max-age=600")
+        self.end_headers()
+        self.wfile.write(data)
+
     def _scraper_search(self, s):
-        """Busca un juego usando la fuente seleccionada (ScreenScraper/TGDB/IGDB)."""
+        """Busca un juego en las fuentes indicadas, por orden de prioridad.
+
+        Sin `sources` se usa sólo la fuente seleccionada (así funciona la
+        interfaz clásica). Con `sources`, se prueban en orden y gana el primer
+        resultado: ScreenScraper es la prioridad y TheGamesDB e IGDB son el
+        respaldo para cuando la primera no encuentra nada.
+        """
         d        = self.read_json()
         filename = d.get("filename","")
         system   = d.get("system","")
@@ -5921,51 +6258,34 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         source   = d.get("source", "screenscraper")
         cfg      = resolve_scraper_creds(s, d)
 
-        if source == "thegamesdb":
-            game, err = tgdb_search_game(filename, system, cfg.get("tgdb_apikey",""))
-            if game:
-                meta = tgdb_build_meta(game, cfg.get("tgdb_apikey",""))
-                self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":["boxart"],"cfg":public_scraper_config(cfg),"source":"thegamesdb"})
-            else:
-                self.send_json({"ok":False,"error":err or "Sin resultados"})
+        pedidas = d.get("sources")
+        if not isinstance(pedidas, list) or not pedidas:
+            pedidas = [source]
+        # La SPA no debe recibir las URLs con las credenciales de
+        # ScreenScraper; la interfaz clásica las pide (`raw_media`).
+        publico = not bool(d.get("raw_media"))
 
-        elif source == "igdb":
-            game, err = igdb_search_game(filename, system,
-                                        cfg.get("igdb_client_id",""),
-                                        cfg.get("igdb_client_secret",""))
-            if game:
-                meta = igdb_build_meta(game)
-                self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":["cover"],"cfg":public_scraper_config(cfg),"source":"igdb"})
-            else:
-                self.send_json({"ok":False,"error":err or "Sin resultados"})
-
-        else:  # screenscraper (default)
+        rom_path = None
+        try:
+            p = Path(s["roms_base"]) / system
+            if subpath: p = p / subpath
+            rom_path = str(p / filename)
+        except Exception:
             rom_path = None
-            try:
-                p = Path(s["roms_base"]) / system
-                if subpath: p = p / subpath
-                rom_path = str(p / filename)
-            except Exception:
-                rom_path = None
-            game, err, quota = ss_search_game(filename, system,
-                                       cfg["ss_user"], cfg["ss_password"],
-                                       cfg["ss_region"], cfg["ss_lang"],
-                                       rom_path=rom_path,
-                                       devid=cfg.get("ss_devid",""),
-                                       devpassword=cfg.get("ss_devpassword",""))
-            if game:
-                meta    = ss_build_meta(game, cfg["ss_region"], cfg["ss_lang"])
-                medias  = game.get("medias",[])
-                img_types = list({m.get("type","") for m in medias
-                                 if m.get("type","") in
-                                 ("mixrbv1","mixrbv2","ss","box-2D","wheel","fanart","screenshot")})
-                self.send_json({"ok":True,"game":game,"meta":meta,
-                               "img_types":img_types,"cfg":public_scraper_config(cfg),"source":"screenscraper",
-                               "quota":quota})
-            else:
-                self.send_json({"ok":False,"error":err or "Sin resultados","quota":quota})
+
+        game, meta, img_types, image_url, found, tried, err, quota = scrape_search_cascade(
+            filename, system, cfg, sources=pedidas, rom_path=rom_path, public=publico)
+        if game:
+            # La carátula se pide en segundo plano: cuando el modal la
+            # necesite ya estará en la caché y se verá al instante.
+            warm_scraper_image(ss_media_public_url(image_url), cfg)
+            self.send_json({"ok":True,"game":game,"meta":meta,
+                            "img_types":img_types,"cfg":public_scraper_config(cfg),
+                            "source":found,"image_url":image_url,"tried":tried,
+                            "quota":quota})
+        else:
+            self.send_json({"ok":False,"error":err or "Sin resultados",
+                            "tried":tried,"quota":quota})
 
     def _scraper_download(self, s):
         """Descarga imagen y/o metadatos del juego para un ROM (fuente seleccionable)."""
@@ -6035,6 +6355,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     results["errors"].append(f"Imagen {itype}: sin disponibilidad en ScreenScraper")
                     continue
                 dest, rel = batocera_media_path(sys_root, rom_stem, itype, ext or ".png")
+                url = ss_media_signed_url(url, cfg)
                 ok, msg = download_image_generic(url, dest, referer_for=url)
                 if ok:
                     results["images"].append({"type":itype,"path":str(dest)})
@@ -6106,7 +6427,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             "systems": systems,
             "source": source,
             "creds": creds,
-            "options": {k:v for k,v in d.items() if k in ("only_missing","ss_image_type","ss_region","ss_lang")},
+            "options": {k:v for k,v in d.items() if k in ("only_missing","ss_image_type","ss_region","ss_lang","fallback_sources")},
             "settings": s,
             "status": "pending",
             "progress": 0,

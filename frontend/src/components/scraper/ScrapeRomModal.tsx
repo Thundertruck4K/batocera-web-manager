@@ -1,17 +1,35 @@
-import { CircleAlert, CircleCheck, Download, Loader2, Pencil, RefreshCw, Save, Search } from 'lucide-react'
+import { CircleAlert, CircleCheck, ImageOff, Loader2, Pencil, RefreshCw, Save, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/hooks/useToast'
 import { api } from '@/lib/api'
-import type { RomFolderItem, ScraperMeta, ScraperSearchResult, ScraperSource } from '@/lib/types'
+import {
+  SCRAPER_SOURCES,
+  readySources,
+  sourceLabel,
+  sourceMissing,
+  sourceReady,
+} from '@/lib/scraperSources'
+import type {
+  RomFolderItem,
+  ScraperConfig,
+  ScraperMeta,
+  ScraperSearchResult,
+  ScraperSource,
+} from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-const SOURCE_LABELS: Record<ScraperSource, string> = {
-  screenscraper: 'ScreenScraper',
-  thegamesdb: 'TheGamesDB',
-  igdb: 'IGDB',
+/** Etiqueta de cada tipo de imagen que se puede descargar. */
+const IMG_TYPE_LABELS: Record<string, string> = {
+  mixrbv1: 'Mix v1 (caja + fondo)',
+  mixrbv2: 'Mix v2',
+  'box-2D': 'Caja 2D',
+  ss: 'Screenshot',
+  screenshot: 'Captura',
+  wheel: 'Rueda / logo',
+  fanart: 'Fanart',
 }
 
 /** Metadatos vacíos: la base sobre la que se edita. */
@@ -23,7 +41,6 @@ interface ScrapeRomModalProps {
   system: string
   subpath: string
   rom: RomFolderItem | null
-  source: ScraperSource
   /** Se llama cuando el ROM queda scraped y validado. */
   onSaved: () => void
 }
@@ -31,63 +48,129 @@ interface ScrapeRomModalProps {
 /**
  * Modal flotante para buscar, descargar y editar los metadatos de un ROM.
  *
- * **Actualizar** vuelve a buscar el juego, **Editar** abre los metadatos y
- * **Guardar** descarga la imagen, guarda los datos y cierra el modal.
+ * El flujo es por prioridad: se prueba **ScreenScraper** y, si no encuentra
+ * el juego, se prueban **TheGamesDB** e **IGDB** como respaldo. Se puede
+ * desactivar cualquier fuente desde el propio modal.
+ *
+ * **Actualizar** vuelve a buscar, **Editar** abre los metadatos y **Guardar**
+ * descarga la imagen, guarda los datos y cierra el modal.
  */
-export function ScrapeRomModal({ open, onClose, system, subpath, rom, source, onSaved }: ScrapeRomModalProps) {
+export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }: ScrapeRomModalProps) {
   const { showToast } = useToast()
 
+  const [config, setConfig] = useState<ScraperConfig | null>(null)
+  const [enabled, setEnabled] = useState<ScraperSource[]>([])
   const [result, setResult] = useState<ScraperSearchResult | null>(null)
   const [meta, setMeta] = useState<ScraperMeta>(EMPTY_META)
   const [editing, setEditing] = useState(false)
   const [searching, setSearching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [imgTypes, setImgTypes] = useState<string[]>([])
   const [imageType, setImageType] = useState('mixrbv1')
+  const [imgState, setImgState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
 
-  /** Busca el ROM en la fuente configurada. */
-  const search = useCallback(async () => {
-    if (!rom) return
-    setSearching(true)
-    setError(null)
-    try {
-      const res = await api.scraperSearch({
-        filename: rom.filename,
-        system,
-        subpath,
-        source,
-      })
-      setResult(res)
-      const found = res.meta ?? EMPTY_META
-      setMeta({
-        name: found.name || rom.name,
-        desc: found.desc || rom.desc || '',
-        genre: found.genre || rom.genre || '',
-        year: found.year || rom.year || '',
-        publisher: found.publisher || rom.publisher || '',
-        rating: found.rating || rom.rating || '',
-      })
-    } catch (err) {
-      setResult(null)
-      setError(err instanceof Error ? err.message : 'No se pudo buscar el juego')
-    } finally {
-      setSearching(false)
-    }
-  }, [rom, system, subpath, source])
+  /** Busca el ROM en las fuentes indicadas, por orden de prioridad. */
+  const runSearch = useCallback(
+    async (sources: ScraperSource[]) => {
+      if (!rom) return
+      if (!sources.length) {
+        setError('Elige al menos una fuente de datos')
+        return
+      }
+      setSearching(true)
+      setError(null)
+      try {
+        const res = await api.scraperSearch({
+          filename: rom.filename,
+          system,
+          subpath,
+          source: sources[0],
+          sources,
+        })
+        setResult(res)
+        const found = res.meta ?? EMPTY_META
+        setMeta({
+          name: found.name || rom.name,
+          desc: found.desc || rom.desc || '',
+          genre: found.genre || rom.genre || '',
+          year: found.year || rom.year || '',
+          publisher: found.publisher || rom.publisher || '',
+          rating: found.rating || rom.rating || '',
+        })
+        // Por defecto se descarga el tipo de imagen configurado; si no está
+        // disponible, el primero que ofrezca la fuente.
+        const available = res.img_types ?? []
+        setImgTypes(
+          available.includes(imageType) ? [imageType] : available.length ? [available[0]] : [],
+        )
+      } catch (err) {
+        setResult(null)
+        setError(err instanceof Error ? err.message : 'No se pudo buscar el juego')
+      } finally {
+        setSearching(false)
+      }
+    },
+    [rom, system, subpath, imageType],
+  )
 
-  /* Al abrir: buscar el juego y leer el tipo de imagen configurado. */
+  /* Al abrir: leer la configuración, elegir las fuentes con credenciales y
+     buscar el juego. */
   useEffect(() => {
     if (!open || !rom) return
     setEditing(false)
-    void search()
-    void api
-      .scraperConfig()
-      .then((cfg) => setImageType(cfg.ss_image_type || 'mixrbv1'))
-      .catch(() => undefined)
-  }, [open, rom, search])
+    setError(null)
+    setResult(null)
+    setImgState('idle')
+    let cancelled = false
+    void (async () => {
+      let cfg: ScraperConfig | null = null
+      try {
+        cfg = await api.scraperConfig()
+      } catch {
+        cfg = null
+      }
+      if (cancelled) return
+      setConfig(cfg)
+      const preferred = cfg?.ss_image_type || 'mixrbv1'
+      setImageType(preferred)
+      const fuentes = cfg
+        ? readySources(cfg)
+        : (SCRAPER_SOURCES.map((s) => s.id) as ScraperSource[])
+      setEnabled(fuentes)
+      await runSearch(fuentes)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, rom])
 
-  /** Tipos de imagen que se pueden descargar para este juego. */
-  const availableTypes = useMemo(() => result?.img_types ?? [], [result])
+  /* Carátula: la de la fuente (vía proxy, porque ScreenScraper no la sirve
+     sin referer) y, si no hay, la que ya tiene el ROM en la biblioteca. */
+  const preview = useMemo(() => {
+    if (result?.image_url) {
+      return `/api/scraper/image?url=${encodeURIComponent(result.image_url)}`
+    }
+    if (rom?.has_image) {
+      const base = `/api/rom-image/${encodeURIComponent(system)}/${encodeURIComponent(rom.filename)}`
+      return subpath ? `${base}?subpath=${encodeURIComponent(subpath)}` : base
+    }
+    return null
+  }, [result?.image_url, rom, system, subpath])
+
+  /* La carátula se descarga desde el proxy: puede tardar, así que se avisa
+     mientras llega. */
+  useEffect(() => {
+    setImgState(preview ? 'loading' : 'idle')
+  }, [preview])
+
+  /** Fuentes que se probaron sin éxito (todas menos la que acertó). */
+  const fallbacks = useMemo(() => {
+    if (!result?.tried?.length || !result.source) return []
+    const idx = result.tried.indexOf(result.source)
+    return idx > 0 ? result.tried.slice(0, idx) : []
+  }, [result])
 
   /** Botón «Guardar»: descarga la imagen, guarda los metadatos y cierra. */
   const handleSave = async () => {
@@ -99,20 +182,14 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, source, on
     setSaving(true)
     setError(null)
     try {
-      const types = availableTypes.includes(imageType)
-        ? [imageType]
-        : availableTypes.length
-          ? [availableTypes[0]]
-          : [imageType]
-
       const download = await api.scraperDownload({
         system,
         filename: rom.filename,
         subpath,
-        source,
+        source: result.source,
         game: result.game,
         save_meta: true,
-        img_types: types,
+        img_types: imgTypes.length ? imgTypes : undefined,
       })
 
       if (editing) {
@@ -152,16 +229,29 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, source, on
     { key: 'rating' as const, label: 'Nota' },
   ]
 
+  const toggleSource = (id: ScraperSource) => {
+    setEnabled((prev) => {
+      if (prev.includes(id)) {
+        const next = prev.filter((s) => s !== id)
+        return next.length ? next : prev
+      }
+      // Se reinserta respetando el orden de prioridad.
+      return SCRAPER_SOURCES.map((s) => s.id).filter(
+        (s) => s === id || prev.includes(s),
+      ) as ScraperSource[]
+    })
+  }
+
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={rom?.name ?? 'Juego'}
-      description={`${system}${subpath ? ` / ${subpath}` : ''} · ${SOURCE_LABELS[source]}`}
+      description={`${system}${subpath ? ` / ${subpath}` : ''}`}
       className="max-w-xl"
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={() => void search()} disabled={searching || saving}>
+          <Button variant="ghost" size="sm" onClick={() => void runSearch(enabled)} disabled={searching || saving}>
             <RefreshCw className={cn('size-4', searching && 'animate-spin')} />
             Actualizar
           </Button>
@@ -191,10 +281,56 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, source, on
           </div>
         )}
 
+        {/* Fuentes, por orden de prioridad */}
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Fuentes (por orden de prioridad)
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {SCRAPER_SOURCES.map((option, index) => {
+              const active = enabled.includes(option.id)
+              const ready = sourceReady(config, option.id)
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => toggleSource(option.id)}
+                  className={cn(
+                    'flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors duration-150',
+                    'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                    active
+                      ? 'border-brand bg-brand/10 text-foreground'
+                      : 'border-border bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground',
+                    !ready && 'opacity-70',
+                  )}
+                >
+                  <span className="tabular-nums text-[10px] font-bold text-muted-foreground">{index + 1}</span>
+                  {option.label}
+                  <span
+                    className={cn(
+                      'rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                      !ready
+                        ? 'bg-muted text-muted-foreground'
+                        : active
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-muted text-muted-foreground',
+                    )}
+                  >
+                    {!ready ? sourceMissing(config, option.id) : active ? 'Activa' : 'Inactiva'}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            Se prueban en orden: la primera que encuentre el juego gana.
+          </p>
+        </section>
+
         {searching && (
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 py-6 text-xs font-medium text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
-            Buscando en {SOURCE_LABELS[source]}…
+            Buscando en {enabled.map(sourceLabel).join(' → ') || '…'}
           </div>
         )}
 
@@ -209,27 +345,103 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, source, on
 
         {result?.game && (
           <>
-            <div className="rounded-2xl border border-border bg-muted/40 p-3">
-              <div className="flex items-start gap-2">
-                <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold tracking-[-0.015em] text-foreground">
-                    {meta.name || result.meta?.name || rom?.name}
-                  </p>
-                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-                    {[meta.year, meta.publisher, meta.genre].filter(Boolean).join(' · ') || 'Sin metadatos'}
-                  </p>
-                </div>
+            <div className="flex gap-3 rounded-2xl border border-border bg-muted/40 p-3">
+              {/* Carátula */}
+              <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
+                {preview ? (
+                  <>
+                    <img
+                      key={preview}
+                      src={preview}
+                      alt=""
+                      onLoad={() => setImgState('ok')}
+                      onError={() => setImgState('error')}
+                      className={cn(
+                        'size-full object-cover transition-opacity duration-200',
+                        imgState === 'ok' ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                    {imgState !== 'ok' &&
+                      (imgState === 'error' ? (
+                        <ImageOff className="size-5 text-muted-foreground/50" aria-hidden />
+                      ) : (
+                        <Loader2 className="size-5 animate-spin text-muted-foreground/60" aria-hidden />
+                      ))}
+                  </>
+                ) : (
+                  <ImageOff className="size-5 text-muted-foreground/50" aria-hidden />
+                )}
               </div>
-              {meta.desc && (
-                <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-muted-foreground">{meta.desc}</p>
-              )}
-              {availableTypes.length > 0 && (
-                <p className="mt-2 text-[11px] font-medium text-muted-foreground">
-                  Imagen: {availableTypes.includes(imageType) ? imageType : availableTypes[0]}
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-2">
+                  <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold tracking-[-0.015em] text-foreground">
+                      {meta.name || result.meta?.name || rom?.name}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                      {[meta.year, meta.publisher, meta.genre].filter(Boolean).join(' · ') || 'Sin metadatos'}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-1.5 text-[11px] font-semibold text-foreground">
+                  Fuente: {sourceLabel(result.source)}
                 </p>
-              )}
+                {imgState === 'loading' && (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Cargando carátula…</p>
+                )}
+                {imgState === 'error' && (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    No se pudo cargar la carátula de la fuente.
+                  </p>
+                )}
+                {fallbacks.length > 0 && (
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                    {fallbacks.map(sourceLabel).join(' y ')} no tenían datos para este juego.
+                  </p>
+                )}
+                {meta.desc && (
+                  <p className="mt-1.5 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">
+                    {meta.desc}
+                  </p>
+                )}
+              </div>
             </div>
+
+            {/* Opciones de imagen a descargar */}
+            {result.source === 'screenscraper' && (result.img_types?.length ?? 0) > 0 && (
+              <section>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Imágenes a descargar
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {(result.img_types ?? []).map((type) => {
+                    const active = imgTypes.includes(type)
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() =>
+                          setImgTypes((prev) =>
+                            prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+                          )
+                        }
+                        className={cn(
+                          'cursor-pointer rounded-xl border px-2.5 py-1 text-[11px] font-semibold transition-colors duration-150',
+                          'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                          active
+                            ? 'border-brand bg-brand/10 text-foreground'
+                            : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+                        )}
+                      >
+                        {IMG_TYPE_LABELS[type] ?? type}
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
 
             {editing && (
               <div className="space-y-3">
@@ -254,15 +466,9 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, source, on
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Al guardar se descarga la imagen y se escriben los metadatos en el gamelist.xml.
-              </p>
-              <Button variant="secondary" size="sm" onClick={() => void search()} disabled={searching}>
-                <Download className="size-4" />
-                Buscar
-              </Button>
-            </div>
+            <p className="border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
+              Al guardar se descarga la imagen y se escriben los metadatos en el gamelist.xml.
+            </p>
           </>
         )}
       </div>

@@ -19,10 +19,12 @@ API = SRC / "lib" / "api.ts"
 APP = SRC / "App.tsx"
 PAGE = SRC / "pages" / "Scraper.tsx"
 ICONS = SRC / "lib" / "systemIcons.ts"
+SOURCES = SRC / "lib" / "scraperSources.ts"
 CARD = SRC / "components" / "scraper" / "ScraperSystemCard.tsx"
 SYSTEM_MODAL = SRC / "components" / "scraper" / "ScrapeSystemModal.tsx"
 ROM_MODAL = SRC / "components" / "scraper" / "ScrapeRomModal.tsx"
 FOLDER = SRC / "components" / "scraper" / "RomFolderView.tsx"
+TOPBAR = SRC / "components" / "layout" / "Topbar.tsx"
 
 
 def _read(path: Path) -> str:
@@ -159,10 +161,11 @@ def test_los_modales_son_flotantes():
 
 
 def test_el_modal_admite_varias_fuentes_de_scraping():
-    icons = _read(ICONS)
+    sources = _read(SOURCES)
     for fuente in ("screenscraper", "thegamesdb", "igdb"):
-        assert fuente in icons, f"falta la fuente {fuente}"
+        assert fuente in sources, f"falta la fuente {fuente}"
     assert "SCRAPER_SOURCES" in _read(SYSTEM_MODAL)
+    assert "SCRAPER_SOURCES" in _read(ROM_MODAL)
 
 
 def test_guardar_valida_las_credenciales_antes_de_cerrar():
@@ -220,3 +223,93 @@ def test_la_descarga_de_un_rom_no_manda_credenciales():
     assert bloque, "no se encontró la llamada de descarga"
     for credencial in ("ss_user", "ss_password", "tgdb_apikey", "igdb_client_id"):
         assert credencial not in bloque.group(1), f"se manda {credencial} al scrape"
+
+
+# ── Vista previa e imagen ─────────────────────────────────────────────
+
+def test_el_modal_muestra_la_imagen_del_juego():
+    modal = _read(ROM_MODAL)
+    assert "image_url" in modal
+    assert "/api/scraper/image" in modal, "la carátula debe servirse por el proxy"
+    assert "<img" in modal
+
+
+def test_el_backend_sirve_la_imagen_por_proxy():
+    src = Path(appmod_path()).read_text(encoding="utf-8")
+    assert "/api/scraper/image" in src
+    assert "def _scraper_image_proxy" in src
+    assert "Referer" in src, "ScreenScraper no sirve sus imágenes sin referer"
+
+
+def appmod_path() -> str:
+    """Ruta del backend desde la raíz del repo."""
+    return str(ROOT / "app.py")
+
+
+# ── Prioridad de fuentes ──────────────────────────────────────────────
+
+def test_el_modal_de_rom_deja_elegir_las_fuentes():
+    modal = _read(ROM_MODAL)
+    assert "toggleSource" in modal
+    assert "Fuentes (por orden de prioridad)" in modal
+    assert "sources," in modal, "debe enviar la lista de fuentes a probar"
+
+
+def test_el_orden_de_prioridad_es_screen_scraper_primero():
+    sources = _read(SOURCES)
+    assert sources.index("screenscraper") < sources.index("thegamesdb")
+    assert sources.index("thegamesdb") < sources.index("igdb")
+
+
+def test_el_modal_avisa_de_las_fuentes_sin_datos():
+    modal = _read(ROM_MODAL)
+    assert "fallbacks" in modal
+    assert "no tenían datos" in modal
+
+
+def test_el_scrape_de_sistema_ofrece_el_respaldo():
+    modal = _read(SYSTEM_MODAL)
+    assert "fallback_sources" in modal
+    assert "respaldo" in modal.lower()
+
+
+def test_el_scrape_de_sistema_prioriza_la_fuente_elegida():
+    modal = _read(SYSTEM_MODAL)
+    assert "source," in modal
+
+
+# ── Botón de volver siempre visible ───────────────────────────────────
+
+def test_el_boton_de_volver_esta_en_la_barra():
+    """El botón de volver tiene que estar siempre en pantalla."""
+    topbar = _read(TOPBAR)
+    assert "leading" in topbar, "la barra superior debe admitir contenido a la izquierda"
+
+    page = _read(PAGE)
+    assert "leading=" in page
+    assert "Volver" in page
+
+    # Y ya no debe vivir dentro del contenido con scroll.
+    assert (
+        "mb-4 inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2 py-1.5"
+        not in page
+    ), "el botón de volver ya no debe estar en el contenido con scroll"
+
+
+# ── La carátula tarda: hay que avisar mientras llega ──────────────────
+
+def test_el_modal_avisa_mientras_carga_la_caratula():
+    modal = _read(ROM_MODAL)
+    assert "imgState" in modal, "debe seguir el estado de carga de la imagen"
+    assert "onLoad" in modal, "hay que detectar cuándo la carátula está lista"
+    assert "onError" in modal, "hay que detectar cuándo la carátula falla"
+    assert "Cargando carátula" in modal, "debe avisar de que la carátula está llegando"
+
+
+def test_el_backend_cachea_las_caratulas():
+    """La descarga desde ScreenScraper tarda: no debe repetirse en cada apertura."""
+    src = Path(appmod_path()).read_text(encoding="utf-8")
+    assert "def scraper_proxy_image" in src
+    assert "_IMG_PROXY_CACHE" in src, "las imágenes deben guardarse en caché"
+    assert "def warm_scraper_image" in src, "la búsqueda debe pedir la imagen en segundo plano"
+    assert "scraper_proxy_allowed" in src, "el proxy no debe ser un proxy abierto"

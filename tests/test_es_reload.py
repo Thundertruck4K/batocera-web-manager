@@ -82,10 +82,32 @@ def test_do_scrape_system_counts_saved_meta(appmod, monkeypatch, tmp_path):
 
     res = appmod.do_scrape_system(
         settings, "ps2", "screenscraper",
-        {"ss_region": "wor", "ss_lang": "es"}, {"only_missing": True})
+        {"ss_region": "wor", "ss_lang": "es",
+         "ss_user": "usuario", "ss_password": "clave"},
+        {"only_missing": True})
 
     assert res["meta_saved"] == 1
     assert saved and saved[0]["name"] == "Juego"
+
+
+def test_do_scrape_system_salta_la_fuente_sin_credenciales(appmod, monkeypatch, tmp_path):
+    """Sin credenciales no se llama a la fuente: se avisa y se cuenta como fallo."""
+    settings = {"roms_base": str(tmp_path)}
+    monkeypatch.setattr(appmod, "get_rom_systems",
+                        lambda s, fast=False: [_fake_system(tmp_path)])
+    llamadas = []
+    monkeypatch.setattr(appmod, "ss_search_game",
+                        lambda *a, **k: llamadas.append(a) or (None, "sin resultados", {}))
+    monkeypatch.setattr(appmod, "save_gamelist_entry", lambda base, meta: None)
+
+    res = appmod.do_scrape_system(
+        settings, "ps2", "screenscraper",
+        {"ss_region": "wor", "ss_lang": "es"}, {"only_missing": True})
+
+    assert llamadas == [], "no se debe consultar una fuente sin credenciales"
+    assert res["meta_saved"] == 0
+    assert res["fail"] == 1
+    assert "credenciales" in res["errors"][0]
 
 
 def test_do_scrape_system_meta_saved_zero_when_nothing_found(appmod, monkeypatch, tmp_path):

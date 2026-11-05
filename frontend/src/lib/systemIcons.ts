@@ -195,10 +195,3 @@ export function systemType(system: Pick<RomSystemSummary, 'type'>): string {
   if (!type || type === 'None') return 'Otros'
   return type
 }
-
-/** Nombre corto de la fuente de scraping, para las etiquetas de la interfaz. */
-export const SCRAPER_SOURCES = [
-  { id: 'screenscraper', label: 'ScreenScraper' },
-  { id: 'thegamesdb', label: 'TheGamesDB' },
-  { id: 'igdb', label: 'IGDB' },
-] as const

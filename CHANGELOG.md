@@ -29,6 +29,20 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     `<image>` del `gamelist.xml` de los ROMs que siguen en la carpeta (nuevo campo `image_count` en
     `GET /api/rom-systems`, con caché de 60 s). Antes se contaba la carpeta `media/`, que
     EmulationStation no usa, y por eso salía siempre a 0.
+  - **La carátula se ve en el modal de un juego**: se sirve por un proxy del backend
+    (`GET /api/scraper/image`), porque ScreenScraper no entrega sus imágenes si la petición no
+    llega con su referer. El proxy **cachea en memoria** (24 imágenes / 3 MB máximo) y la búsqueda
+    la pide en segundo plano, así que la carátula aparece al instante en lugar de tardar más de diez
+    segundos; mientras llega, el modal avisa con «Cargando carátula…».
+  - **Las fuentes se eligen por orden de prioridad**: en el modal de un juego aparecen numeradas
+    (1 ScreenScraper, 2 TheGamesDB, 3 IGDB) y se pueden activar o desactivar una a una. La búsqueda
+    **prueba ScreenScraper primero** y, si esa fuente no tiene datos del juego, continúa con
+    TheGamesDB e IGDB: gana el primer resultado y se indica de qué fuente salió y cuáles no
+    tenían información. El scrape de un sistema completo tiene la misma cadena, con la opción de
+    «usar las demás fuentes como respaldo».
+  - **El botón de volver está siempre en pantalla**: pasa a la barra superior (que ahora admite
+    contenido a la izquierda del título), así que no hay que subir hasta arriba para cambiar de
+    sistema.
 - **Dashboard de logros en la SPA**: la sección *Logros* deja de estar marcada como *Pronto* y muestra
   los juegos de RetroAchievements en los que más has desbloqueado, en tarjetas con **la carátula que
   dejó el scraper** en tu biblioteca, el porcentaje de completitud y el estado de cada juego
@@ -44,6 +58,16 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     RA. El rango de juegos sube de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Corregido
+- **Las URLs de las carátulas ya no viajan con las credenciales**: ScreenScraper devuelve las URLs
+  de sus medios con la contraseña y la credencial de desarrollador incrustadas, y la SPA las recibía
+  tal cual (con la contraseña dentro, en la respuesta JSON). Ahora se mandan limpias y es el
+  servidor el que las firma al descargarlas; la interfaz clásica, que muestra la imagen
+  directamente, las pide explícitamente.
+- **El respaldo de TheGamesDB encuentra los juegos**: la búsqueda era demasiado estricta con el nombre
+  del ROM (buscaba «007 Agent Under Fire» y no encontraba el «007: Agent Under Fire» de
+  TheGamesDB), así que la cadena de fuentes se quedaba sin respuesta aunque el juego estuviera
+  catalogado. Ahora prueba variantes del nombre y, si hace falta, busca sin filtro de plataforma y
+  se queda con el juego de la plataforma del sistema.
 - **El instalador limpia el bundle anterior**: los assets del bundle llevan hash en el nombre, así que
   los de la versión anterior se quedaban ocupando sitio en la SD sin usarse. Ahora el bundle se copia
   a un temporal y se sustituye la carpeta entera, de modo que no quedan restos (y sin borrar el bundle

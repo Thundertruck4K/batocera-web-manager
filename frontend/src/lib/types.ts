@@ -520,6 +520,10 @@ export interface ScraperSearchResult {
   meta: ScraperMeta | null
   img_types: string[]
   source: ScraperSource
+  /** URL de la carátula para la vista previa (vía proxy del backend). */
+  image_url?: string | null
+  /** Fuentes que se han ido probando, en orden. */
+  tried?: ScraperSource[]
   quota?: Record<string, unknown>
   error?: string
 }
