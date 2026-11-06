@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-504%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-651%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -110,7 +110,11 @@ La unificación deja las cosas así:
   uso, VRAM, consumo) y RAM; almacenamiento y ventiladores; estado/PID de EmulationStation y las últimas
   versiones oficiales de Batocera. Con refresco automático opcional.
 - **🎲 Juego al azar + estadísticas** — tarjeta con carátula, ficha y descripción de un juego aleatorio
-  de tu biblioteca, ranking de más jugados y horas totales.
+  de tu biblioteca, ranking de más jugados y horas totales. Se rellena sola al abrir la app (con sistema,
+  carátula y metadatos) y el botón **Girar** sigue ahí para pedir otro cuando quieras.
+- **📚 Contadores que cuentan el disco** — las tarjetas de *Sistemas* y *Juegos* del panel cuentan lo que
+  hay **de verdad en la SD**: los sistemas con juegos (no sólo los personalizados) y los juegos reales
+  (ficheros de juego y carpetas de juego), no lo que diga el `gamelist.xml`.
 - **🎨 Tarjetas con gráficos propios** — todo el panel usa un lenguaje de tarjetas redondeadas con
   color propio: velocímetros de 240°, sparklines de área, un donut de reparto del disco y barras
   redondeadas. En la SPA se dibujan con Recharts; en la interfaz clásica, en CSS/JS puro.
@@ -166,6 +170,11 @@ La portada resume el estado de la máquina: velocímetros de CPU, RAM, temperatu
 de sistemas, procesos, particiones y juegos; la actividad de juego de los últimos días y los procesos
 que más CPU consumen. Arriba a la derecha se elige cada cuánto se refresca (automático, cada 30 s o
 manual) y el tema (claro u oscuro).
+
+Los contadores del medio miran **la biblioteca de verdad**: *Sistemas* enseña los sistemas que tienen
+juegos (con el número de personalizados en el texto de apoyo) y *Juegos* cuenta los juegos que hay en el
+disco. La tarjeta *Juego al azar* no se queda vacía: al abrir la app ya trae un juego con su carátula y
+sus metadatos, y **Girar** cambia de juego.
 
 ![Panel de control](docs/screenshots/01-dashboard.png)
 
@@ -226,6 +235,9 @@ Al abrir un sistema, sus ROMs se reparten en **media presente** y **media ausent
 ![ROMs del sistema](docs/screenshots/08-scraper-roms.png)
 
 *Los ROMs del sistema con su carátula, y el reparto entre los que ya tienen imagen y los que no.*
+
+En la lista **sólo aparecen los juegos**: el `_info.txt` de cada sistema, el `gamelist.xml` y los
+guardados de estado (`.srm`, `.dat`, `.keys`…) no se listan ni se pueden escrapear.
 
 Desde ahí, un modal flotante permite **escapear el sistema entero** o un juego suelto con
 ScreenScraper, TheGamesDB o IGDB: se elige la fuente y las opciones, y con **Actualizar**, **Editar**
@@ -511,6 +523,17 @@ juego**, y el `gamelist.xml` guarda su ruta (`<path>./Myst.scummvm</path>`). El 
 cuenta y lo escrapea por el nombre de la carpeta (sin la extensión), que es el título del juego; la
 ficha y la carátula se guardan igual que las de un ROM normal.
 
+**Qué se considera un juego.** El criterio es el de EmulationStation: un fichero es un juego si su
+extensión está entre las del sistema (las del `es_systems.cfg`: el del usuario si define ese sistema,
+el oficial si no) **más** la lista global de extensiones de ROM, para no perder nada. Quedan fuera los
+ficheros que no son juego de ninguna manera —el `_info.txt` que documenta los formatos de cada sistema,
+el `gamelist.xml`, los guardados de estado (`.sav`, `.srm`, `.state`, `.autosave`, `.mstate`, `.save`,
+`.ram`), las teclas de imbalanceo (`.keys`), los `.dat` y los `.cfg`/`.ini`—: **no se listan y no se
+pueden escrapear**. Dos matices: si el propio sistema declara una extensión, manda su declaración (los
+`.dat` de **naomi**, atomiswave o systemsp *son* el juego), y los ficheros de configuración de los
+emuladores (`citron_config.xci_config`) quedan fuera siempre. El mismo criterio se usa para contar los
+juegos del panel de control y para el juego al azar.
+
 ---
 
 ## 🧱 Arquitectura
@@ -562,16 +585,21 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
 | **Actualización** | `/api/update` · `/api/app-update` |
 
+Los contadores de la biblioteca salen de `GET /api/info`: `rom_systems_count` (los sistemas con juegos),
+`disk_games_count` y `disk_systems_count` (los juegos y los sistemas que hay de verdad en el disco) y
+`systems_count` (los sistemas personalizados que gestiona el manager). `GET /api/random-game` devuelve
+un juego de la biblioteca con su carátula y sus metadatos.
+
 ---
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **623 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **651 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 623 passed in ~30s
+# 651 passed in ~30s
 ```
 
 ---
@@ -593,7 +621,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 623 tests con pytest
+├── tests/                    # 651 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto
@@ -741,6 +769,18 @@ funcionando.
 **¿Puedo crear sistemas sin tocar XML a mano?**  
 Sí, es justo el objetivo: eliges un sistema de referencia, ajustas los campos y el manager escribe el
 `es_systems_<slug>.cfg` y crea las carpetas.
+
+**¿Por qué el número de juegos no coincide con el del `gamelist.xml`?**  
+Porque el `gamelist.xml` sólo cataloga los juegos que EmulationStation ya tiene fichados. La tarjeta
+*Juegos* del panel cuenta **lo que hay en el disco**: los ficheros que son juego y las carpetas de
+juegos (ScummVM, DOSBox, MUGEN), de modo que puede ser mayor que el del `gamelist.xml`. La tarjeta
+*Sistemas* cuenta los sistemas que tienen juegos, y en el texto de apoyo indica cuántos de ellos son
+personalizados.
+
+**¿Por qué en la lista de ROMs no salen el `_info.txt` ni los guardados de estado?**  
+Porque no son juegos. Sólo se listan los ficheros cuya extensión es una de las del sistema (más la
+lista global de extensiones de ROM); el `_info.txt` que documenta los formatos, el `gamelist.xml`, los
+`.srm`/`.sav`/`.dat`/`.keys` y compañía quedan fuera de la lista y no se pueden escrapear.
 
 **¿Dónde guarda la configuración?**  
 En `/userdata/system/batocera_manager_settings.json` (rutas, puerto, tema de la interfaz y usuario

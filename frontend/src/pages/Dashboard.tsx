@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import { Cpu, Gamepad2, HardDrive, RefreshCw, Trophy } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AreaTrend } from '@/components/charts/AreaTrend'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { DonutChart } from '@/components/charts/DonutChart'
@@ -67,6 +67,24 @@ export function Dashboard() {
       setRolling(false)
     }
   }, [showToast])
+
+  /* Al cargar la app la tarjeta de juego al azar no se queda vacía: se pide
+     uno nada más montar. El botón «Girar» sigue funcionando igual. */
+  useEffect(() => {
+    let alive = true
+    setRolling(true)
+    void (async () => {
+      try {
+        const res = unwrap(await api.randomGame())
+        if (alive) setRandomGame(res.game)
+      } catch {
+        /* sin biblioteca o sin red: la tarjeta se queda en su estado vacío */
+      } finally {
+        if (alive) setRolling(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [])
 
   const restartEs = useCallback(async () => {
     setRestarting(true)
@@ -242,9 +260,13 @@ export function Dashboard() {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <MetricCard
                 label="Sistemas"
-                value={info.data?.systems_count ?? 0}
+                value={info.data?.rom_systems_count ?? 0}
                 icon={Gamepad2}
-                hint={`${info.data?.rom_systems_count ?? 0} con ROMs`}
+                hint={
+                  info.data?.systems_count
+                    ? `${info.data.systems_count} personalizados`
+                    : 'de Batocera'
+                }
               />
               <MetricCard
                 label="Procesos"
@@ -260,7 +282,7 @@ export function Dashboard() {
               />
               <MetricCard
                 label="Juegos"
-                value={stats.data?.totals.games ?? 0}
+                value={info.data?.disk_games_count ?? 0}
                 icon={Trophy}
                 hint={
                   stats.data?.has_playtime

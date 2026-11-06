@@ -126,9 +126,11 @@ export function RomFolderView({
 
   // Un juego puede ser una carpeta (ScummVM, DOSBox, MUGEN...): entonces es un
   // ROM (se escrapea por el nombre de la carpeta), no una carpeta que se abre.
+  // El backend ya deja fuera lo que no es un juego (el `_info.txt` de cada
+  // sistema, el `gamelist.xml`, los guardados de estado…), así que aquí sólo
+  // hay juegos y carpetas.
   const folders = folder.items.filter((item) => item.is_dir && !item.is_game_folder)
   const roms = folder.items.filter((item) => item.is_rom && (!item.is_dir || item.is_game_folder))
-  const others = folder.items.filter((item) => !item.is_rom && !item.is_dir)
   const withMedia = roms.filter((rom) => rom.has_image)
   const withoutMedia = roms.filter((rom) => !rom.has_image)
   /** En sistemas con cientos de ROMs se saltan las animaciones de entrada. */
@@ -252,28 +254,6 @@ export function RomFolderView({
           </div>
         )}
       </section>
-
-      {/* Ficheros que no son ROMs */}
-      {others.length > 0 && (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Otros ficheros
-          </h3>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {others.map((rom, index) => (
-              <RomRow
-                key={rom.filename}
-                rom={rom}
-                system={system}
-                subpath={subpath}
-                onOpenRom={onOpenRom}
-                index={index}
-                animate={animateRows}
-              />
-            ))}
-          </div>
-        </section>
-      )}
 
       {folder.is_empty && (
         <p className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-4 py-8 text-xs font-medium text-muted-foreground">

@@ -357,8 +357,14 @@ export interface SystemInfo {
 export interface AppInfo {
   active_theme: string
   themes: string[]
+  /** Sistemas personalizados que gestiona el manager. */
   systems_count: number
+  /** Sistemas con al menos un juego en el disco. */
   rom_systems_count: number
+  /** Juegos reales que hay en el disco (no sólo los catalogados). */
+  disk_games_count: number
+  /** Sistemas con juegos en el disco. */
+  disk_systems_count: number
   ext_presets: Record<string, string>
   platform_ids: string[]
   hardware_types: string[]

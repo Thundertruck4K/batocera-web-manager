@@ -39,8 +39,10 @@ export function RandomGameCard({ game, loading, onRoll }: RandomGameCardProps) {
       }
     >
       {!game ? (
-        <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
-          Pulsa «Girar» para elegir una ROM al azar.
+        <div className="flex h-40 items-center justify-center text-center text-xs text-muted-foreground">
+          {loading
+            ? 'Eligiendo un juego al azar…'
+            : 'No hay juegos en la biblioteca todavía.'}
         </div>
       ) : (
         <motion.div
