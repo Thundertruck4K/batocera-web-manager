@@ -7,6 +7,33 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Sección de BIOS en la SPA** (la de *ROMs y BIOS*, que deja de estar marcada como *Pronto*): una
+  tarjeta por sistema con el icono temático, el nombre del catálogo de Batocera, el estado y la
+  cobertura; el orden es por criticidad (lo que impide jugar primero), por nombre o por cobertura, y
+  se filtra por texto y por estado (con problemas, reparables, completos).
+  - El **modal de detalle** enseña cada BIOS con su estado, el md5 que pide Batocera, el md5 que hay
+    en el disco, el tamaño y la ruta de destino, y ofrece: reparar, subirla a mano, copiar el hash y
+    omitirla. La reparación en lote deja el sistema entero arreglado de una vez.
+  - Los avisos de éxito y de error usan el mismo sistema de notificaciones que el resto de la app.
+- **El catálogo oficial de BIOS es la fuente de verdad**: la lista de BIOS que exige Batocera cambia
+  con la versión, así que ahora se lee de la propia consola:
+  - `/usr/bin/batocera-systems` (el script oficial) es la fuente principal: trae el slug del sistema,
+    su nombre legible, la ruta de cada BIOS, su md5 y **qué fichero tiene que ir dentro de cada ZIP**
+    (el campo `zippedFile`).
+  - `/usr/share/batocera/datainit/bios/readme.txt` es el respaldo (no trae slugs ni los miembros de
+    los ZIP: se empareja con el catálogo embebido por conjunto de rutas).
+  - El `BIOS_DB` embebido en `app.py` es el último recurso (instalaciones mínimas y desarrollo).
+- **Los estados de cada BIOS**: `correcta`, `sin verificar`, `hash distinto`, `falta un fichero`,
+  `reparable` (el contenido está dentro de otro ZIP o en otra carpeta), `ausente`, `omitida` e
+  `ilegible`. Con ellos, las tarjetas se ordenan por criticidad y se sabe qué se puede arreglar sin
+  salir de la consola.
+- **Reparar una BIOS sin salir de la consola**: `POST /api/bios/repair` reúne en el ZIP de destino
+  los ficheros que exige el catálogo (buscándolos dentro de otros ZIP de la propia SD) o mueve el
+  fichero que ya estaba en otra carpeta. Siempre **verifica** el resultado contra el catálogo y, si
+  tenía que sustituir algo, deja el original en `/userdata/bios/.quarantine/`. Si no encuentra el
+  contenido, **no toca el destino**.
+- `GET /api/bios/catalog` (catálogo + estado + resumen), `GET /api/bios/summary` (sólo el resumen) y
+  `POST /api/bios/scan` (fuerza el escaneo del disco).
 - **Los juegos que son una carpeta se escrapean por su nombre**: en algunos sistemas el juego no es
   un fichero sino una carpeta (ScummVM: `Myst.scummvm/`, DOSBox: `Alone in the Dark.pc/`, MUGEN:
   `kof94.pc/`). Es la convención de EmulationStation: si el nombre de la carpeta lleva una extensión
@@ -98,6 +125,12 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Corregido
+- **Las BIOS se verificaban por el hash equivocado**: el manager comparaba el md5 del **ZIP** con el
+  que da el catálogo, pero Batocera exige que el ZIP **lleve dentro** unos ficheros concretos con su
+  md5 (el campo `zippedFile` del catálogo oficial). Como el md5 de un ZIP es el de ese ZIP concreto,
+  83 BIOS que estaban **bien** se marcaban como incorrectas: en la consola de desarrollo, 204
+  «correctas» y 86 «con hash distinto» eran en realidad 287 correctas y 3 con hash distinto. Ahora se
+  abre el ZIP y se comprueba lo que lleva dentro, que es lo que mira Batocera.
 - **La lista de ROMs ya no enseña ficheros que no son juegos**: en cada carpeta de sistemas hay un
   `_info.txt` que documenta los formatos del sistema, además del `gamelist.xml` y de los guardados de
   estado (`Lagoon (Europe).srm`, `azumanga.dat`, `Steam_Big_Picture.sh.keys`). Salían en la sección

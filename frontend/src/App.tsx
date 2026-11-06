@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/hooks/useTheme'
 import { ToastProvider } from '@/hooks/useToast'
 import { NotifyProvider } from '@/hooks/useNotify'
 import { api } from '@/lib/api'
+import { BiosPage } from '@/pages/Bios'
 import { Dashboard } from '@/pages/Dashboard'
 import { AchievementsPage } from '@/pages/Achievements'
 import { DebugPage } from '@/pages/Debug'
@@ -48,6 +49,7 @@ function ManagerShell() {
         <Route path="/sistemas" element={<Systems />} />
         <Route path="/sistemas/nuevo" element={<SystemForm />} />
         <Route path="/sistemas/:name/editar" element={<SystemForm />} />
+        <Route path="/roms" element={<BiosPage />} />
         <Route path="/depuracion" element={<DebugPage />} />
         <Route path="/retroachievements" element={<AchievementsPage />} />
         <Route path="/scraper" element={<ScraperPage />} />

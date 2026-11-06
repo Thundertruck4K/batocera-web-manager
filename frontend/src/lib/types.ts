@@ -449,6 +449,89 @@ export interface RaGamesPayload {
   total: number
 }
 
+/* ── BIOS ──────────────────────────────────────────────────────────── */
+
+/**
+ * Estado de un fichero de BIOS esperado.
+ *
+ * `ok`            está en su ruta y con el hash que pide Batocera.
+ * `sin_verificar` está en su ruta, pero Batocera no publica hash.
+ * `hash_distinto` está en su ruta con un hash que no es el esperado.
+ * `miembro_falta` al ZIP le falta un fichero que el catálogo exige dentro.
+ * `reparable_zip` el contenido está dentro de otro ZIP de la consola.
+ * `reparable_ruta` el mismo contenido está en otra carpeta.
+ * `ausente`       no está en ninguna parte.
+ * `omitida`       el usuario la marcó como no necesaria.
+ * `ilegible`      está pero no se puede abrir (ZIP roto).
+ */
+export type BiosEstado =
+  | 'ok'
+  | 'sin_verificar'
+  | 'hash_distinto'
+  | 'miembro_falta'
+  | 'reparable_zip'
+  | 'reparable_ruta'
+  | 'ausente'
+  | 'omitida'
+  | 'ilegible'
+
+/** Un fichero que el catálogo de Batocera exige dentro de un ZIP. */
+export interface BiosMember {
+  name: string
+  md5: string | null
+}
+
+export interface BiosFile {
+  /** Ruta relativa dentro de `/userdata/bios`. */
+  file: string
+  estado: BiosEstado
+  /** Hashes aceptados para el fichero (variantes regionales). */
+  md5s: string[]
+  /** Ficheros que el catálogo exige dentro del ZIP. */
+  members: BiosMember[]
+  size: number | null
+  /** Hash del fichero que hay ahora mismo en el disco. */
+  md5: string | null
+  motivo?: string | null
+  /** Dónde está el contenido que falta (otra ruta u otro ZIP). */
+  fuente?: string | null
+  /** Miembros que faltan dentro del ZIP. */
+  faltan: string[]
+  skip_key: string
+}
+
+export interface BiosSystem {
+  /** Nombre legible del sistema («Coleco Adam»). */
+  name: string
+  files: BiosFile[]
+}
+
+export interface BiosCatalog {
+  ok: boolean
+  /** De dónde se ha sacado el catálogo (script oficial, readme o embebido). */
+  source: string
+  systems: Record<string, BiosSystem>
+  summary: Record<string, number>
+  /** Ficheros en el disco que el catálogo no pide. */
+  extras: number
+  /** Ficheros que hay en el disco. */
+  scanned: number
+  error?: string
+}
+
+export interface BiosRepairResult {
+  ok: boolean
+  estado?: string
+  dest?: string
+  md5?: string | null
+  motivo?: string | null
+  /** Dónde se guardó el fichero que se ha sustituido. */
+  quarantine?: string | null
+  faltan?: string[]
+  error?: string
+}
+
+
 /* ── Scraper ─────────────────────────────────────────────────────────── */
 
 /** Fuentes de scraping admitidas por el backend. */

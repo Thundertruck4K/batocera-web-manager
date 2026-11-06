@@ -3,6 +3,7 @@
 Batocera System Manager Web — servidor HTTP puro (stdlib), sin dependencias.
 """
 
+import ast
 import hashlib
 import http.server
 import io
@@ -20,6 +21,7 @@ import traceback
 import unicodedata
 import urllib.parse
 import xml.etree.ElementTree as ET
+import zipfile
 import zlib
 from collections import deque
 from pathlib import Path
@@ -2808,42 +2810,50 @@ def rom_system_summary(x):
 
 
 def _check_bios_grouped(slug, bios_dir):
-    """Helper: returns grouped BIOS info for a single slug, or None if unknown."""
-    raw = _get_bios_entries(slug)
-    if not raw:
-        # slug known but no BIOS entries → system without BIOS
-        if _bios_key(slug) in _BIOS_LOOKUP:
-            return {"known":True,"files":[]}
+    """Helper: returns grouped BIOS info for a single slug, or None if unknown.
+
+    Usa el catálogo oficial de la consola y su regla `zippedFile`: un ZIP es
+    correcto si lleva dentro los ficheros que Batocera pide, no si su md5
+    coincide (el md5 del ZIP no es el de lo que contiene).
+    """
+    key = (slug or "").strip().lower()
+    catalog = get_bios_catalog()
+    info = catalog["systems"].get(key)
+    if info is None:
         return None
-    by_file = {}
-    for b in raw:
-        fn = b["file"]
-        if fn not in by_file:
-            by_file[fn] = {"desc":b["desc"],"mandatory":b["mandatory"],"md5s":[]}
-        md5 = b.get("md5")
-        if md5:
-            by_file[fn]["md5s"].append(md5)
+    if not info["files"]:
+        return {"known": True, "files": []}
+    index = build_bios_index(bios_dir)
+    zindex = bios_zip_index(bios_dir, index)
     results = []
-    for fn, info in by_file.items():
-        fpath = Path(bios_dir) / fn
-        exists = fpath.exists()
-        md5_ok = None
-        actual = None
-        if exists:
-            if info["md5s"]:
-                actual = md5_file(fpath)
-                md5_ok = (actual in info["md5s"])
-            else:
-                md5_ok = True
+    for rel, entry in info["files"].items():
+        estado, detalle = _bios_entry_state(rel, entry, bios_dir, index, zindex)
+        exists = (Path(bios_dir) / rel).exists()
+        md5s = entry.get("md5s") or []
+        if estado == "ok":
+            md5_ok = True
+        elif estado == "sin_verificar":
+            md5_ok = True
+        elif estado == "ausente":
+            md5_ok = None
+        else:
+            md5_ok = False
+        real = (index["files"].get(rel) or {}).get("md5")
         results.append({
-            "file":fn,"desc":info["desc"],"mandatory":info["mandatory"],
-            "exists":exists,"md5_ok":md5_ok,
-            "expected_md5":info["md5s"][0] if info["md5s"] else None,
-            "actual_md5":actual,
-            "size":human_size(fpath.stat().st_size) if exists else None,
-            "valid_md5s":info["md5s"],
+            "file": rel,
+            "desc": rel.rsplit("/", 1)[-1].rsplit(".", 1)[0],
+            "mandatory": True,
+            "exists": exists,
+            "md5_ok": md5_ok,
+            "estado": estado,
+            "motivo": detalle.get("motivo"),
+            "fuente": detalle.get("fuente"),
+            "expected_md5": md5s[0] if md5s else None,
+            "actual_md5": real,
+            "size": human_size((index["files"].get(rel) or {}).get("size") or 0) if exists else None,
+            "valid_md5s": md5s,
         })
-    return {"known":True,"files":results}
+    return {"known": True, "files": results}
 
 def check_bios(system_name, bios_dir):
     info = _check_bios_grouped(system_name, bios_dir)
@@ -2853,6 +2863,553 @@ def check_bios(system_name, bios_dir):
     for f in info["files"]:
         f.pop("valid_md5s", None)
     return info
+
+
+# ─── Gestión de BIOS: catálogo oficial, estado real y reparación ──────
+#
+# La lista de BIOS que exige Batocera no es fija: cambia con la versión.
+# La consola la trae consigo en dos sitios:
+#
+#   /usr/bin/batocera-systems   script oficial (Python) con el catálogo:
+#                               slug, nombre legible, ruta, md5 y el
+#                               miembro exacto que debe ir DENTRO de cada
+#                               ZIP (campo `zippedFile`).
+#   /usr/share/batocera/datainit/bios/readme.txt
+#                               el mismo catálogo serializado (sin slugs ni
+#                               nombres de miembro).
+#
+# El script manda porque `zippedFile` dice qué fichero va dentro de cada
+# ZIP. Sin ese dato, comparar el md5 del ZIP con el esperado marca como
+# incorrectos ficheros que están perfectamente bien: un ZIP tiene su propio
+# hash y el catálogo da el hash de lo que lleva dentro.
+
+BIOS_CATALOG_SCRIPT = Path("/usr/bin/batocera-systems")
+BIOS_CATALOG_ALT    = Path("/usr/share/batocera/batocera-systems")
+BIOS_README_FILE    = Path("/usr/share/batocera/datainit/bios/readme.txt")
+BIOS_CATALOG_TTL    = 3600     # 1 h: el catálogo cambia con la versión
+BIOS_INDEX_TTL      = 300      # 5 min: el índice del disco
+BIOS_ZIP_TTL        = 300      # 5 min: el índice de miembros de los ZIP
+BIOS_MD5_MAX        = 64 * 1024 * 1024   # 64 MiB: por encima no es BIOS
+BIOS_QUARANTINE     = ".quarantine"
+
+# Estados posibles de un fichero de BIOS esperado.
+BIOS_ESTADOS = ("ok", "sin_verificar", "hash_distinto", "miembro_falta",
+                "reparable_zip", "reparable_ruta", "ausente", "ilegible")
+
+_bios_catalog_cache = {"ts": 0.0, "data": None}
+_bios_index_cache   = {}     # {bios_dir: (ts, indice)}
+_bios_zip_cache     = {}     # {ruta: (mtime, size, {miembro: md5})}
+_bios_zipidx_cache  = {}     # {bios_dir: (ts, {zip: {miembro: md5}})}
+_bios_lock          = threading.Lock()
+
+
+def _bios_catalog_from_script(path):
+    """Catálogo de BIOS del script oficial (parseo del AST, sin ejecutarlo).
+
+    Devuelve {slug: {"name": str, "files": {ruta: {"md5s": [...],
+    "members": [{"name":..., "md5":...}]}}}} con la ruta ya sin el prefijo
+    `bios/` (la carpeta real es /userdata/bios).
+    """
+    try:
+        src = Path(path).read_text(encoding="utf-8", errors="replace")
+        tree = ast.parse(src)
+    except Exception:
+        return {}
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.Dict)):
+            continue
+        try:
+            data = ast.literal_eval(node.value)
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        if not any(isinstance(v, dict) and "biosFiles" in v for v in data.values()):
+            continue
+        out = {}
+        for slug, info in data.items():
+            files = {}
+            for entry in (info.get("biosFiles") or []):
+                rel = (entry.get("file") or "").strip()
+                if not rel:
+                    continue
+                if rel.startswith("bios/"):
+                    rel = rel[len("bios/"):]
+                slot = files.setdefault(rel, {"md5s": [], "members": []})
+                digest = (entry.get("md5") or "").strip().lower()
+                member = (entry.get("zippedFile") or "").strip()
+                if member:
+                    slot["members"].append({"name": member, "md5": digest or None})
+                elif digest:
+                    slot["md5s"].append(digest)
+            out[str(slug).strip().lower()] = {
+                "name": str(info.get("name") or slug).strip(), "files": files}
+        return out
+    return {}
+
+
+def _bios_catalog_from_readme(path):
+    """Catálogo desde el readme.txt oficial: {nombre: {ruta: {...}}}.
+
+    El readme no trae slug ni el nombre del miembro de los ZIP, así que se
+    empareja después con el catálogo embebido por conjunto de rutas.
+    """
+    try:
+        lines = Path(path).read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return {}
+    sections = {}
+    current = None
+    for line in lines:
+        if not line.strip():
+            continue
+        if not line.startswith(" ") and line.rstrip().endswith(":"):
+            current = line.rstrip()[:-1].strip()
+            sections.setdefault(current, {})
+            continue
+        if current is None:
+            continue
+        m = re.match(r"^\s*([0-9a-fA-F]{32})?\s+(\S+)\s*$", line)
+        if not m:
+            continue
+        rel = m.group(2)
+        if rel.startswith("bios/"):
+            rel = rel[len("bios/"):]
+        slot = sections[current].setdefault(rel, {"md5s": [], "members": []})
+        if m.group(1):
+            slot["md5s"].append(m.group(1).lower())
+    return sections
+
+
+def _bios_catalog_from_builtin():
+    """Catálogo desde el BIOS_DB embebido (respaldo y entorno de desarrollo)."""
+    out = {}
+    for slug, entries in BIOS_DB.items():
+        files = {}
+        for entry in entries:
+            rel = entry.get("file") or ""
+            if not rel:
+                continue
+            slot = files.setdefault(rel, {"md5s": [], "members": []})
+            if entry.get("md5"):
+                slot["md5s"].append(entry["md5"].lower())
+        out[slug.strip().lower()] = {"name": slug, "files": files}
+    return out
+
+
+def _match_readme_to_slugs(sections):
+    """Empareja las secciones del readme con los slugs del catálogo embebido.
+
+    Se comparan los conjuntos de rutas de cada sección: es la misma
+    información, escrita en otro orden.
+    """
+    reference = _bios_catalog_from_builtin()
+    by_path = {}
+    for slug, info in reference.items():
+        for rel in info["files"]:
+            by_path.setdefault(rel, set()).add(slug)
+    matched = {}
+    used = set()
+    for name, files in sections.items():
+        paths = set(files)
+        candidates = set()
+        for rel in paths:
+            candidates |= by_path.get(rel, set())
+        best = None
+        best_score = 0.0
+        for slug in candidates:
+            if slug in used:
+                continue
+            ref = set(reference[slug]["files"])
+            union = paths | ref
+            score = len(paths & ref) / len(union) if union else 0.0
+            if score > best_score:
+                best, best_score = slug, score
+        if best is None or best_score < 0.5:
+            best = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+            if best in matched:
+                best = f"{best}_{len(matched)}"
+        used.add(best)
+        matched[best] = {"name": name, "files": files}
+    return matched
+
+
+def get_bios_catalog():
+    """Catálogo de BIOS esperado, con la fuente usada. Cacheado 1 h."""
+    now = time.time()
+    with _bios_lock:
+        cached = _bios_catalog_cache.get("data")
+        if cached and now - _bios_catalog_cache.get("ts", 0.0) < BIOS_CATALOG_TTL:
+            return cached
+    data = None
+    for candidate in (BIOS_CATALOG_SCRIPT, BIOS_CATALOG_ALT):
+        if candidate.exists():
+            systems = _bios_catalog_from_script(candidate)
+            if systems:
+                data = {"source": str(candidate), "systems": systems}
+                break
+    if data is None and BIOS_README_FILE.exists():
+        sections = _bios_catalog_from_readme(BIOS_README_FILE)
+        if sections:
+            data = {"source": str(BIOS_README_FILE),
+                    "systems": _match_readme_to_slugs(sections)}
+    if data is None:
+        data = {"source": "builtin", "systems": _bios_catalog_from_builtin()}
+    with _bios_lock:
+        _bios_catalog_cache["ts"] = now
+        _bios_catalog_cache["data"] = data
+    return data
+
+
+def _bios_expected_md5s(system, fname):
+    """Hashes aceptados para un fichero de BIOS según el catálogo oficial."""
+    catalog = get_bios_catalog()
+    info = catalog["systems"].get((system or "").strip().lower())
+    if not info:
+        return []
+    entry = info["files"].get(fname)
+    return list(entry.get("md5s") or []) if entry else []
+
+
+def _bios_validate_placed(settings, system, fname):
+    """Estado de una BIOS ya colocada en su sitio (según el catálogo)."""
+    catalog = get_bios_catalog()
+    info = catalog["systems"].get((system or "").strip().lower())
+    if not info or fname not in info["files"]:
+        return {"estado": "desconocido", "md5_ok": None}
+    bios_dir = Path(settings.get("bios_dir", "/userdata/bios"))
+    index = build_bios_index(bios_dir)
+    zindex = bios_zip_index(bios_dir, index)
+    estado, detalle = _bios_entry_state(fname, info["files"][fname],
+                                        bios_dir, index, zindex)
+    return {"estado": estado, "md5_ok": estado in ("ok", "sin_verificar"),
+            "motivo": detalle.get("motivo")}
+
+
+def build_bios_index(bios_dir, ttl=BIOS_INDEX_TTL, force=False):
+    """Índice de /userdata/bios: {ruta: {size, md5}} + índices por nombre y md5.
+
+    Los ficheros de más de 64 MiB no se hashean (no son BIOS) y así el
+    escaneo de una biblioteca grande sigue siendo rápido.
+    """
+    bios_dir = str(bios_dir)
+    now = time.time()
+    if not force:
+        with _bios_lock:
+            hit = _bios_index_cache.get(bios_dir)
+            if hit and now - hit[0] < ttl:
+                return hit[1]
+    files = {}
+    by_name = {}
+    by_md5 = {}
+    root_path = Path(bios_dir)
+    if root_path.is_dir():
+        for root, dirs, names in os.walk(root_path):
+            dirs[:] = [d for d in dirs if d != BIOS_QUARANTINE]
+            for name in names:
+                p = Path(root) / name
+                try:
+                    rel = str(p.relative_to(root_path)).replace(os.sep, "/")
+                    size = p.stat().st_size
+                except Exception:
+                    continue
+                digest = md5_file(p) if size <= BIOS_MD5_MAX else None
+                files[rel] = {"size": size, "md5": digest}
+                by_name.setdefault(name.lower(), []).append(rel)
+                if digest:
+                    by_md5.setdefault(digest, []).append(rel)
+    index = {"files": files, "by_name": by_name, "by_md5": by_md5}
+    with _bios_lock:
+        _bios_index_cache[bios_dir] = (now, index)
+    return index
+
+
+def _zip_members(path):
+    """{nombre_miembro: md5} de un ZIP. Cacheado por (ruta, mtime, tamaño)."""
+    p = Path(path)
+    try:
+        st = p.stat()
+    except Exception:
+        return None
+    key = str(p)
+    with _bios_lock:
+        hit = _bios_zip_cache.get(key)
+        if hit and hit[0] == st.st_mtime and hit[1] == st.st_size:
+            return hit[2]
+    members = {}
+    try:
+        with zipfile.ZipFile(p) as z:
+            for info in z.infolist():
+                if info.is_dir() or info.file_size > BIOS_MD5_MAX:
+                    continue
+                try:
+                    h = hashlib.md5()
+                    with z.open(info) as fh:
+                        while chunk := fh.read(65536):
+                            h.update(chunk)
+                    members[info.filename] = h.hexdigest()
+                except Exception:
+                    continue
+    except Exception:
+        return None
+    with _bios_lock:
+        _bios_zip_cache[key] = (st.st_mtime, st.st_size, members)
+    return members
+
+
+def bios_zip_index(bios_dir, index):
+    """{zip_rel: {miembro: md5}} de los ZIP del directorio de BIOS."""
+    bios_dir = str(bios_dir)
+    now = time.time()
+    with _bios_lock:
+        hit = _bios_zipidx_cache.get(bios_dir)
+        if hit and now - hit[0] < BIOS_ZIP_TTL:
+            return hit[1]
+    out = {}
+    for rel in index["files"]:
+        if rel.lower().endswith(".zip"):
+            members = _zip_members(Path(bios_dir) / rel)
+            if members:
+                out[rel] = members
+    with _bios_lock:
+        _bios_zipidx_cache[bios_dir] = (now, out)
+    return out
+
+
+def _member_sources(zindex, members, skip=None):
+    """ZIPs del disco que contienen alguno de los miembros exigidos."""
+    hits = []
+    for zrel, contents in zindex.items():
+        if zrel == skip:
+            continue
+        for m in members:
+            if m["name"] not in contents:
+                continue
+            if m.get("md5") and contents[m["name"]] != m["md5"]:
+                continue
+            hits.append((zrel, m["name"]))
+            break
+    return hits
+
+
+def _bios_entry_state(rel, entry, bios_dir, index, zindex):
+    """Estado de un fichero de BIOS esperado. Devuelve (estado, detalle)."""
+    path = Path(bios_dir) / rel
+    exists = path.exists()
+    members = entry.get("members") or []
+    md5s = entry.get("md5s") or []
+    if members:
+        # El catálogo dice qué fichero va dentro del ZIP (`zippedFile`).
+        if not exists:
+            source = _member_sources(zindex, members)
+            if source:
+                return "reparable_zip", {"fuente": source[0][0],
+                                         "miembro": source[0][1]}
+            return "ausente", {}
+        contents = _zip_members(path)
+        if contents is None:
+            return "ilegible", {"motivo": "no se puede abrir como ZIP"}
+        faltan = [m for m in members
+                  if m["name"] not in contents
+                  or (m.get("md5") and contents[m["name"]] != m["md5"])]
+        if not faltan:
+            return "ok", {"miembros": len(members)}
+        source = _member_sources(zindex, members, skip=rel)
+        if source:
+            return "reparable_zip", {"fuente": source[0][0],
+                                     "miembro": source[0][1],
+                                     "faltan": [m["name"] for m in faltan]}
+        return "miembro_falta", {"faltan": [m["name"] for m in faltan]}
+    if not exists:
+        # ¿está el mismo contenido en otra ruta?
+        for digest in md5s:
+            elsewhere = index["by_md5"].get(digest) or []
+            if elsewhere:
+                return "reparable_ruta", {"fuente": elsewhere[0]}
+        base = rel.rsplit("/", 1)[-1].lower()
+        for other in index["by_name"].get(base, []):
+            info = index["files"].get(other) or {}
+            if md5s and info.get("md5") in md5s:
+                return "reparable_ruta", {"fuente": other}
+        return "ausente", {}
+    if not md5s:
+        return "sin_verificar", {}
+    real = (index["files"].get(rel) or {}).get("md5") or md5_file(path)
+    if real in md5s:
+        return "ok", {}
+    return "hash_distinto", {"md5_real": real}
+
+
+def scan_bios(settings, force=False):
+    """Estado completo de las BIOS de la consola.
+
+    Devuelve el catálogo con el estado de cada fichero esperado, el resumen
+    por estado y los ficheros que hay en el disco y el catálogo no pide.
+    """
+    catalog = get_bios_catalog()
+    bios_dir = Path(settings.get("bios_dir", "/userdata/bios"))
+    index = build_bios_index(bios_dir, force=force)
+    zindex = bios_zip_index(bios_dir, index)
+    skipped = _missing_bios_skipped
+    systems = {}
+    summary = {estado: 0 for estado in BIOS_ESTADOS}
+    summary["omitida"] = 0
+    expected_paths = set()
+    for slug, info in catalog["systems"].items():
+        files = []
+        for rel, entry in info["files"].items():
+            expected_paths.add(rel.lower())
+            estado, detalle = _bios_entry_state(rel, entry, bios_dir, index, zindex)
+            if estado == "ausente" and f"{slug}/{rel}" in skipped:
+                estado = "omitida"
+            summary[estado] = summary.get(estado, 0) + 1
+            info_file = index["files"].get(rel) or {}
+            files.append({
+                "file": rel,
+                "estado": estado,
+                "md5s": entry.get("md5s") or [],
+                "members": entry.get("members") or [],
+                "size": info_file.get("size"),
+                "md5": info_file.get("md5"),
+                "motivo": detalle.get("motivo"),
+                "fuente": detalle.get("fuente"),
+                "faltan": detalle.get("faltan") or [],
+                "skip_key": f"{slug}/{rel}",
+            })
+        files.sort(key=lambda f: f["file"])
+        systems[slug] = {"name": info["name"], "files": files}
+    extras = [rel for rel in index["files"] if rel.lower() not in expected_paths]
+    return {
+        "source": catalog["source"],
+        "systems": systems,
+        "summary": summary,
+        "extras": len(extras),
+        "scanned": len(index["files"]),
+    }
+
+
+def _bios_quarantine(bios_dir, path):
+    """Manda un fichero a la cuarentena y devuelve dónde ha quedado."""
+    qdir = Path(bios_dir) / BIOS_QUARANTINE
+    try:
+        qdir.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        target = qdir / f"{stamp}_{path.name}"
+        counter = 1
+        while target.exists():
+            target = qdir / f"{stamp}_{counter}_{path.name}"
+            counter += 1
+        shutil.move(str(path), str(target))
+        return str(target)
+    except Exception:
+        return None
+
+
+def _zip_read_member(zip_path, member):
+    """Bytes de un miembro de un ZIP (None si no se puede leer)."""
+    try:
+        with zipfile.ZipFile(zip_path) as z:
+            return z.read(member)
+    except Exception:
+        return None
+
+
+def repair_bios(settings, slug, rel, source=None):
+    """Coloca una BIOS en la ruta que exige Batocera y verifica el resultado.
+
+    `source` es la ruta relativa (dentro de /userdata/bios) del ZIP del que
+    extraer o del fichero que mover. Si no se indica, se busca solo.
+
+    Para un fichero normal se copia el contenido que ya está en la consola.
+    Para un ZIP se reconstruye con los miembros que exige el catálogo
+    (`zippedFile`), que es lo que Batocera mira dentro.
+    """
+    catalog = get_bios_catalog()
+    info = catalog["systems"].get((slug or "").strip().lower())
+    if not info:
+        return {"ok": False, "error": f"no se conoce el sistema '{slug}'"}
+    entry = info["files"].get(rel)
+    if not entry:
+        return {"ok": False, "error": f"'{rel}' no es una BIOS de {slug}"}
+    bios_dir = Path(settings.get("bios_dir", "/userdata/bios"))
+    try:
+        dest = safe_path_under(bios_dir, rel)
+    except ValueError:
+        return {"ok": False, "error": "ruta invalida"}
+    index = build_bios_index(bios_dir)
+    zindex = bios_zip_index(bios_dir, index)
+    estado, _detalle = _bios_entry_state(rel, entry, bios_dir, index, zindex)
+    if estado in ("ok", "sin_verificar"):
+        return {"ok": True, "estado": estado, "dest": str(dest),
+                "motivo": "ya estaba en su sitio"}
+    members = entry.get("members") or []
+    md5s = entry.get("md5s") or []
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+    # Primero se busca el contenido y sólo después se toca el destino: si no
+    # hay nada que poner, el fichero que ya estaba no se mueve de sitio.
+    if members:
+        # ZIP: hay que reunir los miembros que exige el catálogo.
+        wanted = {m["name"]: m.get("md5") for m in members}
+        found = {}
+        candidates = []
+        if source:
+            candidates.append(source)
+        candidates += [z for z, _ in _member_sources(zindex, members, skip=rel)]
+        for zrel in candidates:
+            contents = zindex.get(zrel)
+            if not contents:
+                contents = _zip_members(Path(bios_dir) / zrel) or {}
+            for name, digest in wanted.items():
+                if name in found:
+                    continue
+                if name not in contents:
+                    continue
+                if digest and contents[name] != digest:
+                    continue
+                data = _zip_read_member(Path(bios_dir) / zrel, name)
+                if data is None:
+                    continue
+                found[name] = data
+            if len(found) == len(wanted):
+                break
+        if not found:
+            return {"ok": False,
+                    "error": "no se ha encontrado el contenido en la consola",
+                    "faltan": [n for n in wanted if n not in found]}
+        quarantine = _bios_quarantine(bios_dir, dest) if dest.exists() else None
+        tmp = dest.with_suffix(dest.suffix + ".tmp")
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+            for name in wanted:
+                if name in found:
+                    z.writestr(name, found[name])
+        tmp.replace(dest)
+    else:
+        # Fichero normal: se busca el contenido con el md5 aceptado.
+        origen = None
+        if source:
+            candidate = Path(bios_dir) / source
+            if candidate.exists():
+                origen = candidate
+        if origen is None:
+            for digest in md5s:
+                elsewhere = index["by_md5"].get(digest) or []
+                if elsewhere:
+                    origen = Path(bios_dir) / elsewhere[0]
+                    break
+        if origen is None:
+            return {"ok": False, "error": "no se ha encontrado el fichero en la consola"}
+        quarantine = _bios_quarantine(bios_dir, dest) if dest.exists() else None
+        shutil.copy2(str(origen), str(dest))
+    # Verificación final: lo que se ha puesto tiene que cumplir el catálogo.
+    index = build_bios_index(bios_dir, force=True)
+    zindex = bios_zip_index(bios_dir, index)
+    estado, detalle = _bios_entry_state(rel, entry, bios_dir, index, zindex)
+    return {"ok": estado in ("ok", "sin_verificar"), "estado": estado,
+            "dest": str(dest), "md5": (index["files"].get(rel) or {}).get("md5"),
+            "motivo": detalle.get("motivo"), "quarantine": quarantine}
 
 
 # ─── Asistente de BIOS faltantes (legal-primero) ───────────────────────
@@ -6248,12 +6805,26 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self._scraper_batch_detail(parts[3], s)
         elif path == "/api/bios/all":
             bios_dir = Path(s.get("bios_dir","/userdata/bios"))
+            catalog = get_bios_catalog()
+            slugs = sorted(set(_BIOS_LOOKUP.keys()) | set(catalog["systems"].keys()))
             all_systems = {}
-            for slug in sorted(_BIOS_LOOKUP.keys()):
+            for slug in slugs:
                 info = _check_bios_grouped(slug, bios_dir)
                 if info is not None:
                     all_systems[slug] = info
             self.send_json({"ok":True,"systems":all_systems})
+        elif path == "/api/bios/catalog":
+            try:
+                self.send_json({"ok":True, **scan_bios(s)})
+            except Exception as e:
+                self.send_json({"ok":False,"error":str(e)})
+        elif path == "/api/bios/summary":
+            try:
+                data = scan_bios(s)
+                self.send_json({"ok":True,"summary":data["summary"],
+                                "extras":data["extras"],"source":data["source"]})
+            except Exception as e:
+                self.send_json({"ok":False,"error":str(e)})
         elif path == "/api/bios/missing":
             bios_dir = Path(s.get("bios_dir","/userdata/bios"))
             user_systems = get_rom_systems_cached(s)
@@ -6340,11 +6911,29 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             system = (d.get("system") or "").strip()
             if not fname or not url:
                 self.send_json({"ok": False, "error": "Faltan 'file' o 'url'"}); return
-            expected = [b["md5"] for b in _get_bios_entries(system)
-                        if b.get("file") == fname and b.get("md5")]
+            expected = _bios_expected_md5s(system, fname)
             result = download_bios_from_url(
                 s.get("bios_dir", "/userdata/bios"), fname, url, expected)
+            if result.get("ok"):
+                check = _bios_validate_placed(s, system, fname)
+                result["estado"] = check.get("estado")
+                result["md5_valid"] = check.get("md5_ok")
             self.send_json(result)
+        elif path == "/api/bios/scan":
+            try:
+                data = scan_bios(s, force=True)
+                self.send_json({"ok":True,"summary":data["summary"],
+                                "extras":data["extras"],"source":data["source"]})
+            except Exception as e:
+                self.send_json({"ok":False,"error":str(e)})
+        elif path == "/api/bios/repair":
+            d = self.read_json()
+            slug   = (d.get("system") or "").strip()
+            rel    = (d.get("file") or "").strip()
+            source = (d.get("source") or "").strip() or None
+            if not slug or not rel:
+                self.send_json({"ok":False,"error":"Faltan 'system' o 'file'"}); return
+            self.send_json(repair_bios(s, slug, rel, source))
         elif path == "/api/bios/missing/skip":
             d = self.read_json()
             key = d.get("skip_key","")
@@ -6666,18 +7255,14 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 "dest":str(dest),
                 "size":human_size(len(fdata["data"])),
                 "md5":md5_val}
-            # Validate MD5 if system + file were provided
+            # Se valida contra el catálogo oficial: si el sistema pide un ZIP
+            # con determinados ficheros dentro (`zippedFile`), se comprueba el
+            # ZIP, no el md5 del ZIP.
             if target_system and target_file:
-                valid_md5s = []
-                raw = _get_bios_entries(target_system)
-                for b in raw:
-                    if b["file"] == target_file and b.get("md5"):
-                        valid_md5s.append(b["md5"])
-                if valid_md5s:
-                    entry["md5_valid"] = md5_val in valid_md5s
-                    entry["valid_md5s"] = valid_md5s
-                else:
-                    entry["md5_valid"] = None  # no reference to compare
+                check = _bios_validate_placed(s, target_system, target_file)
+                entry["estado"] = check.get("estado")
+                entry["md5_valid"] = check.get("md5_ok")
+                entry["valid_md5s"] = _bios_expected_md5s(target_system, target_file)
             saved.append(entry)
         self.send_json({"ok":True,"saved":saved})
 

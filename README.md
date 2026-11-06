@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-651%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-673%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -45,9 +45,10 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 | [¿Qué es?](#-qué-es) | [Instalación](#-instalación) | [API REST](#-api-rest) |
 | [Un solo repositorio](#-por-qué-un-solo-repositorio) | [Características](#-características) | [Uso](#-uso) |
 | [Capturas](#-capturas) | [Tests](#-tests) | [Scraper de carátulas](#-scraper-de-carátulas) |
-| [Estructura del proyecto](#-estructura-del-proyecto) | [Arquitectura](#-arquitectura) | [Requisitos](#-requisitos-y-compatibilidad) |
-| [Seguridad](#-seguridad) | [Preguntas frecuentes](#-preguntas-frecuentes) | [Roadmap](#-roadmap) |
-| [Contribuir](#-contribuir) | [Apoyar el proyecto](#-apoyar-el-proyecto) | [Licencia](#-licencia) |
+| [BIOS](#-bios) | [Estructura del proyecto](#-estructura-del-proyecto) | [Arquitectura](#-arquitectura) |
+| [Requisitos](#-requisitos-y-compatibilidad) | [Seguridad](#-seguridad) | [Preguntas frecuentes](#-preguntas-frecuentes) |
+| [Roadmap](#-roadmap) | [Contribuir](#-contribuir) | [Apoyar el proyecto](#-apoyar-el-proyecto) |
+| [Licencia](#-licencia) | | |
 
 ---
 
@@ -63,8 +64,9 @@ y el manager escribe el `es_systems_<slug>.cfg` correcto y crea las carpetas nec
 
 Además del gestor de sistemas, incluye un **panel de control en vivo** (CPU, GPU, RAM, disco y
 ventiladores, más el estado de EmulationStation y las últimas versiones de Batocera, leídos de
-`/proc` y `/sys`), un **monitor de ROMs y BIOS** que agrupa los sistemas por tipo de equipo y detecta
-qué BIOS faltan en cada uno, un **scraper multi-fuente** y un asistente de **arranque automático**.
+`/proc` y `/sys`), un **monitor de ROMs y BIOS** que agrupa los sistemas por tipo de equipo, una
+**sección de BIOS** que verifica cada fichero contra el catálogo oficial de la propia consola (y lo
+repara sin salir de la SD), un **scraper multi-fuente** y un asistente de **arranque automático**.
 
 En el dispositivo **no hay que compilar nada**: el bundle de la interfaz ya viene compilado en el
 repositorio y el backend lo sirve tal cual. El backend **no tiene ni una dependencia**: es un
@@ -147,10 +149,10 @@ El backend y la API lo tienen todo, pero estas secciones **todavía no están en
 aparecen marcadas como *Pronto*). Hasta entonces se usan desde la interfaz clásica, que el backend
 sigue sirviendo:
 
-- **💾 Monitor de ROMs y BIOS** — inventario por sistema (número de ROMs, extensiones, subcarpetas),
+- **💾 Monitor de ROMs** — inventario por sistema (número de ROMs, extensiones, subcarpetas),
   agrupado en secciones plegables por tipo de equipo (Arcade, Consolas, Portátiles, Ordenadores, Otros)
-  con filtros combinables por tipo y por fabricante, y verificación de BIOS: qué falta, en qué sistema,
-  con subida manual, descarga automática y lista de omisiones.
+  con filtros combinables por tipo y por fabricante. La **verificación de BIOS** ya está en la SPA
+  (sección *ROMs y BIOS*), donde además se puede reparar lo que está mal colocado.
 - **🎨 Temas y assets** — temas instalados, tema activo, estructura de assets esperada y subida de
   logos, que se guardan como `art/logo.png` dentro del tema activo (si no tienes uno, Pillow genera
   un logo de relleno).
@@ -488,7 +490,7 @@ El servidor escucha en `0.0.0.0`, así que también funciona desde el móvil.
 | **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), tema de la interfaz, información del sistema e instrucciones |
 | **Logros** | Dashboard de RetroAchievements: los juegos con más logros, con la carátula de tu biblioteca |
 | **Scraper** | Scrapea carátulas y metadatos, por sistema completo o por juego, desde ScreenScraper, TheGamesDB o IGDB |
-| *ROMs y BIOS* | Marcada como *Pronto* en la SPA; está en la interfaz clásica y en la API |
+| **ROMs y BIOS** | Verificación de las BIOS contra el catálogo oficial de la consola: qué está correcto, qué falta y qué está mal colocado, con reparación sin salir de la SD, subida manual y lista de omisiones |
 
 Tras crear o modificar un sistema, Batocera necesita releer su configuración: el manager ofrece
 reiniciar EmulationStation desde la propia interfaz.
@@ -536,6 +538,36 @@ juegos del panel de control y para el juego al azar.
 
 ---
 
+## 🧬 BIOS
+
+La sección **ROMs y BIOS** de la SPA revisa, sistema a sistema, que las BIOS que exige Batocera
+estén donde deben y con el contenido correcto.
+
+**El catálogo sale de la propia consola**, no de una lista congelada en el manager: la lista de BIOS
+cambia con la versión de Batocera, así que se lee de `/usr/bin/batocera-systems` (el script
+oficial, con el slug del sistema, su nombre, la ruta de cada BIOS, su md5 y **qué fichero tiene que
+ir dentro de cada ZIP**), con el `readme.txt` de `/usr/share/batocera/datainit/bios/` como respaldo.
+Por eso el manager sabe lo que exige *tu* versión y no el de otra.
+
+**Cada BIOS tiene un estado**: `correcta` (en su sitio y con el hash que pide Batocera), `sin
+verificar` (en su sitio, pero Batocera no publica su hash), `hash distinto`, `falta un fichero`
+dentro del ZIP, `reparable` (el contenido está en otro ZIP o en otra carpeta de la SD), `ausente`,
+`omitida` (no la necesitas) e `ilegible`. Las tarjetas se ordenan por criticidad: primero lo que
+impide jugar.
+
+**Verificar por contenido, no por nombre.** Batocera no compara el hash del ZIP (que es el de un ZIP
+concreto), sino el hash de lo que lleva **dentro**. El manager abre el ZIP y comprueba cada
+miembro, que es exactamente lo que hace Batocera. Por eso una BIOS puede estar perfectamente bien y
+aun así no tener su propio hash publicado.
+
+**Reparar sin salir de la SD.** Cuando el contenido que falta ya está en la consola (dentro de otro
+ZIP o en otra carpeta), el manager lo reúne y lo coloca en la ruta exacta que pide el catálogo,
+comprueba el resultado y deja el fichero original en `/userdata/bios/.quarantine/`. Si no hay nada
+que poner, no toca el destino. Y si la BIOS no está en la consola, se puede **subir a mano** (la
+app indica la ruta y el hash que tiene que tener) u **omitirla** si de verdad no la necesitas.
+
+---
+
 ## 🧱 Arquitectura
 
 Intencionadamente sencilla: **un proceso, un fichero de servidor y un cliente**.
@@ -580,7 +612,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **EmulationStation** | `/api/es/status` · `/api/es/restart` |
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
-| **BIOS** | `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
+| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
 | **Actualización** | `/api/update` · `/api/app-update` |
@@ -594,12 +626,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **651 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **673 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 651 passed in ~30s
+# 673 passed in ~30s
 ```
 
 ---
@@ -621,7 +653,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 651 tests con pytest
+├── tests/                    # 673 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto
@@ -756,8 +788,9 @@ No. Usa sólo la librería estándar de Python 3, la que ya trae Batocera.
 **¿Qué diferencia hay entre la interfaz React y la clásica?**  
 La SPA de React es la que se sirve por defecto; la clásica (un único fichero HTML) queda de
 respaldo y el backend la sirve automáticamente si el bundle compilado no está en la consola. Las dos
-hablan con la misma API, así que lo que hace una lo hace la otra. La sección de ROMs y BIOS
-todavía sólo está en la clásica: en la SPA aparece marcada como *Pronto*.
+hablan con la misma API, así que lo que hace una lo hace la otra. La verificación de BIOS ya está
+en la SPA (sección *ROMs y BIOS*); el inventario de ROMs, los temas y la edición de ROMs siguen
+sólo en la clásica.
 
 **¿Por qué antes había dos repositorios y ahora hay uno?**  
 Durante el desarrollo sí los hubo: este era el de la interfaz React y el otro el de la variante
@@ -818,9 +851,9 @@ mucho.
 Lo primero, **llevar a la SPA las secciones que ya existen en la interfaz clásica** (en el menú
 están marcadas como *Pronto*):
 
-- **ROMs y BIOS** — inventario por sistema y verificación de BIOS.
 - **Temas y assets** — temas instalados, tema activo y subida de logos.
 - **Edición de ROMs** — renombrar, metadatos y carátulas.
+- **Monitor de ROMs** — el inventario por sistema, agrupado por tipo de equipo.
 
 Y ~~**Scraper** — las tres fuentes y la descarga de imágenes~~ — **hecho**: la sección del scraper ya
 está en la SPA, con las tres fuentes, el scrape por sistema y por juego y la edición de metadatos.
