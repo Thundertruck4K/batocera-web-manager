@@ -7,6 +7,39 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **El botón *Reparar* ya sirve de algo**: cuando el contenido de una BIOS no está en la propia
+  consola, el manager lo busca en **archive.org**. Antes el botón sólo reparaba lo que ya estaba en
+  la SD, así que en una consola nueva no tenía ninguna utilidad.
+  - El emparejamiento es **siempre por contenido**: el md5 que exige el catálogo oficial tiene que
+    aparecer en el fichero de la fuente o dentro de uno de sus ZIP. El nombre sólo sirve para
+    ordenar la búsqueda: un ZIP con el nombre correcto pero otro contenido no es candidato.
+  - Las colecciones grandes (la de MESS son 445 MB) se miran **por peticiones de rango**: se lee
+    sólo el índice central del ZIP y se descarga únicamente el fichero que hace falta, no el ZIP
+    entero. Los ZIP anidados (un ZIP dentro del ZIP de la colección) también se abren.
+  - El catálogo de fuentes se cachea **7 días** en
+    `/userdata/system/batocera_manager_bios_sources.json`, con el título, el autor, la licencia y el
+    md5 y el tamaño de cada fichero. El indexado inicial tarda unos segundos y se hace en segundo
+    plano: la pantalla no se queda esperando.
+  - Fuentes por defecto: las colecciones de BIOS de MESS (0.151 y 0.149), las de Emularity y
+    JsMess, el pack de EmuDeck y los ROMs de la Elektronika BK.
+  - En una consola con 62 BIOS ausentes, **25 se pueden instalar tal cual** desde estas fuentes y 7
+    más trae la fuente sólo en parte (la interfaz lo dice: «trae 2 de 3 ficheros»). Las 32
+    restantes no están en ninguna colección publicada: para ésas el manager lo dice y ofrece subir
+    el fichero a mano o buscarlo en GitHub.
+  - **Legal**: ninguna de las fuentes declara licencia, así que la interfaz lo enseña y **la
+    descarga sólo ocurre cuando el usuario elige la fuente**. La reparación local se prioriza
+    siempre y, si no hay ninguna fuente con ese contenido, el manager lo dice claro y ofrece subir
+    el fichero a mano o buscarlo en GitHub.
+  - La búsqueda va en tres fases para no gastar peticiones: lo que se sabe sin descargar (el md5 que
+    publica archive.org), luego los contenedores cuyo nombre coincide y, sólo si no hay nada, los
+    de nombre parecido. Hay un presupuesto de contenedores porque cada uno es una ida al servidor.
+- `GET /api/bios/sources` (catálogo de fuentes con su licencia y su estado; `?force=1` rehace el
+  índice), `POST /api/bios/sources/search` (candidatos para una BIOS) y `POST /api/bios/install`
+  (descarga un candidato y lo instala verificando el md5).
+- `POST /api/bios/repair` admite `source`: `"local"` (sólo la consola), `"archive"` (consola y
+  archive.org) o un candidato concreto.
+- La sección de BIOS enseña **de dónde sale cada BIOS**: una tira con las fuentes de archive.org
+  indexadas, cuántas declaran licencia y un botón para rehacer el índice.
 - **Sección de BIOS en la SPA** (la de *ROMs y BIOS*, que deja de estar marcada como *Pronto*): una
   tarjeta por sistema con el icono temático, el nombre del catálogo de Batocera, el estado y la
   cobertura; el orden es por criticidad (lo que impide jugar primero), por nombre o por cobertura, y

@@ -528,6 +528,78 @@ export interface BiosRepairResult {
   /** Dónde se guardó el fichero que se ha sustituido. */
   quarantine?: string | null
   faltan?: string[]
+  /** De qué fuente salió el contenido, si se descargó. */
+  fuente?: string
+  /** Licencia que declara la fuente. */
+  licencia?: string | null
+  error?: string
+}
+
+/* ── Fuentes de BIOS en archive.org ────────────────────────────────── */
+
+/**
+ * Una fuente de BIOS: un item de archive.org con su licencia y lo que se ha
+ * indexado de él. El índice se cachea 7 días en la consola.
+ */
+export interface BiosSource {
+  id: string
+  title: string
+  /** `files`: el item publica ficheros sueltos. `zip`: es un ZIP grande. */
+  kind: 'files' | 'zip'
+  creator: string | null
+  /** Licencia que declara el item (si no, es `null`). */
+  license: string | null
+  licenseurl: string | null
+  note: string | null
+  /** Ficheros sueltos del item. */
+  files: number
+  /** Miembros del ZIP, si el item es un ZIP grande. */
+  members: number
+  indexed_at: number | null
+  error?: string | null
+}
+
+/**
+ * Candidato: un contenido de archive.org que encaja con lo que pide el
+ * catálogo de Batocera.
+ *
+ * El emparejamiento es por contenido, nunca por nombre: `md5` es el hash que
+ * tiene el contenido que se instalaría.
+ */
+export interface BiosCandidate {
+  /** Identificador del item de archive.org. */
+  item: string
+  /** Nombre de la fuente (para mostrarlo). */
+  source: string
+  creator: string | null
+  license: string | null
+  licenseurl: string | null
+  /** `fichero`: el fichero suelto. `contenedor`: un ZIP. `miembro`: dentro de un ZIP. */
+  kind: 'fichero' | 'contenedor' | 'miembro'
+  /** Nombre del fichero dentro del item. */
+  name: string
+  /** Miembro concreto dentro del ZIP (si lo hay). */
+  member: string | null
+  /** Hash del contenido que se instalaría. */
+  md5: string | null
+  /** Cómo se ha encontrado: `md5` exacto, `miembro` verificado o `nombre`. */
+  match: 'md5' | 'miembro' | 'nombre'
+  size: number
+  /** Nombre canónico dentro del ZIP de destino (si el destino es un ZIP). */
+  dest?: string
+  /** Cuántos de los ficheros que exige el catálogo trae esta fuente. */
+  trae?: number
+  /** Cuántos ficheros exige el catálogo en total. */
+  exigido?: number
+  /** `true` si la fuente trae todo lo que hace falta. */
+  completo?: boolean
+}
+
+export interface BiosSearchResult {
+  ok: boolean
+  candidates: BiosCandidate[]
+  /** Por qué no hay candidatos, si no los hay. */
+  motivo?: string | null
   error?: string
 }
 

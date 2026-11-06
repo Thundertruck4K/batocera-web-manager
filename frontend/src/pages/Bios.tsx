@@ -62,6 +62,19 @@ export function BiosPage() {
   const { openMenu } = useShell()
   const { showNotify } = useNotify()
   const { data, error, loading, refresh } = useApi(() => api.biosCatalog(), [])
+  /** `force` rehace el índice de fuentes de archive.org (tarda unos segundos). */
+  const [pedidoFuentes, setPedidoFuentes] = useState({ force: false, n: 0 })
+  const [indexando, setIndexando] = useState(true)
+  const { data: fuentes, loading: cargandoFuentes } = useApi(
+    () =>
+      api.biosSources(pedidoFuentes.force).then((respuesta) => {
+        setIndexando(Boolean(respuesta.indexing))
+        return respuesta
+      }),
+    [pedidoFuentes.n],
+    // Mientras el backend indexa en segundo plano, se va preguntando.
+    { pollMs: indexando ? 8000 : 0 },
+  )
 
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('problemas')
@@ -161,6 +174,16 @@ export function BiosPage() {
     }
   }
 
+  /* Fuentes de archive.org: dónde se puede buscar el contenido que falta. */
+  const resumenFuentes = useMemo(() => {
+    const lista = fuentes?.sources ?? []
+    return {
+      total: lista.length,
+      conLicencia: lista.filter((fuente) => fuente.license).length,
+      fallidas: lista.filter((fuente) => fuente.error).length,
+    }
+  }, [fuentes])
+
   /** Repara todo lo reparable de un sistema. */
   const repairSystem = async (system: BiosSystemView) => {
     const reparables = system.files.filter((file) => esReparable(file.estado))
@@ -170,7 +193,7 @@ export function BiosPage() {
     let fail = 0
     for (const file of reparables) {
       try {
-        await api.biosRepair({ system: system.slug, file: file.file })
+        await api.biosRepair({ system: system.slug, file: file.file, source: 'local' })
         ok += 1
       } catch {
         fail += 1
@@ -179,7 +202,9 @@ export function BiosPage() {
     showNotify({
       variant: fail ? 'error' : 'success',
       title: fail ? `${ok} reparadas y ${fail} con problemas` : `${ok} BIOS reparadas`,
-      message: fail ? 'Las que fallaron se pueden subir a mano.' : 'Verificadas contra el catálogo.',
+      message: fail
+        ? 'Las que fallaron se pueden subir a mano.'
+        : 'Verificadas contra el catálogo.',
     })
     await refresh()
   }
@@ -231,6 +256,34 @@ export function BiosPage() {
             icon={Wrench}
             hint="están en la consola"
           />
+        </div>
+
+        {/* Fuentes en archive.org */}
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-[11px] text-muted-foreground">
+          <PackageSearch className="size-4 shrink-0" />
+          <span className="min-w-0">
+            {indexando
+              ? 'Indexando las fuentes de archive.org…'
+              : `${resumenFuentes.total} fuentes en archive.org${
+                  resumenFuentes.conLicencia
+                    ? ` · ${resumenFuentes.conLicencia} con licencia declarada`
+                    : ' · ninguna declara licencia'
+                }`}
+          </span>
+          {resumenFuentes.fallidas > 0 && (
+            <span className="text-amber-600 dark:text-amber-400">
+              {resumenFuentes.fallidas} sin indexar
+            </span>
+          )}
+          <span className="hidden min-w-0 flex-1 truncate sm:inline">
+            Las que no están en la consola se pueden buscar ahí desde el detalle del sistema.
+          </span>
+          <IconButton
+            label="Rehacer el índice de fuentes de archive.org"
+            onClick={() => setPedidoFuentes((prev) => ({ force: true, n: prev.n + 1 }))}
+          >
+            <RefreshCw className={cn('size-4', cargandoFuentes && 'animate-spin')} />
+          </IconButton>
         </div>
 
         {/* Filtros */}

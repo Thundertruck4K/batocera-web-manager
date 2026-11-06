@@ -122,7 +122,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 673 con `pytest` en `tests/` (54 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 696 con `pytest` en `tests/` (55 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -200,6 +200,27 @@ El proyecto se trabaja en **un solo repositorio**:
     a failed repair never leaves the system without its BIOS.
   - Endpoints: `GET /api/bios/catalog`, `GET /api/bios/summary`, `POST /api/bios/scan`,
     `POST /api/bios/repair`. The SPA section is `pages/Bios.tsx` (+ `components/bios/`).
+- **BIOS sources come from archive.org, matched by content** (`app.py`, section "Fuentes de BIOS en
+  archive.org").
+  - A source is an archive.org item. `BIOS_SOURCES_DEFAULT` lists the MESS 0.151/0.149 BIOS
+    collections, Emularity, JsMess, the EmuDeck pack and the Elektronika BK ROMs.
+  - `https://archive.org/metadata/<id>` publishes each file's **md5 and size without downloading
+    it**, so loose files are matched by hash for free. The big collections are single ZIPs whose
+    **central directory is read with HTTP Range requests** (`_remote_zip_index()`), so a 445 MB
+    collection is inspected without downloading it, and only the needed member is fetched
+    (`_remote_zip_member()`).
+  - **Matching is always by content**: the md5 the catalogue demands must appear in the file or
+    inside a ZIP of the source. The name only orders the search. A ZIP with the right name and the
+    wrong content is not a candidate.
+  - The catalogue is cached 7 days in `/userdata/system/batocera_manager_bios_sources.json`
+    (`_bios_sources_file()` derives it from `SETTINGS_FILE`, so tests can redirect it). The first
+    index takes ~30 s and runs in a background thread; the search waits for it.
+  - **Legal**: none of the items declares a licence, so the UI shows it and the download only
+    happens when the user picks the source. Local repair always comes first, and when no source has
+    the content the API says so instead of failing silently.
+  - Endpoints: `GET /api/bios/sources` (`?force=1` re-indexes), `POST /api/bios/sources/search`,
+    `POST /api/bios/install`. `POST /api/bios/repair` accepts `source`: `"local"`, `"archive"` or a
+    candidate object.
 - **ScreenScraper's name search needs a platform id, and time**: without `systemeid` (or with `0`)
   the API still answers, but it searches every platform and takes over a minute, so the name search
   uses `SS_SEARCH_TIMEOUT_NAME` (75 s) — with the old 20 s timeout the result was always lost. The

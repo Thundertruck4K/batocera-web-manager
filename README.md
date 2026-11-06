@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-673%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-696%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -566,6 +566,19 @@ comprueba el resultado y deja el fichero original en `/userdata/bios/.quarantine
 que poner, no toca el destino. Y si la BIOS no está en la consola, se puede **subir a mano** (la
 app indica la ruta y el hash que tiene que tener) u **omitirla** si de verdad no la necesitas.
 
+**Buscarla en archive.org cuando no está en la consola.** El botón *Reparar* no se queda en «no
+se ha encontrado»: si el contenido no está en la SD, el manager lo busca en **archive.org** y
+enseña las fuentes con su tamaño, su autor y la licencia que declaran. El emparejamiento es
+**siempre por contenido**: el md5 que exige el catálogo tiene que aparecer en el fichero de la
+fuente o dentro de uno de sus ZIP; el nombre sólo sirve para ordenar la búsqueda. Las colecciones
+grandes (la de MESS son 445 MB) se miran **por rangos HTTP**, así que se lee su índice central y
+se descarga sólo el fichero que hace falta, no el ZIP entero.
+
+El catálogo de fuentes se cachea 7 días en `/userdata/system/batocera_manager_bios_sources.json`.
+**Ninguna de las fuentes declara licencia**, así que la app lo dice y la descarga sólo ocurre cuando
+el usuario elige la fuente: son BIOS con copyright. Si no hay ninguna fuente con ese contenido, el
+manager lo dice claro y ofrece subir el fichero a mano o buscarlo en GitHub.
+
 ---
 
 ## 🧱 Arquitectura
@@ -612,7 +625,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **EmulationStation** | `/api/es/status` · `/api/es/restart` |
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
-| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
+| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` · `/api/bios/sources` · `/api/bios/sources/search` · `/api/bios/install` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
 | **Actualización** | `/api/update` · `/api/app-update` |
@@ -626,12 +639,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **673 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **696 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 673 passed in ~30s
+# 696 passed in ~30s
 ```
 
 ---
@@ -653,7 +666,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 673 tests con pytest
+├── tests/                    # 696 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

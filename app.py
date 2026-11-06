@@ -3411,6 +3411,925 @@ def repair_bios(settings, slug, rel, source=None):
             "dest": str(dest), "md5": (index["files"].get(rel) or {}).get("md5"),
             "motivo": detalle.get("motivo"), "quarantine": quarantine}
 
+# ─── Fuentes de BIOS en archive.org ────────────────────────────────────────
+#
+# Una fuente es un item de archive.org. De cada item se guarda la lista de
+# ficheros con su md5 (archive.org lo publica sin descargar nada) y, si el item
+# es un ZIP grande, su índice central leído por peticiones de rango: así se
+# puede mirar qué lleva dentro un ZIP de 445 MB sin bajarlo entero.
+#
+# El emparejamiento es SIEMPRE por contenido: el md5 que exige el catálogo de
+# Batocera tiene que aparecer en el fichero de la fuente o dentro de uno de
+# sus ZIP. El nombre sólo sirve para ordenar la búsqueda; nunca da por bueno
+# un fichero.
+
+BIOS_SOURCES_TTL  = 7 * 24 * 3600        # 7 días: caché del catálogo de fuentes
+BIOS_SOURCE_MAX   = 64 * 1024 * 1024     # 64 MiB: por encima no es una BIOS
+BIOS_SOURCE_TIMEOUT = 45                 # segundos por petición
+BIOS_SOURCE_CONTAINERS = 8               # contenedores que se abren por búsqueda
+BIOS_SOURCE_DEADLINE = 150               # segundos de búsqueda como máximo
+
+BIOS_SOURCES_DEFAULT = [
+    {
+        "id": "MESS-0.151.BIOS.ROMs",
+        "kind": "zip",
+        "file": "MESS-0.151.BIOS.ROMs.zip",
+        "title": "MESS 0.151 BIOS ROM Collection",
+        "note": "La BIOS de MESS en un ZIP con una carpeta por sistema. Es lo "
+                "más parecido al catálogo de Batocera que hay publicado.",
+    },
+    {
+        "id": "MESS-0.149.BIOS.ROMs",
+        "kind": "zip",
+        "file": "MESS-0.149.BIOS.ROMs.zip",
+        "title": "MESS 0.149 BIOS ROM Collection",
+        "note": "Versión anterior de la BIOS de MESS, por si la nueva no trae "
+                "algún fichero.",
+    },
+    {
+        "id": "emularity_bios_v1",
+        "kind": "files",
+        "title": "Emularity BIOS Collection",
+        "note": "Un ZIP de BIOS por sistema, el mismo reparto que usa Emularity.",
+    },
+    {
+        "id": "jsmess_bios_v2",
+        "kind": "files",
+        "title": "JSMESS BIOS Collection",
+        "note": "BIOS por sistema de JsMess.",
+    },
+    {
+        "id": "bios_20240224",
+        "kind": "zip",
+        "file": "bios.zip",
+        "title": "EMUDECK BIOS PACK",
+        "note": "Pack de BIOS de EmuDeck. Son 1,4 GB, pero de aquí sólo se "
+                "descarga el fichero que hace falta.",
+    },
+    {
+        "id": "elektronika-bk-roms",
+        "kind": "files",
+        "title": "Elektronika BK Roms",
+        "note": "ROMs de la Elektronika BK (sistema bk).",
+    },
+]
+
+_bios_sources_cache = {"ts": 0.0, "data": None}
+_bios_sources_indexing = {"running": False}
+_bios_container_cache = {}       # {(item, nombre): {miembro: md5}}
+_bios_payload_cache = {}         # {(item, nombre): bytes del contenedor}
+
+
+def _bios_sources_file():
+    """Ruta del catálogo de fuentes (derivada de SETTINGS_FILE, monkeypatcheable)."""
+    return SETTINGS_FILE.parent / "batocera_manager_bios_sources.json"
+
+
+def _bios_sources_read():
+    """Catálogo de fuentes guardado en disco, con los items ya indexados."""
+    try:
+        data = json.loads(_bios_sources_file().read_text(encoding="utf-8"))
+    except Exception:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    data.setdefault("version", 1)
+    guardados = data.get("sources")
+    if not isinstance(guardados, list):
+        guardados = []
+    fuentes = [s for s in guardados if isinstance(s, dict) and s.get("id")]
+    conocidos = {str(s["id"]) for s in fuentes}
+    for src in BIOS_SOURCES_DEFAULT:
+        if src["id"] not in conocidos:
+            fuentes.append(dict(src))
+    data["sources"] = fuentes
+    if not isinstance(data.get("items"), dict):
+        data["items"] = {}
+    if not isinstance(data.get("containers"), dict):
+        data["containers"] = {}
+    return data
+
+
+def _bios_sources_write(data):
+    """Guarda el catálogo de fuentes (best effort: si falla, se sigue igual)."""
+    try:
+        path = _bios_sources_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _ia_text(value):
+    """archive.org devuelve algunos campos como texto y otros como lista."""
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else None
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def _ia_reintento(fn, intentos=3, espera=2):
+    """archive.org devuelve 500 de vez en cuando: se reintenta un par de veces."""
+    ultimo = None
+    for intento in range(intentos):
+        try:
+            return fn()
+        except Exception as exc:
+            ultimo = exc
+            if intento + 1 < intentos:
+                time.sleep(espera * (intento + 1))
+    raise ultimo
+
+
+def _ia_get(url, timeout=BIOS_SOURCE_TIMEOUT, limit=BIOS_SOURCE_MAX):
+    """GET a archive.org, acotado para no comerse un fichero gigante."""
+    def _descargar():
+        import urllib.request
+        req = urllib.request.Request(url)
+        req.add_header("User-Agent", "BatoceraManager/1.0")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = resp.read(limit + 1)
+        if len(data) > limit:
+            raise RuntimeError("el fichero es demasiado grande")
+        return data
+
+    return _ia_reintento(_descargar)
+
+
+def _ia_head(url, timeout=BIOS_SOURCE_TIMEOUT):
+    """Tamaño del fichero y si el servidor admite peticiones por rango."""
+    import urllib.request
+    req = urllib.request.Request(url, method="HEAD")
+    req.add_header("User-Agent", "BatoceraManager/1.0")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return (int(resp.headers.get("Content-Length") or 0),
+                (resp.headers.get("Accept-Ranges") or "").lower())
+
+
+def _ia_range(url, start, length, timeout=BIOS_SOURCE_TIMEOUT):
+    """Pide un fragmento concreto del fichero (bytes=inicio-fin).
+
+    Si el servidor ignora el rango y manda el fichero entero, se corta: para
+    sacar 27 KB de un ZIP de 445 MB no vale la pena bajarlo todo (ni meterse
+    en la RAM de la consola).
+    """
+    import urllib.request
+    req = urllib.request.Request(url)
+    req.add_header("User-Agent", "BatoceraManager/1.0")
+    req.add_header("Range", f"bytes={start}-{start + length - 1}")
+
+    def _pedir():
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            estado = getattr(resp, "status", None) or resp.getcode()
+            if estado != 206:
+                total = int(resp.headers.get("Content-Length") or 0)
+                if total > 16 * 1024 * 1024:
+                    raise RuntimeError(
+                        f"el servidor no ha honrado el rango (HTTP {estado}, {total} bytes)")
+                data = resp.read(total + 1)
+                return data[start:start + length]
+            data = resp.read(length + 1)
+        if len(data) > length:
+            raise RuntimeError("el servidor ha mandado más datos de los pedidos")
+        return data
+
+    return _ia_reintento(_pedir)
+
+
+def _remote_zip_index(url, timeout=BIOS_SOURCE_TIMEOUT):
+    """Índice central de un ZIP remoto, leído con peticiones por rango.
+
+    Devuelve [{name, size, csize, crc, method, offset}]. No baja el ZIP
+    entero: sólo lee el directorio central (unos cientos de KB).
+    """
+    import struct
+    size, accept = _ia_head(url, timeout)
+    if "bytes" not in accept:
+        raise RuntimeError("archive.org no admite peticiones por rango")
+    cola = min(size, 65557)
+    data = _ia_range(url, size - cola, cola, timeout)
+    pos = data.rfind(b"PK\x05\x06")
+    if pos < 0:
+        raise RuntimeError("no se encuentra el fin del directorio central")
+    cd_size = struct.unpack_from("<I", data, pos + 12)[0]
+    cd_off = struct.unpack_from("<I", data, pos + 16)[0]
+    if cd_off == 0xFFFFFFFF or cd_size == 0xFFFFFFFF:
+        loc = data.rfind(b"PK\x06\x07")
+        if loc < 0:
+            raise RuntimeError("ZIP64 sin localizador")
+        z64 = struct.unpack_from("<Q", data, loc + 8)[0]
+        head = _ia_range(url, z64, 56, timeout)
+        if head[:4] != b"PK\x06\x06":
+            raise RuntimeError("ZIP64 mal formado")
+        cd_size = struct.unpack_from("<Q", head, 40)[0]
+        cd_off = struct.unpack_from("<Q", head, 48)[0]
+    if not cd_size or not cd_off:
+        raise RuntimeError("el ZIP no tiene directorio central")
+    cd = _ia_range(url, cd_off, cd_size, timeout)
+    entradas = []
+    off = 0
+    while off + 46 <= len(cd) and cd[off:off + 4] == b"PK\x01\x02":
+        flags = struct.unpack_from("<H", cd, off + 8)[0]
+        method = struct.unpack_from("<H", cd, off + 10)[0]
+        crc = struct.unpack_from("<I", cd, off + 16)[0]
+        csize = struct.unpack_from("<I", cd, off + 20)[0]
+        usize = struct.unpack_from("<I", cd, off + 24)[0]
+        nlen = struct.unpack_from("<H", cd, off + 28)[0]
+        elen = struct.unpack_from("<H", cd, off + 30)[0]
+        clen = struct.unpack_from("<H", cd, off + 32)[0]
+        lho = struct.unpack_from("<I", cd, off + 42)[0]
+        nombre = cd[off + 46:off + 46 + nlen].decode(
+            "utf-8" if flags & 0x800 else "cp437", "replace")
+        extra = cd[off + 46 + nlen:off + 46 + nlen + elen]
+        if (csize == 0xFFFFFFFF or usize == 0xFFFFFFFF or lho == 0xFFFFFFFF) and extra:
+            eo = 0
+            while eo + 4 <= len(extra):
+                hid, hsz = struct.unpack_from("<HH", extra, eo)
+                if hid == 0x0001:
+                    q = eo + 4
+                    if usize == 0xFFFFFFFF:
+                        usize = struct.unpack_from("<Q", extra, q)[0]
+                        q += 8
+                    if csize == 0xFFFFFFFF:
+                        csize = struct.unpack_from("<Q", extra, q)[0]
+                        q += 8
+                    if lho == 0xFFFFFFFF:
+                        lho = struct.unpack_from("<Q", extra, q)[0]
+                    break
+                eo += 4 + hsz
+        entradas.append({"name": nombre, "size": usize, "csize": csize,
+                         "crc": crc, "method": method, "offset": lho})
+        off += 46 + nlen + elen + clen
+    return entradas
+
+
+def _remote_zip_member(url, entrada, timeout=BIOS_SOURCE_TIMEOUT):
+    """Descarga sólo los bytes de un miembro de un ZIP remoto.
+
+    Se pide la cabecera local y el dato en una sola petición (el nombre y el
+    extra raramente pasan de 512 bytes); si no caben, se pide el dato aparte.
+    """
+    import struct
+    inicio = entrada["offset"]
+    cab = _ia_range(url, inicio, 30, timeout)
+    if cab[:4] != b"PK\x03\x04":
+        raise RuntimeError("cabecera local inválida")
+    nlen = struct.unpack_from("<H", cab, 26)[0]
+    elen = struct.unpack_from("<H", cab, 28)[0]
+    cabecera = 30 + nlen + elen
+    if cabecera <= 512:
+        # Cabecera y dato de golpe: una sola ida al servidor.
+        bloque = _ia_range(url, inicio, cabecera + entrada["csize"], timeout)
+        crudo = bloque[cabecera:]
+    else:
+        crudo = _ia_range(url, inicio + cabecera, entrada["csize"], timeout)
+    if entrada["method"] == 0:
+        return crudo
+    if entrada["method"] == 8:
+        return zlib.decompressobj(-15).decompress(crudo)
+    raise RuntimeError(f"método de compresión no soportado: {entrada['method']}")
+
+
+def _ia_item(item_id, timeout=BIOS_SOURCE_TIMEOUT):
+    """Metadatos de un item de archive.org: título, licencia y ficheros."""
+    url = f"https://archive.org/metadata/{urllib.parse.quote(item_id)}"
+    data = json.loads(_ia_get(url, timeout, 8 * 1024 * 1024))
+    meta = data.get("metadata") or {}
+    files = []
+    for f in data.get("files") or []:
+        if f.get("source") != "original":
+            continue
+        nombre = f.get("name") or ""
+        if not nombre or nombre.startswith("__ia_thumb"):
+            continue
+        files.append({"name": nombre,
+                      "md5": (f.get("md5") or "").lower() or None,
+                      "size": int(f.get("size") or 0)})
+    return {"title": _ia_text(meta.get("title")),
+            "creator": _ia_text(meta.get("creator")),
+            "license": _ia_text(meta.get("license")),
+            "licenseurl": _ia_text(meta.get("licenseurl")),
+            "files": files}
+
+
+def _bios_sources_build(force=False, timeout=BIOS_SOURCE_TIMEOUT):
+    """Construye el índice de las fuentes (bloqueante).
+
+    Los items se cachean 7 días en `batocera_manager_bios_sources.json`.
+    """
+    now = time.time()
+    data = _bios_sources_read()
+    items = data["items"]
+    fuentes = []
+    for src in data["sources"]:
+        item_id = str(src.get("id") or "")
+        if not item_id:
+            continue
+        item = items.get(item_id) or {}
+        if item.get("ts"):
+            fresh = now - item["ts"] < BIOS_SOURCES_TTL
+        else:
+            fresh = False
+        if force or not fresh or not item.get("files"):
+            try:
+                item = _ia_item(item_id, timeout)
+                item["ts"] = now
+                item.pop("error", None)
+            except Exception as exc:
+                item = dict(item)
+                item["ts"] = now
+                item["error"] = str(exc)
+                item.setdefault("files", [])
+        # Un ZIP grande: su índice central se lee por rangos.
+        if src.get("kind") == "zip" and not item.get("members"):
+            fname = src.get("file")
+            if fname:
+                url = (f"https://archive.org/download/{urllib.parse.quote(item_id)}"
+                       f"/{urllib.parse.quote(fname)}")
+                try:
+                    item["members"] = _remote_zip_index(url, timeout)
+                    item["members_ts"] = now
+                    item.pop("members_error", None)
+                except Exception as exc:
+                    item["members_error"] = str(exc)
+        items[item_id] = item
+        fuentes.append({
+            "id": item_id,
+            "kind": src.get("kind") or "files",
+            "file": src.get("file"),
+            "title": src.get("title") or item.get("title") or item_id,
+            "note": src.get("note"),
+            "creator": item.get("creator"),
+            "license": item.get("license"),
+            "licenseurl": item.get("licenseurl"),
+            "files": item.get("files") or [],
+            "members": item.get("members") or [],
+            "ts": item.get("ts"),
+            "error": item.get("error") or item.get("members_error"),
+        })
+    data["items"] = items
+    _bios_sources_write(data)
+    result = {"sources": fuentes, "ts": now}
+    with _bios_lock:
+        _bios_sources_cache["ts"] = now
+        _bios_sources_cache["data"] = result
+    return result
+
+
+def _bios_sources_index(force=False, timeout=BIOS_SOURCE_TIMEOUT, wait=True):
+    """Índice de las fuentes: cada item con sus ficheros y, si es ZIP, sus miembros.
+
+    La primera vez tarda (hay que leer el índice central de los ZIP grandes),
+    así que la interfaz puede pedirlo sin esperar (`wait=False`): el indexado
+    sigue en segundo plano y la pantalla no se queda en blanco.
+    """
+    now = time.time()
+    if not force:
+        with _bios_lock:
+            cached = _bios_sources_cache.get("data")
+            if cached and now - _bios_sources_cache.get("ts", 0.0) < BIOS_SOURCES_TTL:
+                return cached
+    if wait:
+        with _bios_lock:
+            indexando = _bios_sources_indexing.get("running")
+        if indexando:
+            # Ya hay un indexado en marcha: se espera a que termine en vez
+            # de repetir el trabajo.
+            limite = time.time() + 180
+            while time.time() < limite:
+                time.sleep(0.5)
+                with _bios_lock:
+                    if not _bios_sources_indexing.get("running"):
+                        break
+            with _bios_lock:
+                cached = _bios_sources_cache.get("data")
+                if cached and time.time() - cached.get("ts", 0.0) < BIOS_SOURCES_TTL:
+                    return cached
+        return _bios_sources_build(force, timeout)
+    with _bios_lock:
+        if _bios_sources_indexing.get("running"):
+            return _bios_sources_cache.get("data") or {"sources": [], "ts": 0.0}
+        _bios_sources_indexing["running"] = True
+
+    def _worker():
+        try:
+            _bios_sources_build(force, timeout)
+        except Exception:
+            pass
+        finally:
+            with _bios_lock:
+                _bios_sources_indexing["running"] = False
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return _bios_sources_cache.get("data") or {"sources": [], "ts": 0.0}
+
+
+def bios_sources(force=False, timeout=BIOS_SOURCE_TIMEOUT):
+    """Catálogo de fuentes para la interfaz: licencia, tamaño y estado."""
+    index = _bios_sources_index(force, timeout, wait=force)
+    resumen = []
+    for src in index["sources"]:
+        resumen.append({
+            "id": src["id"],
+            "title": src["title"],
+            "kind": src["kind"],
+            "creator": src["creator"],
+            "license": src["license"],
+            "licenseurl": src["licenseurl"],
+            "note": src["note"],
+            "files": len(src["files"]),
+            "members": len(src["members"]),
+            "indexed_at": src["ts"],
+            "error": src["error"],
+        })
+    return {"sources": resumen, "ts": index["ts"],
+            "indexing": bool(_bios_sources_indexing.get("running"))}
+
+
+def _bios_expected_md5s(entry):
+    """Todos los md5 que sirven para una entrada del catálogo."""
+    out = set(entry.get("md5s") or [])
+    for m in entry.get("members") or []:
+        if m.get("md5"):
+            out.add(m["md5"])
+    return out
+
+
+def _bios_member_by_md5(wanted, digest):
+    """Nombre canónico del miembro del catálogo que corresponde a un md5."""
+    for nombre, md5 in wanted.items():
+        if md5 and md5 == digest:
+            return nombre
+    return None
+
+
+def _bios_source_url(item_id, nombre):
+    """URL de descarga de un fichero dentro de un item de archive.org."""
+    return (f"https://archive.org/download/{urllib.parse.quote(item_id)}"
+            f"/{urllib.parse.quote(nombre)}")
+
+
+def _bios_container_candidates(miembros, rel, slug=None):
+    """ZIP de la fuente que pueden contener el fichero buscado.
+
+    El nombre del contenedor tiene que parecerse al de la ruta esperada:
+    `enterprise/ep128emu/roms/exos20.rom` encaja con `ep128.zip` (la carpeta
+    `ep128emu` contiene `ep128`), y `tvc/tvc64.zip` con el sistema `tvc`.
+    El nombre sólo ordena la búsqueda: lo que vale es el md5 de lo que hay
+    dentro.
+    """
+    base = os.path.basename(rel).lower()
+    stem = os.path.splitext(base)[0]
+    partes = [p.lower() for p in rel.split("/")]
+    sistema = (slug or "").lower()
+    encontrados = []
+    for m in miembros:
+        nombre = os.path.basename(m.get("name") or "").lower()
+        if not nombre.endswith(".zip"):
+            continue
+        nstem = os.path.splitext(nombre)[0]
+        if not nstem:
+            continue
+        if sistema and (nstem == sistema or nstem.startswith(sistema)):
+            encontrados.append((0, m))
+        elif nstem in partes:
+            encontrados.append((1, m))
+        elif any(nstem in p for p in partes):
+            encontrados.append((2, m))
+        elif stem and stem in nstem and nstem != stem:
+            encontrados.append((3, m))
+        elif stem and nstem.startswith(stem):
+            encontrados.append((4, m))
+    encontrados.sort(key=lambda x: x[0])
+    return [m for _, m in encontrados[:BIOS_SOURCE_CONTAINERS]]
+
+
+def _bios_containers_file():
+    """Ruta de la caché de contenedores (fichero aparte: es pequeña)."""
+    return SETTINGS_FILE.parent / "batocera_manager_bios_containers.json"
+
+
+def _bios_container_members(item_id, nombre, timeout=BIOS_SOURCE_TIMEOUT):
+    """{miembro: md5} de un ZIP de la fuente.
+
+    Se cachea en memoria y en disco (7 días): abrir un ZIP es barato, pero
+   eson varias peticiones al servidor y no conviene repetirlas.
+    """
+    clave = f"{item_id}|{nombre}"
+    if clave in _bios_container_cache:
+        return _bios_container_cache[clave]
+    guardados = {}
+    try:
+        guardados = json.loads(_bios_containers_file().read_text(encoding="utf-8"))
+        if not isinstance(guardados, dict):
+            guardados = {}
+    except Exception:
+        guardados = {}
+    entrada = guardados.get(clave) or {}
+    # Un contenedor vacío no se cachea: significa que no se pudo leer (un
+    # fallo de red), y dejarlo cacheado dejaría esa BIOS sin fuente para
+    # siempre.
+    if entrada.get("ts") and entrada.get("members") and \
+            time.time() - entrada["ts"] < BIOS_SOURCES_TTL:
+        _bios_container_cache[clave] = entrada["members"]
+        return _bios_container_cache[clave]
+    miembros = {}
+    try:
+        payload = _bios_container_payload(item_id, nombre, timeout)
+        with zipfile.ZipFile(io.BytesIO(payload)) as z:
+            for info in z.infolist():
+                if info.is_dir() or info.file_size > BIOS_SOURCE_MAX:
+                    continue
+                data_miembro = z.read(info)
+                miembros[info.filename] = hashlib.md5(data_miembro).hexdigest()
+    except Exception:
+        miembros = {}
+    if miembros:
+        _bios_container_cache[clave] = miembros
+        guardados[clave] = {"ts": time.time(), "members": miembros}
+        try:
+            path = _bios_containers_file()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(guardados, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
+    return miembros
+
+
+def _bios_source_payload(item_id, nombre, miembro=None, timeout=BIOS_SOURCE_TIMEOUT):
+    """Bytes del fichero (o del miembro dentro de él) que ofrece una fuente."""
+    index = _bios_sources_index(False, timeout)
+    item = next((s for s in index["sources"] if s["id"] == item_id), None)
+    if not item:
+        raise RuntimeError("esa fuente no está en el catálogo")
+    url = _bios_source_url(item_id, nombre)
+    remoto = next((m for m in item["members"] if m["name"] == nombre), None)
+    if remoto:
+        # El contenido está dentro del ZIP grande del item: los rangos se
+        # piden contra ese ZIP, no contra el nombre del miembro.
+        zip_name = item.get("file") or nombre
+        payload = _remote_zip_member(_bios_source_url(item_id, zip_name),
+                                     remoto, timeout)
+    else:
+        payload = _ia_get(url, timeout, BIOS_SOURCE_MAX)
+    if miembro:
+        try:
+            with zipfile.ZipFile(io.BytesIO(payload)) as z:
+                return z.read(miembro)
+        except Exception as exc:
+            raise RuntimeError(f"no se pudo abrir el ZIP de la fuente: {exc}")
+    return payload
+
+
+def _bios_candidate(source, kind, nombre, md5, member=None, match="md5", size=0):
+    """Candidato de una fuente, con lo que la interfaz necesita para enseñarlo."""
+    return {
+        "item": source["id"],
+        "source": source["title"],
+        "creator": source["creator"],
+        "license": source["license"],
+        "licenseurl": source["licenseurl"],
+        "kind": kind,
+        "name": nombre,
+        "member": member,
+        "md5": md5,
+        "match": match,
+        "size": size,
+    }
+
+
+def search_bios_sources(settings, slug, rel, force=False, timeout=BIOS_SOURCE_TIMEOUT):
+    """Candidatos de archive.org para una BIOS que falta o está mal.
+
+    Se empareja por contenido: el md5 que exige el catálogo tiene que estar en
+    el fichero de la fuente o dentro de uno de sus ZIP. Lo que no se encuentra
+    se dice con claridad, para que la interfaz pueda ofrecer subirlo a mano.
+    """
+    catalog = get_bios_catalog()
+    info = catalog["systems"].get((slug or "").strip().lower())
+    if not info:
+        return {"ok": False, "error": f"no se conoce el sistema '{slug}'"}
+    entry = info["files"].get(rel)
+    if not entry:
+        return {"ok": False, "error": f"'{rel}' no es una BIOS de {slug}"}
+    wanted_md5 = _bios_expected_md5s(entry)
+    if not wanted_md5:
+        return {"ok": True, "candidates": [], "motivo": "el catálogo no publica hashes"}
+    wanted = {m["name"]: m.get("md5") for m in entry.get("members") or []}
+    # Cuántos ficheros exige el catálogo para esta BIOS (1 si es un fichero suelto).
+    exigidos = len(wanted) if wanted else 1
+    base = os.path.basename(rel).lower()
+    index = _bios_sources_index(force, timeout)
+    candidates = []
+    vistos = set()
+
+    def anadir(cand):
+        clave = (cand["item"], cand["name"], cand.get("member"), cand["md5"])
+        if clave in vistos:
+            return
+        vistos.add(clave)
+        candidates.append(cand)
+
+    def anotar(cand, traye):
+        """Cuántos de los ficheros exigidos trae esta fuente."""
+        cand["trae"] = traye
+        cand["exigido"] = exigidos
+        cand["completo"] = traye >= exigidos
+        return cand
+
+    # ── Fase 1: lo que se sabe sin descargar nada ──────────────────────
+    for source in index["sources"]:
+        # Ficheros sueltos del item: archive.org publica su md5.
+        for f in source["files"]:
+            if not (f.get("md5") and f["md5"] in wanted_md5):
+                continue
+            canon = _bios_member_by_md5(wanted, f["md5"])
+            cand = _bios_candidate(source, "fichero", f["name"], f["md5"],
+                                   match="md5", size=f.get("size") or 0)
+            if canon:
+                cand["dest"] = canon
+            anadir(anotar(cand, 1))
+        # Ficheros con el mismo nombre: hay que mirar qué llevan dentro.
+        for f in source["files"]:
+            if os.path.basename(f["name"]).lower() != base:
+                continue
+            if f.get("size", 0) > BIOS_SOURCE_MAX:
+                continue
+            anadir(_bios_candidate(source, "contenedor", f["name"], None,
+                                   match="nombre", size=f.get("size") or 0))
+        # Miembros del ZIP grande del item con el mismo nombre.
+        for m in source["members"]:
+            if os.path.basename(m.get("name") or "").lower() != base:
+                continue
+            if m.get("size", 0) > BIOS_SOURCE_MAX:
+                continue
+            anadir(_bios_candidate(source, "contenedor", m["name"], None,
+                                   match="nombre", size=m.get("size") or 0))
+
+    # ── Fase 2: abrir los contenedores con el mismo nombre ─────────────
+    # Cada contenedor abierto es una ida al servidor, así que hay un
+    # presupuesto: primero los que tienen el nombre exacto (que son los más
+    # probables) y después, si no hay nada, los de nombre parecido.
+    presupuesto = BIOS_SOURCE_CONTAINERS
+    # Si archive.org va lento o se cae, la búsqueda no puede eternizarse: cada
+    # contenedor abierto es una ida al servidor y con reintentos se suma.
+    limite = time.time() + BIOS_SOURCE_DEADLINE
+    for cand in list(candidates):
+        if cand["kind"] != "contenedor" or presupuesto <= 0:
+            continue
+        if time.time() > limite:
+            break
+        source = next((s for s in index["sources"] if s["id"] == cand["item"]), None)
+        if not source:
+            continue
+        presupuesto -= 1
+        miembros = _bios_container_members(cand["item"], cand["name"], timeout)
+        traye = _bios_cobertura(miembros, wanted, wanted_md5)
+        anotar(cand, traye)
+        for nombre_miembro, md5 in miembros.items():
+            if md5 not in wanted_md5:
+                continue
+            nuevo = _bios_candidate(source, "miembro", cand["name"], md5,
+                                    member=nombre_miembro, match="miembro",
+                                    size=cand.get("size") or 0)
+            canon = _bios_member_by_md5(wanted, md5)
+            if canon:
+                nuevo["dest"] = canon
+            anadir(anotar(nuevo, traye))
+
+    # ── Fase 3: si sigue sin haber nada, buscar en contenedores parecidos ──
+    if not any(c["match"] in ("md5", "miembro") for c in candidates):
+        for source in index["sources"]:
+            if presupuesto <= 0 or time.time() > limite:
+                break
+            for cont in _bios_container_candidates(source["members"], rel, slug):
+                if presupuesto <= 0 or time.time() > limite:
+                    break
+                if cont.get("size", 0) > BIOS_SOURCE_MAX:
+                    continue
+                presupuesto -= 1
+                miembros = _bios_container_members(source["id"], cont["name"], timeout)
+                traye = _bios_cobertura(miembros, wanted, wanted_md5)
+                for nombre_miembro, md5 in miembros.items():
+                    if md5 not in wanted_md5:
+                        continue
+                    cand = _bios_candidate(source, "miembro", cont["name"], md5,
+                                           member=nombre_miembro, match="miembro",
+                                           size=cont.get("size") or 0)
+                    canon = _bios_member_by_md5(wanted, md5)
+                    if canon:
+                        cand["dest"] = canon
+                    anadir(anotar(cand, traye))
+
+    # Orden de preferencia: coincidencia exacta por md5 (no hay que abrir
+    # nada para saber que vale), después un miembro verificado y por último
+    # un contenedor cuyo contenido se comprueba al descargar.
+    prioridad = {"md5": 0, "miembro": 1, "nombre": 2}
+    candidates.sort(key=lambda c: prioridad.get(c["match"], 3))
+    return {"ok": True, "candidates": candidates,
+            "motivo": None if candidates else "no hay ninguna fuente con ese contenido",
+            "wanted": sorted(wanted_md5)}
+
+
+def _bios_zip_pieces(payload, limit=BIOS_SOURCE_MAX):
+    """Miembros de un ZIP en memoria: [(nombre, datos, md5)]."""
+    piezas = []
+    try:
+        with zipfile.ZipFile(io.BytesIO(payload)) as z:
+            for info in z.infolist():
+                if info.is_dir() or info.file_size > limit:
+                    continue
+                data = z.read(info)
+                piezas.append((info.filename, data, hashlib.md5(data).hexdigest()))
+    except Exception:
+        return []
+    return piezas
+
+
+def _bios_local_members(bios_dir, wanted):
+    """Miembros exigidos que ya están dentro de algún ZIP de la consola."""
+    index = build_bios_index(bios_dir)
+    zindex = bios_zip_index(bios_dir, index)
+    out = {}
+    for zrel, contents in zindex.items():
+        for nombre, md5 in wanted.items():
+            if nombre in out or nombre not in contents:
+                continue
+            if md5 and contents[nombre] != md5:
+                continue
+            data = _zip_read_member(Path(bios_dir) / zrel, nombre)
+            if data is not None:
+                out[nombre] = data
+    return out
+
+
+def _bios_cobertura(miembros, wanted, wanted_md5):
+    """Cuántos de los ficheros exigidos por el catálogo trae un contenedor."""
+    if not wanted:
+        # Es un fichero suelto: vale si su md5 es uno de los aceptados.
+        return 1 if any(md5 in wanted_md5 for md5 in miembros.values()) else 0
+    cubre = set()
+    for md5 in miembros.values():
+        canon = _bios_member_by_md5(wanted, md5)
+        if canon:
+            cubre.add(canon)
+    return len(cubre)
+
+
+def _bios_container_payload(item_id, nombre, timeout=BIOS_SOURCE_TIMEOUT):
+    """Bytes de un ZIP de la fuente, con memoria para no bajarlo dos veces.
+
+    La búsqueda ya abre el contenedor para ver qué lleva dentro; si la
+    descarga falla justo después (archive.org devuelve 500 de vez en cuando),
+    el contenido ya está en memoria y no hace falta pedirlo otra vez.
+    """
+    clave = f"{item_id}|{nombre}"
+    guardado = _bios_payload_cache.get(clave)
+    if guardado is not None:
+        return guardado
+    payload = _bios_source_payload(item_id, nombre, None, timeout)
+    if len(_bios_payload_cache) >= 24:
+        _bios_payload_cache.pop(next(iter(_bios_payload_cache)))
+    _bios_payload_cache[clave] = payload
+    return payload
+
+
+def install_bios_source(settings, slug, rel, candidate, timeout=BIOS_SOURCE_TIMEOUT):
+    """Descarga una BIOS de una fuente de archive.org y la deja en su sitio.
+
+    `candidate` es lo que devuelve la búsqueda ({item, name, member}); el resto
+    se deduce del índice cacheado y el md5 se vuelve a comprobar antes de
+    escribir nada.
+    """
+    catalog = get_bios_catalog()
+    info = catalog["systems"].get((slug or "").strip().lower())
+    if not info:
+        return {"ok": False, "error": f"no se conoce el sistema '{slug}'"}
+    entry = info["files"].get(rel)
+    if not entry:
+        return {"ok": False, "error": f"'{rel}' no es una BIOS de {slug}"}
+    candidate = candidate or {}
+    item_id = str(candidate.get("item") or "")
+    nombre = str(candidate.get("name") or "")
+    miembro = candidate.get("member")
+    if not item_id or not nombre:
+        return {"ok": False, "error": "candidato incompleto"}
+    # El nombre viene del cliente: sólo puede ser un fichero del item.
+    if ".." in nombre or nombre.startswith("/") or "\\" in nombre:
+        return {"ok": False, "error": "nombre de fichero invalido"}
+    index = _bios_sources_index(False, timeout)
+    source = next((s for s in index["sources"] if s["id"] == item_id), None)
+    if not source:
+        return {"ok": False, "error": "esa fuente no está en el catálogo"}
+    bios_dir = Path(settings.get("bios_dir", "/userdata/bios"))
+    try:
+        dest = safe_path_under(bios_dir, rel)
+    except ValueError:
+        return {"ok": False, "error": "ruta invalida"}
+    wanted = {m["name"]: m.get("md5") for m in entry.get("members") or []}
+    aceptados = set(entry.get("md5s") or [])
+    # Si el destino es un ZIP, lo que hace falta es el **contenedor entero**:
+    # de él se sacan todos los ficheros exigidos que lleve dentro, no sólo el
+    # que se ha elegido en la lista.
+    try:
+        if wanted:
+            payload = _bios_container_payload(item_id, nombre, timeout)
+        else:
+            payload = _bios_source_payload(item_id, nombre, miembro, timeout)
+    except Exception as exc:
+        return {"ok": False, "error": f"no se pudo descargar: {exc}"}
+    if len(payload) > BIOS_SOURCE_MAX:
+        return {"ok": False, "error": "el contenido es demasiado grande"}
+    digest = hashlib.md5(payload).hexdigest()
+    try:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+    quarantine = None
+    if wanted:
+        # El destino es un ZIP: hay que reunir los ficheros que exige el
+        # catálogo. El contenedor puede traer varios o ninguno.
+        montaj = {}
+        for _nombre, data_miembro, md5 in _bios_zip_pieces(payload):
+            canon = _bios_member_by_md5(wanted, md5)
+            if canon and canon not in montaj:
+                montaj[canon] = data_miembro
+        if not montaj:
+            return {"ok": False,
+                    "error": "la fuente no tiene el contenido que pide el catálogo"}
+        # Lo que la fuente no traiga se busca en los ZIP que ya hay en la consola.
+        faltan = [n for n in wanted if n not in montaj]
+        if faltan:
+            montaj.update(_bios_local_members(
+                bios_dir, {n: wanted[n] for n in faltan}))
+        faltan = [n for n in wanted if n not in montaj]
+        if faltan:
+            return {"ok": False,
+                    "error": "la fuente sólo trae parte del contenido (faltan: "
+                             + ", ".join(faltan) + ")",
+                    "faltan": faltan}
+        quarantine = _bios_quarantine(bios_dir, dest) if dest.exists() else None
+        tmp = dest.with_suffix(dest.suffix + ".tmp")
+        with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as z:
+            for nombre_miembro in wanted:
+                if nombre_miembro in montaj:
+                    z.writestr(nombre_miembro, montaj[nombre_miembro])
+        tmp.replace(dest)
+    else:
+        # El destino es un fichero suelto: su md5 tiene que ser el que pide
+        # el catálogo. Si el candidato es un ZIP, se busca dentro.
+        contenido = None
+        if digest in aceptados:
+            contenido = payload
+        elif not miembro:
+            for _nombre, data_miembro, md5 in _bios_zip_pieces(payload):
+                if md5 in aceptados:
+                    contenido = data_miembro
+                    break
+        if contenido is None:
+            return {"ok": False,
+                    "error": "el contenido de la fuente no es el que pide Batocera",
+                    "md5": digest}
+        quarantine = _bios_quarantine(bios_dir, dest) if dest.exists() else None
+        dest.write_bytes(contenido)
+    index_local = build_bios_index(bios_dir, force=True)
+    zindex = bios_zip_index(bios_dir, index_local)
+    estado, detalle = _bios_entry_state(rel, entry, bios_dir, index_local, zindex)
+    return {"ok": estado in ("ok", "sin_verificar"), "estado": estado,
+            "dest": str(dest), "md5": (index_local["files"].get(rel) or {}).get("md5"),
+            "motivo": detalle.get("motivo"), "quarantine": quarantine,
+            "fuente": source["title"], "licencia": source["license"]}
+
+
+def repair_bios_from_source(settings, slug, rel, source=None, timeout=BIOS_SOURCE_TIMEOUT):
+    """Repara una BIOS: primero en la consola y, si no se puede, en archive.org.
+
+    `source` puede ser None o "archive" (busca la mejor fuente) o un candidato
+    concreto devuelto por la búsqueda.
+    """
+    if source in (None, "local"):
+        return repair_bios(settings, slug, rel, None)
+    local = repair_bios(settings, slug, rel, None)
+    if local.get("ok"):
+        return local
+    if isinstance(source, dict):
+        return install_bios_source(settings, slug, rel, source, timeout)
+    encontrado = search_bios_sources(settings, slug, rel, timeout=timeout)
+    if not encontrado.get("ok"):
+        return encontrado
+    candidatos = encontrado.get("candidates") or []
+    if not candidatos:
+        return {"ok": False,
+                "error": "no hay ninguna fuente con ese contenido",
+                "motivo": encontrado.get("motivo"),
+                "candidates": []}
+    resultado = install_bios_source(settings, slug, rel, candidatos[0], timeout)
+    if not resultado.get("ok"):
+        resultado["candidates"] = candidatos
+    return resultado
+
 
 # ─── Asistente de BIOS faltantes (legal-primero) ───────────────────────
 MAX_BIOS_DOWNLOAD = 64 * 1024 * 1024  # 64 MiB
@@ -6825,6 +7744,13 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                                 "extras":data["extras"],"source":data["source"]})
             except Exception as e:
                 self.send_json({"ok":False,"error":str(e)})
+        elif path == "/api/bios/sources":
+            try:
+                query = urllib.parse.urlparse(self.path).query
+                force = "force=1" in query
+                self.send_json({"ok":True, **bios_sources(force=force)})
+            except Exception as e:
+                self.send_json({"ok":False,"error":str(e)})
         elif path == "/api/bios/missing":
             bios_dir = Path(s.get("bios_dir","/userdata/bios"))
             user_systems = get_rom_systems_cached(s)
@@ -6930,10 +7856,43 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             d = self.read_json()
             slug   = (d.get("system") or "").strip()
             rel    = (d.get("file") or "").strip()
-            source = (d.get("source") or "").strip() or None
+            source = d.get("source")
+            if isinstance(source, str):
+                source = source.strip() or None
             if not slug or not rel:
                 self.send_json({"ok":False,"error":"Faltan 'system' o 'file'"}); return
-            self.send_json(repair_bios(s, slug, rel, source))
+            try:
+                if isinstance(source, dict):
+                    self.send_json(install_bios_source(s, slug, rel, source))
+                elif source == "archive":
+                    self.send_json(repair_bios_from_source(s, slug, rel, "archive"))
+                else:
+                    self.send_json(repair_bios(s, slug, rel, source))
+            except Exception as e:
+                self.send_json({"ok":False,"error":str(e)})
+        elif path == "/api/bios/sources/search":
+            d = self.read_json()
+            slug = (d.get("system") or "").strip()
+            rel  = (d.get("file") or "").strip()
+            if not slug or not rel:
+                self.send_json({"ok":False,"error":"Faltan 'system' o 'file'"}); return
+            try:
+                self.send_json(search_bios_sources(s, slug, rel))
+            except Exception as e:
+                self.send_json({"ok":False,"error":str(e)})
+        elif path == "/api/bios/install":
+            d = self.read_json()
+            slug = (d.get("system") or "").strip()
+            rel  = (d.get("file") or "").strip()
+            cand = d.get("candidate")
+            if not isinstance(cand, dict) or not cand.get("item"):
+                cand = d.get("source") if isinstance(d.get("source"), dict) else {}
+            if not slug or not rel or not cand.get("item"):
+                self.send_json({"ok":False,"error":"Faltan 'system', 'file' o 'candidate'"}); return
+            try:
+                self.send_json(install_bios_source(s, slug, rel, cand))
+            except Exception as e:
+                self.send_json({"ok":False,"error":str(e)})
         elif path == "/api/bios/missing/skip":
             d = self.read_json()
             key = d.get("skip_key","")
