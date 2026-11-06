@@ -134,7 +134,7 @@ def test_pick_random_game_includes_friendly_platform(appmod, tmp_path, monkeypat
     _rom_with_art(base, "ps2", "Area 51.iso")
     monkeypatch.setattr(appmod.random, "choice", lambda seq: seq[0])
 
-    game = appmod.pick_random_game(base)
+    game = appmod.pick_random_game({"roms_base": str(base)})
 
     assert game["system"] == "ps2"
     assert game["system_name"] == "PlayStation 2"
@@ -145,7 +145,7 @@ def test_pick_random_game_includes_text_meta(appmod, tmp_path, monkeypatch):
     _rom_with_art(base, "ps2", "Area 51.iso")
     monkeypatch.setattr(appmod.random, "choice", lambda seq: seq[0])
 
-    game = appmod.pick_random_game(base)
+    game = appmod.pick_random_game({"roms_base": str(base)})
 
     assert game["year"] == "2005"
     assert game["genre"].startswith("Disparos")
@@ -158,7 +158,7 @@ def test_pick_random_game_uses_gamelist_name(appmod, tmp_path, monkeypatch):
     _rom_with_art(base, "ps2", "Area 51.iso")
     monkeypatch.setattr(appmod.random, "choice", lambda seq: seq[0])
 
-    game = appmod.pick_random_game(base)
+    game = appmod.pick_random_game({"roms_base": str(base)})
 
     assert game["name"] == "Area 51"
     assert game["filename"] == "Area 51.iso"
@@ -168,7 +168,7 @@ def test_pick_random_game_survives_without_gamelist(appmod, tmp_path, monkeypatc
     base = _rom_with_art(tmp_path, "snes", "mario.zip")
     monkeypatch.setattr(appmod.random, "choice", lambda seq: seq[0])
 
-    game = appmod.pick_random_game(base)
+    game = appmod.pick_random_game({"roms_base": str(base)})
 
     assert game["system"] == "snes"
     assert game["system_name"] == "Super Nintendo Entertainment System"

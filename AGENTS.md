@@ -122,7 +122,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 623 con `pytest` en `tests/` (51 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 651 con `pytest` en `tests/` (53 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -166,6 +166,21 @@ El proyecto se trabaja en **un solo repositorio**:
   and `game_folder_search_name()` strips the extension to get the title to search for. Such a game is
   listed as a ROM (`is_game_folder: true`), scraped **by name** (`name_only`, never hashed: a folder
   has no hash) and saved with the folder path in the gamelist.
+- **What counts as a game**: `is_game_file(name, exts)` decides it, with `exts` =
+  `system_game_extensions()` (the system's own extensions from `es_systems.cfg` plus the global
+  `ROM_EXTENSIONS`, minus the extensions that are not games). That is what keeps `_info.txt` (every
+  system folder has one describing its formats), `gamelist.xml` and the save states (`*.sav`, `*.srm`,
+  `*.dat`, `*.keys`) out of the ROM lists, the scraper and the counters. `list_rom_folder`,
+  `get_rom_systems`, `count_rom_systems` and `pick_random_game` all use it.
+  - The system's own declaration wins over `NON_GAME_EXTENSIONS`: the `.dat` files of **naomi**,
+    atomiswave and systemsp *are* the game, not a save file.
+  - `NEVER_GAME_EXTENSIONS` wins over the system: the emulator configs
+    (`citron_config.xci_config`, `eden_config.xci_config`) are never a game, even though the
+    user's `es_systems_switch.cfg` declares `.xci_config`.
+- **The dashboard counts what is on the disk**: `count_disk_games()` walks the first level of every
+  system counting game files and game folders (cached 60 s) — the gamelists only know the games that
+  were already catalogued. `/api/info` exposes it as `disk_games_count`/`disk_systems_count`, and
+  `pick_random_game(settings)` takes the whole settings dict because it needs those extensions.
 - **ScreenScraper's name search needs a platform id, and time**: without `systemeid` (or with `0`)
   the API still answers, but it searches every platform and takes over a minute, so the name search
   uses `SS_SEARCH_TIMEOUT_NAME` (75 s) — with the old 20 s timeout the result was always lost. The

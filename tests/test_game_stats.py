@@ -158,7 +158,7 @@ def test_pick_random_game_returns_game_with_art(appmod, tmp_path, monkeypatch):
     (sys_dir / "images" / "gameA-image.png").write_bytes(b"x")
     monkeypatch.setattr(appmod.random, "choice", lambda seq: seq[0])
 
-    game = appmod.pick_random_game(tmp_path)
+    game = appmod.pick_random_game({"roms_base": str(tmp_path)})
     assert game is not None
     assert game["system"] == "snes"
     assert game["filename"] == "gameA.zip"
@@ -174,7 +174,7 @@ def test_pick_random_game_falls_back_to_game_without_art(appmod, tmp_path, monke
     (sys_dir / "gameA.zip").write_bytes(b"x")
     monkeypatch.setattr(appmod.random, "choice", lambda seq: seq[0])
 
-    game = appmod.pick_random_game(tmp_path)
+    game = appmod.pick_random_game({"roms_base": str(tmp_path)})
     assert game is not None, "sin arte debe seguir devolviendo un juego"
     assert game["system"] == "snes"
     assert game["filename"] == "gameA.zip"

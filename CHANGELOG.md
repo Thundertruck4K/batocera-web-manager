@@ -27,6 +27,11 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   intervalo mínimo entre peticiones).
 - El sistema `dos` queda mapeado en ScreenScraper (plataforma 135, *PC Dos*), que es donde están sus
   juegos.
+- **El panel de control pide un juego al azar al cargar**: la tarjeta *Juego al azar* ya no se queda
+  vacía a la espera de que se pulse «Girar»; muestra la carátula, el sistema y los metadatos del
+  juego. El botón «Girar» sigue ahí para pedir otro.
+- `GET /api/info` expone `disk_games_count` y `disk_systems_count`: los juegos y los sistemas que hay
+  de verdad en el disco (no sólo los catalogados en el `gamelist.xml`).
 - **Sección de Scraper en la SPA**: la sección *Scraper* deja de estar marcada como *Pronto*.
   - Los sistemas de la biblioteca se muestran en tarjetas con un **icono temático** (palanca para
     los arcade, mando para las consolas, pantalla para los portátiles, disco para las consolas de CD…),
@@ -93,6 +98,24 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Corregido
+- **La lista de ROMs ya no enseña ficheros que no son juegos**: en cada carpeta de sistemas hay un
+  `_info.txt` que documenta los formatos del sistema, además del `gamelist.xml` y de los guardados de
+  estado (`Lagoon (Europe).srm`, `azumanga.dat`, `Steam_Big_Picture.sh.keys`). Salían en la sección
+  «Otros ficheros» y se podían escrapear. Ahora el criterio es el de EmulationStation: un fichero es
+  un juego si su extensión es una de las del sistema (`es_systems.cfg`) —más la lista global de
+  extensiones de ROM para no perder nada—, y lo demás no se lista.
+  - La declaración del sistema manda sobre la lista de extensiones que no son juego: los `.dat` de
+    **naomi**, atomiswave y systemsp son el juego, no un guardado, así que siguen apareciendo. Un caso
+    real: el `azumanga.dat` de naomi son 80 MB de datos del juego y se listing como tal.
+  - Los ficheros de configuración de los emuladores quedan fuera siempre, aunque el sistema los
+    declare: `citron_config.xci_config`, `eden_config.xci_config`… no son juegos.
+- **La tarjeta *Sistemas* del panel contaba los sistemas equivocados**: enseñaba `systems_count`, los
+  sistemas **personalizados** que gestiona el manager (4), en vez de los sistemas con juegos de la
+  biblioteca. Ahora el número es el de sistemas con juegos y los personalizados van en el texto de
+  apoyo.
+- **La tarjeta *Juegos* del panel no cuadtaba con el disco**: enseñaba el total del `gamelist.xml`
+  (los juegos catalogados) en vez de los juegos que hay de verdad en la SD. Ahora cuenta los ficheros
+  que son juego y las carpetas de juegos.
 - **Las listas desplegables ya siguen el esquema de colores**: los `<select>` nativos pintan su
   propio fondo (blanco con letras pálidas) e ignoran el `bg-transparent` del tema. Ahora usan
   `appearance-none`, el fondo de la app y su propia flecha, y la lista de opciones se pinta con el

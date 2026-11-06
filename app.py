@@ -121,6 +121,18 @@ ROM_EXTENSIONS = {
 }
 FILTER_DIRS  = {"manuals","videos","images"}
 FILTER_FILES = {"_info.txt"}
+# Extensiones que nunca son un juego, aunque el sistema las declare: son
+# ficheros de configuracion del emulador que conviven con los ROMs
+# (`citron_config.xci_config`, `eden_config.xci_config`...).
+NEVER_GAME_EXTENSIONS = {".xci_config"}
+# Extensiones que no son un juego por defecto: guardados de estado, datos y
+# configuracion de los emuladores (`Lagoon (Europe).srm`, `azumanga.dat`,
+# `Steam_Big_Picture.sh.keys`...). Si el propio sistema las declara como suyas
+# (los `.dat` de naomi, atomiswave o systemsp son el juego), manda el sistema.
+NON_GAME_EXTENSIONS = {
+    ".sav", ".state", ".srm", ".autosave", ".mstate", ".save", ".ram",
+    ".dat", ".keys", ".cfg", ".ini", ".txt", ".xml", ".nfo", ".log", ".bak",
+}
 # Auto-generated from official batocera-systems script
 # Auto-generated from official batocera-systems script
 # https://github.com/batocera-linux/batocera.linux/blob/master/package/batocera/core/batocera-scripts/scripts/batocera-systems
@@ -1249,6 +1261,7 @@ def count_rom_systems(settings):
         return 0
     total = 0
     for sys_dir in system_dirs:
+        exts_rom = system_game_extensions(sys_dir.name, settings)
         try:
             for item in sys_dir.iterdir():
                 name = item.name
@@ -1259,13 +1272,66 @@ def count_rom_systems(settings):
                 if item.is_dir():
                     if name == "media" or name.lower() in FILTER_DIRS:
                         continue
-                elif item.suffix.lower() not in ROM_EXTENSIONS:
+                elif not is_game_file(name, exts_rom):
                     continue
                 total += 1
                 break
         except Exception:
             continue
     return total
+
+_disk_games_cache = {"ts": 0, "data": {"games": 0, "systems": 0}}
+
+def count_disk_games(settings, ttl=60):
+    """Nº real de juegos en el disco y nº de sistemas con juegos.
+
+    A diferencia de `collect_play_stats` (que sólo mira los `gamelist.xml`),
+    esto cuenta lo que hay de verdad en la SD: los ficheros que son juego en
+    su sistema, las carpetas-juego (ScummVM, DOSBox...) y las carpetas de
+    juegos (ports, que en EmulationStation son una entrada cada una).
+
+    Sólo se mira el nombre de los ficheros (sin `stat` ni lectura de
+    gamelists), así que es rápido; el resultado se cachea unos segundos.
+    """
+    now = time.time()
+    with _rom_cache_lock:
+        if now - _disk_games_cache["ts"] < ttl and _disk_games_cache["data"]["games"]:
+            return dict(_disk_games_cache["data"])
+
+    base = Path(settings["roms_base"])
+    games = systems = 0
+    if base.is_dir():
+        try:
+            sys_dirs = [d for d in base.iterdir() if d.is_dir()]
+        except Exception:
+            sys_dirs = []
+        for sys_dir in sys_dirs:
+            exts_rom = system_game_extensions(sys_dir.name, settings)
+            count = 0
+            try:
+                for item in sys_dir.iterdir():
+                    name = item.name
+                    if name.startswith("."):
+                        continue
+                    if item.is_dir():
+                        if name == "media" or name.lower() in FILTER_DIRS:
+                            continue
+                        # Una carpeta es una entrada: si además lleva una
+                        # extension del sistema, es el juego entero.
+                        count += 1
+                    elif is_game_file(name, exts_rom):
+                        count += 1
+            except Exception:
+                continue
+            if count:
+                systems += 1
+                games += count
+
+    data = {"games": games, "systems": systems}
+    with _rom_cache_lock:
+        _disk_games_cache["ts"] = now
+        _disk_games_cache["data"] = data
+    return dict(data)
 
 # ─── Helpers ─────────────────────────────────────────────────────
 def load_settings():
@@ -1555,6 +1621,40 @@ def game_folder_search_name(name, exts):
     if not ext:
         return name
     return name[: -len(ext)].strip() or name
+
+def system_game_extensions(system, settings, builtin_path=None):
+    """Extensiones que son un juego en ese sistema.
+
+    Se lee del `es_systems.cfg` (el del usuario si define ese sistema, el
+    oficial si no) y se completa con la lista global de extensiones de ROM:
+    asi no se pierde un juego con una extension que el catalogo no liste y
+    se filtran los ficheros que no lo son (guardados de estado,
+    configuraciones de los emuladores, `_info.txt`…).
+
+    Las extensiones que no son juego se quitan, salvo las que el propio
+    sistema declare como suyas: los `.dat` de naomi, atomiswave o systemsp
+    son el juego, no un guardado.
+    """
+    own  = set(game_folder_extensions(system, settings, builtin_path))
+    exts = own | ROM_EXTENSIONS
+    exts -= (NON_GAME_EXTENSIONS - own)
+    exts -= NEVER_GAME_EXTENSIONS
+    return exts
+
+def is_game_file(name, exts):
+    """True si el fichero es un juego y no un guardado o un fichero de datos.
+
+    `exts` son las extensiones que son juego en ese sistema
+    (`system_game_extensions`).
+    """
+    if not name or name.startswith("."):
+        return False
+    if name in FILTER_FILES or name == "gamelist.xml":
+        return False
+    ext = Path(name).suffix.lower()
+    if not ext:
+        return False
+    return ext in exts
 
 def scraper_search_target(settings, system, subpath, filename):
     """Nombre con el que se busca un ROM y su ruta para poder hashearlo.
@@ -1870,8 +1970,12 @@ def list_rom_folder(settings, system, subpath=""):
         return None
 
     items, media_count, total_size = [], 0, 0
-    # Extensiones con las que una carpeta es un juego (ScummVM, DOSBox, MUGEN...).
-    exts = game_folder_extensions(system, settings)
+    # Extensiones con las que una carpeta es un juego (ScummVM, DOSBox, MUGEN...)
+    # y extensiones de los ficheros que son juego en este sistema. Lo que no
+    # es juego (`_info.txt`, `gamelist.xml`, guardados de estado, configuraciones
+    # de los emuladores) no se lista: no hay nada que escrapear.
+    exts       = game_folder_extensions(system, settings)
+    exts_rom   = system_game_extensions(system, settings)
     try:
         entries = sorted(target.iterdir())
     except PermissionError:
@@ -1889,13 +1993,15 @@ def list_rom_folder(settings, system, subpath=""):
         if item.is_dir() and item.name.lower() in FILTER_DIRS:
             continue
         if item.is_file():
+            if not is_game_file(item.name, exts_rom):
+                continue
             sz = item.stat().st_size
             total_size += sz
             items.append({
                 "name": item.stem, "filename": item.name,
                 "ext": item.suffix.lower(), "size": sz,
                 "size_human": human_size(sz),
-                "is_rom": item.suffix.lower() in ROM_EXTENSIONS,
+                "is_rom": True,
                 "is_dir": False, "is_game_folder": False,
                 "desc":"","rating":"","genre":"","publisher":"","year":"",
                 "has_image": False, "has_video": False,
@@ -2244,11 +2350,14 @@ def read_game_meta(roms_base, system, filename, subpath=""):
     return meta
 
 
-def pick_random_game(roms_base, systems=None):
+def pick_random_game(settings, systems=None):
     """Elige un juego al azar, prefiriendo los que tienen arte disponible.
 
     Enriquece el resultado con el nombre amigable de la plataforma y con los
     metadatos que ya existan en la gamelist del sistema elegido.
+
+    Candidatos: los ficheros que son juego en su sistema y las carpetas-juego
+    (ScummVM, DOSBox...), que en EmulationStation son un juego cada una.
 
     Si ningún juego tiene arte devuelve igualmente uno (con `has_art=False`):
     la tarjeta pinta entonces el wallpaper generado, así que no hace falta
@@ -2257,6 +2366,7 @@ def pick_random_game(roms_base, systems=None):
     Devuelve {"system","system_name","name","filename","subpath","has_art",...}
     o None.
     """
+    roms_base = settings["roms_base"]
     base = Path(roms_base)
     if not base.is_dir():
         return None
@@ -2271,20 +2381,31 @@ def pick_random_game(roms_base, systems=None):
         sys_dir = base / sys_name
         if not sys_dir.is_dir():
             continue
+        exts_rom   = system_game_extensions(sys_name, settings)
+        exts_juego = game_folder_extensions(sys_name, settings)
         try:
             entries = sorted(sys_dir.iterdir())
         except Exception:
             continue
         for item in entries:
-            if not item.is_file():
-                continue
-            if item.name.startswith(".") or item.name in FILTER_FILES:
-                continue
-            if item.suffix.lower() not in ROM_EXTENSIONS:
-                continue
-            entry = {"system": sys_name, "name": item.stem,
-                     "filename": item.name, "subpath": "",
-                     "has_art": False}
+            if item.is_dir():
+                # Una carpeta-juego (ScummVM, DOSBox...) es un juego.
+                if item.name == "media" or item.name.lower() in FILTER_DIRS:
+                    continue
+                if not game_folder_ext(item.name, exts_juego):
+                    continue
+                entry = {"system": sys_name,
+                         "name": game_folder_search_name(item.name, exts_juego),
+                         "filename": item.name, "subpath": "",
+                         "has_art": False}
+            else:
+                if not item.is_file():
+                    continue
+                if not is_game_file(item.name, exts_rom):
+                    continue
+                entry = {"system": sys_name, "name": item.stem,
+                         "filename": item.name, "subpath": "",
+                         "has_art": False}
             any_rom.append(entry)
             if find_user_art(roms_base, sys_name, item.name):
                 with_art.append({**entry, "has_art": True})
@@ -2568,8 +2689,10 @@ def get_rom_systems(settings, fast=False):
     for sys_dir in dirs:
         if not sys_dir.is_dir(): continue
         name = sys_dir.name
-        # Extensiones con las que una carpeta de este sistema es un juego.
-        exts = game_folder_extensions(name, settings)
+        # Extensiones con las que una carpeta de este sistema es un juego y
+        # extensiones de los ficheros que son juego (lo demas no se lista).
+        exts       = game_folder_extensions(name, settings)
+        exts_rom   = system_game_extensions(name, settings)
         roms, media_count, total_size = [], 0, 0
         try:
             for item in sorted(sys_dir.iterdir()):
@@ -2581,11 +2704,13 @@ def get_rom_systems(settings, fast=False):
                 if item.name in FILTER_FILES: continue
                 if item.is_dir() and item.name.lower() in FILTER_DIRS: continue
                 if item.is_file():
+                    if not is_game_file(item.name, exts_rom):
+                        continue
                     sz = item.stat().st_size; total_size += sz
                     roms.append({"name":item.stem,"filename":item.name,
                         "ext":item.suffix.lower(),"size":sz,
                         "size_human":human_size(sz),
-                        "is_rom":item.suffix.lower() in ROM_EXTENSIONS,
+                        "is_rom":True,
                         "is_game_folder":False,
                         "desc":"","rating":"","genre":"","publisher":"","year":"",
                         "has_image":False,"has_video":False})
@@ -6000,9 +6125,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         if path == "/":
             self.send_html(render_app())
         elif path == "/api/info":
+            disco = count_disk_games(s)
             self.send_json({"active_theme":detect_active_theme(s),
                 "themes":list_themes(s),"systems_count":len(list_custom_systems(s)),
                 "rom_systems_count":count_rom_systems(s),
+                "disk_games_count":disco["games"],
+                "disk_systems_count":disco["systems"],
                 "ext_presets":EXT_PRESETS,"platform_ids":PLATFORM_IDS,
                 "hardware_types":HARDWARE_TYPES,"has_pil":HAS_PIL})
         elif path == "/api/systems":
@@ -6068,7 +6196,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/game-stats":
             self.send_json(collect_play_stats(s["roms_base"]))
         elif path == "/api/random-game":
-            self.send_json({"ok": True, "game": pick_random_game(s["roms_base"])})
+            self.send_json({"ok": True, "game": pick_random_game(s)})
         elif path == "/api/retroachievements":
             self.send_json(get_retroachievements(s))
         elif path == "/api/retroachievements/test":
