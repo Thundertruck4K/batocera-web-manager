@@ -75,6 +75,8 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
   const [nameEditor, setNameEditor] = useState(false)
   /** La búsqueda no encontró nada (no es un error: se puede afinar el nombre). */
   const [noResults, setNoResults] = useState(false)
+  /** El juego ya tiene su ficha en la biblioteca: se muestran los datos locales. */
+  const [local, setLocal] = useState(false)
 
   /** Busca el ROM en las fuentes indicadas, por orden de prioridad. */
   const runSearch = useCallback(
@@ -91,6 +93,7 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
       setSearching(true)
       setError(null)
       setNoResults(false)
+      setLocal(false)
       try {
         const res = await api.scraperSearch({
           filename: nombre.trim(),
@@ -147,6 +150,7 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
     setImgState('idle')
     setNameEditor(false)
     setNoResults(false)
+    setLocal(false)
     setSearchName(rom.filename)
     let cancelled = false
     void (async () => {
@@ -164,6 +168,21 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
         ? readySources(cfg)
         : (SCRAPER_SOURCES.map((s) => s.id) as ScraperSource[])
       setEnabled(fuentes)
+      if (rom.has_image) {
+        // El juego ya tiene su ficha en la biblioteca: no hay nada que
+        // scrapear, se muestran los datos locales. El scraping queda como
+        // opción si el usuario lo pide.
+        setLocal(true)
+        setMeta({
+          name: rom.name,
+          desc: rom.desc ?? '',
+          genre: rom.genre ?? '',
+          year: rom.year ?? '',
+          publisher: rom.publisher ?? '',
+          rating: rom.rating ?? '',
+        })
+        return
+      }
       await runSearch(fuentes, rom.filename)
     })()
     return () => {
@@ -202,7 +221,46 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
   const handleSave = async () => {
     if (!rom) return
     if (!result?.game) {
-      setError('Busca primero el juego para poder guardarlo')
+      // Modo local (el juego ya tenía ficha): sólo se guardan los metadatos
+      // editados, sin volver a scrapear ni descargar imágenes.
+      if (!editing) {
+        setError('No hay nada que guardar: el juego ya tiene su ficha')
+        return
+      }
+      setSaving(true)
+      setError(null)
+      try {
+        await api.updateRomMeta({
+          system,
+          filename: rom.filename,
+          subpath,
+          name: meta.name,
+          desc: meta.desc,
+          genre: meta.genre,
+          year: meta.year,
+          publisher: meta.publisher,
+          rating: meta.rating,
+        })
+        onSaved()
+        onClose()
+        showNotify({
+          variant: 'success',
+          title: 'Ficha actualizada',
+          message: `${meta.name || rom.name} · datos guardados en el gamelist.xml`,
+        })
+      } catch (err) {
+        const detalle =
+          err instanceof ApiError ? [err.message, ...err.errors].join('\n') : String(err)
+        setError(err instanceof Error ? err.message : 'No se pudo guardar la ficha')
+        showNotify({
+          variant: 'error',
+          title: 'No se pudo guardar la ficha',
+          message: err instanceof Error ? err.message : 'No se pudo guardar la ficha',
+          detail: detalle,
+        })
+      } finally {
+        setSaving(false)
+      }
       return
     }
     setSaving(true)
@@ -302,15 +360,27 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
       className="max-w-xl"
       footer={
         <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void runSearch(enabled, searchName)}
-            disabled={searching || saving}
-          >
-            <RefreshCw className={cn('size-4', searching && 'animate-spin')} />
-            Actualizar
-          </Button>
+          {result?.game ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void runSearch(enabled, searchName)}
+              disabled={searching || saving}
+            >
+              <RefreshCw className={cn('size-4', searching && 'animate-spin')} />
+              Actualizar
+            </Button>
+          ) : (
+            <Button
+              variant={local && !editing ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => void runSearch(enabled, searchName)}
+              disabled={searching || saving}
+            >
+              {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+              Escapear
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -322,10 +392,12 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
             <Pencil className="size-4" />
             {editing ? 'Terminar edición' : 'Editar'}
           </Button>
-          <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || searching}>
-            {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            Guardar
-          </Button>
+          {(result?.game || editing) && (
+            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving || searching}>
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Guardar
+            </Button>
+          )}
         </>
       }
     >
@@ -337,8 +409,9 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
           </div>
         )}
 
-        {/* Fuentes, por orden de prioridad */}
-        <section>
+        {/* Fuentes, por orden de prioridad (sólo cuando hay algo que scrapear) */}
+        {!local && (
+          <section>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Fuentes (por orden de prioridad)
           </h3>
@@ -381,7 +454,8 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
           <p className="mt-1.5 text-[11px] text-muted-foreground">
             Se prueban en orden: la primera que encuentre el juego gana.
           </p>
-        </section>
+          </section>
+        )}
 
         {searching && (
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-4 py-6 text-xs font-medium text-muted-foreground">
@@ -390,7 +464,7 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
           </div>
         )}
 
-        {!searching && !result?.game && !error && (
+        {!searching && !result?.game && !error && !local && (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-4 py-8 text-center">
             <Search className="size-5 text-muted-foreground/60" />
             <p className="text-xs font-medium text-muted-foreground">
@@ -446,6 +520,66 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
           >
             Buscar con otro nombre
           </button>
+        )}
+
+        {local && !result?.game && (
+          <div className="space-y-3">
+            <div className="flex gap-3 rounded-2xl border border-border bg-muted/40 p-3">
+              {/* Carátula local */}
+              <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
+                {preview ? (
+                  <img
+                    src={preview}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <ImageOff className="size-5 text-muted-foreground/50" aria-hidden />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start gap-2">
+                  <CircleCheck className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold tracking-[-0.015em] text-foreground">
+                      {meta.name || rom?.name}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                      {[meta.year, meta.publisher, meta.genre].filter(Boolean).join(' · ') ||
+                        'Sin metadatos'}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-1.5 text-[11px] font-semibold text-foreground">
+                  Ficha de tu biblioteca
+                </p>
+                {meta.desc && (
+                  <p className="mt-1.5 line-clamp-4 text-[11px] leading-relaxed text-muted-foreground">
+                    {meta.desc}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+              {meta.desc || meta.genre || meta.publisher || meta.year ? (
+                <>
+                  Este juego <strong className="text-foreground">ya tiene su información y su
+                  carátula</strong>: no hace falta volver a scrapearlo. Puedes <strong
+                    className="text-foreground">editar</strong> los datos o, si quieres
+                  actualizarlos, pulsar «Escapear» para buscarlo de nuevo en las fuentes.
+                </>
+              ) : (
+                <>
+                  Este juego <strong className="text-foreground">ya tiene su carátula</strong>,
+                  aunque le faltan los datos. Puedes <strong className="text-foreground">editar
+                  </strong> la ficha a mano o pulsar «Escapear» para completarla desde las
+                  fuentes.
+                </>
+              )}
+            </p>
+          </div>
         )}
 
         {result?.game && (

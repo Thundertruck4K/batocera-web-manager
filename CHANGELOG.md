@@ -53,6 +53,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     nombre del archivo, el modal lo pone en un campo editable para acotar la búsqueda (por ejemplo,
     «007: Agent Under Fire»). El ROM no se renombra: los datos se siguen guardando en el fichero
     original.
+  - **Un juego que ya tiene ficha no se vuelve a scrapear**: al pincharlo en la lista se abre su
+    información local (la del `gamelist.xml`) con su carátula de la biblioteca, sin gastar una sola
+    petición a las fuentes. Se puede editar a mano o forzar el scraping con «Escapear». El scrape de
+    un sistema completo ya trabaja sólo sobre los ROMs que no tienen imagen.
 - **Dashboard de logros en la SPA**: la sección *Logros* deja de estar marcada como *Pronto* y muestra
   los juegos de RetroAchievements en los que más has desbloqueado, en tarjetas con **la carátula que
   dejó el scraper** en tu biblioteca, el porcentaje de completitud y el estado de cada juego

@@ -112,7 +112,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 588 con `pytest` en `tests/` (48 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 591 con `pytest` en `tests/` (48 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -142,6 +142,10 @@ El proyecto se trabaja en **un solo repositorio**:
   falls back to the file name. Matching by name first writes the data into the wrong entry and the
   ROM stays in "sin media" forever. `list_rom_folder` reads the system gamelist when the current
   folder has none (its paths are relative to the system root).
+- **A game that already has media is not scraped again**: the ROM modal checks `has_image` and, if
+  it is set, shows the local `gamelist.xml` data plus the library cover (`/api/rom-image`) without
+  hitting any source. Scraping it again is opt-in via the "Escapear" button, and saving in local
+  mode only updates the metadata (never re-downloads the image).
 - Credentials read from `batocera.conf` keys: `global.scrapper.user`, `global.scrapper.password`, etc.
 - Scraping respects rate limits (`maxthreads` from SS response, minimum 0.5s delay)
 - The `--port` CLI flag is the only command-line argument supported
