@@ -587,6 +587,12 @@ export interface BiosCandidate {
   size: number
   /** Nombre canónico dentro del ZIP de destino (si el destino es un ZIP). */
   dest?: string
+  /** Cuántos de los ficheros que exige el catálogo trae esta fuente. */
+  trae?: number
+  /** Cuántos ficheros exige el catálogo en total. */
+  exigido?: number
+  /** `true` si la fuente trae todo lo que hace falta. */
+  completo?: boolean
 }
 
 export interface BiosSearchResult {

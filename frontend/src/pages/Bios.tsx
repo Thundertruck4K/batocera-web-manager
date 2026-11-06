@@ -64,9 +64,16 @@ export function BiosPage() {
   const { data, error, loading, refresh } = useApi(() => api.biosCatalog(), [])
   /** `force` rehace el índice de fuentes de archive.org (tarda unos segundos). */
   const [pedidoFuentes, setPedidoFuentes] = useState({ force: false, n: 0 })
+  const [indexando, setIndexando] = useState(true)
   const { data: fuentes, loading: cargandoFuentes } = useApi(
-    () => api.biosSources(pedidoFuentes.force),
+    () =>
+      api.biosSources(pedidoFuentes.force).then((respuesta) => {
+        setIndexando(Boolean(respuesta.indexing))
+        return respuesta
+      }),
     [pedidoFuentes.n],
+    // Mientras el backend indexa en segundo plano, se va preguntando.
+    { pollMs: indexando ? 8000 : 0 },
   )
 
   const [query, setQuery] = useState('')
@@ -255,7 +262,7 @@ export function BiosPage() {
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-[11px] text-muted-foreground">
           <PackageSearch className="size-4 shrink-0" />
           <span className="min-w-0">
-            {cargandoFuentes && !fuentes
+            {indexando
               ? 'Indexando las fuentes de archive.org…'
               : `${resumenFuentes.total} fuentes en archive.org${
                   resumenFuentes.conLicencia

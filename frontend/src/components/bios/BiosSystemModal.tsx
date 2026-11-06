@@ -49,6 +49,26 @@ function busquedaExterna(file: string): string {
 }
 
 /**
+ * Agrupa los candidatos por contenedor: de un ZIP con tres ficheros útiles
+ * sale una sola fila, no tres.
+ */
+function agruparCandidatos(lista: BiosCandidate[]) {
+  const mapa = new Map<string, { candidato: BiosCandidate; miembros: string[] }>()
+  for (const c of lista) {
+    const clave = `${c.item}|${c.name}`
+    const previo = mapa.get(clave)
+    if (previo) {
+      if (c.member && !previo.miembros.includes(c.member)) previo.miembros.push(c.member)
+      previo.candidato.trae = Math.max(previo.candidato.trae ?? 0, c.trae ?? 0)
+      previo.candidato.completo = previo.candidato.completo || c.completo
+    } else {
+      mapa.set(clave, { candidato: { ...c }, miembros: c.member ? [c.member] : [] })
+    }
+  }
+  return [...mapa.values()]
+}
+
+/**
  * Detalle de las BIOS de un sistema: cada fichero con su estado, el hash que
  * pide Batocera y las acciones para arreglarlo.
  *
@@ -368,9 +388,9 @@ export function BiosSystemModal({
                         Encontrado en archive.org. Elige de dónde descargarlo:
                       </p>
                       <ul className="mt-1 space-y-1">
-                        {candidatosFile.map((candidato) => (
+                        {agruparCandidatos(candidatosFile).map(({ candidato, miembros }) => (
                           <li
-                            key={`${candidato.item}|${candidato.name}|${candidato.member ?? ''}`}
+                            key={`${candidato.item}|${candidato.name}`}
                             className="flex flex-wrap items-center justify-between gap-2"
                           >
                             <div className="min-w-0 flex-1">
@@ -378,11 +398,28 @@ export function BiosSystemModal({
                                 {candidato.source}
                               </p>
                               <p className="truncate text-[10px] text-muted-foreground">
-                                {candidato.name}
-                                {candidato.member ? ` › ${candidato.member}` : ''} ·{' '}
-                                {humanSize(candidato.size)} ·{' '}
+                                {candidato.name} · {humanSize(candidato.size)} ·{' '}
                                 {candidato.license ?? 'sin licencia declarada'}
                               </p>
+                              {miembros.length > 0 && (
+                                <p className="truncate text-[10px] text-muted-foreground">
+                                  {miembros.join(', ')}
+                                </p>
+                              )}
+                              {candidato.exigido && candidato.exigido > 1 && (
+                                <p
+                                  className={cn(
+                                    'text-[10px]',
+                                    candidato.completo
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-amber-600 dark:text-amber-400',
+                                  )}
+                                >
+                                  {candidato.completo
+                                    ? `trae los ${candidato.exigido} ficheros que exige Batocera`
+                                    : `trae ${candidato.trae ?? 0} de ${candidato.exigido} ficheros: faltará el resto`}
+                                </p>
+                              )}
                             </div>
                             <Button
                               size="sm"

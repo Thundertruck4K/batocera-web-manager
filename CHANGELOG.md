@@ -22,10 +22,17 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     plano: la pantalla no se queda esperando.
   - Fuentes por defecto: las colecciones de BIOS de MESS (0.151 y 0.149), las de Emularity y
     JsMess, el pack de EmuDeck y los ROMs de la Elektronika BK.
+  - En una consola con 62 BIOS ausentes, **25 se pueden instalar tal cual** desde estas fuentes y 7
+    más trae la fuente sólo en parte (la interfaz lo dice: «trae 2 de 3 ficheros»). Las 32
+    restantes no están en ninguna colección publicada: para ésas el manager lo dice y ofrece subir
+    el fichero a mano o buscarlo en GitHub.
   - **Legal**: ninguna de las fuentes declara licencia, así que la interfaz lo enseña y **la
     descarga sólo ocurre cuando el usuario elige la fuente**. La reparación local se prioriza
     siempre y, si no hay ninguna fuente con ese contenido, el manager lo dice claro y ofrece subir
     el fichero a mano o buscarlo en GitHub.
+  - La búsqueda va en tres fases para no gastar peticiones: lo que se sabe sin descargar (el md5 que
+    publica archive.org), luego los contenedores cuyo nombre coincide y, sólo si no hay nada, los
+    de nombre parecido. Hay un presupuesto de contenedores porque cada uno es una ida al servidor.
 - `GET /api/bios/sources` (catálogo de fuentes con su licencia y su estado; `?force=1` rehace el
   índice), `POST /api/bios/sources/search` (candidatos para una BIOS) y `POST /api/bios/install`
   (descarga un candidato y lo instala verificando el md5).

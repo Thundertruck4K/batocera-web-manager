@@ -43,6 +43,7 @@ def _reset(appmod):
     appmod._bios_sources_cache["ts"] = 0.0
     appmod._bios_sources_cache["data"] = None
     appmod._bios_container_cache.clear()
+    appmod._bios_payload_cache.clear()
 
 
 @pytest.fixture
@@ -58,6 +59,8 @@ def entorno(appmod, tmp_path, monkeypatch):
     # fuente indexada en un test se colaría en el siguiente.
     monkeypatch.setattr(appmod, "_bios_sources_file",
                         lambda: tmp_path / "fuentes.json")
+    monkeypatch.setattr(appmod, "_bios_containers_file",
+                        lambda: tmp_path / "contenedores.json")
     bios = tmp_path / "bios"
     bios.mkdir()
     _reset(appmod)
@@ -272,6 +275,69 @@ def test_un_zip_con_el_mismo_nombre_pero_distinto_no_sirve(appmod, entorno):
         pass
     verificados = [c for c in encontrado["candidates"] if c["match"] == "miembro"]
     assert verificados == [], "un ZIP con otro contenido no puede ser candidato"
+
+
+# ── Los contenedores candidatos ─────────────────────────────────────────
+
+def _miembro(nombre, size=100):
+    return {"name": nombre, "size": size, "csize": size, "crc": 0,
+            "method": 0, "offset": 0}
+
+
+def test_un_contenedor_que_no_se_puede_leer_no_se_cachea(appmod, entorno):
+    """Si un ZIP falla al abrirse, el vacío no se cachea: envenenaría la caché.
+
+    Un contenedor ilegible significa «no he podido mirarlo», no «no hay nada
+    dentro». Si se cacheara el vacío, esa BIOS se quedaría sin fuente para
+    siempre.
+    """
+    red = RedFalsa({"emularity_bios_v1": {
+        "meta": {}, "files": {"adam.zip": b"esto no es un zip"}}})
+    _conectar(appmod, red)
+    monkey = entorno["monkeypatch"]
+    monkey.setattr(appmod, "BIOS_SOURCES_DEFAULT", [
+        {"id": "emularity_bios_v1", "kind": "files"}])
+    miembros = appmod._bios_container_members("emularity_bios_v1", "adam.zip")
+    assert miembros == {}
+    cache = appmod._bios_containers_file()
+    if cache.exists():
+        assert "emularity_bios_v1|adam.zip" not in cache.read_text(encoding="utf-8")
+
+
+def test_un_contenedor_leido_se_cachea(appmod, entorno):
+    """Un contenedor que sí se abre se cachea (no se vuelve a bajar)."""
+    zip_bueno = _zip_bytes({"alf rev 57.u8": b"contenido"})
+    red = RedFalsa({"emularity_bios_v1": {
+        "meta": {}, "files": {"adam.zip": zip_bueno}}})
+    _conectar(appmod, red)
+    miembros = appmod._bios_container_members("emularity_bios_v1", "adam.zip")
+    assert miembros == {"alf rev 57.u8": _md5(b"contenido")}
+    assert "emularity_bios_v1|adam.zip" in \
+        appmod._bios_containers_file().read_text(encoding="utf-8")
+
+
+def test_el_contenedor_se_busca_por_la_carpeta_de_la_ruta(appmod, entorno):
+    """`enterprise/ep128emu/roms/exos20.rom` se busca dentro de `ep128.zip`."""
+    miembros = [_miembro("MESS ROMs/ep128.zip"), _miembro("MESS ROMs/otro.zip")]
+    cands = appmod._bios_container_candidates(
+        miembros, "ep128emu/roms/exos20.rom", "enterprise")
+    assert [c["name"] for c in cands] == ["MESS ROMs/ep128.zip"]
+
+
+def test_el_contenedor_se_busca_por_el_sistema(appmod, entorno):
+    """El sistema manda: `bbc` busca dentro de `bbc.zip`."""
+    miembros = [_miembro("otro.zip"), _miembro("bbc.zip")]
+    cands = appmod._bios_container_candidates(
+        miembros, "Acorn/basic2.rom", "bbc")
+    assert cands[0]["name"] == "bbc.zip"
+
+
+def test_sin_contenedores_no_hay_nada_que_abrir(appmod, entorno):
+    """Un fichero que no parece un ZIP no se propone como contenedor."""
+    miembros = [_miembro("basic2.rom"), _miembro("carpeta/")]
+    cands = appmod._bios_container_candidates(
+        miembros, "Acorn/basic2.rom", "bbc")
+    assert cands == []
 
 
 # ── La instalación ──────────────────────────────────────────────────────

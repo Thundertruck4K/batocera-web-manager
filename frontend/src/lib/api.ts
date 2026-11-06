@@ -251,7 +251,7 @@ export const api = {
     post<BiosRepairResult>('/api/bios/repair', payload).then(unwrap),
   /** Catálogo de fuentes de archive.org (con su licencia y su estado). */
   biosSources: (force = false) =>
-    get<{ ok: boolean; sources: BiosSource[]; error?: string }>(
+    get<{ ok: boolean; sources: BiosSource[]; indexing?: boolean; error?: string }>(
       `/api/bios/sources${force ? '?force=1' : ''}`,
     ),
   /** Busca en archive.org el contenido que pide el catálogo para una BIOS. */
