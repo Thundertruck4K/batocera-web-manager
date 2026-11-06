@@ -197,7 +197,8 @@ export const api = {
   randomGame: () => get<{ ok: boolean; game: RandomGame | null }>('/api/random-game'),
 
   /* Logros (RetroAchievements) */
-  raGames: () => get<RaGamesPayload>('/api/retroachievements/games'),
+  raGames: (force = false) =>
+    get<RaGamesPayload>(`/api/retroachievements/games${force ? '?force=1' : ''}`),
 
   /* Scraper */
   scraperConfig: () => get<ScraperConfig>('/api/scraper/config'),

@@ -199,6 +199,12 @@ el scraper** en tu biblioteca (si el juego no está emparejado con un ROM local,
 RetroAchievements), los logros conseguidos sobre el total, el porcentaje, el estado y cuándo
 conseguiste el último.
 
+Los datos se **descargan una vez y se guardan** (en memoria y en disco, junto a los ajustes del
+manager), así que entrar en la sección no llama a la API de RetroAchievements: se muestran los datos
+guardados y sólo el botón de recargar pide datos frescos, respetando siempre un intervalo mínimo
+entre peticiones. La API de RA no publica una cuota numérica, pero su documentación pide ser
+razonable con las peticiones, de ahí la caché.
+
 ![Logros](docs/screenshots/06-logros.png)
 
 *Dashboard de logros: las carátulas son las del scraper y el anillo marca el porcentaje completado.*
@@ -498,6 +504,13 @@ propia web. Las imágenes se escriben con la nomenclatura de EmulationStation
 (`images/<rom>-image.png`, `-box`, `-wheel`, `-fanart`, `-marquee`, `-thumbnail`…), así que aparecen sin
 tocar nada más. Se respetan los límites de peticiones de cada API (hilos máximos y pausa mínima).
 
+**Los juegos que son una carpeta.** En algunos sistemas el juego no es un fichero sino una carpeta
+(ScummVM: `Myst.scummvm/`, DOSBox: `Alone in the Dark.pc/`, MUGEN: `kof94.pc/`). Es la convención
+de EmulationStation: si el nombre de la carpeta lleva una extensión del sistema, **la carpeta es el
+juego**, y el `gamelist.xml` guarda su ruta (`<path>./Myst.scummvm</path>`). El manager lo tiene en
+cuenta y lo escrapea por el nombre de la carpeta (sin la extensión), que es el título del juego; la
+ficha y la carátula se guardan igual que las de un ROM normal.
+
 ---
 
 ## 🧱 Arquitectura
@@ -546,19 +559,19 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
 | **BIOS** | `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
-| **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` |
+| **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
 | **Actualización** | `/api/update` · `/api/app-update` |
 
 ---
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **504 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **623 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 504 passed in ~15s
+# 623 passed in ~30s
 ```
 
 ---
@@ -580,7 +593,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 504 tests con pytest
+├── tests/                    # 623 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

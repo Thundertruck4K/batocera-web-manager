@@ -428,6 +428,12 @@ export interface RaGamesPayload {
   /** La integración está activada. */
   enabled: boolean
   updated: number | null
+  /** Los datos vienen de la cache (no se ha llamado a la API). */
+  cached: boolean
+  /** No se ha refrescado por respetar el intervalo mínimo de peticiones. */
+  throttled: boolean
+  /** Segundos desde la última descarga real a la API. */
+  age: number | null
   profile: RaProfile | null
   awards: RaAwards | null
   games: RaGame[]
@@ -478,6 +484,8 @@ export interface RomFolderItem {
   size_human: string
   is_rom: boolean
   is_dir: boolean
+  /** El juego es una carpeta (ScummVM, DOSBox, MUGEN...): se busca por su nombre. */
+  is_game_folder?: boolean
   child_count?: number
   has_subdirs?: boolean
   desc: string

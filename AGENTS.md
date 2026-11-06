@@ -93,6 +93,16 @@ El proyecto se trabaja en **un solo repositorio**:
   tarjeta `#161616` / blanco, escenario `#0d0d0d`, escala monocroma para gráficos (`--chart-1..4`).
   Se alternan con la clase `.dark` en `<html>`. Curva de movimiento única
   `cubic-bezier(0.16, 1, 0.3, 1)`, duraciones < 300 ms.
+- **Los `<select>` nativos no respetan el tema**: pintan su propio fondo (blanco con letras pálidas).
+  El componente `Select` de `frontend/src/components/ui/Field.tsx` les quita el aspecto nativo
+  (`appearance-none`), les pone el fondo de la app y dibuja la flecha; el `color-scheme` (claro/oscuro
+  según `.dark`) y el fondo de `option` están en `index.css` para que la lista desplegada también
+  siga la paleta.
+- **El interruptor (`Toggle`) va anclado**: la bola lleva `left-0.5` y se mueve con `translate-x-5`
+  sobre un carril de 44 px, para que el recorrido sea simétrico (2 px de margen a cada lado). Sin
+  `left` el navegador la centraba y al activarse se salía del carril. El color de la bola sale de los
+  tokens (`bg-foreground` apagada, `bg-primary-foreground` encendida) para que contraste en los dos
+  temas.
 - **La API no cambia**: el frontend consume los mismos endpoints `/api/*` que la interfaz clásica.
   `frontend/src/lib/api.ts` es el cliente tipado; `frontend/src/lib/normalize.ts` rellena los campos
   que faltan cuando el backend las deja vacíos (fuera de Linux no hay `/proc` ni `/sys`) para que la
@@ -112,7 +122,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 591 con `pytest` en `tests/` (48 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 623 con `pytest` en `tests/` (51 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -148,6 +158,25 @@ El proyecto se trabaja en **un solo repositorio**:
   mode only updates the metadata (never re-downloads the image).
 - Credentials read from `batocera.conf` keys: `global.scrapper.user`, `global.scrapper.password`, etc.
 - Scraping respects rate limits (`maxthreads` from SS response, minimum 0.5s delay)
+- **Some games are a folder, not a file**: EmulationStation treats a directory as a game when its name
+  carries one of the system's extensions (`Myst.scummvm/`, `Alone in the Dark.pc/`, `kof94.pc/`), and
+  the `gamelist.xml` stores that path (`<path>./Myst.scummvm</path>`). `game_folder_extensions()`
+  reads the extensions from `es_systems.cfg` (the user's one wins, `.residualvm` joins `.scummvm`),
+  `is_game_folder()` detects them (also by the marker file inside, e.g. `Myst.scummvm/myst.scummvm`)
+  and `game_folder_search_name()` strips the extension to get the title to search for. Such a game is
+  listed as a ROM (`is_game_folder: true`), scraped **by name** (`name_only`, never hashed: a folder
+  has no hash) and saved with the folder path in the gamelist.
+- **ScreenScraper's name search needs a platform id, and time**: without `systemeid` (or with `0`)
+  the API still answers, but it searches every platform and takes over a minute, so the name search
+  uses `SS_SEARCH_TIMEOUT_NAME` (75 s) — with the old 20 s timeout the result was always lost. The
+  map lives in `SS_SYSTEMS` (`dos` → 135, "PC Dos"; `scummvm`/`residualvm` → 123). The name search is
+  fuzzy and its first result is often a different game ("Doom" → "Hugo III: Jungle of Doom"), so
+  `_ss_best_jeu()` picks the candidate whose title matches the searched name.
+- **RetroAchievements data is cached on disk**: the summary is stored in
+  `/userdata/system/batocera_manager_ra_cache.json` next to the settings, so entering the section
+  after a manager restart does not hit the API. `RA_CACHE_TTL` (6 h, configurable with
+  `ra_cache_ttl`) is how long the data is served, and `RA_MIN_REFRESH` (60 s) is the minimum gap
+  between two downloads even when the user asks for a forced refresh (`?force=1`).
 - The `--port` CLI flag is the only command-line argument supported
 
 ## Workflow

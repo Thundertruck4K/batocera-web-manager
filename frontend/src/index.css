@@ -190,6 +190,22 @@
     background: var(--brand-soft);
     color: var(--foreground);
   }
+
+  /* Los <select> nativos ignoran el fondo del tema y pintan su lista de
+     opciones con los colores del sistema (fondo blanco, letras pálidas).
+     Declarando el color-scheme, la lista sigue la paleta de la app. */
+  select {
+    color-scheme: light;
+  }
+
+  .dark select {
+    color-scheme: dark;
+  }
+
+  select option {
+    background-color: var(--card);
+    color: var(--foreground);
+  }
 }
 
 @layer components {

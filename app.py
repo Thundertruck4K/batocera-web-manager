@@ -84,6 +84,8 @@ DEFAULT_SETTINGS = {
     "ra_user":       "",
     "ra_api_key":    "",
     "ra_enabled":    True,
+    # Tiempo que se guardan los datos de RA antes de volver a pedirlos (s)
+    "ra_cache_ttl":  21600,
     # Tema de la interfaz del manager: "dark" | "light" | "auto"
     "ui_theme":      "dark",
 }
@@ -1462,6 +1464,127 @@ def get_system_extensions(system, settings, builtin_path=None):
         return _exts_from(builtin)
     return set()
 
+# ─── Juegos que son carpetas ────────────────────────────────────────────
+# EmulationStation (y por tanto Batocera) trata una carpeta como un juego
+# cuando el nombre de la carpeta lleva una extension del sistema: en ScummVM
+# el juego es la carpeta `Myst.scummvm/`, en DOSBox `Alone in the Dark.pc/`
+# y en MUGEN `kof94.pc/`. El gamelist.xml guarda la ruta de esa carpeta
+# (`<path>./Myst.scummvm</path>`), asi que el scraper debe buscar por el
+# nombre de la carpeta y no por un fichero.
+# ResidualVM comparte familia con ScummVM (mismo motor, otra extension).
+ES_SYSTEMS_CFG        = Path("/usr/share/emulationstation/es_systems.cfg")
+_ES_SYSTEMS_EXT_CACHE = {}    # {ruta: (ts, {sistema: [extensiones]})}
+_ES_SYSTEMS_EXT_TTL   = 300
+
+def _es_systems_extensions(cfg_path):
+    """Mapa {sistema: [extensiones]} de un es_systems.cfg, con cache."""
+    path = str(cfg_path)
+    now  = time.time()
+    hit  = _ES_SYSTEMS_EXT_CACHE.get(path)
+    if hit and (now - hit[0]) < _ES_SYSTEMS_EXT_TTL:
+        return hit[1]
+    data = {}
+    try:
+        for s in ET.parse(path).findall(".//system"):
+            name = (s.findtext("name","") or "").strip()
+            ext  = (s.findtext("extension","") or "").strip()
+            if name:
+                data[name] = [e.strip().lower() for e in ext.split() if e.strip()]
+    except Exception:
+        data = {}
+    _ES_SYSTEMS_EXT_CACHE[path] = (now, data)
+    return data
+
+def game_folder_extensions(system, settings, builtin_path=None):
+    """Extensiones con las que una carpeta es un juego y no una carpeta de juegos.
+
+    Se lee del es_systems.cfg del sistema (el de usuario si define ese
+    sistema, el oficial si no). Si el sistema tiene `.scummvm` se anade
+    `.residualvm`, que es el mismo motor con otra extension.
+    """
+    cfg_dir = Path(settings.get("es_cfg_dir", "/userdata/system/configs/emulationstation"))
+    custom = {}
+    if cfg_dir.is_dir():
+        for f in sorted(cfg_dir.glob("es_systems_*.cfg")):
+            custom.update(_es_systems_extensions(f))
+    if system in custom:
+        exts = set(custom[system])
+    else:
+        builtin = builtin_path or ES_SYSTEMS_CFG
+        exts = set(_es_systems_extensions(builtin).get(system, []))
+    if ".scummvm" in exts:
+        exts.add(".residualvm")
+    return exts
+
+def game_folder_ext(name, exts):
+    """Extension del sistema que lleva el nombre de la carpeta ("" si no lleva)."""
+    low = name.lower()
+    for ext in sorted(exts, key=len, reverse=True):
+        if len(name) > len(ext) and low.endswith(ext):
+            return ext
+    return ""
+
+def is_game_folder(path, exts):
+    """True si la carpeta es un juego y no una carpeta con juegos dentro.
+
+    Se considera juego cuando el nombre de la carpeta lleva una extension del
+    sistema (`Myst.scummvm/`) o cuando dentro esta el fichero con el mismo
+    nombre y la misma extension (`Myst.scummvm/myst.scummvm`), que es como
+    ScummVM guarda cada juego.
+    """
+    if not exts:
+        return False
+    if game_folder_ext(path.name, exts):
+        return True
+    try:
+        for child in path.iterdir():
+            if (child.is_file()
+                    and child.stem.lower() == path.stem.lower()
+                    and game_folder_ext(child.name, exts)):
+                return True
+    except OSError:
+        pass
+    return False
+
+def game_folder_search_name(name, exts):
+    """Nombre con el que se busca un juego que es una carpeta.
+
+    `Myst.scummvm` -> `Myst`; `Alone in the Dark.pc` -> `Alone in the Dark`.
+    """
+    ext = game_folder_ext(name, exts)
+    if not ext:
+        return name
+    return name[: -len(ext)].strip() or name
+
+def scraper_search_target(settings, system, subpath, filename):
+    """Nombre con el que se busca un ROM y su ruta para poder hashearlo.
+
+    Un juego puede ser una carpeta (ScummVM, DOSBox, MUGEN...): entonces se
+    busca por el nombre de la carpeta y no hay nada que hashear. Si el nombre
+    se ha editado a mano y no corresponde a un fichero, tampoco se hashea.
+
+    Devuelve (nombre_busqueda, ruta_rom, solo_nombre).
+    """
+    exts       = game_folder_extensions(system, settings)
+    busqueda   = filename
+    rom_path   = None
+    solo_nombre = False
+    try:
+        base = Path(settings["roms_base"]) / system
+        if subpath:
+            base = base / subpath
+        destino = base / filename
+        if destino.is_dir():
+            busqueda    = game_folder_search_name(filename, exts)
+            solo_nombre = True
+        elif destino.is_file():
+            rom_path = str(destino)
+        else:
+            solo_nombre = True
+    except Exception:
+        rom_path = None
+    return busqueda, rom_path, solo_nombre
+
 def prettify_xml(elem):
     rough    = ET.tostring(elem, encoding="unicode")
     reparsed = minidom.parseString(rough)
@@ -1747,6 +1870,8 @@ def list_rom_folder(settings, system, subpath=""):
         return None
 
     items, media_count, total_size = [], 0, 0
+    # Extensiones con las que una carpeta es un juego (ScummVM, DOSBox, MUGEN...).
+    exts = game_folder_extensions(system, settings)
     try:
         entries = sorted(target.iterdir())
     except PermissionError:
@@ -1771,36 +1896,60 @@ def list_rom_folder(settings, system, subpath=""):
                 "ext": item.suffix.lower(), "size": sz,
                 "size_human": human_size(sz),
                 "is_rom": item.suffix.lower() in ROM_EXTENSIONS,
-                "is_dir": False,
+                "is_dir": False, "is_game_folder": False,
                 "desc":"","rating":"","genre":"","publisher":"","year":"",
                 "has_image": False, "has_video": False,
             })
         elif item.is_dir():
             # Para carpetas, contar ROMs dentro (sin recursión profunda, solo 1er nivel)
+            child_count = 0
+            child_has_subdirs = False
+            marcador = False
             try:
-                child_count = sum(1 for f in item.iterdir()
-                                  if f.is_file() and not f.name.startswith(".")
-                                  and f.name != "gamelist.xml")
-                child_has_subdirs = any(f.is_dir() and f.name != "media"
-                                        and f.name.lower() not in FILTER_DIRS
-                                        for f in item.iterdir())
+                for f in item.iterdir():
+                    if f.is_file() and not f.name.startswith(".") \
+                       and f.name != "gamelist.xml":
+                        child_count += 1
+                    if f.is_dir() and f.name != "media" \
+                       and f.name.lower() not in FILTER_DIRS:
+                        child_has_subdirs = True
+                    # ScummVM: la carpeta del juego lleva dentro su fichero
+                    # <codigo>.scummvm, que es lo que la delata.
+                    if (f.is_file() and f.stem.lower() == item.stem.lower()
+                            and game_folder_ext(f.name, exts)):
+                        marcador = True
             except Exception:
-                child_count, child_has_subdirs = 0, False
+                pass
             sz = 0
             try:
                 sz = sum(f.stat().st_size for f in item.rglob("*") if f.is_file())
             except Exception:
                 pass
             total_size += sz
-            items.append({
-                "name": item.name, "filename": item.name,
-                "ext": "dir", "size": sz, "size_human": human_size(sz),
-                "is_rom": False, "is_dir": True,
-                "child_count": child_count,
-                "has_subdirs": child_has_subdirs,
-                "desc":"","rating":"","genre":"","publisher":"","year":"",
-                "has_image": False, "has_video": False,
-            })
+            gext = game_folder_ext(item.name, exts)
+            if gext or marcador:
+                # El juego es la carpeta: se escrapea por su nombre y su
+                # caratula se guarda como la de un ROM normal.
+                items.append({
+                    "name": game_folder_search_name(item.name, exts),
+                    "filename": item.name,
+                    "ext": gext or "dir", "size": sz, "size_human": human_size(sz),
+                    "is_rom": True, "is_dir": True, "is_game_folder": True,
+                    "child_count": child_count,
+                    "has_subdirs": child_has_subdirs,
+                    "desc":"","rating":"","genre":"","publisher":"","year":"",
+                    "has_image": False, "has_video": False,
+                })
+            else:
+                items.append({
+                    "name": item.name, "filename": item.name,
+                    "ext": "dir", "size": sz, "size_human": human_size(sz),
+                    "is_rom": False, "is_dir": True, "is_game_folder": False,
+                    "child_count": child_count,
+                    "has_subdirs": child_has_subdirs,
+                    "desc":"","rating":"","genre":"","publisher":"","year":"",
+                    "has_image": False, "has_video": False,
+                })
 
     # Gamelist: buscar en la carpeta actual (algunos sistemas tienen gamelist por subcarpeta)
     gl = target / "gamelist.xml"
@@ -1837,7 +1986,8 @@ def list_rom_folder(settings, system, subpath=""):
 
     if gdata:
         for it in items:
-            if it["is_dir"]: continue
+            # Las carpetas que son juego tambien tienen ficha en el gamelist.
+            if it["is_dir"] and not it.get("is_game_folder"): continue
             meta = gdata.get(it["filename"], gdata.get(it["name"], {}))
             if meta: it.update(meta)
 
@@ -2418,6 +2568,8 @@ def get_rom_systems(settings, fast=False):
     for sys_dir in dirs:
         if not sys_dir.is_dir(): continue
         name = sys_dir.name
+        # Extensiones con las que una carpeta de este sistema es un juego.
+        exts = game_folder_extensions(name, settings)
         roms, media_count, total_size = [], 0, 0
         try:
             for item in sorted(sys_dir.iterdir()):
@@ -2434,15 +2586,27 @@ def get_rom_systems(settings, fast=False):
                         "ext":item.suffix.lower(),"size":sz,
                         "size_human":human_size(sz),
                         "is_rom":item.suffix.lower() in ROM_EXTENSIONS,
+                        "is_game_folder":False,
                         "desc":"","rating":"","genre":"","publisher":"","year":"",
                         "has_image":False,"has_video":False})
                 elif item.is_dir():
                     sz = sum(f.stat().st_size for f in item.rglob("*") if f.is_file())
                     total_size += sz
-                    roms.append({"name":item.name,"filename":item.name,"ext":"dir",
-                        "size":sz,"size_human":human_size(sz),"is_rom":True,
-                        "desc":"","rating":"","genre":"","publisher":"","year":"",
-                        "has_image":False,"has_video":False})
+                    gext = game_folder_ext(item.name, exts)
+                    if gext or is_game_folder(item, exts):
+                        # El juego es la carpeta (ScummVM, DOSBox, MUGEN...).
+                        roms.append({"name":game_folder_search_name(item.name, exts),
+                            "filename":item.name,"ext":gext or "dir",
+                            "size":sz,"size_human":human_size(sz),"is_rom":True,
+                            "is_game_folder":True,
+                            "desc":"","rating":"","genre":"","publisher":"","year":"",
+                            "has_image":False,"has_video":False})
+                    else:
+                        roms.append({"name":item.name,"filename":item.name,"ext":"dir",
+                            "size":sz,"size_human":human_size(sz),"is_rom":True,
+                            "is_game_folder":False,
+                            "desc":"","rating":"","genre":"","publisher":"","year":"",
+                            "has_image":False,"has_video":False})
         except PermissionError: pass
         # Gamelist (solo si no es modo rapido)
         gl = sys_dir / "gamelist.xml"
@@ -3345,8 +3509,18 @@ def _fetch_app_update():
 # ═══════════════════════════════════════════════════════════════
 
 RA_API_BASE  = "https://retroachievements.org/API"
-RA_CACHE_TTL = 600
+# La API de RetroAchievements no publica una cuota numérica, pero su
+# documentacion pide ser razonable con las peticiones y cachear los datos
+# ("It is expected of you to be reasonable about your usage and consider how
+# often you really need to hit the site, as well as if it's possible to
+# cache/preload data"). Por eso:
+#   - el resumen se cachea RA_CACHE_TTL segundos (6 h por defecto) y se guarda
+#     en disco, para que sobreviva a un reinicio del manager;
+#   - entre dos descargas a la red hay siempre RA_MIN_REFRESH segundos.
+RA_CACHE_TTL   = 21600
+RA_MIN_REFRESH = 60
 _ra_cache    = {"ts": 0, "data": None, "user": ""}
+_ra_last_req = {"ts": 0}      # última petición hecha a la API de RA
 
 
 def _ra_urlopen(url, timeout=10):
@@ -3493,30 +3667,102 @@ def ra_test(settings):
     }
 
 
+def _ra_ttl(settings):
+    """Tiempo de vida de la cache de RA (segundos). Configurable con `ra_cache_ttl`."""
+    try:
+        ttl = int(settings.get("ra_cache_ttl") or RA_CACHE_TTL)
+    except (TypeError, ValueError):
+        ttl = RA_CACHE_TTL
+    return max(300, min(ttl, 86400))
+
+def _ra_cache_file():
+    return SETTINGS_FILE.parent / "batocera_manager_ra_cache.json"
+
+def _ra_load_disk():
+    """Resumen guardado en disco: sobrevive a un reinicio del manager."""
+    try:
+        raw = json.loads(_ra_cache_file().read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(raw, dict):
+        return None
+    data = raw.get("data")
+    if not isinstance(data, dict) or not data:
+        return None
+    try:
+        ts = float(raw.get("ts") or 0)
+    except (TypeError, ValueError):
+        ts = 0
+    return {"ts": ts, "data": data, "user": str(raw.get("user") or "")}
+
+def _ra_save_disk(data, user):
+    """Guarda el resumen en disco para no volver a pedirlo al reiniciar."""
+    try:
+        f = _ra_cache_file()
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps({"ts": time.time(), "user": user, "data": data},
+                                ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+def _ra_mark(data, ts, cached, throttled):
+    """Añade a la respuesta de dónde vienen los datos y cuándo se descargaron."""
+    out = dict(data or {})
+    out["updated"]   = ts
+    out["cached"]    = bool(cached)
+    out["throttled"] = bool(throttled)
+    out["age"]       = max(0, int(time.time() - ts)) if ts else None
+    return out
+
 def get_retroachievements(settings, force=False):
-    """Resumen combinado de RetroAchievements, cacheado RA_CACHE_TTL segundos.
+    """Resumen combinado de RetroAchievements, cacheado.
 
     - `configured`: hay usuario + Web API Key.
     - `enabled`: además el interruptor está activo (si no, no se toca la red).
     - `ok`: la API respondió.
+    - `cached`: los datos salen de la cache (no se ha llamado a la API).
+    - `throttled`: no se ha refrescado por respetar el intervalo mínimo.
+
+    La API de RA no publica una cuota numérica, pero su documentación pide ser
+    razonable con las peticiones y cachear los datos. Por eso el resumen se
+    guarda en disco (así sobrevive a un reinicio del manager) y entre dos
+    descargas a la red siempre hay un intervalo mínimo.
     """
     user    = (settings.get("ra_user") or "").strip()
     key     = (settings.get("ra_api_key") or "").strip()
     enabled = bool(settings.get("ra_enabled", True))
     if not user or not key:
         return {"ok": False, "configured": False, "enabled": False, "updated": None,
+                "cached": False, "throttled": False,
                 "profile": None, "recent": [], "completion": [], "awards": None}
     if not enabled:
         return {"ok": False, "configured": True, "enabled": False, "updated": None,
+                "cached": False, "throttled": False,
                 "profile": None, "recent": [], "completion": [], "awards": None}
 
     now = time.time()
-    fresh = (not force
-             and _ra_cache["data"] is not None
-             and _ra_cache.get("user") == user
-             and (now - _ra_cache["ts"]) < RA_CACHE_TTL)
-    if fresh:
-        return _ra_cache["data"]
+    ttl = _ra_ttl(settings)
+
+    # 1) cache en memoria
+    entrada = None
+    if _ra_cache["data"] is not None and _ra_cache.get("user") == user:
+        entrada = _ra_cache
+    # 2) cache en disco (sobrevive a un reinicio del manager)
+    if entrada is None:
+        disco = _ra_load_disk()
+        if disco and disco["user"] == user:
+            _ra_cache.update(disco)
+            entrada = _ra_cache
+
+    if entrada is not None:
+        if not force and (now - entrada["ts"]) < ttl:
+            return _ra_mark(entrada["data"], entrada["ts"], True, False)
+        # Intervalo mínimo entre descargas: la API de RA no perdona el exceso
+        # de peticiones, asi que se sirven los datos guardados.
+        if (now - _ra_last_req["ts"]) < RA_MIN_REFRESH:
+            return _ra_mark(entrada["data"], entrada["ts"], True, True)
+
+    _ra_last_req["ts"] = now
 
     profile = ra_profile(settings)
     data = {
@@ -3533,7 +3779,9 @@ def get_retroachievements(settings, force=False):
     }
     if profile is not None:
         _ra_cache.update({"ts": now, "data": data, "user": user})
-    return data
+        _ra_save_disk(data, user)
+        return _ra_mark(data, now, False, False)
+    return _ra_mark(data, now, False, False)
 
 
 
@@ -3677,7 +3925,7 @@ def match_local_game(index, roms_base, title):
     return best
 
 
-def get_ra_games(settings):
+def get_ra_games(settings, force=False):
     """Dashboard de logros: perfil, premios y juegos con más progreso.
 
     Cada juego se empareja con un ROM de la biblioteca local para enseñar
@@ -3685,19 +3933,24 @@ def get_ra_games(settings):
     tarjeta usa el icono de RetroAchievements.
 
     No se toca la red si faltan credenciales o si la integración está
-    desactivada.
+    desactivada. Con la cache en marcha, entrar en la sección no llama a la
+    API: los datos se descargaron la ultima vez y se guardan en disco.
     """
     user = (settings.get("ra_user") or "").strip()
     key = (settings.get("ra_api_key") or "").strip()
     enabled = bool(settings.get("ra_enabled", True)) and bool(user and key)
     base = {"ok": False, "configured": bool(user and key), "enabled": enabled,
             "updated": None, "profile": None, "awards": None,
+            "cached": False, "throttled": False, "age": None,
             "games": [], "matched": 0, "total": 0}
     if not base["configured"] or not enabled:
         return base
 
-    summary = get_retroachievements(settings)
+    summary = get_retroachievements(settings, force=force)
     if not summary.get("ok"):
+        base["updated"]  = summary.get("updated")
+        base["cached"]   = summary.get("cached")
+        base["throttled"] = summary.get("throttled")
         return base
 
     roms_base = settings.get("roms_base", "/userdata/roms")
@@ -3721,6 +3974,9 @@ def get_ra_games(settings):
         "configured": True,
         "enabled": True,
         "updated": summary.get("updated"),
+        "cached": summary.get("cached"),
+        "throttled": summary.get("throttled"),
+        "age": summary.get("age"),
         "profile": summary.get("profile"),
         "awards": summary.get("awards"),
         "games": games,
@@ -4387,7 +4643,9 @@ SS_SYSTEMS = {
     "neogeopocketcolor":82,"ngpc":82,
     "3ds":17,"n64":14,"nds":15,"fds":106,"famicom":3,"nes":3,"snes":4,
     "gb":9,"gba":12,"gbc":10,"gamecube":13,"gc":13,"wii":16,"wiiu":18,
-    "virtualboy":11,"gameandwatch":52,"pc":135,"scummvm":123,
+    "virtualboy":11,"gameandwatch":52,"pc":135,"dos":135,"scummvm":123,
+    "residualvm":123,   # DOS (plataforma "PC Dos" de ScreenScraper) y ResidualVM
+                       # (el mismo motor que ScummVM)
     "sega32x":19,"segacd":20,"megacd":20,"dreamcast":23,"gamegear":21,
     "genesis":1,"megadrive":1,"mastersystem":2,"saturn":22,"sg1000":109,
     "x68000":79,"pc88":221,"pc98":208,
@@ -4462,11 +4720,56 @@ def _ss_parse_jeu(data):
         return resp["jeux"][0]
     return None
 
+def _ss_nombre_jeu(jeu):
+    """Nombre del juego en la respuesta de ScreenScraper (`noms` es una lista)."""
+    if not isinstance(jeu, dict):
+        return ""
+    noms = jeu.get("noms")
+    if isinstance(noms, list):
+        for item in noms:
+            if isinstance(item, dict) and item.get("text"):
+                return item["text"]
+        return ""
+    if isinstance(noms, dict):
+        return noms.get("text") or noms.get("nom") or ""
+    return ""
+
+def _ss_normaliza(nombre):
+    """Normaliza un nombre para comparar dos títulos (sin acentos ni signos)."""
+    s = unicodedata.normalize("NFKD", str(nombre or "").lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = _re.sub(r"[^\w\s]", " ", s)
+    return _re.sub(r"\s+", " ", s).strip()
+
+def _ss_best_jeu(jeux, nombre_buscado):
+    """Elige, de los candidatos, el que casa exactamente con el nombre buscado.
+
+    La búsqueda por nombre de ScreenScraper devuelve una lista ordenada con su
+    propia relevancia: para "Doom" el primero puede ser "Hugo III: Jungle of
+    Doom". Si alguno se llama exactamente como lo buscado, ese es el que
+    quiere el usuario (el nombre de la carpeta del juego es su título).
+    """
+    if not jeux:
+        return None
+    objetivo = _ss_normaliza(nombre_buscado)
+    if objetivo:
+        for jeu in jeux:
+            if _ss_normaliza(_ss_nombre_jeu(jeu)) == objetivo:
+                return jeu
+    return jeux[0]
+
+SS_SEARCH_TIMEOUT_INFO = 30   # busqueda por fichero (jeuInfos.php)
+SS_SEARCH_TIMEOUT_NAME = 75   # busqueda por nombre (jeuRecherche.php): sin
+                               # platform id tarda mas de un minuto
+
 def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
                    region="wor", lang="es", rom_path=None,
-                   devid="", devpassword=""):
+                   devid="", devpassword="", name_only=False):
     """Busca un juego en ScreenScraper.fr replicando el formato de Batocera:
-    jeuInfos.php + md5/crc/romtaille/systemeid, con fallback a jeuRecherche.php."""
+    jeuInfos.php + md5/crc/romtaille/systemeid, con fallback a jeuRecherche.php.
+
+    `name_only` fuerza la busqueda por nombre: es lo que corresponde cuando el
+    juego es una carpeta (ScummVM, DOSBox...), que no se puede hashear."""
     if not ss_user or not ss_pass:
         return None, "Sin credenciales de ScreenScraper", {}
     if not devid or not devpassword:
@@ -4501,7 +4804,8 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
     # está mapeado (sys_id=0) y no podemos aportar CRC, la petición a
     # jeuInfos.php está condenada al HTTP 400: la saltamos y vamos directo a
     # la búsqueda por nombre (jeuRecherche.php), que sí funciona sin systemeid.
-    skip_jeuinfos = (sys_id == 0 and not has_crc)
+    # Con `name_only` (juego en carpeta) tampoco se puede hashear.
+    skip_jeuinfos = name_only or (sys_id == 0 and not has_crc)
 
     data = err = quota = None
     if not skip_jeuinfos:
@@ -4514,7 +4818,7 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
         if crcv:
             params["crc"] = crcv
 
-        data, err, _ = _ss_fetch_json(f"{SS_API}/jeuInfos.php?" + _uparse.urlencode(params))
+        data, err, _ = _ss_fetch_json(f"{SS_API}/jeuInfos.php?" + _uparse.urlencode(params), timeout=SS_SEARCH_TIMEOUT_INFO)
         quota = _ss_quota(data) if data else {}
         if data is None:
             # No abortamos: caemos al fallback por nombre (útil cuando el
@@ -4532,20 +4836,29 @@ def ss_search_game(rom_filename, system_name, ss_user, ss_pass,
                 if "systemeid" not in str(msg).lower():
                     return None, msg, quota
 
-    # Fallback por nombre limpio (jeuRecherche.php)
+    # Fallback por nombre limpio (jeuRecherche.php).
+    # Sin platform id la consulta es mucho mas lenta (en ScreenScraper tarda
+    # mas de un minuto porque busca en todas las plataformas), asi que necesita
+    # mas margen: con 20 s se quedaba cortada y se perdia el resultado.
     clean = _clean_rom_name(rom_filename)
     if not clean:
         return None, (err or "Sin resultados para este ROM"), (quota or {})
     p2 = {k: v for k, v in base.items()}
     p2["recherche"] = clean
     p2["systemeid"] = str(sys_id)
-    data2, err2, _ = _ss_fetch_json(f"{SS_API}/jeuRecherche.php?" + _uparse.urlencode(p2))
+    data2, err2, _ = _ss_fetch_json(f"{SS_API}/jeuRecherche.php?" + _uparse.urlencode(p2), timeout=SS_SEARCH_TIMEOUT_NAME)
     if data2 is None:
         return None, (err2 or err or "Sin resultados"), (quota or {})
     hdr2 = data2.get("header", {}) or {}
     quota2 = _ss_quota(data2)
     if hdr2.get("success") == "true":
-        jeu = _ss_parse_jeu(data2)
+        resp2 = data2.get("response", {}) or {}
+        lista = resp2.get("jeux")
+        if isinstance(lista, list) and lista:
+            # Viene una lista de candidatos: gana el que casa con el nombre.
+            jeu = _ss_best_jeu(lista, clean)
+        else:
+            jeu = _ss_parse_jeu(data2)
         if jeu:
             return jeu, None, quota2
         return None, "Sin resultados para este ROM", quota2
@@ -5138,13 +5451,15 @@ def source_has_creds(source, cfg):
     return bool((cfg.get("ss_user") or "").strip()
                 and (cfg.get("ss_password") or "").strip())
 
-def scrape_search_one(source, filename, system, cfg, rom_path=None, public=True):
+def scrape_search_one(source, filename, system, cfg, rom_path=None, public=True,
+                      name_only=False):
     """Busca un juego en una sola fuente.
 
     Devuelve (game, meta, img_types, image_url, err, quota) con la forma ya
     normalizada, para que el resto del código no tenga que distinguir entre
     fuentes. Con `public` las URLs de medios van sin credenciales (es lo que
     se envía al navegador); la interfaz clásica pide las originales.
+    Con `name_only` la búsqueda es sólo por nombre (juego en carpeta).
     """
     if not source_has_creds(source, cfg):
         return None, None, [], None, f"Faltan credenciales para {source}", {}
@@ -5176,7 +5491,8 @@ def scrape_search_one(source, filename, system, cfg, rom_path=None, public=True)
                                       cfg.get("ss_region","wor"), cfg.get("ss_lang","es"),
                                       rom_path=rom_path,
                                       devid=cfg.get("ss_devid",""),
-                                      devpassword=cfg.get("ss_devpassword",""))
+                                      devpassword=cfg.get("ss_devpassword",""),
+                                      name_only=name_only)
     if not game:
         return None, None, [], None, (err or "Sin resultados"), (quota or {})
     meta    = ss_build_meta(game, cfg.get("ss_region","wor"), cfg.get("ss_lang","es"))
@@ -5201,7 +5517,8 @@ def scrape_search_one(source, filename, system, cfg, rom_path=None, public=True)
                 ss_media_public_url(image_url), None, (quota or {}))
     return game, meta, img_types, image_url, None, (quota or {})
 
-def scrape_search_cascade(filename, system, cfg, sources=None, rom_path=None, public=True):
+def scrape_search_cascade(filename, system, cfg, sources=None, rom_path=None,
+                          public=True, name_only=False):
     """Busca un juego en las fuentes indicadas, por orden de prioridad.
 
     ScreenScraper es la prioridad (es la que más información da); si no
@@ -5226,7 +5543,8 @@ def scrape_search_cascade(filename, system, cfg, sources=None, rom_path=None, pu
             last_err = f"Faltan credenciales para {src}"
             continue
         game, meta, img_types, image_url, err, src_quota = scrape_search_one(
-            src, filename, system, cfg, rom_path=rom_path, public=public)
+            src, filename, system, cfg, rom_path=rom_path, public=public,
+            name_only=name_only)
         tried.append(src)
         if src_quota:
             quota = src_quota
@@ -5248,8 +5566,10 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
     img_type = options.get("ss_image_type","mixrbv1")
     region   = creds.get("ss_region","wor")
     lang     = creds.get("ss_lang","es")
+    # Extensiones con las que una carpeta de este sistema es un juego.
+    exts     = game_folder_extensions(system, settings)
     roms = [r for r in sys_data["roms"]
-            if r["is_rom"] and r["ext"] not in ("dir",)
+            if r["is_rom"] and (r["ext"] != "dir" or r.get("is_game_folder"))
             and r["name"] not in ("images","media","videos","manuals")]
     if only_missing:
         roms = [r for r in roms if not r["has_image"]]
@@ -5258,6 +5578,12 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
     for idx, rom in enumerate(roms):
         rom_stem = Path(rom["filename"]).stem
         rom_abspath = sys_root / rom["filename"]
+        # Si el juego es una carpeta (ScummVM, DOSBox...) se busca por el
+        # nombre de la carpeta y no se puede hashear.
+        es_carpeta = bool(rom.get("is_game_folder"))
+        nombre_busqueda = (game_folder_search_name(rom["filename"], exts)
+                           if es_carpeta else rom["filename"])
+        ruta_rom = None if es_carpeta else str(rom_abspath)
         ok_img   = False
         meta     = {}
         err      = None
@@ -5272,7 +5598,7 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                 err = f"Faltan credenciales para {src}"
                 continue
             if src == "thegamesdb":
-                game, err = tgdb_search_game(rom["filename"], system, creds.get("tgdb_apikey",""))
+                game, err = tgdb_search_game(nombre_busqueda, system, creds.get("tgdb_apikey",""))
                 if game:
                     meta = tgdb_build_meta(game, creds.get("tgdb_apikey",""))
                     img_url, _ierr = tgdb_get_image(game.get("id"), creds.get("tgdb_apikey",""))
@@ -5283,7 +5609,7 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                             meta["image_path"] = rel
                 _t.sleep(0.3)
             elif src == "igdb":
-                game, err = igdb_search_game(rom["filename"], system,
+                game, err = igdb_search_game(nombre_busqueda, system,
                                              creds.get("igdb_client_id",""), creds.get("igdb_client_secret",""))
                 if game:
                     meta = igdb_build_meta(game)
@@ -5295,11 +5621,12 @@ def do_scrape_system(settings, system, source, creds, options, progress_cb=None)
                             meta["image_path"] = rel
                 _t.sleep(0.3)
             else:  # screenscraper
-                game, err, sq = ss_search_game(rom["filename"], system,
+                game, err, sq = ss_search_game(nombre_busqueda, system,
                                             creds.get("ss_user",""), creds.get("ss_password",""),
-                                            region, lang, rom_path=str(rom_abspath),
+                                            region, lang, rom_path=ruta_rom,
                                             devid=creds.get("ss_devid",""),
-                                            devpassword=creds.get("ss_devpassword",""))
+                                            devpassword=creds.get("ss_devpassword",""),
+                                            name_only=es_carpeta)
                 if game:
                     meta = ss_build_meta(game, region, lang)
                     url, ext = ss_media_url(game, img_type, region)
@@ -5747,7 +6074,11 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/retroachievements/test":
             self.send_json(ra_test(s))
         elif path == "/api/retroachievements/games":
-            self.send_json(get_ra_games(s))
+            # ?force=1 pide datos frescos a la API (si ha pasado el intervalo
+            # minimo entre peticiones; si no, se devuelven los guardados).
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            force = str((query.get("force") or ["0"])[0]).lower() in ("1","true","yes","si")
+            self.send_json(get_ra_games(s, force=force))
         elif path == "/api/es/status":
             self.send_json(get_es_status())
         elif path == "/api/fans":
@@ -5854,6 +6185,12 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             save_settings_to_file(updated)
             if any(k.startswith("ra_") for k in data):
                 _ra_cache.update({"ts": 0, "data": None, "user": ""})
+                # La cache en disco tambien se tira: si cambian las
+                # credenciales, los datos guardados ya no valen.
+                try:
+                    _ra_cache_file().unlink(missing_ok=True)
+                except Exception:
+                    pass
             log_event("info", "ajustes", "Ajustes guardados")
             self.send_json({"ok":True})
         elif path == "/api/es/restart":
@@ -6289,15 +6626,15 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         publico = not bool(d.get("raw_media"))
 
         rom_path = None
-        try:
-            p = Path(s["roms_base"]) / system
-            if subpath: p = p / subpath
-            rom_path = str(p / filename)
-        except Exception:
-            rom_path = None
+        # Un juego puede ser una carpeta (ScummVM, DOSBox, MUGEN...): entonces
+        # se busca por el nombre de la carpeta y no hay nada que hashear. Si el
+        # nombre se ha editado a mano, tampoco hay fichero que hashear.
+        busqueda, rom_path, solo_nombre = scraper_search_target(
+            s, system, subpath, filename)
 
         game, meta, img_types, image_url, found, tried, err, quota = scrape_search_cascade(
-            filename, system, cfg, sources=pedidas, rom_path=rom_path, public=publico)
+            busqueda, system, cfg, sources=pedidas, rom_path=rom_path,
+            public=publico, name_only=solo_nombre)
         if game:
             # La carátula se pide en segundo plano: cuando el modal la
             # necesite ya estará en la caché y se verá al instante.

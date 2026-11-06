@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CONTROL =
@@ -17,12 +18,29 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   },
 )
 
+/**
+ * Lista desplegable. El `<select>` nativo pinta su propio fondo (blanco con
+ * letras pálidas) e ignora el `bg-transparent` del tema, así que se le quita
+ * el aspecto nativo (`appearance-none`), se le da el fondo de la app y se le
+ * dibuja la flecha. La lista de opciones ya la pinta el navegador con el
+ * `color-scheme` declarado en index.css.
+ */
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
   function Select({ className, children, ...props }, ref) {
     return (
-      <select ref={ref} className={cn(CONTROL, 'h-10 cursor-pointer pr-8', className)} {...props}>
-        {children}
-      </select>
+      <span className="relative block w-full">
+        <select
+          ref={ref}
+          className={cn(CONTROL, 'h-10 cursor-pointer appearance-none pr-9', className)}
+          {...props}
+        >
+          {children}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+      </span>
     )
   },
 )
@@ -95,8 +113,12 @@ export function Toggle({
       >
         <span
           className={cn(
-            'absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform duration-200',
-            checked ? 'translate-x-[1.375rem]' : 'translate-x-0.5',
+            // La bola va anclada a la izquierda (left-0.5) para que el
+            // recorrido sea simétrico: 2 px de margen a cada lado del carril
+            // de 44 px. Sin `left` el navegador la colocaba centrada y, al
+            // activarse, se salía del carril.
+            'absolute left-0.5 top-0.5 size-5 rounded-full shadow-sm transition-all duration-200',
+            checked ? 'translate-x-5 bg-primary-foreground' : 'translate-x-0 bg-foreground',
           )}
         />
       </button>

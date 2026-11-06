@@ -151,7 +151,10 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
     setNameEditor(false)
     setNoResults(false)
     setLocal(false)
-    setSearchName(rom.filename)
+    // Si el juego es una carpeta (ScummVM, DOSBox, MUGEN...) se busca por el
+    // nombre de la carpeta, sin la extension.
+    const nombreBusqueda = rom.is_game_folder ? rom.name : rom.filename
+    setSearchName(nombreBusqueda)
     let cancelled = false
     void (async () => {
       let cfg: ScraperConfig | null = null
@@ -183,7 +186,7 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
         })
         return
       }
-      await runSearch(fuentes, rom.filename)
+      await runSearch(fuentes, nombreBusqueda)
     })()
     return () => {
       cancelled = true
@@ -481,7 +484,11 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
             <Field
               label="Nombre para buscar"
               htmlFor="scrape-search-name"
-              hint="Por ejemplo «007: Agent Under Fire». El ROM no se renombra: los datos se guardan siempre en el fichero original."
+              hint={
+                rom?.is_game_folder
+                  ? 'El juego está en una carpeta: se busca por el nombre de la carpeta. La carpeta no se renombra, los datos se guardan siempre en su sitio.'
+                  : 'Por ejemplo «007: Agent Under Fire». El ROM no se renombra: los datos se guardan siempre en el fichero original.'
+              }
             >
               <div className="flex gap-2">
                 <Input
