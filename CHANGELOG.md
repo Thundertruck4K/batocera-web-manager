@@ -49,6 +49,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     termina el trabajo por lotes.
   - **La tabla de ROMs se actualiza al guardar**: la vista se queda en el sistema y el juego pasa de
     *media ausente* a *media presente* sin recargar la página.
+  - **Se puede editar el nombre de búsqueda**: cuando ninguna fuente encuentra el juego con el
+    nombre del archivo, el modal lo pone en un campo editable para acotar la búsqueda (por ejemplo,
+    «007: Agent Under Fire»). El ROM no se renombra: los datos se siguen guardando en el fichero
+    original.
 - **Dashboard de logros en la SPA**: la sección *Logros* deja de estar marcada como *Pronto* y muestra
   los juegos de RetroAchievements en los que más has desbloqueado, en tarjetas con **la carátula que
   dejó el scraper** en tu biblioteca, el porcentaje de completitud y el estado de cada juego

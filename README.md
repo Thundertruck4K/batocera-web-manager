@@ -236,6 +236,10 @@ Al guardar, la tabla se actualiza al instante: el juego pasa de **media ausente*
 sin recargar la página, y un aviso en modal confirma el éxito (se cierra solo a los pocos segundos).
 Si algo falla, el aviso se queda en pantalla con **el log del error** y un botón **Cerrar**.
 
+Y si el scraping **no encuentra nada** con el nombre del archivo, el modal ofrece **editar ese
+nombre** para acotar la búsqueda («007: Agent Under Fire», «Super Mario Sunshine»…), con un botón
+**Buscar** al lado. El ROM no se renombra: los datos se siguen guardando en el fichero original.
+
 ![Modal de scraping](docs/screenshots/09-scraper-modal.png)
 
 *El modal de un juego: la carátula, las fuentes por orden de prioridad y las imágenes a descargar.*

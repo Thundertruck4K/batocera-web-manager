@@ -195,6 +195,14 @@ Coste medido en la consola real: 55 ms para los 257 sistemas (42 con
     a la lista de sistemas): así se ve cómo el juego pasa de *media ausente* a
     *media presente* en la tabla. El botón «Volver» de la barra está siempre
     visible para salir.
+20. **Si la búsqueda no encuentra el juego, se puede editar el nombre.** El
+    nombre del archivo suele traer ruido («007 - Agent Under Fire (USA).iso»)
+    y la fuente lo busca por título. El modal enseña un campo editable con el
+    nombre actual («007: Agent Under Fire») y un botón «Buscar»; el backend
+    ya cae a la búsqueda por nombre cuando el fichero no existe. El nombre
+    editado sólo afecta a la búsqueda: los datos se siguen guardando en el
+    fichero original. «Sin resultados» no se muestra como error, sino como
+    invitación a afinar el nombre.
 
 ## Contrato ampliado
 
