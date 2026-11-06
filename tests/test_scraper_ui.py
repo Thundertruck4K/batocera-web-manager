@@ -392,3 +392,33 @@ def test_sin_resultados_se_ofrece_afinar_el_nombre():
     modal = _read(ROM_MODAL)
     assert "noResults" in modal
     assert "Ninguna fuente encontró el juego" in modal
+
+
+# ── Los juegos que ya tienen ficha no se vuelven a scrapear ───────────
+
+def test_un_juego_con_media_no_se_vuelve_a_scrapear():
+    modal = _read(ROM_MODAL)
+    assert "rom.has_image" in modal, "hay que comprobar si el juego ya tiene ficha"
+    assert "setLocal(true)" in modal
+    # Y no se dispara la búsqueda en ese caso.
+    bloque = re.search(r"if \(rom\.has_image\) \{(.*?)\n      \}", modal, re.S)
+    assert bloque, "no se encontró el bloque del modo local"
+    assert "runSearch" not in bloque.group(1), "no debe buscar si ya tiene ficha"
+
+
+def test_el_modo_local_muestra_la_ficha_de_la_biblioteca():
+    modal = _read(ROM_MODAL)
+    assert "Ficha de tu biblioteca" in modal
+    assert "ya tiene su información y su" in modal
+    assert "Escapear" in modal, "debe poder forzarse el scraping"
+
+
+def test_en_modo_local_guardar_solo_actualiza_los_metadatos():
+    modal = _read(ROM_MODAL)
+    bloque = re.search(
+        r"if \(!result\?\.game\) \{(.*?)\n    \}\n    setSaving\(true\)", modal, re.S)
+    assert bloque, "no se encontró el bloque del modo local"
+    assert "api.updateRomMeta" in bloque.group(1)
+    assert "api.scraperDownload" not in bloque.group(1), (
+        "no hay que volver a descargar la imagen"
+    )

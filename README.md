@@ -240,6 +240,11 @@ Y si el scraping **no encuentra nada** con el nombre del archivo, el modal ofrec
 nombre** para acotar la búsqueda («007: Agent Under Fire», «Super Mario Sunshine»…), con un botón
 **Buscar** al lado. El ROM no se renombra: los datos se siguen guardando en el fichero original.
 
+Y si el juego **ya tiene su ficha**, no se vuelve a scrapear: al pincharlo se abre su **información
+local** (la que ya está en el `gamelist.xml`) con **su carátula de la biblioteca**, y sólo se
+raspa lo que aún no tiene media. La ficha se puede **editar** a mano, y «Escapear» sigue ahí por si
+quieresactualizarla desde las fuentes.
+
 ![Modal de scraping](docs/screenshots/09-scraper-modal.png)
 
 *El modal de un juego: la carátula, las fuentes por orden de prioridad y las imágenes a descargar.*

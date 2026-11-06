@@ -203,6 +203,14 @@ Coste medido en la consola real: 55 ms para los 257 sistemas (42 con
     editado sólo afecta a la búsqueda: los datos se siguen guardando en el
     fichero original. «Sin resultados» no se muestra como error, sino como
     invitación a afinar el nombre.
+21. **Un juego que ya tiene ficha no se vuelve a scrapear.** Al pincharlo en
+    la lista, el modal comprueba `has_image`: si ya está, **no se busca nada**
+    (ni una petición a las fuentes) y se muestra su **información local** —la
+    del `gamelist.xml`— con la **carátula de la biblioteca** (`/api/rom-image`).
+    Se puede editar la ficha a mano («Guardar» sólo entonces actualiza el
+    `gamelist.xml`, sin volver a descargar la imagen) o forzar el scraping con
+    «Escapear». El scrape de un sistema completo ya trabaja sólo sobre los ROMs
+    sin imagen (`only_missing`, activado por defecto).
 
 ## Contrato ampliado
 
