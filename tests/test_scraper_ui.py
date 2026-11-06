@@ -364,3 +364,31 @@ def test_la_tabla_se_actualiza_al_guardar_un_juego():
     assert bloque, "no se encontró el manejador de guardado"
     assert "refreshFolder" in bloque.group(1), "hay que recargar la tabla"
     assert "setSelected(null)" not in bloque.group(1), "no debe salir del sistema"
+
+
+# ── Editar el nombre cuando la búsqueda no encuentra el juego ─────────
+
+def test_el_modal_permite_editar_el_nombre_de_busqueda():
+    modal = _read(ROM_MODAL)
+    assert "Nombre para buscar" in modal, "debe ofrecer editar el nombre"
+    assert "searchName" in modal
+    assert "setNameEditor" in modal
+    assert "nameEditor" in modal
+    # Y hay que poder buscar con el nombre editado.
+    assert "runSearch(enabled, searchName)" in modal
+
+
+def test_el_nombre_editado_solo_afecta_a_la_busqueda():
+    """Los datos se siguen guardando en el fichero original."""
+    modal = _read(ROM_MODAL)
+    descarga = re.search(r"api\.scraperDownload\(\{(.*?)\}\)", modal, re.S)
+    assert descarga, "no se encontró la llamada de descarga"
+    assert "filename: rom.filename" in descarga.group(1), (
+        "la descarga tiene que usar el nombre real del ROM"
+    )
+
+
+def test_sin_resultados_se_ofrece_afinar_el_nombre():
+    modal = _read(ROM_MODAL)
+    assert "noResults" in modal
+    assert "Ninguna fuente encontró el juego" in modal

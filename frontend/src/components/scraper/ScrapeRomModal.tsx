@@ -69,20 +69,31 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
   const [imgTypes, setImgTypes] = useState<string[]>([])
   const [imageType, setImageType] = useState('mixrbv1')
   const [imgState, setImgState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  /** Nombre con el que se busca: se puede editar para afinar la búsqueda. */
+  const [searchName, setSearchName] = useState('')
+  /** Muestra el campo para editar el nombre de búsqueda. */
+  const [nameEditor, setNameEditor] = useState(false)
+  /** La búsqueda no encontró nada (no es un error: se puede afinar el nombre). */
+  const [noResults, setNoResults] = useState(false)
 
   /** Busca el ROM en las fuentes indicadas, por orden de prioridad. */
   const runSearch = useCallback(
-    async (sources: ScraperSource[]) => {
+    async (sources: ScraperSource[], nombre: string) => {
       if (!rom) return
       if (!sources.length) {
         setError('Elige al menos una fuente de datos')
         return
       }
+      if (!nombre.trim()) {
+        setError('Escribe un nombre para buscar')
+        return
+      }
       setSearching(true)
       setError(null)
+      setNoResults(false)
       try {
         const res = await api.scraperSearch({
-          filename: rom.filename,
+          filename: nombre.trim(),
           system,
           subpath,
           source: sources[0],
@@ -104,9 +115,21 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
         setImgTypes(
           available.includes(imageType) ? [imageType] : available.length ? [available[0]] : [],
         )
+        // Sin resultados: se ofrece editar el nombre para afinar la búsqueda.
+        if (!res.game) {
+          setNoResults(true)
+          setNameEditor(true)
+        }
       } catch (err) {
         setResult(null)
-        setError(err instanceof Error ? err.message : 'No se pudo buscar el juego')
+        const mensaje = err instanceof Error ? err.message : 'No se pudo buscar el juego'
+        // «Sin resultados» no es un fallo: lo que hace falta es otro nombre.
+        if (/sin resultado|no encontrad|no result/i.test(mensaje)) {
+          setNoResults(true)
+          setNameEditor(true)
+        } else {
+          setError(mensaje)
+        }
       } finally {
         setSearching(false)
       }
@@ -122,6 +145,9 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
     setError(null)
     setResult(null)
     setImgState('idle')
+    setNameEditor(false)
+    setNoResults(false)
+    setSearchName(rom.filename)
     let cancelled = false
     void (async () => {
       let cfg: ScraperConfig | null = null
@@ -138,7 +164,7 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
         ? readySources(cfg)
         : (SCRAPER_SOURCES.map((s) => s.id) as ScraperSource[])
       setEnabled(fuentes)
-      await runSearch(fuentes)
+      await runSearch(fuentes, rom.filename)
     })()
     return () => {
       cancelled = true
@@ -276,7 +302,12 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
       className="max-w-xl"
       footer={
         <>
-          <Button variant="ghost" size="sm" onClick={() => void runSearch(enabled)} disabled={searching || saving}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void runSearch(enabled, searchName)}
+            disabled={searching || saving}
+          >
             <RefreshCw className={cn('size-4', searching && 'animate-spin')} />
             Actualizar
           </Button>
@@ -363,9 +394,58 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-4 py-8 text-center">
             <Search className="size-5 text-muted-foreground/60" />
             <p className="text-xs font-medium text-muted-foreground">
-              Sin resultados. Pulsa «Actualizar» para buscarlo de nuevo.
+              {noResults
+                ? 'Ninguna fuente encontró el juego con ese nombre. Edítalo para acotar la búsqueda.'
+                : 'Sin resultados. Pulsa «Actualizar» para buscarlo de nuevo.'}
             </p>
           </div>
+        )}
+
+        {/* Nombre de búsqueda: si no aparece, se puede afinar */}
+        {nameEditor && (
+          <section className="rounded-2xl border border-border bg-muted/40 p-3">
+            <Field
+              label="Nombre para buscar"
+              htmlFor="scrape-search-name"
+              hint="Por ejemplo «007: Agent Under Fire». El ROM no se renombra: los datos se guardan siempre en el fichero original."
+            >
+              <div className="flex gap-2">
+                <Input
+                  id="scrape-search-name"
+                  value={searchName}
+                  autoFocus
+                  spellCheck={false}
+                  onChange={(e) => setSearchName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void runSearch(enabled, searchName)
+                    }
+                  }}
+                  placeholder="Nombre del juego"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={searching || !searchName.trim()}
+                  onClick={() => void runSearch(enabled, searchName)}
+                >
+                  {searching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                  Buscar
+                </Button>
+              </div>
+            </Field>
+          </section>
+        )}
+
+        {result?.game && !nameEditor && (
+          <button
+            type="button"
+            onClick={() => setNameEditor(true)}
+            className="cursor-pointer text-[11px] font-semibold text-muted-foreground underline-offset-2 transition-colors duration-150 hover:text-foreground hover:underline"
+          >
+            Buscar con otro nombre
+          </button>
         )}
 
         {result?.game && (

@@ -430,3 +430,54 @@ def test_el_scrape_de_sistema_firma_la_url_para_descargar(appmod, monkeypatch, t
     # Las credenciales de la config mandan sobre las que venían en la URL.
     assert "sspassword=clave" in urls[0]
     assert "sspassword=clave-usuario" not in urls[0]
+
+
+# ── Buscar con un nombre que no es el del fichero ─────────────────────
+
+def test_la_busqueda_acepta_un_nombre_que_no_es_un_fichero(appmod, monkeypatch):
+    """Al editar el nombre, la búsqueda va por nombre aunque no haya fichero."""
+    pedidos = []
+
+    def fake_fetch(url, timeout=20):
+        pedidos.append(url)
+        if "jeuInfos.php" in url:
+            # Sin CRC, ScreenScraper no puede validar el juego por fichero.
+            return None, "HTTP 400: systemeid invalide", {}
+        return {
+            "header": {"success": "true"},
+            "response": {"jeu": {"nom": "007: Agent Under Fire"}},
+        }, None, {}
+
+    monkeypatch.setattr(appmod, "_ss_fetch_json", fake_fetch)
+
+    juego, err, quota = appmod.ss_search_game(
+        "007: Agent Under Fire", "gamecube", "usuario", "clave",
+        rom_path="/no/existe/Juego.iso",
+        devid="batoceralinux", devpassword="secreto")
+
+    assert err is None
+    assert juego
+    assert juego.get("nom") == "007: Agent Under Fire"
+    # Se probó primero por fichero y luego por nombre.
+    assert any("jeuInfos.php" in u for u in pedidos)
+    assert any("jeuRecherche.php" in u for u in pedidos)
+
+
+def test_la_busqueda_con_nombre_no_pide_hash_si_no_hay_fichero(appmod, monkeypatch):
+    pedidos = []
+
+    def fake_fetch(url, timeout=20):
+        pedidos.append(url)
+        return None, "HTTP 400", {}
+
+    monkeypatch.setattr(appmod, "_ss_fetch_json", fake_fetch)
+
+    appmod.ss_search_game("Nombre Editado", "gamecube", "usuario", "clave",
+                          rom_path="/no/existe/Juego.iso",
+                          devid="batoceralinux", devpassword="secreto")
+
+    infos = [u for u in pedidos if "jeuInfos.php" in u]
+    assert infos
+    assert "romtaille=0" in infos[0]
+    assert "crc=" not in infos[0]
+    assert "md5=" not in infos[0]
