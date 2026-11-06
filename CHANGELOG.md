@@ -7,6 +7,26 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Los juegos que son una carpeta se escrapean por su nombre**: en algunos sistemas el juego no es
+  un fichero sino una carpeta (ScummVM: `Myst.scummvm/`, DOSBox: `Alone in the Dark.pc/`, MUGEN:
+  `kof94.pc/`). Es la convención de EmulationStation: si el nombre de la carpeta lleva una extensión
+  del sistema, la carpeta **es** el juego, y el `gamelist.xml` guarda su ruta (`<path>./Myst.scummvm
+  </path>`). Ahora el manager:
+  - detecta las carpetas-juego leyendo las extensiones del sistema del `es_systems.cfg` (el del
+    usuario si define ese sistema, el oficial si no) y también por el fichero marcador de ScummVM
+    (`Myst.scummvm/myst.scummvm`), y las lista como ROMs (`is_game_folder`), no como carpetas;
+  - las **escrapea por el nombre de la carpeta** (sin la extensión), que es el título del juego;
+  - no intenta hashearlas (una carpeta no tiene hash) y guarda la ficha con la ruta de la carpeta.
+- **Caché de los datos de RetroAchievements**: el resumen se guarda **en disco**, junto a los
+  ajustes del manager (`/userdata/system/batocera_manager_ra_cache.json`), así que entrar en la
+  sección *Logros* ya no llama a la API aunque el manager se haya reiniciado. Los datos se sirven
+  durante 6 horas (`ra_cache_ttl` en los ajustes) y **entre dos descargas a la red hay siempre un
+  intervalo mínimo de 60 s**, incluso cuando se pide un refresco forzado. La sección indica de dónde
+  salen los datos («datos guardados · actualizados hace 2 h»).
+- `GET /api/retroachievements/games?force=1` fuerza la descarga de datos frescos (si ha pasado el
+  intervalo mínimo entre peticiones).
+- El sistema `dos` queda mapeado en ScreenScraper (plataforma 135, *PC Dos*), que es donde están sus
+  juegos.
 - **Sección de Scraper en la SPA**: la sección *Scraper* deja de estar marcada como *Pronto*.
   - Los sistemas de la biblioteca se muestran en tarjetas con un **icono temático** (palanca para
     los arcade, mando para las consolas, pantalla para los portátiles, disco para las consolas de CD…),
@@ -68,10 +88,28 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     etiquetas de región y disco, como «(USA)», y los acentos), prefiriendo el que tiene carátula. Si
     no hay coincidencia, la tarjeta usa el icono de RetroAchievements y el panel indica cuántos
     juegos han quedado emparejados.
-  - Endpoint nuevo `GET /api/retroachievements/games`, que reutiliza la caché de 10 min de la API de
-    RA. El rango de juegos sube de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
+  - Endpoint nuevo `GET /api/retroachievements/games`, que reutiliza la caché de la API de
+    RA (10 min en memoria en aquella versión; ahora 6 h y también en disco). El rango de juegos sube
+    de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Corregido
+- **Las listas desplegables ya siguen el esquema de colores**: los `<select>` nativos pintan su
+  propio fondo (blanco con letras pálidas) e ignoran el `bg-transparent` del tema. Ahora usan
+  `appearance-none`, el fondo de la app y su propia flecha, y la lista de opciones se pinta con el
+  `color-scheme` del tema (afecta a *Tipo de equipo* e *Identidad del sistema* en «Añadir sistema»
+  y al *Tema* en «ROMs y extensiones»).
+- **Los interruptores son simétricos**: la bola no tenía `left`, así que el navegador la colocaba
+  centrada y, al activarse, se salía del carril. Ahora va anclada a la izquierda y el recorrido es
+  simétrico (2 px de margen a cada lado). Además su color sale de los tokens del tema, porque la
+  bola blanca se perdía en el tema claro.
+- **La búsqueda por nombre de ScreenScraper se perdía**: cuando el sistema no está mapeado en
+  ScreenScraper, la consulta sin platform id tarda más de un minuto (busca en todas las plataformas) y
+  el timeout de 20 s la cortaba, así que el juego no aparecía nunca. Ahora la búsqueda por nombre tiene
+  75 s de margen, y el sistema `dos` queda mapeado en la plataforma 135 (*PC Dos*), que es donde
+  están sus juegos.
+- **La búsqueda por nombre devolvía el juego equivocado**: es una búsqueda difusa y su primer
+  resultado no siempre es el buscado («Doom» devolvía «Hugo III: Jungle of Doom»). Ahora, si alguno
+  de los candidatos tiene exactamente el título buscado, ese gana.
 - **El juego ya no se quedaba en «media ausente» después de escrapearlo**: al guardar, los
   metadatos y la imagen se escribían en la entrada **equivocada** del `gamelist.xml` (el mismo juego
   puede estar catalogado en la raíz del sistema y en una subcarpeta, y se casa con la primera que

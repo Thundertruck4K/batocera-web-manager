@@ -41,7 +41,9 @@ def test_el_menu_ya_no_marca_logros_como_pendiente():
 
 def test_la_seccion_llama_al_endpoint_nuevo():
     api = _read(API)
-    assert "'/api/retroachievements/games'" in api
+    assert "/api/retroachievements/games" in api
+    # y puede pedir datos frescos (cache en el backend)
+    assert "force=1" in api
 
 
 # ── Avisos ─────────────────────────────────────────────────────────────

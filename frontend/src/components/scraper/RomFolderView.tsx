@@ -75,6 +75,12 @@ function RomRow({
         </span>
         <span className="mt-0.5 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
           <span className="uppercase">{rom.ext.replace('.', '')}</span>
+          {rom.is_game_folder && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Folder className="size-3" aria-hidden />
+              carpeta
+            </span>
+          )}
           <span className="tabular-nums">{rom.size_human}</span>
           {rom.year && (
             <>
@@ -118,9 +124,11 @@ export function RomFolderView({
 
   if (!folder) return null
 
-  const folders = folder.items.filter((item) => item.is_dir)
-  const roms = folder.items.filter((item) => !item.is_dir && item.is_rom)
-  const others = folder.items.filter((item) => !item.is_dir && !item.is_rom)
+  // Un juego puede ser una carpeta (ScummVM, DOSBox, MUGEN...): entonces es un
+  // ROM (se escrapea por el nombre de la carpeta), no una carpeta que se abre.
+  const folders = folder.items.filter((item) => item.is_dir && !item.is_game_folder)
+  const roms = folder.items.filter((item) => item.is_rom && (!item.is_dir || item.is_game_folder))
+  const others = folder.items.filter((item) => !item.is_rom && !item.is_dir)
   const withMedia = roms.filter((rom) => rom.has_image)
   const withoutMedia = roms.filter((rom) => !rom.has_image)
   /** En sistemas con cientos de ROMs se saltan las animaciones de entrada. */

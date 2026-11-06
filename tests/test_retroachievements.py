@@ -20,6 +20,16 @@ def _creds(user="tester", key="KEY123"):
     return {"ra_user": user, "ra_api_key": key, "ra_enabled": True}
 
 
+def _limpiar_cache_ra(appmod):
+    """Vacía la cache de RA (memoria y disco) y el reloj de peticiones."""
+    appmod._ra_cache.update({"ts": 0, "data": None, "user": ""})
+    appmod._ra_last_req["ts"] = 0
+    try:
+        appmod._ra_cache_file().unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 # ─── Tarea 1: _ra_get + settings ───────────────────────────────────────
 
 def test_default_settings_has_ra_keys(appmod):
@@ -176,7 +186,7 @@ def _fake_ra_get(calls):
 
 
 def test_get_retroachievements_ok_and_cached(appmod, monkeypatch):
-    appmod._ra_cache["data"] = None
+    _limpiar_cache_ra(appmod)
     calls = []
     monkeypatch.setattr(appmod, "_ra_get", _fake_ra_get(calls))
 
@@ -187,13 +197,18 @@ def test_get_retroachievements_ok_and_cached(appmod, monkeypatch):
     assert r1["ok"] is True and r1["configured"] is True
     assert r1["profile"]["user"] == "tester"
     assert r1["recent"] and r1["completion"] and r1["awards"]
-    assert r1 == r2, "la segunda llamada debe devolver el mismo objeto cacheado"
+    assert r1["cached"] is False, "la primera llamada descarga los datos"
+    assert r2["cached"] is True, "la segunda sale de la cache, sin tocar la red"
+    sin_cache = ("cached", "throttled", "age")
+    assert {k: v for k, v in r1.items() if k not in sin_cache} == \
+           {k: v for k, v in r2.items() if k not in sin_cache}, \
+           "la segunda llamada debe devolver los mismos datos"
     assert len(calls) == n1, "la segunda llamada no debe tocar la red"
-    appmod._ra_cache["data"] = None
+    _limpiar_cache_ra(appmod)
 
 
 def test_get_retroachievements_unconfigured_makes_no_request(appmod, monkeypatch):
-    appmod._ra_cache["data"] = None
+    _limpiar_cache_ra(appmod)
     called = []
     monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: called.append(1))
 
@@ -209,7 +224,7 @@ def test_default_settings_ra_enabled_is_true(appmod):
 
 
 def test_get_retroachievements_configured_but_disabled_makes_no_request(appmod, monkeypatch):
-    appmod._ra_cache["data"] = None
+    _limpiar_cache_ra(appmod)
     called = []
     monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: called.append(1))
 
@@ -222,11 +237,11 @@ def test_get_retroachievements_configured_but_disabled_makes_no_request(appmod, 
 
 
 def test_get_retroachievements_reports_enabled(appmod, monkeypatch):
-    appmod._ra_cache["data"] = None
+    _limpiar_cache_ra(appmod)
     monkeypatch.setattr(appmod, "_ra_get", _fake_ra_get([]))
     r = appmod.get_retroachievements(_creds())
     assert r["configured"] is True and r["enabled"] is True and r["ok"] is True
-    appmod._ra_cache["data"] = None
+    _limpiar_cache_ra(appmod)
 
 
 def test_ra_test_reports_state(appmod, monkeypatch):
@@ -241,7 +256,7 @@ def test_ra_test_reports_state(appmod, monkeypatch):
 
 
 def test_get_retroachievements_ok_false_on_api_failure(appmod, monkeypatch):
-    appmod._ra_cache["data"] = None
+    _limpiar_cache_ra(appmod)
     monkeypatch.setattr(appmod, "_ra_get", lambda *a, **k: None)
     r = appmod.get_retroachievements(_creds())
     assert r["configured"] is True and r["ok"] is False

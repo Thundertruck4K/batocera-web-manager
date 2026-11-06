@@ -52,10 +52,22 @@ function formatDate(value: string): string {
   return `${d}/${m}/${y}`
 }
 
+/** Antigüedad de los datos descargados, en texto corto. */
+function formatAge(seconds: number | null | undefined): string {
+  const s = Math.max(0, Math.floor(seconds ?? 0))
+  if (s < 60) return `${s} s`
+  if (s < 3600) return `${Math.floor(s / 60)} min`
+  if (s < 86400) return `${Math.floor(s / 3600)} h`
+  return `${Math.floor(s / 86400)} d`
+}
+
 export function AchievementsPage() {
   const { openMenu } = useShell()
   const navigate = useNavigate()
-  const { data, error, loading, refresh } = useApi(() => api.raGames(), [])
+  /* La API de RetroAchievements se llama lo justo: al entrar se usan los datos
+     guardados y sólo el botón de recargar pide datos frescos. */
+  const [force, setForce] = useState(false)
+  const { data, error, loading, refresh } = useApi(() => api.raGames(force), [force])
   const [sort, setSort] = useState<SortKey>('awarded')
 
   const games = useMemo(() => sortGames(data?.games ?? [], sort), [data, sort])
@@ -126,7 +138,14 @@ export function AchievementsPage() {
         }
         onMenu={openMenu}
         actions={
-          <IconButton label="Recargar logros" onClick={() => { triggerHaptic('light'); refresh() }}>
+          <IconButton
+            label="Recargar logros"
+            onClick={() => {
+              triggerHaptic('light')
+              setForce(true)
+              refresh()
+            }}
+          >
             <RefreshCw className={loading ? 'size-4 animate-spin' : 'size-4'} />
           </IconButton>
         }
@@ -194,6 +213,14 @@ export function AchievementsPage() {
           {profile?.member_since && (
             <p className="text-[11px] font-medium text-muted-foreground">
               Miembro desde {formatDate(profile.member_since)}
+            </p>
+          )}
+          {data?.updated && (
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {data.cached
+                ? `Datos guardados · actualizados hace ${formatAge(data.age)}`
+                : 'Datos descargados de RetroAchievements'}
+              {data.throttled && ' · se respeta el intervalo mínimo entre peticiones'}
             </p>
           )}
         </div>
