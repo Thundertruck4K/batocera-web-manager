@@ -1,6 +1,8 @@
 import type {
   AppInfo,
   BatoceraSystems,
+  BiosCatalog,
+  BiosRepairResult,
   CustomSystem,
   CustomSystemDetail,
   RandomGame,
@@ -44,11 +46,12 @@ type OkEnvelope = { ok: boolean; error?: string; errors?: string[] }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
+  const isForm = typeof FormData !== 'undefined' && init?.body instanceof FormData
   try {
     res = await fetch(path, {
       ...init,
       headers: {
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init?.body && !isForm ? { 'Content-Type': 'application/json' } : {}),
         ...init?.headers,
       },
     })
@@ -149,6 +152,8 @@ export interface ScrapeSystemResult {
 const get = <T>(path: string) => request<T>(path)
 const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+const postForm = <T>(path: string, form: FormData) =>
+  request<T>(path, { method: 'POST', body: form })
 const del = <T>(path: string) => request<T>(path, { method: 'DELETE' })
 
 /** Escapa un valor para usarlo como segmento de URL. */
@@ -227,4 +232,34 @@ export const api = {
     ).then(unwrap),
   updateRomMeta: (payload: RomMetaPayload) =>
     post<{ ok: boolean; error?: string }>('/api/rom/update-meta', payload).then(unwrap),
+
+  /* BIOS */
+  biosCatalog: () => get<BiosCatalog>('/api/bios/catalog'),
+  biosSummary: () =>
+    get<{ ok: boolean; summary: Record<string, number>; extras: number; source: string }>(
+      '/api/bios/summary',
+    ),
+  biosScan: () =>
+    post<{ ok: boolean; summary: Record<string, number>; extras: number; source: string }>(
+      '/api/bios/scan',
+    ),
+  /** Coloca una BIOS en su sitio (extrayéndola de un ZIP o moviéndola). */
+  biosRepair: (payload: { system: string; file: string; source?: string }) =>
+    post<BiosRepairResult>('/api/bios/repair', payload).then(unwrap),
+  /** Sube una BIOS a mano; el backend la deja donde Batocera la espera. */
+  biosUpload: (payload: { system: string; file: string; blob: File }) => {
+    const form = new FormData()
+    form.append('system', payload.system)
+    form.append('file', payload.file)
+    form.append('bios', payload.blob, payload.blob.name)
+    return postForm<{
+      ok: boolean
+      saved?: { file: string; dest: string; size: string; md5: string; md5_valid?: boolean | null }[]
+      error?: string
+    }>('/api/bios/upload', form)
+  },
+  biosSkip: (skipKey: string) =>
+    post<{ ok: boolean }>('/api/bios/missing/skip', { skip_key: skipKey }),
+  biosUnskip: (skipKey: string) =>
+    post<{ ok: boolean }>('/api/bios/missing/unskip', { skip_key: skipKey }),
 }

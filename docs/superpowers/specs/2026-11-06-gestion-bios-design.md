@@ -36,43 +36,45 @@ sabe qué versión de Batocera corre la consola ni qué rutas exige hoy.
 
 ### 1.2 Estado real medido
 
+Medido con la regla correcta (la del catálogo oficial, ver 1.3):
+
 | Medida | Valor |
 |---|---|
 | Sistemas con BIOS según la lista oficial | 108 |
 | Ficheros únicos esperados | 362 |
 | Ficheros que hay en `/userdata/bios` | 3.436 (1.372 MiB) |
-| **Correctos** (ruta exacta + md5 aceptado) | **204** |
-| Presentes sin hash exigido | 10 |
-| **Presentes con hash distinto** | **86** |
+| **Correctos** (ruta exacta + el contenido que pide el catálogo) | **287** |
+| Presentes sin hash publicado | 10 |
+| Presentes con hash distinto | 3 |
 | **Ausentes** | **62** |
 | Ficheros que la lista oficial no pide | 3.145 |
 
 Los 3.145 «extra» son `dolphin-emu` (2.523), `Machines` (296), hashes de MAME, `config.ini` y
 guardados: no son BIOS de Batocera, pero ocupan sitio y confunden.
 
-### 1.3 El hallazgo que define la estrategia
+### 1.3 La clave: `zippedFile`
 
-**Los 86 ficheros con «hash distinto» no están equivocados: están mal colocados.**
+El catálogo oficial (`/usr/bin/batocera-systems`) no sólo da el md5 de cada BIOS: da el **miembro
+exacto que debe ir dentro de cada ZIP**:
 
-Los ZIP de sistema (`adam.zip`, `advision.zip`, `apple2e.zip`…) llevan **dentro** el fichero con el
-md5 exacto que Batocera exige, con otro nombre. Comprobado sobre la consola:
-
-```
-Coleco Adam             adam.zip       zip con   7 ficheros -> CONTIENE el hash esperado: ['alf @1 rev 57 e3d5.u8', …]
-Entex Adventure Vision  advision.zip   zip con   2 ficheros -> CONTIENE el hash esperado: ['b225__ins8048-11kdp_n.u5', …]
-Apple II                apple2ee.zip   zip con  69 ficheros -> CONTIENE el hash esperado: ['341-0132-d.e12', …]
+```python
+{ "md5": "01bba3bcd46d8a586dd6ec555accc133",
+  "zippedFile": "alf @1 rev 57 e3d5.u8",
+  "file": "bios/adam.zip" }
 ```
 
-Y el `advision.zip` de la consola tiene md5 `1c0860640802…`, **idéntico al del fichero en
-archive.org** (colección Emularity): el ZIP no es la versión canónica que Batocera exige, pero su
-contenido sí.
+Es decir: Batocera no compara el hash del ZIP (que es el de un ZIP cualquiera), sino el hash de lo
+que va **dentro**. Sin ese dato, comparar el md5 del fichero con el esperado marca como incorrectos
+ficheros que están perfectamente bien: con la regla naïve salían **204 correctas y 86 con hash
+distinto**; con la regla del catálogo son **287 correctas y 3 con hash distinto**. De esos 83
+ficheros «arreglados», la mayoría son ZIP con sus miembros dentro.
 
-De aquí salen dos conclusiones que ordenan todo el trabajo:
+De aquí salen las dos reglas que ordenan todo el trabajo:
 
-1. **La biblioteca es reparable sin red**: extrayendo de los ZIP que ya están en la consola y
-   colocando cada pieza en su ruta exacta, los 86 «hash distinto» pasan a correctos.
-2. **El emparejamiento con las fuentes es por contenido, nunca por nombre**: el md5 del ZIP de
-   archive.org nunca va a coincidir con el canónico; hay que abrirlo y mirar dentro.
+1. **Verificar por contenido, nunca por nombre**: el md5 de un ZIP de archive.org nunca coincidirá
+   con el canónico; hay que abrirlo y mirar dentro (el catálogo dice qué miembro buscar).
+2. **La biblioteca es reparable sin red**: se pueden reunir los miembros exigidos desde los ZIP que
+   ya están en la consola y rehacer el ZIP en su ruta exacta.
 
 ### 1.4 Fuentes en archive.org
 
@@ -335,15 +337,29 @@ Reglas transversales:
 
 ## 8. Fases
 
-| Fase | Qué | Entregable |
-|---|---|---|
-| **0. Verdad** | Parsear el `readme.txt`, caché, estructura de estados, escaneo real con índices inversos, detección de «dentro de un ZIP» | `/api/bios/catalog`, `/api/bios/scan`, `/api/bios/summary` |
-| **1. Reparar local** | Extraer / mover / renombrar con verificación y cuarentena | `/api/bios/repair` (vía local) + tests |
-| **2. Fuentes** | Catálogo de archive.org, caché, emparejamiento por contenido, descarga verificada | `/api/bios/sources`, descarga en `/api/bios/repair` |
-| **3. SPA** | Tarjetas, modales, toasts, progreso, filtros, enlaces externos | Sección ROMs y BIOS en la SPA |
-| **4. Pulido** | Badge en el menú, informe de lo no requerido, limpieza con doble confirmación, origins automáticos | Detalles |
+| Fase | Qué | Entregable | Estado |
+|---|---|---|---|
+| **0. Verdad** | Catálogo oficial (script `batocera-systems`), caché, estructura de estados, escaneo real con índices inversos, detección de «dentro de un ZIP» | `/api/bios/catalog`, `/api/bios/scan`, `/api/bios/summary` | **hecha** |
+| **1. Reparar local** | Reunir el ZIP con sus miembros / mover el fichero, con verificación y cuarentena | `/api/bios/repair` + 22 tests | **hecha** |
+| **2. Fuentes** | Catálogo de archive.org, caché, emparejamiento por contenido, descarga verificada | `/api/bios/sources`, descarga en `/api/bios/repair` | pendiente |
+| **3. SPA** | Tarjetas, modales, toasts, filtros, subida manual, omitir | Sección ROMs y BIOS en la SPA | **hecha** (sin enlaces externos) |
+| **4. Pulido** | Badge en el menú, informe de lo no requerido, limpieza con doble confirmación, orígenes automáticos | Detalles | pendiente |
 
 Cada fase es un PR propio, con sus tests, como el resto del historial del repo.
+
+### 8.1 Lo que se ha hecho ya (Fases 0, 1 y 3)
+
+- El catálogo se lee del **script oficial** (`/usr/bin/batocera-systems`, un Python que se parsea con
+  `ast` sin ejecutarlo) y trae slug, nombre legible, ruta, md5 y el miembro de cada ZIP. El
+  `readme.txt` es el respaldo (sin slugs ni miembros: se empareja por conjunto de rutas con el
+  catálogo embebido) y el `BIOS_DB` de `app.py` el último recurso.
+- El escaneo completo de la consola (3.436 ficheros, 1,4 GiB) tarda **2,7 s** y está cacheado 5 min.
+- La reparación reúne los miembros exigidos desde otro ZIP del disco y rehace el ZIP en su ruta
+  exacta; si no encuentra el contenido **no toca el destino** (la cuarentena sólo se hace cuando ya
+  se sabe que hay algo que escribir).
+- La SPA tiene la sección *ROMs y BIOS* con tarjetas por sistema (ordenadas por criticidad), modal
+  de detalle con md5, tamaño, ruta y estado, reparación en lote, subida manual, copiar hash y
+  omitir.
 
 ---
 

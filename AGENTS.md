@@ -122,7 +122,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 651 con `pytest` en `tests/` (53 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 673 con `pytest` en `tests/` (54 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -181,6 +181,25 @@ El proyecto se trabaja en **un solo repositorio**:
   system counting game files and game folders (cached 60 s) — the gamelists only know the games that
   were already catalogued. `/api/info` exposes it as `disk_games_count`/`disk_systems_count`, and
   `pick_random_game(settings)` takes the whole settings dict because it needs those extensions.
+- **BIOS: the catalogue comes from the console itself** (`app.py`, section "Gestión de BIOS").
+  - `get_bios_catalog()` reads `/usr/bin/batocera-systems` (the official Python script, parsed with
+    `ast` — never executed) and gets slug, display name, path, md5 and **the member each ZIP must
+    contain** (`zippedFile`). `/usr/share/batocera/datainit/bios/readme.txt` is the fallback (no
+    slugs, no members: matched by path set against the embedded `BIOS_DB`), and `BIOS_DB` the last
+    resort. Cached 1 h; the list changes with the Batocera version, so it must not be frozen.
+  - **Verify by content, never by name**: Batocera checks the md5 of what is *inside* each ZIP, not
+    the md5 of the ZIP. Comparing the file's own md5 marked 83 healthy BIOS as broken (204 "ok" vs
+    the real 287). `_bios_entry_state()` opens the ZIP and checks every required member.
+  - States: `ok`, `sin_verificar`, `hash_distinto`, `miembro_falta`, `reparable_zip`,
+    `reparable_ruta`, `ausente`, `omitida`, `ilegible`. `build_bios_index()` hashes the disk once
+    (5 min cache, files over 64 MiB are skipped: they are not BIOS) with reverse indexes by name
+    and by md5 to find what is "somewhere else".
+  - `repair_bios()` regroups the required members from other ZIPs of the SD (or moves the file from
+    another folder), always verifies the result and quarantines what it replaces in
+    `/userdata/bios/.quarantine/`. **It looks for the content before touching the destination**, so
+    a failed repair never leaves the system without its BIOS.
+  - Endpoints: `GET /api/bios/catalog`, `GET /api/bios/summary`, `POST /api/bios/scan`,
+    `POST /api/bios/repair`. The SPA section is `pages/Bios.tsx` (+ `components/bios/`).
 - **ScreenScraper's name search needs a platform id, and time**: without `systemeid` (or with `0`)
   the API still answers, but it searches every platform and takes over a minute, so the name search
   uses `SS_SEARCH_TIMEOUT_NAME` (75 s) — with the old 20 s timeout the result was always lost. The
