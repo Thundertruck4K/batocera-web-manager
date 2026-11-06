@@ -176,11 +176,21 @@ def test_guardar_valida_las_credenciales_antes_de_cerrar():
     assert modal.index("if (!ready)") < modal.index("onClose()")
 
 
-def test_al_guardar_se_vuelve_a_la_lista_principal():
+def test_al_guardar_un_juego_la_tabla_se_actualiza():
+    """Guardar un juego deja la vista en el sistema, con la tabla al día.
+
+    Antes se volvía a la lista de sistemas y el juego se quedaba en «media
+    ausente» hasta que se recargaba a mano.
+    """
     page = _read(PAGE)
-    handle = page[page.index("const handleSaved"):]
-    assert "setSelected(null)" in handle
-    assert "setRomItem(null)" in handle
+    rom = re.search(r"const handleRomSaved = \(\) => \{(.*?)\n  \}", page, re.S)
+    assert rom, "no se encontró el manejador de guardado de un juego"
+    assert "refreshFolder" in rom.group(1), "hay que recargar la tabla de ROMs"
+    assert "setSelected(null)" not in rom.group(1), "no debe salir del sistema"
+
+    sistema = re.search(r"const handleSystemSaved = \(\) => \{(.*?)\n  \}", page, re.S)
+    assert sistema, "no se encontró el manejador del scrape de sistema"
+    assert "setSelected(null)" in sistema.group(1), "el scrape del sistema vuelve a la lista"
 
 
 def test_el_modal_de_rom_guarda_los_metadatos_editados():
@@ -313,3 +323,44 @@ def test_el_backend_cachea_las_caratulas():
     assert "_IMG_PROXY_CACHE" in src, "las imágenes deben guardarse en caché"
     assert "def warm_scraper_image" in src, "la búsqueda debe pedir la imagen en segundo plano"
     assert "scraper_proxy_allowed" in src, "el proxy no debe ser un proxy abierto"
+
+
+# ── Aviso en modal (éxito automático, error con log) ─────────────────
+
+def test_existe_un_aviso_en_modal():
+    hook = SRC / "hooks" / "useNotify.tsx"
+    assert hook.exists(), "falta el proveedor de avisos en modal"
+    texto = _read(hook)
+    assert "NotifyProvider" in texto
+    assert "showNotify" in texto
+    # El éxito se cierra solo y el error espera a que se confirme.
+    assert "autoCloseMs" in texto
+    assert "AUTO_CLOSE_MS" in texto
+    assert "Cerrar" in texto, "el error necesita un botón de confirmación"
+
+
+def test_el_modal_de_rom_avisa_del_exito_y_del_error():
+    modal = _read(ROM_MODAL)
+    assert "useNotify" in modal
+    assert "showNotify" in modal
+    assert "variant: 'success'" in modal
+    assert "variant: 'error'" in modal
+    assert "detail:" in modal, "el error debe enseñar el log"
+
+
+def test_el_scraping_de_sistema_avisa_al_terminar():
+    modal = _read(SYSTEM_MODAL)
+    assert "useNotify" in modal
+    assert "showNotify" in modal
+    assert "aggregated" in modal, "el aviso debe resumir el trabajo"
+
+
+def test_la_tabla_se_actualiza_al_guardar_un_juego():
+    """Tras guardar, la vista se queda en el sistema para ver el cambio."""
+    page = _read(PAGE)
+    assert "handleRomSaved" in page
+    assert "handleSystemSaved" in page
+    bloque = re.search(r"const handleRomSaved = \(\) => \{(.*?)\n  \}", page, re.S)
+    assert bloque, "no se encontró el manejador de guardado"
+    assert "refreshFolder" in bloque.group(1), "hay que recargar la tabla"
+    assert "setSelected(null)" not in bloque.group(1), "no debe salir del sistema"

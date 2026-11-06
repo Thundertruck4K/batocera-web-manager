@@ -164,12 +164,21 @@ export function ScraperPage() {
     }
   }, [systems])
 
-  /** Al guardar y validar: se refresca todo y se vuelve a la lista principal. */
-  const handleSaved = () => {
+  /** Al guardar un juego: se refresca la tabla y la vista se queda en el
+   *  sistema, para ver cómo el juego pasa a «media presente». */
+  const handleRomSaved = () => {
     refresh()
     refreshConfig()
     refreshFolder()
     setRomItem(null)
+  }
+
+  /** Al terminar el scrape de un sistema: se refresca todo y se vuelve a la
+   *  lista principal. */
+  const handleSystemSaved = () => {
+    refresh()
+    refreshConfig()
+    refreshFolder()
     setSelected(null)
     setSubpath('')
   }
@@ -501,7 +510,7 @@ export function ScraperPage() {
         open={scrapeOpen}
         onClose={() => setScrapeOpen(false)}
         systems={scrapeSystems}
-        onSaved={handleSaved}
+        onSaved={handleSystemSaved}
       />
 
       {/* Modal de un ROM concreto */}
@@ -511,7 +520,7 @@ export function ScraperPage() {
         system={selected?.name ?? ''}
         subpath={subpath}
         rom={romItem}
-        onSaved={handleSaved}
+        onSaved={handleRomSaved}
       />
     </>
   )

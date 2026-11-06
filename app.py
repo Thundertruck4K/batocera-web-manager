@@ -1804,27 +1804,42 @@ def list_rom_folder(settings, system, subpath=""):
 
     # Gamelist: buscar en la carpeta actual (algunos sistemas tienen gamelist por subcarpeta)
     gl = target / "gamelist.xml"
-    if gl.exists():
+    # Si la carpeta no tiene el suyo, se usa el de la raíz del sistema: sus
+    # rutas son relativas a la raíz, así que se buscan con el prefijo.
+    sys_gl = roms_base / "gamelist.xml"
+    gdata = {}
+
+    def _leer_gamelist(path, prefijo):
         try:
-            tree = ET.parse(gl)
-            gdata = {}
-            for game in tree.findall(".//game"):
-                fn = game.findtext("path","").lstrip("./")
-                gdata[fn] = {
-                    "desc":      game.findtext("desc",""),
-                    "rating":    game.findtext("rating",""),
-                    "genre":     game.findtext("genre",""),
-                    "publisher": game.findtext("publisher",""),
-                    "year":      (game.findtext("releasedate","") or "")[:4],
-                    "has_image": bool(game.findtext("image","")),
-                    "has_video": bool(game.findtext("video","")),
-                }
-            for it in items:
-                if it["is_dir"]: continue
-                meta = gdata.get(it["filename"], gdata.get(it["name"], {}))
-                if meta: it.update(meta)
+            tree = ET.parse(path)
         except Exception:
-            pass
+            return
+        for game in tree.findall(".//game"):
+            fn = game.findtext("path","").lstrip("./")
+            meta = {
+                "desc":      game.findtext("desc",""),
+                "rating":    game.findtext("rating",""),
+                "genre":     game.findtext("genre",""),
+                "publisher": game.findtext("publisher",""),
+                "year":      (game.findtext("releasedate","") or "")[:4],
+                "has_image": bool(game.findtext("image","")),
+                "has_video": bool(game.findtext("video","")),
+            }
+            gdata[prefijo + fn] = meta
+            # También por nombre de fichero: en una subcarpeta la clave del
+            # gamelist lleva la ruta, pero el listado usa el nombre.
+            gdata.setdefault(Path(fn).name, meta)
+
+    if gl.exists():
+        _leer_gamelist(gl, "")
+    elif sys_gl.exists() and sys_gl != gl:
+        _leer_gamelist(sys_gl, f"{subpath.strip('/')}/" if subpath else "")
+
+    if gdata:
+        for it in items:
+            if it["is_dir"]: continue
+            meta = gdata.get(it["filename"], gdata.get(it["name"], {}))
+            if meta: it.update(meta)
 
     # Breadcrumb: partes del path para navegación
     breadcrumb = [system] + ([p for p in subpath.split("/") if p] if subpath else [])
@@ -1838,7 +1853,7 @@ def list_rom_folder(settings, system, subpath=""):
         "media_count": media_count,
         "total_size": total_size,
         "size_human": human_size(total_size),
-        "has_gamelist": gl.exists(),
+        "has_gamelist": gl.exists() or sys_gl.exists(),
         "is_empty": len(items) == 0,
     }
 
@@ -5069,10 +5084,18 @@ def save_gamelist_entry(roms_base, meta):
     else:
         root = ET.Element("gameList")
     game = None
+    # La coincidencia exacta con la ruta relativa va primero: un mismo juego
+    # puede estar catalogado en la raíz del sistema y en una subcarpeta, y si
+    # se casa con la equivocada la entrada de la ROM real se queda sin datos
+    # (y su imagen no aparece en la tabla de la interfaz).
     for g in root.findall("game"):
-        gpath = g.findtext("path","").lstrip("./")
-        if gpath == rom_relpath or Path(gpath).name == filename:
+        if g.findtext("path","").lstrip("./") == rom_relpath:
             game = g; break
+    if game is None:
+        # Sin coincidencia exacta, se busca por nombre de fichero.
+        for g in root.findall("game"):
+            if Path(g.findtext("path","").lstrip("./")).name == filename:
+                game = g; break
     if game is None:
         game = ET.SubElement(root,"game")
         ET.SubElement(game,"path").text = f"./{rom_relpath}"

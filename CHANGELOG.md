@@ -43,6 +43,12 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   - **El botón de volver está siempre en pantalla**: pasa a la barra superior (que ahora admite
     contenido a la izquierda del título), así que no hay que subir hasta arriba para cambiar de
     sistema.
+  - **Avisos en modal del scraping**: al guardar un juego, un modal confirma el éxito y se cierra
+    solo a los pocos segundos; si algo falla, el modal se queda en pantalla con **el log del error**
+    y un botón **Cerrar** para confirmarlo. El scrape de un sistema completo avisa igual cuando
+    termina el trabajo por lotes.
+  - **La tabla de ROMs se actualiza al guardar**: la vista se queda en el sistema y el juego pasa de
+    *media ausente* a *media presente* sin recargar la página.
 - **Dashboard de logros en la SPA**: la sección *Logros* deja de estar marcada como *Pronto* y muestra
   los juegos de RetroAchievements en los que más has desbloqueado, en tarjetas con **la carátula que
   dejó el scraper** en tu biblioteca, el porcentaje de completitud y el estado de cada juego
@@ -58,6 +64,12 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     RA. El rango de juegos sube de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Corregido
+- **El juego ya no se quedaba en «media ausente» después de escrapearlo**: al guardar, los
+  metadatos y la imagen se escribían en la entrada **equivocada** del `gamelist.xml` (el mismo juego
+  puede estar catalogado en la raíz del sistema y en una subcarpeta, y se casa con la primera que
+  coincide por nombre). Ahora la coincidencia exacta con la ruta relativa va primero, así que la
+  entrada de la ROM real es la que se actualiza. Además, al listar una subcarpeta sin gamelist
+  propio se lee el de la raíz del sistema, que es donde están las rutas de sus juegos.
 - **Las URLs de las carátulas ya no viajan con las credenciales**: ScreenScraper devuelve las URLs
   de sus medios con la contraseña y la credencial de desarrollador incrustadas, y la SPA las recibía
   tal cual (con la contraseña dentro, en la respuesta JSON). Ahora se mandan limpias y es el

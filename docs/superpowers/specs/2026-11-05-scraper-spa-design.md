@@ -180,6 +180,21 @@ Coste medido en la consola real: 55 ms para los 257 sistemas (42 con
     numérico, tras los dos puntos) y, si hace falta, se busca sin filtro de
     plataforma y se elige el juego de la plataforma del sistema. Sin esto, la
     cadena de fuentes se quedaba sin respuesta aunque el juego estuviera.
+17. **El guardado tiene que dar con la entrada correcta del `gamelist.xml`.**
+    El mismo juego puede estar catalogado en la raíz del sistema y en una
+    subcarpeta: si se casa con la primera entrada que coincide por nombre, la
+    ROM real se queda sin datos y su imagen no aparece en la tabla. La
+    coincidencia exacta con la ruta relativa va primero; el nombre sólo es el
+    plan B. Y al listar una subcarpeta sin gamelist propio se lee el de la
+    raíz del sistema (allí están las rutas de sus juegos).
+18. **Los avisos del scraping van en modal.** El éxito se muestra unos
+    segundos y se cierra solo; el error se queda con el log y un botón de
+    confirmación. Los avisos «verdes» de esquina (`Toast`) no sirven aquí:
+    se leen de reojo y el error hay que poder leerlo con calma.
+19. **Al guardar un juego la vista se queda en el sistema** (antes se volvía
+    a la lista de sistemas): así se ve cómo el juego pasa de *media ausente* a
+    *media presente* en la tabla. El botón «Volver» de la barra está siempre
+    visible para salir.
 
 ## Contrato ampliado
 

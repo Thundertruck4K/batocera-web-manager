@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { ToastProvider } from '@/hooks/useToast'
+import { NotifyProvider } from '@/hooks/useNotify'
 import { api } from '@/lib/api'
 import { Dashboard } from '@/pages/Dashboard'
 import { AchievementsPage } from '@/pages/Achievements'
@@ -62,9 +63,11 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <ThemeProvider>
         <ToastProvider>
-          <BrowserRouter>
-            <ManagerShell />
-          </BrowserRouter>
+          <NotifyProvider>
+            <BrowserRouter>
+              <ManagerShell />
+            </BrowserRouter>
+          </NotifyProvider>
         </ToastProvider>
       </ThemeProvider>
     </MotionConfig>
