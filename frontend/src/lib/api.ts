@@ -2,7 +2,10 @@ import type {
   AppInfo,
   BatoceraSystems,
   BiosCatalog,
+  BiosCandidate,
   BiosRepairResult,
+  BiosSearchResult,
+  BiosSource,
   CustomSystem,
   CustomSystemDetail,
   RandomGame,
@@ -246,6 +249,17 @@ export const api = {
   /** Coloca una BIOS en su sitio (extrayéndola de un ZIP o moviéndola). */
   biosRepair: (payload: { system: string; file: string; source?: string }) =>
     post<BiosRepairResult>('/api/bios/repair', payload).then(unwrap),
+  /** Catálogo de fuentes de archive.org (con su licencia y su estado). */
+  biosSources: (force = false) =>
+    get<{ ok: boolean; sources: BiosSource[]; error?: string }>(
+      `/api/bios/sources${force ? '?force=1' : ''}`,
+    ),
+  /** Busca en archive.org el contenido que pide el catálogo para una BIOS. */
+  biosSearchSources: (payload: { system: string; file: string }) =>
+    post<BiosSearchResult>('/api/bios/sources/search', payload).then(unwrap),
+  /** Descarga un candidato de archive.org y lo instala en su sitio. */
+  biosInstall: (payload: { system: string; file: string; candidate: BiosCandidate }) =>
+    post<BiosRepairResult>('/api/bios/install', payload).then(unwrap),
   /** Sube una BIOS a mano; el backend la deja donde Batocera la espera. */
   biosUpload: (payload: { system: string; file: string; blob: File }) => {
     const form = new FormData()

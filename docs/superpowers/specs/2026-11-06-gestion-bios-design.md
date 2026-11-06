@@ -229,21 +229,29 @@ Es la vía para quien tiene la BIOS en su NAS, en un servidor propio o en cualqu
 ### 5.1 Catálogo
 
 ```
-GET https://archive.org/advancedsearch.php?q=collection:(emularity+OR+emulation)
-                                          &fl[]=identifier&rows=50&output=json
 GET https://archive.org/metadata/<identifier>      → ficheros con md5, tamaño y url
-GET https://archive.org/download/<identifier>/<file> → descarga
+GET https://archive.org/download/<identifier>/<file> → descarga (admite rangos)
 ```
 
-El catálogo se guarda en local (`bios_sources.json`, caché 7 días) con: item, fichero, md5, tamaño,
+El catálogo se guarda en local (`batocera_manager_bios_sources.json`, caché 7 días) con: item, fichero, md5, tamaño,
 URL y si el item declara licencia. Un escaneo completo son 2 peticiones, no 159 descargas.
+
+**Las colecciones grandes se miran por rangos.** Las colecciones de BIOS de MESS son un único ZIP de
+445 MB y el pack de EmuDeck uno de 1,4 GB: bajarlos enteros no es una opción. archive.org admite
+peticiones `Range`, así que se lee **sólo el directorio central** del ZIP (`_remote_zip_index()`) y
+después **sólo el miembro que hace falta** (`_remote_zip_member()`). El mismo mecanismo sirve para
+los ZIP anidados: un ZIP de BIOS dentro del ZIP de la colección.
+
+Fuentes por defecto: las colecciones de BIOS de MESS (0.151 y 0.149), las de Emularity y JsMess, el
+pack de EmuDeck y los ROMs de la Elektronika BK.
 
 ### 5.2 Emparejamiento
 
 Para cada BIOS que falta:
 
 1. **Ficheros sueltos**: si el md5 del fichero de archive.org coincide con el md5 esperado → es un
-   candidato directo.
+   candidato directo. archive.org publica ese md5 en `metadata/<id>`, así que no hace falta
+   descargar nada para saberlo.
 2. **ZIP**: el md5 del ZIP nunca coincidirá con el canónico → se marca como *candidato por
    inspeccionar* y se comprueba descargando (o por rango) y abriendo el índice central del ZIP.
    Se cachea el resultado (md5 de cada miembro) para no volver a abrirlo.
@@ -252,6 +260,13 @@ Para cada BIOS que falta:
    2. es el ZIP del sistema correcto;
    3. el tamaño se parece al del md5 esperado;
    4. el item declara licencia libre.
+
+**El emparejamiento es siempre por contenido.** El nombre del fichero sólo ordena la búsqueda: un
+ZIP con el nombre correcto y otro contenido no es candidato. La búsqueda va en tres fases para no
+gastar peticiones: (1) lo que se sabe sin descargar (md5 publicado y nombre); (2) abrir los
+contenedores cuyo nombre coincide; (3) si sigue sin haber nada, abrir los contenedores de nombre
+parecido (`enterprise/ep128emu/roms/exos20.rom` → `ep128.zip`). Hay un presupuesto de contenedores
+por búsqueda, porque cada uno es una ida al servidor.
 
 ### 5.3 Etiqueta legal por fichero
 
@@ -341,13 +356,13 @@ Reglas transversales:
 |---|---|---|---|
 | **0. Verdad** | Catálogo oficial (script `batocera-systems`), caché, estructura de estados, escaneo real con índices inversos, detección de «dentro de un ZIP» | `/api/bios/catalog`, `/api/bios/scan`, `/api/bios/summary` | **hecha** |
 | **1. Reparar local** | Reunir el ZIP con sus miembros / mover el fichero, con verificación y cuarentena | `/api/bios/repair` + 22 tests | **hecha** |
-| **2. Fuentes** | Catálogo de archive.org, caché, emparejamiento por contenido, descarga verificada | `/api/bios/sources`, descarga en `/api/bios/repair` | pendiente |
+| **2. Fuentes** | Catálogo de archive.org, caché, emparejamiento por contenido, descarga verificada | `/api/bios/sources`, `/api/bios/sources/search`, `/api/bios/install` + 17 tests | **hecha** |
 | **3. SPA** | Tarjetas, modales, toasts, filtros, subida manual, omitir | Sección ROMs y BIOS en la SPA | **hecha** (sin enlaces externos) |
 | **4. Pulido** | Badge en el menú, informe de lo no requerido, limpieza con doble confirmación, orígenes automáticos | Detalles | pendiente |
 
 Cada fase es un PR propio, con sus tests, como el resto del historial del repo.
 
-### 8.1 Lo que se ha hecho ya (Fases 0, 1 y 3)
+### 8.1 Lo que se ha hecho ya (Fases 0, 1, 2 y 3)
 
 - El catálogo se lee del **script oficial** (`/usr/bin/batocera-systems`, un Python que se parsea con
   `ast` sin ejecutarlo) y trae slug, nombre legible, ruta, md5 y el miembro de cada ZIP. El
@@ -357,6 +372,11 @@ Cada fase es un PR propio, con sus tests, como el resto del historial del repo.
 - La reparación reúne los miembros exigidos desde otro ZIP del disco y rehace el ZIP en su ruta
   exacta; si no encuentra el contenido **no toca el destino** (la cuarentena sólo se hace cuando ya
   se sabe que hay algo que escribir).
+- **Las fuentes de archive.org están integradas**: el catálogo de items se cachea 7 días, el
+  índice central de las colecciones grandes se lee por rangos HTTP (sin bajar los 445 MB del pack de
+  MESS) y el emparejamiento es por md5, nunca por nombre. El botón *Reparar* primero busca en la
+  consola y, si no encuentra el contenido, en archive.org; la interfaz enseña las fuentes con su
+  licencia y la descarga sólo ocurre cuando el usuario elige una.
 - La SPA tiene la sección *ROMs y BIOS* con tarjetas por sistema (ordenadas por criticidad), modal
   de detalle con md5, tamaño, ruta y estado, reparación en lote, subida manual, copiar hash y
   omitir.

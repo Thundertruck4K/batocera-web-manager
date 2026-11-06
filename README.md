@@ -566,6 +566,19 @@ comprueba el resultado y deja el fichero original en `/userdata/bios/.quarantine
 que poner, no toca el destino. Y si la BIOS no está en la consola, se puede **subir a mano** (la
 app indica la ruta y el hash que tiene que tener) u **omitirla** si de verdad no la necesitas.
 
+**Buscarla en archive.org cuando no está en la consola.** El botón *Reparar* no se queda en «no
+se ha encontrado»: si el contenido no está en la SD, el manager lo busca en **archive.org** y
+enseña las fuentes con su tamaño, su autor y la licencia que declaran. El emparejamiento es
+**siempre por contenido**: el md5 que exige el catálogo tiene que aparecer en el fichero de la
+fuente o dentro de uno de sus ZIP; el nombre sólo sirve para ordenar la búsqueda. Las colecciones
+grandes (la de MESS son 445 MB) se miran **por rangos HTTP**, así que se lee su índice central y
+se descarga sólo el fichero que hace falta, no el ZIP entero.
+
+El catálogo de fuentes se cachea 7 días en `/userdata/system/batocera_manager_bios_sources.json`.
+**Ninguna de las fuentes declara licencia**, así que la app lo dice y la descarga sólo ocurre cuando
+el usuario elige la fuente: son BIOS con copyright. Si no hay ninguna fuente con ese contenido, el
+manager lo dice claro y ofrece subir el fichero a mano o buscarlo en GitHub.
+
 ---
 
 ## 🧱 Arquitectura
@@ -612,7 +625,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **EmulationStation** | `/api/es/status` · `/api/es/restart` |
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
-| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
+| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` · `/api/bios/sources` · `/api/bios/sources/search` · `/api/bios/install` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
 | **Actualización** | `/api/update` · `/api/app-update` |
