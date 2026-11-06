@@ -2,10 +2,7 @@ import type {
   AppInfo,
   BatoceraSystems,
   BiosCatalog,
-  BiosCandidate,
   BiosRepairResult,
-  BiosSearchResult,
-  BiosSource,
   CustomSystem,
   CustomSystemDetail,
   RandomGame,
@@ -247,19 +244,8 @@ export const api = {
       '/api/bios/scan',
     ),
   /** Coloca una BIOS en su sitio (extrayéndola de un ZIP o moviéndola). */
-  biosRepair: (payload: { system: string; file: string; source?: string }) =>
+  biosRepair: (payload: { system: string; file: string }) =>
     post<BiosRepairResult>('/api/bios/repair', payload).then(unwrap),
-  /** Catálogo de fuentes de archive.org (con su licencia y su estado). */
-  biosSources: (force = false) =>
-    get<{ ok: boolean; sources: BiosSource[]; indexing?: boolean; error?: string }>(
-      `/api/bios/sources${force ? '?force=1' : ''}`,
-    ),
-  /** Busca en archive.org el contenido que pide el catálogo para una BIOS. */
-  biosSearchSources: (payload: { system: string; file: string }) =>
-    post<BiosSearchResult>('/api/bios/sources/search', payload).then(unwrap),
-  /** Descarga un candidato de archive.org y lo instala en su sitio. */
-  biosInstall: (payload: { system: string; file: string; candidate: BiosCandidate }) =>
-    post<BiosRepairResult>('/api/bios/install', payload).then(unwrap),
   /** Sube una BIOS a mano; el backend la deja donde Batocera la espera. */
   biosUpload: (payload: { system: string; file: string; blob: File }) => {
     const form = new FormData()
@@ -268,7 +254,7 @@ export const api = {
     form.append('bios', payload.blob, payload.blob.name)
     return postForm<{
       ok: boolean
-      saved?: { file: string; dest: string; size: string; md5: string; md5_valid?: boolean | null }[]
+      saved?: { file: string; dest: string; size: string; md5: string; presente?: boolean }[]
       error?: string
     }>('/api/bios/upload', form)
   },

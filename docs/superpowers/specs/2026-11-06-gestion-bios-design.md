@@ -78,6 +78,12 @@ De aquí salen las dos reglas que ordenan todo el trabajo:
 
 ### 1.4 Fuentes en archive.org
 
+> **Descartado (2026-11-06).** La integración con archive.org se implementó y midió (25 BIOS
+> instalables, 7 parciales de 64 con problema), pero **la espera no era aceptable**: desde la consola
+> una búsqueda tardaba entre 30 y 120 s, y el usuario decidió que el flujo fuera más corto. La fase 2
+> se rehízo: **GitHub (búsqueda) + subida manual**, sin red para la app. Se conserva esta sección
+> como registro de lo que se llegó a tener y por qué se quitó.
+
 | Item | Colección | Ficheros | Tamaño | Autor |
 |---|---|---|---|---|
 | `emularity_bios_v1` | emularity / emulation | 159 | 260 MiB | Emularity Team |
@@ -159,18 +165,22 @@ md5 en streaming; se cachea 60 s y hay un botón de «reverificar».
 
 | Estado | Significado | Acción por defecto |
 |---|---|---|
-| `ok` | En su ruta y con md5 aceptado | — |
-| `sin_verificar` | En su ruta, Batocera no publica md5 | — (aviso leve) |
-| `reparable_zip` | El md5 esperado está dentro de un ZIP presente | **Extraer y colocar** |
-| `reparable_ruta` | El mismo contenido está en otra carpeta | **Mover** |
-| `hash_distinto` | Presente con un md5 que no es ninguno de los aceptados | Buscar fuente |
-| `ausente` | No está en ninguna parte | **Descargar / Subir / Enlazar** |
+| `ok` | En su ruta (el hash no es un veredicto) | — |
+| `sin_verificar` | En su ruta, el catálogo no publica nada para comprobarlo | — (aviso leve) |
+| `reparable_zip` | El fichero exigido está dentro de un ZIP presente | **Extraer y colocar** |
+| `reparable_ruta` | El mismo contenido está en otra carpeta | **Copiar** |
+| `miembro_falta` | El ZIP está, pero no lleva dentro el fichero exigido | **Extraer y colocar** / subir el ZIP |
+| `ausente` | No está en ninguna parte | **Buscar en GitHub / Subir** |
 | `omitida` | El usuario la marcó como no necesaria | — (persistente) |
 | `no_requerida` | Hay algo en `/userdata/bios` que Batocera no pide | Revisar (opcional: limpiar) |
 
-Los estados son **excluyentes y ordenados por gravedad**: `ausente` > `hash_distinto` >
+Los estados son **excluyentes y ordenados por gravedad**: `ausente` > `miembro_falta` >
 `reparable_*` > `sin_verificar` > `ok`. Los `omitida` y `no_requerida` se listan aparte, porque no
 son problemas.
+
+> **El hash ya no es un veredicto.** El estado `hash_distinto` desapareció (2026-11-06): Batocera no
+> es rígido con el hash de las BIOS, así que una BIOS presente con otro md5 es una BIOS correcta.
+> El md5 se calcula y se enseña como dato.
 
 ### 3.2 Ordenación
 
@@ -225,6 +235,10 @@ Es la vía para quien tiene la BIOS en su NAS, en un servidor propio o en cualqu
 ---
 
 ## 5. Fuentes: archive.org como primaria
+
+> **Descartado (2026-11-06).** Ver §1.4. El flujo que queda es: reparar en local (sin red) y, si el
+> contenido no está en la consola, **buscarlo en GitHub o subirlo a mano**. La app no indexa
+> colecciones ni descarga nada por su cuenta.
 
 ### 5.1 Catálogo
 
@@ -356,7 +370,8 @@ Reglas transversales:
 |---|---|---|---|
 | **0. Verdad** | Catálogo oficial (script `batocera-systems`), caché, estructura de estados, escaneo real con índices inversos, detección de «dentro de un ZIP» | `/api/bios/catalog`, `/api/bios/scan`, `/api/bios/summary` | **hecha** |
 | **1. Reparar local** | Reunir el ZIP con sus miembros / mover el fichero, con verificación y cuarentena | `/api/bios/repair` + 22 tests | **hecha** |
-| **2. Fuentes** | Catálogo de archive.org, caché, emparejamiento por contenido, descarga verificada | `/api/bios/sources`, `/api/bios/sources/search`, `/api/bios/install` + 17 tests | **hecha** |
+| **2. Fuentes** | Catálogo de archive.org, caché, emparejamiento por contenido, descarga verificada | `/api/bios/sources`, `/api/bios/sources/search`, `/api/bios/install` + 17 tests | **hecha y luego revertida** (la espera de 30-120 s no compensaba) |
+| **2b. GitHub + subida** | Enlaces de búsqueda en GitHub por BIOS y por sistema, subida manual al lugar exacto, y el hash deja de ser veredicto | `/api/bios/catalog` (campo `github`), `POST /api/bios/repair`, `POST /api/bios/upload` | **hecha** |
 | **3. SPA** | Tarjetas, modales, toasts, filtros, subida manual, omitir | Sección ROMs y BIOS en la SPA | **hecha** (sin enlaces externos) |
 | **4. Pulido** | Badge en el menú, informe de lo no requerido, limpieza con doble confirmación, orígenes automáticos | Detalles | pendiente |
 
@@ -372,11 +387,11 @@ Cada fase es un PR propio, con sus tests, como el resto del historial del repo.
 - La reparación reúne los miembros exigidos desde otro ZIP del disco y rehace el ZIP en su ruta
   exacta; si no encuentra el contenido **no toca el destino** (la cuarentena sólo se hace cuando ya
   se sabe que hay algo que escribir).
-- **Las fuentes de archive.org están integradas**: el catálogo de items se cachea 7 días, el
-  índice central de las colecciones grandes se lee por rangos HTTP (sin bajar los 445 MB del pack de
-  MESS) y el emparejamiento es por md5, nunca por nombre. El botón *Reparar* primero busca en la
-  consola y, si no encuentra el contenido, en archive.org; la interfaz enseña las fuentes con su
-  licencia y la descarga sólo ocurre cuando el usuario elige una.
+- **La fase 2 se rehízo**: archive.org se quitó (la espera de 30-120 s desde la consola no
+  compensaba) y el flujo es ahora **reparar en local → si no está, buscar en GitHub o subir el
+  archivo a mano**. La app no indexa nada ni descarga por su cuenta. Además, **el hash dejó de ser un
+  veredicto**: el estado se decide por presencia y estructura, porque Batocera tampoco es rígido con
+  él (triforce o hikaru lanzan los juegos con el hash que traía la tarjeta).
 - La SPA tiene la sección *ROMs y BIOS* con tarjetas por sistema (ordenadas por criticidad), modal
   de detalle con md5, tamaño, ruta y estado, reparación en lote, subida manual, copiar hash y
   omitir.

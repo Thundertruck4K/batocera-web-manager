@@ -5,6 +5,10 @@ La lista de BIOS que exige Batocera no es fija: la consola la trae en
 va DENTRO de cada ZIP) y en `readme.txt`. El campo `zippedFile` es la clave:
 un ZIP es correcto si lleva dentro los ficheros que se piden, no si su md5
 coincide, porque el md5 del ZIP no es el de lo que contiene.
+
+Y al revés: Batocera tampoco es rígido con el hash de las BIOS. Si el fichero
+está en su sitio, el emulador funciona igual. Por eso el estado se decide por
+**presencia y estructura**, nunca por el hash.
 """
 from __future__ import annotations
 
@@ -169,8 +173,13 @@ def test_fichero_plano_ok(appmod, entorno):
     assert data["systems"]["atari5200"]["files"][0]["estado"] == "ok"
 
 
-def test_hash_distinto(appmod, entorno):
-    """Un fichero con un md5 que no es el esperado."""
+def test_el_hash_no_decide_el_estado(appmod, entorno):
+    """Un fichero con un md5 que no es el esperado: si está, está bien.
+
+    Batocera no es rígido con el hash de las BIOS (las de triforce o hikaru
+    lanzan los juegos con el hash que traía la tarjeta), así que un md5
+    distinto no convierte la BIOS en un problema.
+    """
     entorno["script"].write_text(_script({
         "atari5200": {"name": "Atari 5200", "biosFiles": [
             {"md5": "281f20ea4320404ec820fb7ec0693b38", "file": "bios/5200.rom"}]}}),
@@ -179,8 +188,23 @@ def test_hash_distinto(appmod, entorno):
     (entorno["bios"] / "5200.rom").write_bytes(b"otra cosa")
     data = appmod.scan_bios(entorno["settings"])
     fichero = data["systems"]["atari5200"]["files"][0]
-    assert fichero["estado"] == "hash_distinto"
+    assert fichero["estado"] == "ok"
+    # El hash se sigue enseñando como dato.
     assert fichero["md5"] == _md5(b"otra cosa")
+
+
+def test_el_miembro_sirve_por_nombre(appmod, entorno):
+    """El ZIP lleva el fichero que pide el catálogo con otro contenido.
+
+    Sin verificación de hash, lo que importa es que el fichero esté dentro con
+    el nombre que espera Batocera.
+    """
+    entorno["script"].write_text(
+        _script(_catalogo_zip("01bba3bcd46d8a586dd6ec555accc133")), encoding="utf-8")
+    _reset(appmod)
+    _zip(entorno["bios"] / "adam.zip", {"alf rev 57.u8": b"otro contenido"})
+    data = appmod.scan_bios(entorno["settings"])
+    assert data["systems"]["adam"]["files"][0]["estado"] == "ok"
 
 
 def test_sin_hash_publicado(appmod, entorno):
@@ -349,9 +373,26 @@ def test_reparar_sin_contenido_no_toca_el_fichero_que_ya_estaba(appmod, entorno)
     destino = entorno["bios"] / "segaai.zip"
     destino.write_bytes(b"lo que hay ahora")
     resultado = appmod.repair_bios(entorno["settings"], "segaai", "segaai.zip")
-    assert resultado["ok"] is False
-    # El fichero sigue en su sitio y no hay cuarentena
+    # El fichero está en su sitio: el hash no lo convierte en un problema, así
+    # que no se toca nada (y no hay cuarentena).
+    assert resultado["ok"] is True
     assert destino.read_bytes() == b"lo que hay ahora"
+    assert not (entorno["bios"] / ".quarantine").exists()
+
+
+def test_reparar_un_zip_incompleto_sin_contenido_no_lo_pisa(appmod, entorno):
+    """Un ZIP al que le falta un miembro y no hay nada que poner: no se toca."""
+    entorno["script"].write_text(
+        _script(_catalogo_zip("01bba3bcd46d8a586dd6ec555accc133")), encoding="utf-8")
+    _reset(appmod)
+    destino = entorno["bios"] / "adam.zip"
+    _zip(destino, {"sin relacion": b"basura"})
+    resultado = appmod.repair_bios(entorno["settings"], "adam", "adam.zip")
+    assert resultado["ok"] is False
+    assert "no se ha encontrado" in resultado["error"]
+    # El ZIP sigue donde estaba, con su contenido intacto.
+    with zipfile.ZipFile(destino) as z:
+        assert z.namelist() == ["sin relacion"]
     assert not (entorno["bios"] / ".quarantine").exists()
 
 
@@ -368,3 +409,61 @@ def test_reparar_no_sale_de_la_carpeta(appmod, entorno):
     _reset(appmod)
     resultado = appmod.repair_bios(entorno["settings"], "adam", "../fuera.zip")
     assert resultado["ok"] is False
+
+
+# ── La búsqueda de la BIOS que falta: GitHub y subida manual ──────────
+
+def test_reparable_ruta_por_nombre(appmod, entorno):
+    """El mismo nombre de fichero está en otra carpeta: se puede colocar."""
+    entorno["script"].write_text(_script({
+        "atari5200": {"name": "Atari 5200", "biosFiles": [
+            {"md5": "281f20ea4320404ec820fb7ec0693b38", "file": "bios/5200.rom"}]}}),
+        encoding="utf-8")
+    _reset(appmod)
+    (entorno["bios"] / "Machines").mkdir()
+    (entorno["bios"] / "Machines" / "5200.rom").write_bytes(b"otra version")
+    data = appmod.scan_bios(entorno["settings"])
+    fichero = data["systems"]["atari5200"]["files"][0]
+    assert fichero["estado"] == "reparable_ruta"
+    assert fichero["fuente"] == "Machines/5200.rom"
+
+
+def test_reparar_por_nombre(appmod, entorno):
+    """Se coloca el fichero de otra carpeta aunque el hash sea distinto."""
+    entorno["script"].write_text(_script({
+        "atari5200": {"name": "Atari 5200", "biosFiles": [
+            {"md5": "281f20ea4320404ec820fb7ec0693b38", "file": "bios/5200.rom"}]}}),
+        encoding="utf-8")
+    _reset(appmod)
+    (entorno["bios"] / "Machines").mkdir()
+    (entorno["bios"] / "Machines" / "5200.rom").write_bytes(b"otra version")
+    resultado = appmod.repair_bios(entorno["settings"], "atari5200", "5200.rom")
+    assert resultado["ok"] is True
+    assert (entorno["bios"] / "5200.rom").read_bytes() == b"otra version"
+
+
+def test_el_catalogo_trae_el_enlace_de_github(appmod, entorno):
+    """Cada BIOS y cada sistema llevan su enlace para buscarlos en GitHub."""
+    entorno["script"].write_text(_script({
+        "atari5200": {"name": "Atari 5200", "biosFiles": [
+            {"md5": "", "file": "bios/5200.rom"}]}}), encoding="utf-8")
+    _reset(appmod)
+    data = appmod.scan_bios(entorno["settings"])
+    sistema = data["systems"]["atari5200"]
+    assert "github.com" in sistema["github"]
+    assert "5200.rom" in sistema["files"][0]["github"]
+
+
+def test_el_enlace_de_github_busca_el_nombre_exacto(appmod):
+    """El enlace busca el nombre del fichero, entrecomillado."""
+    url = appmod.github_bios_search_url("neogeo/neo-geo.7z")
+    assert url.startswith("https://github.com/search?q=")
+    assert "neo-geo.7z" in url
+    assert "%22" in url
+
+
+def test_no_hay_fuentes_de_archive(appmod):
+    """Ya no se busca en archive.org: el flujo es GitHub y subida manual."""
+    for nombre in ("bios_sources", "search_bios_sources", "install_bios_source",
+                   "repair_bios_from_source"):
+        assert not hasattr(appmod, nombre), nombre
