@@ -10,10 +10,11 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Toggle } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
+import { useNotify } from '@/hooks/useNotify'
 import { useToast } from '@/hooks/useToast'
 import { api, type ScraperConfigLine } from '@/lib/api'
 import {
@@ -144,6 +145,7 @@ interface ScrapeSystemModalProps {
  */
 export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSystemModalProps) {
   const { showToast } = useToast()
+  const { showNotify } = useNotify()
 
   const [config, setConfig] = useState<ScraperConfig | null>(null)
   const [source, setSource] = useState<ScraperSource>('screenscraper')
@@ -212,6 +214,44 @@ export function ScrapeSystemModal({ open, onClose, systems, onSaved }: ScrapeSys
       window.clearInterval(timer)
     }
   }, [jobId])
+
+  /* Al terminar el trabajo: avisar con el resumen (o con el log de errores). */
+  const notificado = useRef(false)
+  useEffect(() => {
+    if (!job || job.status === 'pending' || job.status === 'running') {
+      notificado.current = false
+      return
+    }
+    if (notificado.current) return
+    notificado.current = true
+
+    const errores = job.aggregated?.errors ?? []
+    const ok = (job.aggregated?.ok ?? 0) + (job.partial?.ok ?? 0)
+    const fail = (job.aggregated?.fail ?? 0) + (job.partial?.fail ?? 0)
+    onSaved()
+
+    if (job.status === 'failed') {
+      showNotify({
+        variant: 'error',
+        title: 'El scraping falló',
+        message: job.error || `El trabajo ${job.id} terminó con errores.`,
+        detail: errores.length ? errores.join('\n') : (job.error ?? undefined),
+      })
+    } else if (errores.length) {
+      showNotify({
+        variant: 'error',
+        title: 'Scraping terminado con errores',
+        message: `${ok} juego(s) guardados y ${fail} con fallos.`,
+        detail: errores.join('\n'),
+      })
+    } else {
+      showNotify({
+        variant: 'success',
+        title: 'Scraping terminado',
+        message: `${ok} juego(s) scraped y guardado(s) en ${systems.length} sistema(s).`,
+      })
+    }
+  }, [job, onSaved, showNotify, systems.length])
 
   const ready = sourceReady(config, source)
 

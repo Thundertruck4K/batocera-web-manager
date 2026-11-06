@@ -232,6 +232,10 @@ se pueden activar o desactivar una a una y aparecen **numeradas por orden de pri
 ScreenScraper y, si no encuentra el juego, TheGamesDB e IGDB como respaldo. El botón **Volver** está
 siempre en la barra superior, así que no hay que subir hasta arriba para cambiar de sistema.
 
+Al guardar, la tabla se actualiza al instante: el juego pasa de **media ausente** a **media presente**
+sin recargar la página, y un aviso en modal confirma el éxito (se cierra solo a los pocos segundos).
+Si algo falla, el aviso se queda en pantalla con **el log del error** y un botón **Cerrar**.
+
 ![Modal de scraping](docs/screenshots/09-scraper-modal.png)
 
 *El modal de un juego: la carátula, las fuentes por orden de prioridad y las imágenes a descargar.*

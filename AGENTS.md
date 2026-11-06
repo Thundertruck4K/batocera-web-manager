@@ -112,7 +112,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 576 con `pytest` en `tests/` (48 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 583 con `pytest` en `tests/` (48 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -137,6 +137,11 @@ El proyecto se trabaja en **un solo repositorio**:
 - **TheGamesDB searches by exact title**: it will not find "007: Agent Under Fire" when asked for
   "007 Agent Under Fire", so the search tries name variants and, if needed, drops the platform
   filter. Without that, the fallback chain finds nothing.
+- **Saving a game must hit the right `<game>` entry**: the same game can be catalogued in the system
+  root and in a subfolder, so `save_gamelist_entry` matches the exact relative path first and only
+  falls back to the file name. Matching by name first writes the data into the wrong entry and the
+  ROM stays in "sin media" forever. `list_rom_folder` reads the system gamelist when the current
+  folder has none (its paths are relative to the system root).
 - Credentials read from `batocera.conf` keys: `global.scrapper.user`, `global.scrapper.password`, etc.
 - Scraping respects rate limits (`maxthreads` from SS response, minimum 0.5s delay)
 - The `--port` CLI flag is the only command-line argument supported

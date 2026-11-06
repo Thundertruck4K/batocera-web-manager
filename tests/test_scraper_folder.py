@@ -103,3 +103,81 @@ def test_una_subruta_fuera_del_sistema_es_rechazada(appmod, tmp_path):
     settings = _preparar(appmod, tmp_path)
 
     assert appmod.list_rom_folder(settings, "snes", "../../etc") is None
+
+
+# ── El guardado tiene que dar con la entrada correcta ────────────────
+
+GAMELIST_DUPLICADO = """<?xml version="1.0" encoding="UTF-8"?>
+<gameList>
+    <game>
+        <path>./Juego/Juego.sfc</path>
+        <name>Juego (subcarpeta)</name>
+    </game>
+    <game>
+        <path>./Juego.sfc</path>
+        <name>Juego (raíz)</name>
+    </game>
+</gameList>
+"""
+
+
+def test_el_guardado_usa_la_entrada_de_la_ruta_exacta(appmod, tmp_path):
+    """El mismo juego puede estar en la raíz y en una subcarpeta.
+
+    Si el guardado se casa con la primera entrada que coincide por nombre, la
+    ROM de la raíz se queda sin datos y su imagen no aparece en la tabla.
+    """
+    base = tmp_path / "roms"
+    sistema = base / "snes"
+    sistema.mkdir(parents=True)
+    (sistema / "gamelist.xml").write_text(GAMELIST_DUPLICADO, encoding="utf-8")
+
+    appmod.save_gamelist_entry(str(base), {
+        "system": "snes", "subpath": "", "filename": "Juego.sfc",
+        "name": "Juego", "desc": "El de la raíz",
+        "image_path": "./images/Juego-image.png",
+    })
+
+    gl = (sistema / "gamelist.xml").read_text(encoding="utf-8")
+    entrada_raiz = gl[gl.index('<path>./Juego.sfc</path>'):]
+    entrada_raiz = entrada_raiz[:entrada_raiz.index("</game>")]
+    assert "El de la raíz" in entrada_raiz
+    assert "./images/Juego-image.png" in entrada_raiz
+
+
+def test_el_guardado_conserva_la_entrada_de_la_subcarpeta(appmod, tmp_path):
+    base = tmp_path / "roms"
+    sistema = base / "snes"
+    (sistema / "Coleccion").mkdir(parents=True)
+    (sistema / "gamelist.xml").write_text(GAMELIST_DUPLICADO, encoding="utf-8")
+
+    appmod.save_gamelist_entry(str(base), {
+        "system": "snes", "subpath": "Coleccion", "filename": "Juego.sfc",
+        "name": "Juego", "desc": "El de la subcarpeta",
+    })
+
+    gl = (sistema / "gamelist.xml").read_text(encoding="utf-8")
+    assert "El de la subcarpeta" in gl
+    assert "El de la raíz" not in gl
+
+
+def test_el_listado_usa_el_gamelist_del_sistema_en_una_subcarpeta(appmod, tmp_path):
+    """En una subcarpeta sin gamelist propio se lee el de la raíz del sistema."""
+    base = tmp_path / "roms"
+    sistema = base / "snes"
+    (sistema / "Coleccion").mkdir(parents=True)
+    (sistema / "Coleccion" / "Juego de la coleccion.sfc").write_bytes(b"rom")
+    (sistema / "gamelist.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
+<gameList>
+    <game>
+        <path>./Coleccion/Juego de la coleccion.sfc</path>
+        <name>Juego de la coleccion</name>
+        <image>./images/Juego de la coleccion-image.png</image>
+    </game>
+</gameList>
+""", encoding="utf-8")
+
+    folder = appmod.list_rom_folder({"roms_base": str(base)}, "snes", "Coleccion")
+
+    assert folder["items"][0]["has_image"] is True
+    assert folder["has_gamelist"] is True

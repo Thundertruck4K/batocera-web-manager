@@ -3,8 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
-import { useToast } from '@/hooks/useToast'
-import { api } from '@/lib/api'
+import { useNotify } from '@/hooks/useNotify'
+import { ApiError, api } from '@/lib/api'
 import {
   SCRAPER_SOURCES,
   readySources,
@@ -56,7 +56,7 @@ interface ScrapeRomModalProps {
  * descarga la imagen, guarda los datos y cierra el modal.
  */
 export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }: ScrapeRomModalProps) {
-  const { showToast } = useToast()
+  const { showNotify } = useNotify()
 
   const [config, setConfig] = useState<ScraperConfig | null>(null)
   const [enabled, setEnabled] = useState<ScraperSource[]>([])
@@ -207,15 +207,40 @@ export function ScrapeRomModal({ open, onClose, system, subpath, rom, onSaved }:
       }
 
       const failures = download.results?.errors ?? []
-      if (failures.length) {
-        showToast(`Guardado con avisos: ${failures.length} imagen(es) sin descargar`, 'info')
-      } else {
-        showToast('Juego scraped y validado', 'success')
-      }
+      const imagenes = download.results?.images ?? []
       onSaved()
       onClose()
+
+      if (failures.length) {
+        // El aviso de error se queda en pantalla hasta que se confirme.
+        showNotify({
+          variant: 'error',
+          title: 'Guardado con errores',
+          message: `Se guardaron los metadatos, pero ${failures.length} imagen(es) no se pudieron descargar.`,
+          detail: failures.join('\n'),
+        })
+      } else {
+        showNotify({
+          variant: 'success',
+          title: 'Juego scraped y guardado',
+          message: [
+            meta.name || rom.name,
+            imagenes.length
+              ? `${imagenes.length} imagen(es) descargada(s)`
+              : 'Metadatos guardados',
+          ].join(' · '),
+        })
+      }
     } catch (err) {
+      const detalle =
+        err instanceof ApiError ? [err.message, ...err.errors].join('\n') : String(err)
       setError(err instanceof Error ? err.message : 'No se pudo guardar el juego')
+      showNotify({
+        variant: 'error',
+        title: 'No se pudo guardar el juego',
+        message: err instanceof Error ? err.message : 'No se pudo guardar el juego',
+        detail: detalle,
+      })
     } finally {
       setSaving(false)
     }
