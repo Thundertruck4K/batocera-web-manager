@@ -112,7 +112,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 438 con `pytest` en `tests/` (41 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 576 con `pytest` en `tests/` (48 ficheros de test; backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -123,6 +123,20 @@ El proyecto se trabaja en **un solo repositorio**:
     Los gráficos usan **Recharts** (`animationDuration={280}`, el límite del design system).
   - Al tocar un token, tócalo en las dos capas para que no se desincronicen.
 - Scraper sources: ScreenScraper.fr (default, needs SS user/pass), TheGamesDB (needs API key), IGDB (needs Twitch Client ID + Secret)
+- **Source chain**: ScreenScraper is always tried first; if it has no data, TheGamesDB and IGDB are
+  the fallback. The chain lives in the backend (`scrape_search_cascade`), so the ROM modal and the
+  system scrape share it. `POST /api/scraper/search` takes `sources` (ordered list) and answers with
+  `source` (the one that hit) and `tried`; the system batch takes `fallback_sources`.
+- **Media URLs must never carry credentials to the browser**: ScreenScraper returns them with
+  `devpassword`/`sspassword` embedded. `ss_media_public_url()` strips them and
+  `ss_media_signed_url()` puts them back when downloading server-side. The classic UI asks for the
+  originals with `raw_media: true` (it shows the image directly and may use unsaved credentials).
+- **The preview of a cover goes through the backend** (`GET /api/scraper/image`): ScreenScraper does
+  not serve images without its referer. The proxy caches in memory (24 images / 3 MB) and only
+  allows the scraping hosts, so it is not an open proxy.
+- **TheGamesDB searches by exact title**: it will not find "007: Agent Under Fire" when asked for
+  "007 Agent Under Fire", so the search tries name variants and, if needed, drops the platform
+  filter. Without that, the fallback chain finds nothing.
 - Credentials read from `batocera.conf` keys: `global.scrapper.user`, `global.scrapper.password`, etc.
 - Scraping respects rate limits (`maxthreads` from SS response, minimum 0.5s delay)
 - The `--port` CLI flag is the only command-line argument supported
