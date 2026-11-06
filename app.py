@@ -3427,6 +3427,7 @@ BIOS_SOURCES_TTL  = 7 * 24 * 3600        # 7 días: caché del catálogo de fuen
 BIOS_SOURCE_MAX   = 64 * 1024 * 1024     # 64 MiB: por encima no es una BIOS
 BIOS_SOURCE_TIMEOUT = 45                 # segundos por petición
 BIOS_SOURCE_CONTAINERS = 8               # contenedores que se abren por búsqueda
+BIOS_SOURCE_DEADLINE = 150               # segundos de búsqueda como máximo
 
 BIOS_SOURCES_DEFAULT = [
     {
@@ -4072,9 +4073,14 @@ def search_bios_sources(settings, slug, rel, force=False, timeout=BIOS_SOURCE_TI
     # presupuesto: primero los que tienen el nombre exacto (que son los más
     # probables) y después, si no hay nada, los de nombre parecido.
     presupuesto = BIOS_SOURCE_CONTAINERS
+    # Si archive.org va lento o se cae, la búsqueda no puede eternizarse: cada
+    # contenedor abierto es una ida al servidor y con reintentos se suma.
+    limite = time.time() + BIOS_SOURCE_DEADLINE
     for cand in list(candidates):
         if cand["kind"] != "contenedor" or presupuesto <= 0:
             continue
+        if time.time() > limite:
+            break
         source = next((s for s in index["sources"] if s["id"] == cand["item"]), None)
         if not source:
             continue
@@ -4096,10 +4102,10 @@ def search_bios_sources(settings, slug, rel, force=False, timeout=BIOS_SOURCE_TI
     # ── Fase 3: si sigue sin haber nada, buscar en contenedores parecidos ──
     if not any(c["match"] in ("md5", "miembro") for c in candidates):
         for source in index["sources"]:
-            if presupuesto <= 0:
+            if presupuesto <= 0 or time.time() > limite:
                 break
             for cont in _bios_container_candidates(source["members"], rel, slug):
-                if presupuesto <= 0:
+                if presupuesto <= 0 or time.time() > limite:
                     break
                 if cont.get("size", 0) > BIOS_SOURCE_MAX:
                     continue

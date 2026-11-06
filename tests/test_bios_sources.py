@@ -316,6 +316,34 @@ def test_un_contenedor_leido_se_cachea(appmod, entorno):
         appmod._bios_containers_file().read_text(encoding="utf-8")
 
 
+def test_la_busqueda_no_se_eterniza(appmod, entorno):
+    """Si se pasa el plazo, la búsqueda se corta: archive.org puede ir lento."""
+    contenido = b"la-bios-que-busca-batocera"
+    digest = _md5(contenido)
+    entorno["script"].write_text(_script({
+        "adam": {"name": "Coleco Adam", "biosFiles": [
+            {"md5": digest, "file": "bios/adam.zip"}]}}), encoding="utf-8")
+    _reset(appmod)
+    zip_bueno = _zip_bytes({"alf rev 57.u8": b"contenido"})
+    red = RedFalsa({"emularity_bios_v1": {
+        "meta": {}, "files": {"adam.zip": zip_bueno}}})
+    _conectar(appmod, red)
+    monkey = entorno["monkeypatch"]
+    monkey.setattr(appmod, "BIOS_SOURCES_DEFAULT", [
+        {"id": "emularity_bios_v1", "kind": "files"}])
+    monkey.setattr(appmod, "BIOS_SOURCE_DEADLINE", -1)
+    encontrado = appmod.search_bios_sources(
+        entorno["settings"], "adam", "adam.zip")
+    assert encontrado["ok"] is True
+    assert encontrados_por_miembro(encontrado) == []
+
+
+def encontrados_por_miembro(encontrado):
+    """Candidatos verificados contra el md5 del catálogo."""
+    return [c for c in encontrado.get("candidates") or []
+            if c.get("match") in ("md5", "miembro")]
+
+
 def test_el_contenedor_se_busca_por_la_carpeta_de_la_ruta(appmod, entorno):
     """`enterprise/ep128emu/roms/exos20.rom` se busca dentro de `ep128.zip`."""
     miembros = [_miembro("MESS ROMs/ep128.zip"), _miembro("MESS ROMs/otro.zip")]
