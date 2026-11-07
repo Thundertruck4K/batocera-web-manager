@@ -190,37 +190,31 @@ El proyecto se trabaja en **un solo repositorio**:
   - **Verify by content, never by name**: Batocera checks the md5 of what is *inside* each ZIP, not
     the md5 of the ZIP. Comparing the file's own md5 marked 83 healthy BIOS as broken (204 "ok" vs
     the real 287). `_bios_entry_state()` opens the ZIP and checks every required member.
-  - States: `ok`, `sin_verificar`, `hash_distinto`, `miembro_falta`, `reparable_zip`,
-    `reparable_ruta`, `ausente`, `omitida`, `ilegible`. `build_bios_index()` hashes the disk once
-    (5 min cache, files over 64 MiB are skipped: they are not BIOS) with reverse indexes by name
-    and by md5 to find what is "somewhere else".
-  - `repair_bios()` regroups the required members from other ZIPs of the SD (or moves the file from
-    another folder), always verifies the result and quarantines what it replaces in
-    `/userdata/bios/.quarantine/`. **It looks for the content before touching the destination**, so
-    a failed repair never leaves the system without its BIOS.
+  - **The hash is not a verdict**: Batocera is not strict about the BIOS hash either — with the file
+    in place the emulator runs the same (triforce or hikaru boot with whatever hash the card
+    shipped). So the state is decided by **presence and structure** (the file is where the catalogue
+    expects it, and a ZIP carries the members it demands). The md5 is still computed and shown as
+    data, but it never decides the state. `hash_distinto` does not exist any more.
+  - States: `ok`, `sin_verificar`, `miembro_falta`, `reparable_zip`, `reparable_ruta`, `ausente`,
+    `omitida`, `ilegible`. `build_bios_index()` hashes the disk once (5 min cache, files over 64 MiB
+    are skipped: they are not BIOS) with reverse indexes by name and by md5 to find what is
+    "somewhere else".
+  - `repair_bios()` regroups the required members from other ZIPs of the SD (or copies the file from
+    another folder, matched by md5 or by name), always verifies the result and quarantines what it
+    replaces in `/userdata/bios/.quarantine/`. **It looks for the content before touching the
+    destination**, so a failed repair never leaves the system without its BIOS.
   - Endpoints: `GET /api/bios/catalog`, `GET /api/bios/summary`, `POST /api/bios/scan`,
     `POST /api/bios/repair`. The SPA section is `pages/Bios.tsx` (+ `components/bios/`).
-- **BIOS sources come from archive.org, matched by content** (`app.py`, section "Fuentes de BIOS en
-  archive.org").
-  - A source is an archive.org item. `BIOS_SOURCES_DEFAULT` lists the MESS 0.151/0.149 BIOS
-    collections, Emularity, JsMess, the EmuDeck pack and the Elektronika BK ROMs.
-  - `https://archive.org/metadata/<id>` publishes each file's **md5 and size without downloading
-    it**, so loose files are matched by hash for free. The big collections are single ZIPs whose
-    **central directory is read with HTTP Range requests** (`_remote_zip_index()`), so a 445 MB
-    collection is inspected without downloading it, and only the needed member is fetched
-    (`_remote_zip_member()`).
-  - **Matching is always by content**: the md5 the catalogue demands must appear in the file or
-    inside a ZIP of the source. The name only orders the search. A ZIP with the right name and the
-    wrong content is not a candidate.
-  - The catalogue is cached 7 days in `/userdata/system/batocera_manager_bios_sources.json`
-    (`_bios_sources_file()` derives it from `SETTINGS_FILE`, so tests can redirect it). The first
-    index takes ~30 s and runs in a background thread; the search waits for it.
-  - **Legal**: none of the items declares a licence, so the UI shows it and the download only
-    happens when the user picks the source. Local repair always comes first, and when no source has
-    the content the API says so instead of failing silently.
-  - Endpoints: `GET /api/bios/sources` (`?force=1` re-indexes), `POST /api/bios/sources/search`,
-    `POST /api/bios/install`. `POST /api/bios/repair` accepts `source`: `"local"`, `"archive"` or a
-    candidate object.
+- **A missing BIOS is found on GitHub or uploaded by hand** — there is no third-party catalogue.
+  - `github_bios_search_url()` builds a GitHub code search for the exact file name (quoted) and
+    `github_sistema_url()` one for the whole system; both travel in the catalogue payload
+    (`github` per file and per system) so the UI never builds them itself.
+  - The app **downloads nothing by itself**: no collections are indexed and nothing is fetched
+    automatically. The user finds the file (GitHub) and uploads it; the upload lands it in the exact
+    path the catalogue expects and the result is checked.
+  - The old archive.org integration (item metadata, HTTP Range ZIP reading, source cache in
+    `batocera_manager_bios_sources.json`) was removed on purpose: searching there took 30-120 s from
+    the console and the wait was not worth it.
 - **ScreenScraper's name search needs a platform id, and time**: without `systemeid` (or with `0`)
   the API still answers, but it searches every platform and takes over a minute, so the name search
   uses `SS_SEARCH_TIMEOUT_NAME` (75 s) — with the old 20 s timeout the result was always lost. The

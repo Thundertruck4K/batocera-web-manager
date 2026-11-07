@@ -8,45 +8,32 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Añadido
 - **El botón *Reparar* ya sirve de algo**: cuando el contenido de una BIOS no está en la propia
-  consola, el manager lo busca en **archive.org**. Antes el botón sólo reparaba lo que ya estaba en
-  la SD, así que en una consola nueva no tenía ninguna utilidad.
-  - El emparejamiento es **siempre por contenido**: el md5 que exige el catálogo oficial tiene que
-    aparecer en el fichero de la fuente o dentro de uno de sus ZIP. El nombre sólo sirve para
-    ordenar la búsqueda: un ZIP con el nombre correcto pero otro contenido no es candidato.
-  - Las colecciones grandes (la de MESS son 445 MB) se miran **por peticiones de rango**: se lee
-    sólo el índice central del ZIP y se descarga únicamente el fichero que hace falta, no el ZIP
-    entero. Los ZIP anidados (un ZIP dentro del ZIP de la colección) también se abren.
-  - El catálogo de fuentes se cachea **7 días** en
-    `/userdata/system/batocera_manager_bios_sources.json`, con el título, el autor, la licencia y el
-    md5 y el tamaño de cada fichero. El indexado inicial tarda unos segundos y se hace en segundo
-    plano: la pantalla no se queda esperando.
-  - Fuentes por defecto: las colecciones de BIOS de MESS (0.151 y 0.149), las de Emularity y
-    JsMess, el pack de EmuDeck y los ROMs de la Elektronika BK.
-  - En una consola con 62 BIOS ausentes, **25 se pueden instalar tal cual** desde estas fuentes y 7
-    más trae la fuente sólo en parte (la interfaz lo dice: «trae 2 de 3 ficheros»). Las 32
-    restantes no están en ninguna colección publicada: para ésas el manager lo dice y ofrece subir
-    el fichero a mano o buscarlo en GitHub.
-  - **Legal**: ninguna de las fuentes declara licencia, así que la interfaz lo enseña y **la
-    descarga sólo ocurre cuando el usuario elige la fuente**. La reparación local se prioriza
-    siempre y, si no hay ninguna fuente con ese contenido, el manager lo dice claro y ofrece subir
-    el fichero a mano o buscarlo en GitHub.
-  - La búsqueda va en tres fases para no gastar peticiones: lo que se sabe sin descargar (el md5 que
-    publica archive.org), luego los contenedores cuyo nombre coincide y, sólo si no hay nada, los
-    de nombre parecido. Hay un presupuesto de contenedores porque cada uno es una ida al servidor.
-- `GET /api/bios/sources` (catálogo de fuentes con su licencia y su estado; `?force=1` rehace el
-  índice), `POST /api/bios/sources/search` (candidatos para una BIOS) y `POST /api/bios/install`
-  (descarga un candidato y lo instala verificando el md5).
-- `POST /api/bios/repair` admite `source`: `"local"` (sólo la consola), `"archive"` (consola y
-  archive.org) o un candidato concreto.
-- La sección de BIOS enseña **de dónde sale cada BIOS**: una tira con las fuentes de archive.org
-  indexadas, cuántas declaran licencia y un botón para rehacer el índice.
+  consola, el manager ofrece las dos vías que quedan: **buscarlo en GitHub** o **subir el archivo**.
+  Antes el botón sólo reparaba lo que ya estaba en la SD, así que en una consola nueva no tenía
+  ninguna utilidad.
+  - **El hash no decide el estado**: Batocera tampoco es rígido con el hash de las BIOS (las de
+    triforce o hikaru lanzan los juegos con el hash que traía la tarjeta). La comprobación es de
+    **presencia y estructura**: que el fichero esté donde el catálogo lo espera y que el ZIP lleve
+    dentro los ficheros que exige. El md5 se calcula y se enseña como dato, pero ya no hay estado
+    «hash distinto»: una BIOS presente con otro hash es una BIOS correcta.
+  - **Enlace directo a GitHub**: cada BIOS y cada sistema llevan su enlace de búsqueda (el nombre
+    exacto del fichero entrecomillado, y las BIOS del sistema), calculados por el backend
+    (`github_bios_search_url()` y `github_sistema_url()`).
+  - **Subida manual**: el fichero que sube el usuario se coloca en la ruta exacta que pide el
+    catálogo y se comprueba que queda bien. Si es un ZIP, hay que subir el ZIP completo.
+  - La reparación local va siempre primero y es instantánea: si el contenido ya está en la consola
+    (dentro de otro ZIP o en otra carpeta), se reúne y se coloca sin tocar la red.
+  - **Legal**: la app no descarga nada por su cuenta ni aloja colecciones de BIOS. Son ficheros con
+    copyright y la decisión es del usuario.
+- `POST /api/bios/repair` reparaba con `source`: `"local"`, `"archive"` o un candidato. Ahora el
+  parámetro desaparece: sólo hay una fuente, la propia consola.
 - **Sección de BIOS en la SPA** (la de *ROMs y BIOS*, que deja de estar marcada como *Pronto*): una
   tarjeta por sistema con el icono temático, el nombre del catálogo de Batocera, el estado y la
   cobertura; el orden es por criticidad (lo que impide jugar primero), por nombre o por cobertura, y
   se filtra por texto y por estado (con problemas, reparables, completos).
-  - El **modal de detalle** enseña cada BIOS con su estado, el md5 que pide Batocera, el md5 que hay
-    en el disco, el tamaño y la ruta de destino, y ofrece: reparar, subirla a mano, copiar el hash y
-    omitirla. La reparación en lote deja el sistema entero arreglado de una vez.
+  - El **modal de detalle** enseña cada BIOS con su estado, el md5 que publica Batocera, el md5 que
+    hay en el disco, el tamaño y la ruta de destino, y ofrece: reparar, subirla a mano, copiar el
+    hash y omitirla. La reparación en lote deja el sistema entero arreglado de una vez.
   - Los avisos de éxito y de error usan el mismo sistema de notificaciones que el resto de la app.
 - **El catálogo oficial de BIOS es la fuente de verdad**: la lista de BIOS que exige Batocera cambia
   con la versión, así que ahora se lee de la propia consola:
@@ -158,6 +145,11 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Corregido
+- **Una BIOS con otro hash ya no se marca como incorrecta**: el estado se decide por presencia y
+  estructura, no por el md5. Batocera no es rígido con el hash de las BIOS —las de triforce o hikaru
+  lanzan los juegos con el hash que traía la tarjeta—, así que un md5 distinto marcaba como
+  «incorrecta» una BIOS que funcionaba. En la consola de desarrollo, 3 BIOS pasaron de «hash
+  distinto» a correctas y las 290 correctas son ahora 293.
 - **Las BIOS se verificaban por el hash equivocado**: el manager comparaba el md5 del **ZIP** con el
   que da el catálogo, pero Batocera exige que el ZIP **lleve dentro** unos ficheros concretos con su
   md5 (el campo `zippedFile` del catálogo oficial). Como el md5 de un ZIP es el de ese ZIP concreto,

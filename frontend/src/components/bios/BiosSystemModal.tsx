@@ -1,7 +1,6 @@
 import {
   CircleAlert,
   Copy,
-  Download,
   ExternalLink,
   SkipForward,
   Upload,
@@ -14,7 +13,7 @@ import { useNotify } from '@/hooks/useNotify'
 import { triggerHaptic } from '@/hooks/useWebHaptics'
 import { api } from '@/lib/api'
 import { BIOS_ESTADOS, esProblema, esReparable } from '@/lib/biosStates'
-import type { BiosCandidate, BiosFile } from '@/lib/types'
+import type { BiosFile } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 interface BiosSystemModalProps {
@@ -26,6 +25,8 @@ interface BiosSystemModalProps {
   name: string
   /** Ficheros de BIOS que exige el catálogo para este sistema. */
   files: BiosFile[]
+  /** Enlace para buscar las BIOS de este sistema en GitHub. */
+  github?: string | null
   /** Se llama cuando algo ha cambiado y hay que refrescar la lista. */
   onRepaired: () => void
 }
@@ -43,39 +44,20 @@ function humanSize(bytes: number | null): string {
   return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
 }
 
-/** Enlace para buscar ese fichero de BIOS por otro lado (GitHub). */
-function busquedaExterna(file: string): string {
-  return `https://github.com/search?q=${encodeURIComponent(file)}&type=code`
+/** Enlace de respaldo si el backend no lo manda. */
+function busquedaGitHub(file: string): string {
+  const nombre = file.split('/').pop() ?? file
+  return `https://github.com/search?q=${encodeURIComponent(`"${nombre}"`)}&type=code`
 }
 
 /**
- * Agrupa los candidatos por contenedor: de un ZIP con tres ficheros útiles
- * sale una sola fila, no tres.
- */
-function agruparCandidatos(lista: BiosCandidate[]) {
-  const mapa = new Map<string, { candidato: BiosCandidate; miembros: string[] }>()
-  for (const c of lista) {
-    const clave = `${c.item}|${c.name}`
-    const previo = mapa.get(clave)
-    if (previo) {
-      if (c.member && !previo.miembros.includes(c.member)) previo.miembros.push(c.member)
-      previo.candidato.trae = Math.max(previo.candidato.trae ?? 0, c.trae ?? 0)
-      previo.candidato.completo = previo.candidato.completo || c.completo
-    } else {
-      mapa.set(clave, { candidato: { ...c }, miembros: c.member ? [c.member] : [] })
-    }
-  }
-  return [...mapa.values()]
-}
-
-/**
- * Detalle de las BIOS de un sistema: cada fichero con su estado, el hash que
- * pide Batocera y las acciones para arreglarlo.
+ * Detalle de las BIOS de un sistema: cada fichero con su estado y las
+ * acciones para arreglarlo.
  *
- * «Reparar» va en este orden: primero se busca el contenido en la propia
- * consola (no necesita red); si no está, se busca en archive.org y se
- * enseñan las fuentes con su licencia para que el usuario elija. Si no hay
- * ninguna fuente, se dice con claridad y se ofrece subir el fichero a mano.
+ * El flujo es el de Batocera en la realidad: si el fichero está en su sitio,
+ * no hay nada que hacer; si no está, se busca por fuera (GitHub) o lo sube el
+ * usuario. «Reparar» mueve contenido que ya está en la propia consola, que es
+ * lo único que se puede hacer sin red.
  */
 export function BiosSystemModal({
   open,
@@ -83,6 +65,7 @@ export function BiosSystemModal({
   slug,
   name,
   files,
+  github,
   onRepaired,
 }: BiosSystemModalProps) {
   const { showNotify } = useNotify()
@@ -90,8 +73,6 @@ export function BiosSystemModal({
   const [batch, setBatch] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploadTarget, setUploadTarget] = useState<string | null>(null)
-  /** Candidatos de archive.org ya buscados, por fichero. */
-  const [candidatos, setCandidatos] = useState<Record<string, BiosCandidate[]>>({})
 
   const reparables = files.filter((file) => esReparable(file.estado))
   const correctas = files.filter((file) => file.estado === 'ok' || file.estado === 'sin_verificar')
@@ -127,72 +108,29 @@ export function BiosSystemModal({
   }
 
   /**
-   * Repara un fichero: primero en la consola y, si no está, en archive.org.
-   *
-   * La descarga de archive.org no se hace sin que el usuario la pida: se
-   * enseñan las fuentes con su licencia y él elige.
+   * Repara un fichero con lo que ya hay en la consola (otro ZIP u otra
+   * carpeta). Si no hay nada, se dice con claridad: hay que buscarlo por
+   * fuera o subirlo.
    */
   const repair = async (file: BiosFile) => {
     setBusy(file.file)
     triggerHaptic('light')
     try {
-      const local = await api.biosRepair({ system: slug, file: file.file, source: 'local' })
+      await api.biosRepair({ system: slug, file: file.file })
       showNotify({
         variant: 'success',
         title: `${file.file} colocada`,
+        message: 'Colocada donde Batocera la espera.',
+      })
+      onRepaired()
+    } catch (error) {
+      showNotify({
+        variant: 'error',
+        title: 'No hay nada que reparar en la consola',
         message:
-          local.estado === 'ok'
-            ? 'Verificada contra el catálogo de Batocera.'
-            : 'Colocada en su sitio.',
-      })
-      onRepaired()
-      return
-    } catch {
-      // No está en la consola: sigue buscando en archive.org.
-    }
-    try {
-      const encontrado = await api.biosSearchSources({ system: slug, file: file.file })
-      setCandidatos((prev) => ({ ...prev, [file.file]: encontrado.candidates ?? [] }))
-      if (!encontrado.candidates?.length) {
-        showNotify({
-          variant: 'error',
-          title: 'No hay ninguna fuente con ese contenido',
-          message: 'Ninguna colección de archive.org lo tiene. Puedes subir el fichero a mano.',
-        })
-      }
-    } catch (error) {
-      showNotify({
-        variant: 'error',
-        title: 'No se pudo buscar en archive.org',
-        message: error instanceof Error ? error.message : undefined,
-      })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  /** Descarga el candidato elegido y lo instala en su sitio. */
-  const install = async (file: BiosFile, candidate: BiosCandidate) => {
-    setBusy(file.file)
-    triggerHaptic('light')
-    try {
-      await api.biosInstall({ system: slug, file: file.file, candidate })
-      showNotify({
-        variant: 'success',
-        title: `${file.file} instalada`,
-        message: `Descargada de ${candidate.source} y verificada contra el catálogo.`,
-      })
-      setCandidatos((prev) => {
-        const next = { ...prev }
-        delete next[file.file]
-        return next
-      })
-      onRepaired()
-    } catch (error) {
-      showNotify({
-        variant: 'error',
-        title: `No se pudo instalar ${file.file}`,
-        message: error instanceof Error ? error.message : undefined,
+          error instanceof Error
+            ? error.message
+            : 'El contenido no está en la tarjeta: búscalo en GitHub o súbelo.',
       })
     } finally {
       setBusy(null)
@@ -208,7 +146,7 @@ export function BiosSystemModal({
     let fail = 0
     for (const file of reparables) {
       try {
-        await api.biosRepair({ system: slug, file: file.file, source: 'local' })
+        await api.biosRepair({ system: slug, file: file.file })
         ok += 1
       } catch {
         fail += 1
@@ -219,8 +157,8 @@ export function BiosSystemModal({
       variant: fail ? 'error' : 'success',
       title: fail ? `${ok} reparadas y ${fail} con problemas` : `${ok} BIOS reparadas`,
       message: fail
-        ? 'Las que fallaron se pueden subir a mano.'
-        : 'Todo verificado contra el catálogo de Batocera.',
+        ? 'Las que fallaron hay que buscarlas por fuera o subirlas a mano.'
+        : 'Todo colocado donde Batocera lo espera.',
     })
     onRepaired()
   }
@@ -242,7 +180,7 @@ export function BiosSystemModal({
     }
   }
 
-  /** Copia el hash que pide Batocera (o el que hay en disco) al portapapeles. */
+  /** Copia el hash que publica Batocera (o el que hay en disco) al portapapeles. */
   const copyHash = async (file: BiosFile) => {
     const hash = file.md5s[0] ?? file.md5
     if (!hash) {
@@ -294,9 +232,13 @@ export function BiosSystemModal({
           const info = BIOS_ESTADOS[file.estado]
           const EstadoIcon = info.icon
           const working = busy === file.file
-          const candidatosFile = candidatos[file.file]
           const reparable = esReparable(file.estado)
           const conProblema = esProblema(file.estado)
+          /** Sin contenido en la consola: hay que buscarlo por fuera o subirlo. */
+          const buscar = conProblema
+          const enlaceFichero = file.github || busquedaGitHub(file.file)
+          /** El enlace busca el nombre del fichero, no su ruta. */
+          const nombreFichero = file.file.split('/').pop() ?? file.file
           return (
             <li
               key={file.file}
@@ -330,7 +272,7 @@ export function BiosSystemModal({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {(reparable || conProblema) && (
+                  {reparable && (
                     <Button
                       size="sm"
                       variant="secondary"
@@ -362,7 +304,7 @@ export function BiosSystemModal({
               {/* Detalle: hash, tamaño y ruta */}
               <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground sm:grid-cols-4">
                 <span className="truncate" title={file.md5s.join(', ')}>
-                  md5 esperado:{' '}
+                  md5 publicado:{' '}
                   <span className="font-mono text-foreground">
                     {file.md5s[0] ? `${file.md5s[0].slice(0, 12)}…` : 'no publicado'}
                   </span>
@@ -379,87 +321,53 @@ export function BiosSystemModal({
                 </span>
               </div>
 
-              {/* Fuentes en archive.org para este fichero */}
-              {candidatosFile && (
-                <div className="mt-2 rounded-xl border border-border bg-background/60 p-2">
-                  {candidatosFile.length ? (
-                    <>
-                      <p className="text-[11px] font-medium text-foreground">
-                        Encontrado en archive.org. Elige de dónde descargarlo:
-                      </p>
-                      <ul className="mt-1 space-y-1">
-                        {agruparCandidatos(candidatosFile).map(({ candidato, miembros }) => (
-                          <li
-                            key={`${candidato.item}|${candidato.name}`}
-                            className="flex flex-wrap items-center justify-between gap-2"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-[11px] font-medium text-foreground">
-                                {candidato.source}
-                              </p>
-                              <p className="truncate text-[10px] text-muted-foreground">
-                                {candidato.name} · {humanSize(candidato.size)} ·{' '}
-                                {candidato.license ?? 'sin licencia declarada'}
-                              </p>
-                              {miembros.length > 0 && (
-                                <p className="truncate text-[10px] text-muted-foreground">
-                                  {miembros.join(', ')}
-                                </p>
-                              )}
-                              {candidato.exigido && candidato.exigido > 1 && (
-                                <p
-                                  className={cn(
-                                    'text-[10px]',
-                                    candidato.completo
-                                      ? 'text-emerald-600 dark:text-emerald-400'
-                                      : 'text-amber-600 dark:text-amber-400',
-                                  )}
-                                >
-                                  {candidato.completo
-                                    ? `trae los ${candidato.exigido} ficheros que exige Batocera`
-                                    : `trae ${candidato.trae ?? 0} de ${candidato.exigido} ficheros: faltará el resto`}
-                                </p>
-                              )}
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={working}
-                              onClick={() => install(file, candidato)}
-                            >
-                              <Download className="size-3.5" />
-                              Descargar
-                            </Button>
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="mt-2 flex items-start gap-1 text-[10px] leading-relaxed text-muted-foreground">
-                        <CircleAlert className="mt-0.5 size-3 shrink-0" />
-                        Estas BIOS tienen copyright. La app sólo las descarga si lo pides tú, y
-                        comprueba el hash que exige Batocera antes de instalar nada.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[11px] font-medium text-foreground">
-                        Ninguna colección de archive.org tiene este contenido.
-                      </p>
-                      <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-                        Puedes subir el fichero a mano (botón de arriba) o buscarlo en otro
-                        sitio: el hash que tiene que tener es{' '}
-                        <span className="font-mono">{file.md5s[0] ?? 'el que pide el catálogo'}</span>.
-                      </p>
+              {/* Falta contenido: se busca por fuera o lo sube el usuario */}
+              {buscar && (
+                <div className="mt-2 rounded-xl border border-border bg-background/60 p-3">
+                  <p className="text-[11px] font-medium text-foreground">
+                    {file.file} no está en la consola
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                    No hay nada que reparar por dentro: el contenido no está en la tarjeta.
+                    Búscalo por tu cuenta en GitHub y súbelo aquí; la app lo deja en su sitio.
+                    {file.members.length > 0 && ' Si es un ZIP, sube el ZIP completo.'}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <a
+                      href={enlaceFichero}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      <ExternalLink className="size-3" />
+                      Buscar {nombreFichero} en GitHub
+                    </a>
+                    {github && (
                       <a
-                        href={busquedaExterna(file.file)}
+                        href={github}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
                       >
                         <ExternalLink className="size-3" />
-                        Buscar {file.file} en GitHub
+                        Buscar las BIOS de {name} en GitHub
                       </a>
-                    </>
-                  )}
+                    )}
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={working}
+                      onClick={() => pickFile(file.file)}
+                    >
+                      <Upload className="size-3.5" />
+                      Subir el archivo
+                    </Button>
+                  </div>
+                  <p className="mt-2 flex items-start gap-1 text-[10px] leading-relaxed text-muted-foreground">
+                    <CircleAlert className="mt-0.5 size-3 shrink-0" />
+                    Las BIOS tienen copyright: la app no descarga nada por su cuenta. Sólo tú
+                    decides qué fichero subes.
+                  </p>
                 </div>
               )}
             </li>

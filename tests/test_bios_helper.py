@@ -1,7 +1,8 @@
 """Tests del asistente de BIOS faltantes (enfoque legal-primero).
 
 La app NO distribuye fuentes de BIOS: solo ofrece un enlace de búsqueda en GitHub
-y una descarga desde una URL que el usuario proporciona (con verificación de MD5).
+y una descarga desde una URL que el usuario proporciona. El hash se calcula y se
+enseña como dato, pero no decide nada: Batocera no es rígido con él.
 """
 from __future__ import annotations
 
@@ -34,7 +35,8 @@ def test_download_rejects_path_traversal(appmod, tmp_path):
     assert not (tmp_path.parent / "evil.bin").exists()
 
 
-def test_download_writes_file_and_validates_md5(appmod, tmp_path, monkeypatch):
+def test_download_writes_file_and_reports_md5(appmod, tmp_path, monkeypatch):
+    """La descarga deja el fichero y devuelve su hash (sin veredicto)."""
     payload = b"BIOSDATA-1234"
     monkeypatch.setattr(appmod, "_bios_urlopen", lambda url, timeout=30: payload)
     md5 = hashlib.md5(payload).hexdigest()
@@ -43,13 +45,17 @@ def test_download_writes_file_and_validates_md5(appmod, tmp_path, monkeypatch):
 
     assert r["ok"] is True
     assert (tmp_path / "scph5501.bin").read_bytes() == payload
-    assert r["md5"] == md5 and r["md5_valid"] is True
+    assert r["md5"] == md5
+    # El hash no decide: no hay veredicto de validez.
+    assert "md5_valid" not in r
 
 
-def test_download_reports_md5_mismatch(appmod, tmp_path, monkeypatch):
+def test_download_with_another_hash_is_not_a_problem(appmod, tmp_path, monkeypatch):
+    """Un hash distinto al publicado no impide la descarga."""
     monkeypatch.setattr(appmod, "_bios_urlopen", lambda url, timeout=30: b"X")
     r = appmod.download_bios_from_url(tmp_path, "a.bin", "http://e/x", ["deadbeef"])
-    assert r["ok"] is True and r["md5_valid"] is False
+    assert r["ok"] is True
+    assert r["md5"] == hashlib.md5(b"X").hexdigest()
 
 
 def test_download_tolerates_network_error(appmod, tmp_path, monkeypatch):

@@ -560,24 +560,23 @@ concreto), sino el hash de lo que lleva **dentro**. El manager abre el ZIP y com
 miembro, que es exactamente lo que hace Batocera. Por eso una BIOS puede estar perfectamente bien y
 aun así no tener su propio hash publicado.
 
+**El hash no es un veredicto.** Batocera tampoco es rígido con el hash de las BIOS: si el fichero
+está en su sitio, el emulador funciona igual (las BIOS de triforce o hikaru, por ejemplo, lanzan los
+juegos con el hash que traía la tarjeta). Así que el estado se decide por **presencia y estructura**
+—que el fichero esté donde lo espera y que el ZIP lleve dentro lo que el catálogo pide—, y el md5 se
+calcula y se enseña como dato, no como veredicto.
+
 **Reparar sin salir de la SD.** Cuando el contenido que falta ya está en la consola (dentro de otro
 ZIP o en otra carpeta), el manager lo reúne y lo coloca en la ruta exacta que pide el catálogo,
 comprueba el resultado y deja el fichero original en `/userdata/bios/.quarantine/`. Si no hay nada
-que poner, no toca el destino. Y si la BIOS no está en la consola, se puede **subir a mano** (la
-app indica la ruta y el hash que tiene que tener) u **omitirla** si de verdad no la necesitas.
+que poner, no toca el destino.
 
-**Buscarla en archive.org cuando no está en la consola.** El botón *Reparar* no se queda en «no
-se ha encontrado»: si el contenido no está en la SD, el manager lo busca en **archive.org** y
-enseña las fuentes con su tamaño, su autor y la licencia que declaran. El emparejamiento es
-**siempre por contenido**: el md5 que exige el catálogo tiene que aparecer en el fichero de la
-fuente o dentro de uno de sus ZIP; el nombre sólo sirve para ordenar la búsqueda. Las colecciones
-grandes (la de MESS son 445 MB) se miran **por rangos HTTP**, así que se lee su índice central y
-se descarga sólo el fichero que hace falta, no el ZIP entero.
-
-El catálogo de fuentes se cachea 7 días en `/userdata/system/batocera_manager_bios_sources.json`.
-**Ninguna de las fuentes declara licencia**, así que la app lo dice y la descarga sólo ocurre cuando
-el usuario elige la fuente: son BIOS con copyright. Si no hay ninguna fuente con ese contenido, el
-manager lo dice claro y ofrece subir el fichero a mano o buscarlo en GitHub.
+**Si no está en la consola: GitHub o subida manual.** El botón *Reparar* no se queda en «no se ha
+encontrado»: si el contenido no está en la SD, la app ofrece las dos vías que quedan —**buscarlo en
+GitHub** (enlace directo al nombre exacto del fichero y otro a las BIOS del sistema) o **subir el
+archivo** (la app lo deja en su sitio y comprueba que queda bien colocado—. No hay descarga
+automática de nada: son BIOS con copyright y la app no aloja ni baja colecciones por su cuenta. Si
+el BIOS es un ZIP, hay que subir el ZIP completo.
 
 ---
 

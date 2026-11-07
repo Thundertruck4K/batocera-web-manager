@@ -36,13 +36,6 @@ export const BIOS_ESTADOS: Record<BiosEstado, BiosEstadoInfo> = {
     gravedad: 6,
     ayuda: 'No está en la consola: hay que conseguirla.',
   },
-  hash_distinto: {
-    label: 'Hash distinto',
-    icon: FileWarning,
-    badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-    gravedad: 5,
-    ayuda: 'El fichero está, pero no es el que pide Batocera.',
-  },
   miembro_falta: {
     label: 'Falta un fichero',
     icon: FileWarning,
@@ -72,11 +65,11 @@ export const BIOS_ESTADOS: Record<BiosEstado, BiosEstadoInfo> = {
     ayuda: 'El contenido está en otra carpeta: se puede mover.',
   },
   sin_verificar: {
-    label: 'Sin verificar',
+    label: 'Sin datos',
     icon: CircleHelp,
     badge: 'bg-muted text-muted-foreground border-border',
     gravedad: 2,
-    ayuda: 'Está en su sitio, pero Batocera no publica su hash.',
+    ayuda: 'Está en su sitio, pero el catálogo no publica nada para comprobarlo.',
   },
   omitida: {
     label: 'Omitida',
@@ -90,7 +83,7 @@ export const BIOS_ESTADOS: Record<BiosEstado, BiosEstadoInfo> = {
     icon: CircleCheck,
     badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
     gravedad: 0,
-    ayuda: 'En su sitio y con el hash que pide Batocera.',
+    ayuda: 'Está en la ruta donde Batocera la espera.',
   },
 }
 
@@ -98,12 +91,7 @@ export const BIOS_ESTADOS: Record<BiosEstado, BiosEstadoInfo> = {
 export const ESTADOS_REPARABLES: BiosEstado[] = ['reparable_zip', 'reparable_ruta']
 
 /** Estados que son un problema: no está o está mal. */
-export const ESTADOS_PROBLEMA: BiosEstado[] = [
-  'ausente',
-  'hash_distinto',
-  'miembro_falta',
-  'ilegible',
-]
+export const ESTADOS_PROBLEMA: BiosEstado[] = ['ausente', 'miembro_falta', 'ilegible']
 
 export function esReparable(estado: BiosEstado): boolean {
   return ESTADOS_REPARABLES.includes(estado)

@@ -54,6 +54,8 @@ interface BiosSystemView {
   problemas: number
   reparables: number
   estado: BiosEstado
+  /** Enlace para buscar las BIOS de este sistema en GitHub. */
+  github?: string | null
   /** Criticidad: lo que impide jugar va primero. */
   crit: number
 }
@@ -62,19 +64,6 @@ export function BiosPage() {
   const { openMenu } = useShell()
   const { showNotify } = useNotify()
   const { data, error, loading, refresh } = useApi(() => api.biosCatalog(), [])
-  /** `force` rehace el índice de fuentes de archive.org (tarda unos segundos). */
-  const [pedidoFuentes, setPedidoFuentes] = useState({ force: false, n: 0 })
-  const [indexando, setIndexando] = useState(true)
-  const { data: fuentes, loading: cargandoFuentes } = useApi(
-    () =>
-      api.biosSources(pedidoFuentes.force).then((respuesta) => {
-        setIndexando(Boolean(respuesta.indexing))
-        return respuesta
-      }),
-    [pedidoFuentes.n],
-    // Mientras el backend indexa en segundo plano, se va preguntando.
-    { pollMs: indexando ? 8000 : 0 },
-  )
 
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('problemas')
@@ -100,6 +89,7 @@ export function BiosPage() {
         problemas,
         reparables,
         estado: peorEstado(files.map((file) => file.estado)),
+        github: system.github,
         crit: ausentes * 3 + problemas * 2 + reparables * 1.5,
       })
     }
@@ -143,12 +133,10 @@ export function BiosPage() {
   /* Totales de la biblioteca. */
   const totals = useMemo(() => {
     const files = systems.flatMap((system) => system.files)
-    const conHash = files.filter((file) => file.estado === 'ok').length
     return {
       sistemas: systems.length,
       total: files.length,
       ok: files.filter((file) => file.estado === 'ok' || file.estado === 'sin_verificar').length,
-      conHash,
       ausentes: files.filter((file) => file.estado === 'ausente').length,
       reparables: files.filter((file) => esReparable(file.estado)).length,
       extras: data?.extras ?? 0,
@@ -162,7 +150,7 @@ export function BiosPage() {
     try {
       await api.biosScan()
       await refresh()
-      showNotify({ variant: 'success', title: 'BIOS verificadas' })
+      showNotify({ variant: 'success', title: 'BIOS revisadas' })
     } catch (err) {
       showNotify({
         variant: 'error',
@@ -174,17 +162,7 @@ export function BiosPage() {
     }
   }
 
-  /* Fuentes de archive.org: dónde se puede buscar el contenido que falta. */
-  const resumenFuentes = useMemo(() => {
-    const lista = fuentes?.sources ?? []
-    return {
-      total: lista.length,
-      conLicencia: lista.filter((fuente) => fuente.license).length,
-      fallidas: lista.filter((fuente) => fuente.error).length,
-    }
-  }, [fuentes])
-
-  /** Repara todo lo reparable de un sistema. */
+  /* Repara todo lo reparable de un sistema. */
   const repairSystem = async (system: BiosSystemView) => {
     const reparables = system.files.filter((file) => esReparable(file.estado))
     if (!reparables.length) return
@@ -193,7 +171,7 @@ export function BiosPage() {
     let fail = 0
     for (const file of reparables) {
       try {
-        await api.biosRepair({ system: system.slug, file: file.file, source: 'local' })
+        await api.biosRepair({ system: system.slug, file: file.file })
         ok += 1
       } catch {
         fail += 1
@@ -204,7 +182,7 @@ export function BiosPage() {
       title: fail ? `${ok} reparadas y ${fail} con problemas` : `${ok} BIOS reparadas`,
       message: fail
         ? 'Las que fallaron se pueden subir a mano.'
-        : 'Verificadas contra el catálogo.',
+        : 'Colocadas donde Batocera las espera.',
     })
     await refresh()
   }
@@ -213,7 +191,7 @@ export function BiosPage() {
     <>
       <Topbar
         title="ROMs y BIOS"
-        subtitle={`${totals.sistemas} sistemas · ${totals.ok} de ${totals.total} BIOS verificadas`}
+        subtitle={`${totals.sistemas} sistemas · ${totals.ok} de ${totals.total} BIOS en su sitio`}
         onMenu={openMenu}
         actions={
           <IconButton label="Volver a verificar las BIOS" onClick={rescan}>
@@ -237,11 +215,11 @@ export function BiosPage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <MetricCard label="Sistemas" value={totals.sistemas} icon={Gamepad2} />
           <MetricCard
-            label="Verificadas"
+            label="En su sitio"
             value={totals.ok.toLocaleString('es-ES')}
             icon={CircleCheck}
             accent="good"
-            hint={`${totals.conHash} con hash comprobado`}
+            hint="donde las espera Batocera"
           />
           <MetricCard
             label="Ausentes"
@@ -256,34 +234,6 @@ export function BiosPage() {
             icon={Wrench}
             hint="están en la consola"
           />
-        </div>
-
-        {/* Fuentes en archive.org */}
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-[11px] text-muted-foreground">
-          <PackageSearch className="size-4 shrink-0" />
-          <span className="min-w-0">
-            {indexando
-              ? 'Indexando las fuentes de archive.org…'
-              : `${resumenFuentes.total} fuentes en archive.org${
-                  resumenFuentes.conLicencia
-                    ? ` · ${resumenFuentes.conLicencia} con licencia declarada`
-                    : ' · ninguna declara licencia'
-                }`}
-          </span>
-          {resumenFuentes.fallidas > 0 && (
-            <span className="text-amber-600 dark:text-amber-400">
-              {resumenFuentes.fallidas} sin indexar
-            </span>
-          )}
-          <span className="hidden min-w-0 flex-1 truncate sm:inline">
-            Las que no están en la consola se pueden buscar ahí desde el detalle del sistema.
-          </span>
-          <IconButton
-            label="Rehacer el índice de fuentes de archive.org"
-            onClick={() => setPedidoFuentes((prev) => ({ force: true, n: prev.n + 1 }))}
-          >
-            <RefreshCw className={cn('size-4', cargandoFuentes && 'animate-spin')} />
-          </IconButton>
         </div>
 
         {/* Filtros */}
@@ -369,7 +319,7 @@ export function BiosPage() {
               title={statusFilter === 'problemas' ? 'Ninguna BIOS con problemas' : 'Ningún sistema coincide'}
               description={
                 statusFilter === 'problemas'
-                  ? 'Todas las BIOS que pide Batocera están donde deben y con el hash correcto.'
+                  ? 'Todas las BIOS que pide Batocera están donde deben.'
                   : 'Prueba con otro texto o cambia los filtros.'
               }
               action={
@@ -424,6 +374,7 @@ export function BiosPage() {
         slug={selected?.slug ?? ''}
         name={selected?.name ?? ''}
         files={selected?.files ?? []}
+        github={selected?.github}
         onRepaired={refresh}
       />
     </>
