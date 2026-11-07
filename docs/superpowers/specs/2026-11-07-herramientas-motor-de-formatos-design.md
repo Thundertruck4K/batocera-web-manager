@@ -208,7 +208,41 @@ un CHD de un juego de GameCube tarda minutos, y un lote sin tope sería una conv
 La lista de ficheros de un sistema ya no trae `_info.txt`, `gamelist.xml`, las guardadas (`.srm`,
 `.psv`, `.state`), las capturas, la música ni las notas.
 
-### 5.4 Renombrar es regenerar el `gamelist.xml`
+### 5.4 Los discos de Wii: el cruce por codigo de juego
+
+Un volcado de Wii no se puede identificar por el hash del DAT: el DAT hashea la **ISO de
+4,7 GB** y el volcado (WBFS) son 620 MB de otro container, asi que sus hashes no coinciden
+nunca. Tampoco sirve el nombre del fichero (`REXP01.wbfs`).
+
+Si que sirve el **codigo de juego**, que va en los dos lados:
+
+- dentro del disco, en el bloque de informacion que precede al marcador `MD5#` (4 letras de
+  codigo + 2 de fabricante, el numero de disco, el magic `5D1C9EA3`, el titulo y el MD5 del
+  propio juego). El bloque se localiza por el marcador, que esta siempre en el mismo sitio,
+  para que el lector valga igual para WBFS, WIA e ISO;
+- en el DAT, en el serial (`RVL-REXP-EUR`).
+
+La region va en el ultimo caracter del codigo (E = USA, P = Europe, J = Japan), de modo que el
+codigo ya dice la region y no hace falta una tabla. El indice del DAT guarda un mapa mas
+(`by_gamecode`) con esas claves.
+
+Un mismo disco puede tener varias entradas en el DAT (una por cada variante de idiomas): se
+elige la de la misma region y, a igualdad, la que mas se parece al titulo que lleva el disco, y
+se avisa de cuantas variantes hay.
+
+El plan enseña el cruce entero: por un lado el codigo y el MD5 que lleva el fichero, por otro
+el crc32/md5/sha1 que tiene el DAT.
+
+### 5.5 Los juegos que viven en una carpeta
+
+En Wii cada juego es una carpeta (`Juego [REXP01]/REXP01.wbfs`). El plan de renombrado los ve
+(son las carpetas que tienen un volcado dentro), y lo que se renombra es la **carpeta**: el
+nombre del DAT conservando el sufijo con el codigo del disco, que es como los guarda
+Batocera. El volcado de dentro se queda con su nombre (el codigo) y la media, que tambien va
+por codigo, no se toca. La ruta del `gamelist.xml` lleva el nombre de la carpeta, asi que se
+actualiza igual que en el caso de un fichero suelto.
+
+### 5.6 Renombrar es regenerar el `gamelist.xml`
 
 El renombrado no acaba cuando el fichero cambia de nombre: si el `gamelist.xml` se queda con los
 nombres viejos, EmulationStation sigue apuntando a ficheros que ya no existen y las caratulas se

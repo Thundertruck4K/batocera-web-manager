@@ -47,6 +47,14 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     El hash lleva un **presupuesto de 512 MB por tanda**: con bibliotecas de 40 GB se avisa y se sigue.
   - El **plan se enseña entero** antes de tocar nada (nombre actual, propuesto, método y confianza),
     renombra también el CUE y la M3U, y cada tanda deja journal con un botón de **deshacer**.
+  - **Los discos de Wii se identifican por el código de juego**: el volcado (WBFS, WIA) y
+    la ISO llevan dentro el código de juego (`REXP`), el código de fabricante y el hash MD5 del
+    propio juego. Como el DAT de Wii guarda ese código en el serial (`RVL-REXP-EUR`), el cruce
+    es exacto: no hay que hashear los 620 MB del volcado ni fiarse del nombre del fichero. El
+    plan enseña los dos lados del cruce (el MD5 del juego y el crc32/md5/sha1 del DAT).
+  - **Los juegos que viven en una carpeta**: en Wii cada juego es una carpeta
+    (`Juego [REXP01]/REXP01.wbfs`). El plan los ve, renombra la carpeta con el nombre del DAT
+    (conservando el sufijo con el código del disco) y actualiza la ruta del `gamelist.xml`.
   - **Renombrar regenera el `gamelist.xml`**: al aplicar, el motor actualiza el `<path>` de cada
     ficha, renombra la media que acompaña al juego (`images/`, `videos/`, `manuals/`, `downloads/`)
     y repunta las etiquetas (`image`, `video`, `marquee`, `thumbnail`…), conservando el resto de

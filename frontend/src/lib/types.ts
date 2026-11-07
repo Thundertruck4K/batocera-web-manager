@@ -799,6 +799,15 @@ export interface ToolsRenameItem {
   dat_name?: string | null
   companions: string[]
   warnings: string[]
+  /** La carpeta del sistema en la que vive el juego, si es que vive en una. */
+  carpeta?: string
+  /** Los dos lados del cruce de hashes (el del fichero y el del DAT). */
+  hashes?: {
+    /** Lo que lleva el propio fichero (un disco de Wii lleva su MD5). */
+    archivo?: { game_code?: string; md5?: string; title?: string; region?: string }
+    /** Lo que lleva la entrada del DAT. */
+    dat?: { crc?: string; md5?: string; sha1?: string }
+  }
 }
 
 /** El plan completo de renombrado de un sistema. */

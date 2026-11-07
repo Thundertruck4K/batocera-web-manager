@@ -50,6 +50,8 @@ class RenameItem:
     entry: dict | None = None
     companions: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
+    carpeta: str = ""
+    hashes: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return {
@@ -65,6 +67,8 @@ class RenameItem:
             "dat_name": (self.entry or {}).get("name") if self.entry else None,
             "companions": self.companions,
             "warnings": self.warnings,
+            "carpeta": self.carpeta,
+            "hashes": self.hashes,
         }
 
 
@@ -119,6 +123,54 @@ def re_track(name: str) -> bool:
     return ".track " in name or name.endswith(".track01.bin")
 
 
+def _hashes_del_cruce(match: Match) -> dict:
+    """Los dos lados del cruce: los hashes del fichero y los del DAT.
+
+    En los discos de Wii el DAT hashea la ISO (4,7 GB) y el volcado lleva
+    su propio MD5 del juego, asi que los hashes no son los mismos: lo que
+    cruza es el codigo de juego. Se devuelven los dos para que se vea el
+    cruce entero.
+    """
+    info = {}
+    wii = (match.signature or {}).get("wii") or {}
+    if wii:
+        info["archivo"] = {clave: wii.get(clave) for clave in
+                           ("game_code", "md5", "title", "region")
+                           if wii.get(clave)}
+    entrada = match.entry or {}
+    for rom in entrada.get("roms", []) or []:
+        dat = {clave: rom.get(clave) for clave in ("crc", "md5", "sha1")
+               if rom.get(clave)}
+        if dat:
+            info["dat"] = dat
+            break
+    return info
+
+
+def _hashes_del_cruce(match: Match) -> dict:
+    """Los dos lados del cruce: los hashes del fichero y los del DAT.
+
+    En los discos de Wii el DAT hashea la ISO (4,7 GB) y el volcado lleva
+    su propio MD5 del juego, asi que los hashes no son los mismos: lo que
+    cruza es el codigo de juego. Se devuelven los dos para que se vea el
+    cruce entero.
+    """
+    info = {}
+    wii = (match.signature or {}).get("wii") or {}
+    if wii:
+        info["archivo"] = {clave: wii.get(clave) for clave in
+                           ("game_code", "md5", "title", "region")
+                           if wii.get(clave)}
+    entrada = match.entry or {}
+    for rom in entrada.get("roms", []) or []:
+        dat = {clave: rom.get(clave) for clave in ("crc", "md5", "sha1")
+               if rom.get(clave)}
+        if dat:
+            info["dat"] = dat
+            break
+    return info
+
+
 def plan_rename(files: Sequence[str], index: dict | None,
                 options: naming.NamingOptions | None = None,
                 region_priority: Sequence[str] = sets.DEFAULT_REGION_PRIORITY,
@@ -128,6 +180,13 @@ def plan_rename(files: Sequence[str], index: dict | None,
 
     ``index`` es el indice del DAT del sistema (o ``None`` si no hay DAT: en
     ese caso solo se ordenan los nombres existentes).
+
+    Cada elemento de ``files`` es el fichero del juego. Puede ser una ruta
+    suelta (un ``.iso`` en la carpeta del sistema) o un diccionario con la
+    carpeta en la que vive el juego: ``{"path", "carpeta", "ext"}``. En el
+    segundo caso lo que se renombra es la **carpeta** (los juegos de Wii
+    viven en ``Juego [REXP01]/REXP01.wbfs``) y el fichero de dentro se
+    queda como estaba.
     """
     opts = options or naming.NamingOptions()
     items: list = []
@@ -135,12 +194,22 @@ def plan_rename(files: Sequence[str], index: dict | None,
     # es eterno, asi que se lleva un presupuesto de bytes.
     restante = hash_budget
 
-    for path in sorted(files):
-        if not os.path.isfile(path):
+    for unidad in sorted(files, key=lambda u: u.get("path", "") if isinstance(u, dict) else str(u)):
+        if isinstance(unidad, dict):
+            path = unidad.get("path") or ""
+            carpeta = (unidad.get("carpeta") or "").replace(os.sep, "/")
+            ext_carpeta = unidad.get("ext") or ""
+        else:
+            path = str(unidad)
+            carpeta = ""
+            ext_carpeta = ""
+        if not path or not os.path.isfile(path):
             continue
-        current = os.path.basename(path)
+        # El juego vive en una carpeta: lo que se renombra es la carpeta.
+        nombre_carpeta = os.path.basename(carpeta) if carpeta else ""
+        current = nombre_carpeta or os.path.basename(path)
         ext = os.path.splitext(current)[1]
-        item = RenameItem(path=path, current=current)
+        item = RenameItem(path=path, current=current, carpeta=carpeta)
 
         if index:
             try:
@@ -156,7 +225,12 @@ def plan_rename(files: Sequence[str], index: dict | None,
             item.confidence = match.confidence
             item.entry = match.entry
             if match.entry:
-                proposed = naming.rom_target_name(match.entry, current, opts)
+                if carpeta:
+                    proposed = naming.folder_target_name(match.entry, nombre_carpeta,
+                                                         ext_carpeta, opts)
+                else:
+                    proposed = naming.rom_target_name(match.entry, current, opts)
+                item.hashes = _hashes_del_cruce(match)
                 if match.method == "titulo" and match.candidates:
                     # Hay varias entradas parecidas: se elige la mejor y se
                     # explica por que. La eleccion se hace entre las entradas
@@ -198,7 +272,7 @@ def plan_rename(files: Sequence[str], index: dict | None,
             item.reason = "no hay DAT para este sistema"
             item.proposed = naming.fallback_name(current, opts)
 
-        if item.action in ("renombrar", "revisar"):
+        if item.action in ("renombrar", "revisar") and not carpeta:
             item.companions = [os.path.basename(c) for c in companions_of(path)]
 
         items.append(item)
@@ -308,6 +382,18 @@ def update_gamelist(folder: str, moves: list) -> dict:
         if not origen or not destino:
             continue
         renombres[os.path.basename(origen)] = os.path.basename(destino)
+        # Si lo renombrado fue una carpeta, su nombre tambien cambia y las
+        # rutas del gamelist la llevan como una parte mas.
+        dir_origen = os.path.dirname(origen)
+        dir_destino = os.path.dirname(destino)
+        if dir_origen != dir_destino:
+            renombres[os.path.basename(dir_origen)] = os.path.basename(dir_destino)
+        # Si lo renombrado fue una carpeta, su nombre tambien cambia y las
+        # rutas del gamelist la llevan como una parte mas.
+        dir_origen = os.path.dirname(origen)
+        dir_destino = os.path.dirname(destino)
+        if dir_origen != dir_destino:
+            renombres[os.path.basename(dir_origen)] = os.path.basename(dir_destino)
 
     cambios = []
     media = []
@@ -316,13 +402,25 @@ def update_gamelist(folder: str, moves: list) -> dict:
         if el_path is None or not el_path.text:
             continue
         ruta = el_path.text.strip()
-        nombre = posixpath.basename(ruta)
-        nuevo_nombre = renombres.get(nombre)
-        if not nuevo_nombre:
+        # La ruta se compone de partes (la carpeta del juego y el fichero):
+        # cada parte se cambia si su nombre cambio.
+        partes = ruta.split("/")
+        nuevas = []
+        cambio = False
+        for parte in partes:
+            nuevo = renombres.get(parte)
+            if nuevo and nuevo != parte:
+                cambio = True
+                nuevas.append(nuevo)
+            else:
+                nuevas.append(parte)
+        if not cambio:
             continue
-        carpeta = posixpath.dirname(ruta)
-        el_path.text = posixpath.join(carpeta, nuevo_nombre) if carpeta else nuevo_nombre
+        el_path.text = "/".join(nuevas)
         cambios.append({"de": ruta, "a": el_path.text})
+
+        nombre = posixpath.basename(ruta)
+        nuevo_nombre = posixpath.basename(el_path.text)
 
         viejo_tallo = _tallo(nombre)
         nuevo_tallo = _tallo(nuevo_nombre)
@@ -390,8 +488,28 @@ def apply_plan(plan: dict, folder: str, root: str = "/userdata/system",
             skipped.append({"file": item.get("file"), "reason": item.get("reason")})
             continue
 
-        path = os.path.join(folder, item.get("file", ""))
         proposed = item.get("proposed") or ""
+        carpeta = item.get("carpeta") or ""
+        if carpeta:
+            # El juego vive en una carpeta: se renombra la carpeta y el
+            # fichero de dentro se queda con su nombre (el codigo del disco).
+            path = os.path.join(folder, carpeta)
+            if not os.path.isdir(path):
+                skipped.append({"file": item.get("file"), "reason": "ya no esta en la carpeta"})
+                continue
+            if not proposed:
+                skipped.append({"file": item.get("file"), "reason": "no hay nombre destino"})
+                continue
+            target = os.path.join(folder, naming.unique_path(folder, proposed))
+            try:
+                os.rename(path, target)
+            except OSError as exc:
+                errors.append({"file": carpeta, "error": str(exc)})
+                continue
+            moved.append({"from": path, "to": target, "when": time.time()})
+            continue
+
+        path = os.path.join(folder, item.get("file", ""))
         if not os.path.isfile(path):
             skipped.append({"file": item.get("file"), "reason": "ya no esta en la carpeta"})
             continue

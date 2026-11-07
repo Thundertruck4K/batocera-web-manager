@@ -88,6 +88,19 @@ El proyecto se trabaja en **un solo repositorio**:
     juego con mejor region se llevaria el renombrado de otro que comparte subtitulo.
   - **El hash tiene presupuesto** (512 MB por tanda): hashear 42 GB de ROMs es eterno, asi que el
     emparejamiento barato (nombre + tamano) va primero y se avisa cuando no se ha verificado.
+  - **Los discos de Wii se cruzan por el codigo de juego, no por el hash del DAT**: el DAT de
+    Wii hashea la ISO de 4,7 GB y el volcado (WBFS) son 620 MB, asi que sus hashes nunca
+    coinciden. El cruce real es el **codigo de juego**, que va dentro del disco y en el serial
+    del DAT (`RVL-REXP-EUR`). La informacion del disco se localiza por el marcador `MD5#`
+    (esta en un sitio fijo del bloque) y de ahi salen el codigo (4 letras + fabricante), el
+    hash MD5 del juego y el titulo. **La region va en el ultimo caracter del codigo**
+    (E=USA, P=Europe, J=Japan), asi que el codigo ya dice la region.
+  - **El DAT bueno de Wii es el de `metadat/redump/`**: el de `dat/` (el que genera gametdb)
+    tiene 8464 entradas y **ningun hash**, solo nombres y seriales. Con el de `metadat` el
+    cruce por codigo sale con los 3817 juegos y sus hashes.
+  - **En Wii cada juego es una carpeta** (`Juego [REXP01]/REXP01.wbfs`), no un fichero suelto:
+    el plan de renombrado tiene que ver esas carpetas, renombrar la carpeta (no el fichero de
+    dentro) y actualizar la ruta del `gamelist.xml`, que lleva el nombre de la carpeta.
   - **Renombrar regenera el `gamelist.xml`**: `update_gamelist()` actualiza el `<path>` de cada
     ficha, renombra la media que sigue al juego (`images/`, `videos/`, `manuals/`, `downloads/`) y
     repunta las etiquetas; el `gamelist.xml` original se guarda en el journal para que
