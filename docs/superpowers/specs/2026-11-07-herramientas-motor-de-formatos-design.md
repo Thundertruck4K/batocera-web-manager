@@ -260,11 +260,42 @@ La parte de la SPA que faltaba era el **boton de accion**: el modal de confirmac
 pero ningun control llamaba a `setConfirmar(true)`, asi que el plan se veia y no se podia aplicar.
 Con el plan calculado aparece **«Aplicar N»**, que abre el modal con la lista de los cambios.
 
+### 5.7 El plan va en segundo plano, con barra de progreso
+
+En un sistema grande el calculo del plan tarda de verdad: hay que identificar miles de ficheros y,
+cuando el nombre no cuadra, hay que **hashear** el fichero entero (una ISO de 4 GB en una tarjeta SD
+tarda lo suyo). Con la peticion bloqueada en el hilo del servidor, la pagina se quedaba en
+silencio y **parecia congelada**: el usuario cerraba la ventana y perdia el trabajo.
+
+La solucion son los **trabajos** (`romtools/jobs.py`):
+
+1. `GET /api/tools/rename/plan/start?system=…` arranca el calculo en un hilo aparte y devuelve su
+   identificador (`{"ok": true, "job": "…"}`).
+2. `GET /api/tools/rename/job?id=…` devuelve el estado: `estado` (`trabajando`, `listo`, `error`),
+   `hechos`, `total`, `actual` (el fichero que esta mirando), `porcentaje` y `mensaje`. Cuando
+   acaba, `resultado` lleva el plan entero.
+3. El frontend sondea cada 400 ms y pinta la barra mientras dura.
+
+El **renombrado** (que vuelve a calcular el plan antes de renombrar) va por el mismo camino:
+`POST /api/tools/rename/apply/start`.
+
+Los endpoints sincronos (`GET /api/tools/rename/plan` y `POST /api/tools/rename/apply`) se quedan:
+sirven para el CLI, para las pruebas y para quien prefiera una sola llamada.
+
+**El progreso se mide por bytes leidos dentro del fichero**, no solo por ficheros
+(`romtools/progress.py`). Es la parte que mas cuesta: hashear una ISO es *un* fichero y se lleva el
+90 % del tiempo, asi que con un contador de ficheros la barra se quedaria parada justo en lo que
+mas tarda. `hash_file()` y `identify()` avisan de los bytes que leen y el progreso los suma.
+
+La fraccion se pondera asi: `hechos` son los ficheros ya terminados y el fichero actual cuenta a
+medias (sus bytes leidos sobre su tamano). El total del plan se conoce antes de empezar (son los
+ficheros que hay en la carpeta), asi que el porcentaje es real desde el primer momento.
+
 ---
 
 ## 6. Verificación
 
-- **751 tests** en verde (729 previos + 22 nuevos entre `romtools` y el contrato de la API).
+- **777 tests** en verde (767 previos + 10 nuevos del progreso y del contrato de los trabajos).
 - `tsc -b` limpio y el bundle compilado.
 - En la consola real: `chdman` verificado con las tres rutas (`createcd`, `createdvd`, `extractraw`),
   con ida y vuelta de un ISO comprobada byte a byte, y el formato de los hunks y de las unidades

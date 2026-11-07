@@ -101,6 +101,13 @@ El proyecto se trabaja en **un solo repositorio**:
   - **En Wii cada juego es una carpeta** (`Juego [REXP01]/REXP01.wbfs`), no un fichero suelto:
     el plan de renombrado tiene que ver esas carpetas, renombrar la carpeta (no el fichero de
     dentro) y actualizar la ruta del `gamelist.xml`, que lleva el nombre de la carpeta.
+  - **Los trabajos largos van en segundo plano, con progreso**: calcular el plan de renombrado
+    de un sistema grande tarda (hay que identificar miles de ficheros y a veces hashear ISOs de
+    4 GB). El calculo se arranca como **trabajo** (`romtools/jobs.py`) y el frontend sondea
+    `GET /api/tools/rename/job?id=…`: la pagina nunca se queda en silencio. El progreso se mide
+    **por bytes leidos dentro del fichero** (`romtools/progress.py`), no solo por ficheros, porque
+    hashear una ISO es un solo fichero y se lleva el 90 % del tiempo. Los endpoints sincronos
+    (`rename/plan`, `rename/apply`) se mantienen para el CLI y las pruebas.
   - **Renombrar regenera el `gamelist.xml`**: `update_gamelist()` actualiza el `<path>` de cada
     ficha, renombra la media que sigue al juego (`images/`, `videos/`, `manuals/`, `downloads/`) y
     repunta las etiquetas; el `gamelist.xml` original se guarda en el journal para que

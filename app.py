@@ -42,6 +42,7 @@ try:
     from romtools import dats as _rt_dats
     from romtools import formats as _rt_formats
     from romtools import identify as _rt_identify
+    from romtools import jobs as _rt_jobs
     from romtools import naming as _rt_naming
     from romtools import rename as _rt_rename
     from romtools import sets as _rt_sets
@@ -184,8 +185,13 @@ def _juegos_en_carpetas(folder):
     return out
 
 
-def tools_rename_plan(settings, system, min_confidence=0.75):
-    """El plan de renombrado de un sistema (no toca el disco)."""
+def tools_rename_plan(settings, system, min_confidence=0.75, progreso=None):
+    """El plan de renombrado de un sistema (no toca el disco).
+
+    ``progreso`` recibe el estado del trabajo mientras se calcula: en una
+    biblioteca grande identifying cada fichero tarda, y sin avisar parece
+    que la aplicacion se ha colgado.
+    """
     folder = system_dir(settings, system)
     index = _rt_dats.load_index(system, str(tools_dir(settings)))
     files = []
@@ -199,7 +205,8 @@ def tools_rename_plan(settings, system, min_confidence=0.75):
         files += _juegos_en_carpetas(folder)
     except OSError:
         pass
-    plan = _rt_rename.plan_rename(files, index, min_confidence=min_confidence)
+    plan = _rt_rename.plan_rename(files, index, min_confidence=min_confidence,
+                                   progreso=progreso)
     plan["ok"] = True
     plan["system"] = system
     plan["con_dat"] = bool(index)
@@ -207,19 +214,22 @@ def tools_rename_plan(settings, system, min_confidence=0.75):
     return plan
 
 
-def tools_rename_apply(settings, system, include_review=False):
+def tools_rename_apply(settings, system, include_review=False, progreso=None):
     """Ejecuta el plan de renombrado y deja journal para poder deshacer.
 
     El ``gamelist.xml`` y la media se actualizan con los nombres nuevos (lo
     hace el motor de ``romtools``), y EmulationStation se recarga: las tiene
-    en memoria, asi que sin recargarlo seguirian apareciendo los nombres
+    en memoria, asi que sin recargarlos seguirian apareciendo los nombres
     viejos en la TV.
+
+    ``progreso`` recibe el estado del trabajo (identificando, renombrando).
     """
     folder = system_dir(settings, system)
-    plan = tools_rename_plan(settings, system)
+    plan = tools_rename_plan(settings, system, progreso=progreso)
     out = _rt_rename.apply_plan(plan, str(folder),
                                 root=tools_journal_root(settings),
-                                include_review=include_review)
+                                include_review=include_review,
+                                progreso=progreso)
     out["system"] = system
     if out.get("renamed"):
         out["es"] = reload_es_after_scrape(meta_saved=True)
@@ -7092,6 +7102,24 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                         self.send_json({"ok": False, "error": "falta el sistema"}); return
                     minimo = float((query.get("min") or ["0.75"])[0])
                     self.send_json(tools_rename_plan(s, system, minimo)); return
+                if sub == "rename/plan/start":
+                    system = (query.get("system") or [""])[0]
+                    if not system:
+                        self.send_json({"ok": False, "error": "falta el sistema"}); return
+                    minimo = float((query.get("min") or ["0.75"])[0])
+                    trabajo = _rt_jobs.JOBS.lanzar(
+                        "plan",
+                        lambda job: tools_rename_plan(s, system, minimo,
+                                                      progreso=job.progreso),
+                        mensaje="identificando los ficheros")
+                    self.send_json({"ok": True, "job": trabajo.id}); return
+                if sub == "rename/job":
+                    job_id = (query.get("id") or [""])[0]
+                    trabajo = _rt_jobs.JOBS.obtener(job_id)
+                    if trabajo is None:
+                        self.send_json({"ok": False, "error": "el trabajo no existe"},
+                                       404); return
+                    self.send_json(trabajo.as_dict()); return
                 if sub == "rename/journal":
                     self.send_json({"ok": True, "batches": _rt_rename.journal_batches(
                         tools_journal_root(s))}); return
@@ -7164,6 +7192,17 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "error": "falta el sistema"}); return
                 self.send_json(tools_rename_apply(s, system,
                                                   bool(data.get("include_review")))); return
+            if sub == "rename/apply/start":
+                system = (data.get("system") or "").strip()
+                if not system:
+                    self.send_json({"ok": False, "error": "falta el sistema"}); return
+                incluir = bool(data.get("include_review"))
+                trabajo = _rt_jobs.JOBS.lanzar(
+                    "apply",
+                    lambda job: tools_rename_apply(s, system, incluir,
+                                                  progreso=job.progreso),
+                    mensaje="identificando los ficheros")
+                self.send_json({"ok": True, "job": trabajo.id}); return
             if sub == "rename/undo":
                 self.send_json(_rt_rename.undo_last(tools_journal_root(s))); return
             self.send_json({"ok": False, "error": "ruta desconocida"}, 404)

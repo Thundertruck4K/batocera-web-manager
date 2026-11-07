@@ -7,17 +7,18 @@ import {
   RefreshCw,
   Undo2,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { PageContainer, useShell } from '@/components/layout/AppShell'
 import { Topbar } from '@/components/layout/Topbar'
 import { Button, IconButton } from '@/components/ui/Button'
 import { PanelCard } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Modal } from '@/components/ui/Modal'
+import { Progress } from '@/components/ui/Progress'
 import { useApi } from '@/hooks/useApi'
 import { useNotify } from '@/hooks/useNotify'
 import { api } from '@/lib/api'
-import type { ToolsRenameItem } from '@/lib/types'
+import type { ToolsJob, ToolsRenameItem, ToolsRenamePlan, ToolsRenameResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /** Como se explica cada tipo de coincidencia. */
@@ -49,9 +50,14 @@ export function ToolsRenamePage() {
   const systems = useApi(() => api.romSystems(), [])
   const dats = useApi(() => api.toolsDats(), [])
   const [system, setSystem] = useState('')
-  const [plan, setPlan] = useState<Awaited<ReturnType<typeof api.toolsRenamePlan>> | null>(null)
+  const [plan, setPlan] = useState<ToolsRenamePlan | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmar, setConfirmar] = useState(false)
+  /** El trabajo en curso (el plan o el renombrado), con su progreso. */
+  const [trabajo, setTrabajo] = useState<ToolsJob | null>(null)
+  /** Para no tocar el estado si el usuario se ha ido de la pagina. */
+  const montado = useRef(true)
+  useEffect(() => () => { montado.current = false }, [])
 
   const conRom = useMemo(
     () => (systems.data ?? []).filter((item) => (item.rom_count ?? 0) > 0),
@@ -70,12 +76,34 @@ export function ToolsRenamePage() {
   const sinDat =
     !!system && !!dats.data && (!datDelSistema || datDelSistema.resuelto === 'ninguno')
 
+  /**
+   * Espera a que termine un trabajo, preguntando cada poco por su estado.
+   *
+   * El backend lo calculates en un hilo aparte: asi se ve el progreso y la
+   * pagina no parece congelada mientras identify miles de ficheros.
+   */
+  const esperarJob = async (id: string): Promise<unknown> => {
+    for (;;) {
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      const estado = await api.toolsRenameJob(id)
+      if (!montado.current) return null
+      setTrabajo(estado)
+      if (estado.estado === 'listo') return estado.resultado ?? null
+      if (estado.estado === 'error') {
+        throw new Error(estado.error || 'El trabajo ha fallado')
+      }
+    }
+  }
+
   const calcular = async () => {
     if (!system) return
     setBusy(true)
+    setTrabajo(null)
     try {
-      const result = await api.toolsRenamePlan(system)
-      setPlan(result)
+      const { job } = await api.toolsRenamePlanStart(system)
+      const resultado = await esperarJob(job)
+      if (!resultado) return
+      setPlan(resultado as ToolsRenamePlan)
     } catch (error) {
       showNotify({
         variant: 'error',
@@ -83,7 +111,10 @@ export function ToolsRenamePage() {
         message: error instanceof Error ? error.message : 'Error inesperado.',
       })
     } finally {
-      setBusy(false)
+      if (montado.current) {
+        setBusy(false)
+        setTrabajo(null)
+      }
     }
   }
 
@@ -109,8 +140,15 @@ export function ToolsRenamePage() {
   const aplicar = async (includeReview: boolean) => {
     if (!system) return
     setBusy(true)
+    setTrabajo(null)
     try {
-      const result = await api.toolsRenameApply({ system, include_review: includeReview })
+      const { job } = await api.toolsRenameApplyStart({
+        system,
+        include_review: includeReview,
+      })
+      const salida = await esperarJob(job)
+      if (!salida) return
+      const result = salida as ToolsRenameResult
       const fichas = result.gamelist?.cambios ?? 0
       const imagenes = result.gamelist?.media ?? 0
       showNotify({
@@ -129,7 +167,10 @@ export function ToolsRenamePage() {
         message: error instanceof Error ? error.message : 'Error inesperado.',
       })
     } finally {
-      setBusy(false)
+      if (montado.current) {
+        setBusy(false)
+        setTrabajo(null)
+      }
     }
   }
 
@@ -150,6 +191,8 @@ export function ToolsRenamePage() {
 
   const cambios = plan?.items.filter((item) => item.action === 'renombrar') ?? []
   const revisables = plan?.items.filter((item) => item.action === 'revisar') ?? []
+  /** Hay un trabajo en marcha: se enseña la barra en vez del plan. */
+  const trabajando = trabajo?.estado === 'trabajando'
 
   return (
     <>
@@ -274,6 +317,26 @@ export function ToolsRenamePage() {
                 title="Este sistema no tiene DAT disponible"
                 description="El manager no ha encontrado ningún DAT para este sistema, así que no hay plan de renombrado que calcular."
               />
+            ) : trabajando && trabajo ? (
+              <div className="rounded-2xl border border-border bg-muted/40 px-4 py-4">
+                <Progress
+                  value={trabajo.porcentaje}
+                  label={
+                    trabajo.total
+                      ? `${trabajo.mensaje || 'Trabajando'} · ${trabajo.hechos} de ${trabajo.total} ficheros`
+                      : (trabajo.mensaje || 'Trabajando')
+                  }
+                />
+                {trabajo.actual && (
+                  <p className="mt-2 truncate text-[11px] text-muted-foreground">
+                    Ahora: {trabajo.actual}
+                  </p>
+                )}
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+                  En bibliotecas grandes esto tarda: el trabajo sigue en el servidor, asi que
+                  no hace falta cerrar la ventana. Puedes esperar aqui hasta que termine.
+                </p>
+              </div>
             ) : !plan ? (
               <EmptyState
                 icon={<FileSignature className="size-5" />}
