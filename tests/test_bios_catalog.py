@@ -53,6 +53,11 @@ def entorno(appmod, tmp_path, monkeypatch):
     monkeypatch.setattr(appmod, "_missing_bios_skipped", set())
     bios = tmp_path / "bios"
     bios.mkdir()
+    # El catálogo guardado en disco (respaldo cuando el script no se puede
+    # leer) no debe pasar de un test a otro.
+    cache = appmod._bios_catalog_disk_file()
+    if cache.exists():
+        cache.unlink()
     _reset(appmod)
     yield {"bios": bios, "script": script,
            "settings": {"bios_dir": str(bios), "roms_base": str(tmp_path / "roms")}}
@@ -125,6 +130,28 @@ def test_respaldo_al_catalogo_embebido(appmod, entorno):
     catalog = appmod.get_bios_catalog()
     assert catalog["source"] == "builtin"
     assert "adam" in catalog["systems"]
+
+
+def test_el_catalogo_guardado_sirve_de_respaldo(appmod, entorno):
+    """Si el script no se puede leer, se usa el último catálogo bueno.
+
+    El embebido es de otra versión y tiene más rutas (376 frente a 362), así
+    que usarlo de golpe haría que todos los estados cambiasen sin motivo.
+    """
+    entorno["script"].write_text(_script({
+        "adam": {"name": "Coleco Adam", "biosFiles": [
+            {"md5": "01bba3bcd46d8a586dd6ec555accc133", "file": "bios/adam.zip"}]}}),
+        encoding="utf-8")
+    _reset(appmod)
+    bueno = appmod.get_bios_catalog()
+    assert bueno["source"] == str(entorno["script"])
+
+    # Ahora el script deja de poder leerse (la SD falla de vez en cuando).
+    entorno["script"].unlink()
+    _reset(appmod)
+    respaldo = appmod.get_bios_catalog()
+    assert respaldo["source"] == str(entorno["script"])
+    assert respaldo["systems"] == bueno["systems"]
 
 
 # ── Los estados ────────────────────────────────────────────────────────
