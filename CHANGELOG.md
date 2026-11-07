@@ -47,6 +47,13 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     El hash lleva un **presupuesto de 512 MB por tanda**: con bibliotecas de 40 GB se avisa y se sigue.
   - El **plan se enseña entero** antes de tocar nada (nombre actual, propuesto, método y confianza),
     renombra también el CUE y la M3U, y cada tanda deja journal con un botón de **deshacer**.
+  - **Renombrar regenera el `gamelist.xml`**: al aplicar, el motor actualiza el `<path>` de cada
+    ficha, renombra la media que acompaña al juego (`images/`, `videos/`, `manuals/`, `downloads/`)
+    y repunta las etiquetas (`image`, `video`, `marquee`, `thumbnail`…), conservando el resto de
+    metadatos. Sin esto, el `gamelist.xml` se quedaba con los nombres viejos y EmulationStation
+    mostraba la biblioteca descuadrada. El `gamelist.xml` original se guarda en el journal, así que
+    **deshacer** lo restaura íntegro, y al terminar se recarga EmulationStation (los tiene en
+    memoria).
 - **El botón *Reparar* ya sirve de algo**: cuando el contenido de una BIOS no está en la propia
   consola, el manager ofrece las dos vías que quedan: **buscarlo en Google** o **subir el archivo**.
   Antes el botón sólo reparaba lo que ya estaba en la SD, así que en una consola nueva no tenía
@@ -196,6 +203,10 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     catálogo de `github` a `busqueda`.
 
 ### Corregido
+- **El renombrado no se podía aplicar desde la interfaz**: el modal de confirmación estaba escrito,
+  pero ningún botón llamaba a `setConfirmar(true)`, así que se veía el plan y no había forma de
+  aplicarlo. Ahora, con el plan calculado, aparece el botón **«Aplicar N»**, que abre el modal con
+  la lista de los cambios (y, si hay coincidencias dudosas, una segunda opción para incluirlas).
 - **El botón de conversión se equivocaba de destino**: comparaba etiquetas de texto («¿es "Convertir a
   BIN/CUE"?»), así que con más de un destino posible la acción iba al formato equivocado o no
   aparecía. Ahora cada fichero devuelve sus conversiones como identificadores (`iso`, `bin-cue`,

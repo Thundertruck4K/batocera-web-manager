@@ -3,6 +3,7 @@ import {
   Database,
   FileSignature,
   History,
+  ListChecks,
   RefreshCw,
   Undo2,
 } from 'lucide-react'
@@ -109,11 +110,13 @@ export function ToolsRenamePage() {
     setBusy(true)
     try {
       const result = await api.toolsRenameApply({ system, include_review: includeReview })
+      const fichas = result.gamelist?.cambios ?? 0
+      const imagenes = result.gamelist?.media ?? 0
       showNotify({
         variant: result.ok ? 'success' : 'error',
         title: result.ok ? `${result.renamed ?? 0} ficheros renombrados` : 'Renombrado con problemas',
         message: result.ok
-          ? 'Se puede deshacer desde el botón de deshacer.'
+          ? `${fichas} fichas y ${imagenes} ficheros de media actualizados en el gamelist.xml. Se puede deshacer desde el botón de deshacer.`
           : (result.errores?.[0]?.error ?? 'Error desconocido.'),
       })
       setConfirmar(false)
@@ -241,9 +244,20 @@ export function ToolsRenamePage() {
                     Deshacer
                   </Button>
                 )}
+                {cambios.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => setConfirmar(true)}
+                    disabled={busy}
+                  >
+                    <ListChecks className="size-4" />
+                    Aplicar {cambios.length}
+                  </Button>
+                )}
                 <Button
                   size="sm"
-                  variant="primary"
+                  variant={cambios.length > 0 ? 'outline' : 'primary'}
                   onClick={calcular}
                   disabled={!system || busy || sinDat}
                 >
@@ -323,7 +337,7 @@ export function ToolsRenamePage() {
         open={confirmar}
         onClose={() => setConfirmar(false)}
         title="Aplicar el renombrado"
-        description="Se renombran los ficheros y sus acompañantes (CUE, M3U…). Nada se borra."
+        description="Se renombran los ficheros, sus acompañantes (CUE, M3U…) y la media (las imágenes), y se actualiza el gamelist.xml para que las fichas y las carátulas sigan cuadrando. Nada se borra."
         footer={
           <>
             <Button variant="ghost" onClick={() => setConfirmar(false)}>

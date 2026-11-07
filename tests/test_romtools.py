@@ -859,3 +859,95 @@ def test_un_dat_sin_metadatos_sigue_visto(tmp_path):
 
     assert ficheros[0]["games"] == 7
     assert ficheros[0]["dat"] == "Nintendo - Prueba"
+
+
+# ── El gamelist.xml se actualiza al renombrar ───────────────────────────
+
+GAMELIST = """<?xml version="1.0" encoding="UTF-8"?>
+<gameList>
+    <game id="1">
+        <path>./Clay Fighter.smd</path>
+        <name>Clay Fighter</name>
+        <desc>Un parque de atracciones</desc>
+        <image>./images/Clay Fighter-image.png</image>
+        <marquee>./images/Clay Fighter-marquee.png</marquee>
+        <video>./videos/Clay Fighter-video.mp4</video>
+        <genre>Lucha</genre>
+    </game>
+</gameList>
+"""
+
+
+def _sistema_con_media(tmp_path):
+    """Una carpeta de sistema con una ROM, su media y su gamelist."""
+    (tmp_path / "images").mkdir()
+    (tmp_path / "videos").mkdir()
+    (tmp_path / "Clay Fighter.smd").write_bytes(b"ROM")
+    (tmp_path / "images" / "Clay Fighter-image.png").write_bytes(b"PNG")
+    (tmp_path / "images" / "Clay Fighter-marquee.png").write_bytes(b"PNG")
+    (tmp_path / "videos" / "Clay Fighter-video.mp4").write_bytes(b"MP4")
+    # Una imagen de otro juego que empieza igual: no se debe tocar.
+    (tmp_path / "images" / "Clay Fighter 2-image.png").write_bytes(b"PNG")
+    (tmp_path / "gamelist.xml").write_text(GAMELIST, encoding="utf-8")
+    return tmp_path
+
+
+def test_el_renombrado_actualiza_el_gamelist_y_la_media(tmp_path):
+    """Al renombrar, la ficha y las imagenes siguen al juego.
+
+    Sin esto, EmulationStation se queda con las fichas de los ficheros
+    viejos: la imagen aparece pero sin su juego, y el nombre que sale en la
+    TV es el anterior.
+    """
+    carpeta = _sistema_con_media(tmp_path)
+    plan = {"items": [{"file": "Clay Fighter.smd",
+                       "proposed": "Clay Fighter (Europe).smd",
+                       "action": "renombrar", "companions": []}]}
+
+    salida = rename.apply_plan(plan, str(carpeta), root=str(tmp_path / "journal"))
+
+    assert salida["ok"] is True
+    assert (carpeta / "Clay Fighter (Europe).smd").exists()
+    assert (carpeta / "images" / "Clay Fighter (Europe)-image.png").exists()
+    assert (carpeta / "images" / "Clay Fighter (Europe)-marquee.png").exists()
+    assert (carpeta / "videos" / "Clay Fighter (Europe)-video.mp4").exists()
+    # La imagen de otro juego no se toca.
+    assert (carpeta / "images" / "Clay Fighter 2-image.png").exists()
+
+    gamelist = (carpeta / "gamelist.xml").read_text(encoding="utf-8")
+    assert "<path>./Clay Fighter (Europe).smd</path>" in gamelist
+    assert "<image>./images/Clay Fighter (Europe)-image.png</image>" in gamelist
+    assert "<marquee>./images/Clay Fighter (Europe)-marquee.png</marquee>" in gamelist
+    assert "<video>./videos/Clay Fighter (Europe)-video.mp4</video>" in gamelist
+    # Los metadatos se conservan.
+    assert "<desc>Un parque de atracciones</desc>" in gamelist
+    assert "<genre>Lucha</genre>" in gamelist
+    assert "<name>Clay Fighter</name>" in gamelist
+
+
+def test_deshacer_el_renombrado_deja_el_gamelist_como_estaba(tmp_path):
+    """Deshacer devuelve los nombres, la media y el gamelist."""
+    carpeta = _sistema_con_media(tmp_path)
+    plan = {"items": [{"file": "Clay Fighter.smd",
+                       "proposed": "Clay Fighter (Europe).smd",
+                       "action": "renombrar", "companions": []}]}
+    rename.apply_plan(plan, str(carpeta), root=str(tmp_path / "journal"))
+
+    salida = rename.undo_last(root=str(tmp_path / "journal"))
+
+    assert salida["ok"] is True
+    assert (carpeta / "Clay Fighter.smd").exists()
+    assert (carpeta / "images" / "Clay Fighter-image.png").exists()
+    assert (carpeta / "gamelist.xml").read_text(encoding="utf-8") == GAMELIST
+
+
+def test_sin_gamelist_no_pasa_nada(tmp_path):
+    """Un sistema sin gamelist.xml se renombra igual, sin que se queje."""
+    (tmp_path / "Juego.smd").write_bytes(b"ROM")
+    plan = {"items": [{"file": "Juego.smd", "proposed": "Juego (USA).smd",
+                       "action": "renombrar", "companions": []}]}
+
+    salida = rename.apply_plan(plan, str(tmp_path), root=str(tmp_path / "journal"))
+
+    assert salida["ok"] is True
+    assert (tmp_path / "Juego (USA).smd").exists()

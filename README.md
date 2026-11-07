@@ -661,6 +661,15 @@ confianza) antes de tocar nada; al aplicar se renombran también el CUE, la M3U 
 acompañantes; y cada tanda deja un journal en `/userdata/system/batocera_manager_renames.json`,
 con un botón para **deshacer** la última.
 
+**Renombrar actualiza el `gamelist.xml`.** Un nombre nuevo sin actualizar la lista deja la
+biblioteca descuadrada: EmulationStation seguiría apuntando a ficheros que ya no existen y las
+carátulas se quedarían sin juego. Al aplicar, el manager actualiza el `<path>` de cada ficha,
+renombra la media que acompaña al juego (en `images/`, `videos/`, `manuals/` y `downloads/`) y
+repunta las etiquetas (`image`, `video`, `marquee`, `thumbnail`…), dejando el resto de metadatos
+intactos. La media sólo se renombra cuando el nombre es exactamente `<tallo>-<algo>`, así que
+«Clay Fighter-image.png» sí se renombra y «Clay Fighter 2-image.png» no. El `gamelist.xml` original
+se guarda en el journal: **deshacer** lo deja tal como estaba.
+
 **Legal**: el manager no aloja ni descarga ROMs. Los DAT son metadatos públicos; las conversiones,
 compresiones y parches se hacen sobre los ficheros que ya están en tu SD.
 

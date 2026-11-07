@@ -818,6 +818,15 @@ export interface ToolsRenamePlan {
   }
 }
 
+/** Lo que se ha tocado del `gamelist.xml` al renombrar. */
+export interface ToolsRenameGamelist {
+  /** Fichas del gamelist actualizadas. */
+  cambios: number
+  /** Ficheros de media (imágenes, vídeos) renombrados. */
+  media: number
+  error?: string | null
+}
+
 /** Resultado de aplicar o deshacer un renombrado. */
 export interface ToolsRenameResult {
   ok: boolean
@@ -825,5 +834,7 @@ export interface ToolsRenameResult {
   restored?: string[]
   skipped?: { file: string; reason: string }[]
   errores?: { file: string; error: string }[]
+  /** Lo que se ha actualizado del `gamelist.xml`. */
+  gamelist?: ToolsRenameGamelist
   error?: string
 }

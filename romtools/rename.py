@@ -19,8 +19,10 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
 import shutil
 import time
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Iterable, Sequence
 
@@ -212,6 +214,162 @@ def plan_rename(files: Sequence[str], index: dict | None,
     return {"items": [i.as_dict() for i in items], "stats": stats}
 
 
+# ── El gamelist.xml y la media ──────────────────────────────────────────
+
+#: Carpetas donde Batocera guarda la media de un sistema.
+MEDIA_DIRS = ("images", "videos", "manuals", "downloads")
+
+#: Etiquetas del gamelist.xml que apuntan a un fichero de media.
+MEDIA_TAGS = ("image", "video", "marquee", "thumbnail", "miximage", "fanart",
+              "manual", "titleshot", "screenshot")
+
+
+def _tallo(nombre: str) -> str:
+    """El nombre de un fichero sin su extension."""
+    return os.path.splitext(os.path.basename(nombre))[0]
+
+
+def _media_nueva(nombre: str, viejo: str, nuevo: str) -> str | None:
+    """El nombre nuevo de un fichero de media, si sigue al nombre del juego.
+
+    ``Clay Fighter-image.png`` sigue a ``Clay Fighter.smd``: se cambia el
+    tallo y se deja el sufijo. Un fichero que solo empieza por el nombre del
+    juego **no** se toca: ``Super Mario`` no es ``Super Mario Bros``.
+    """
+    base, sufijo = os.path.splitext(nombre)
+    if not base.startswith(viejo):
+        return None
+    resto = base[len(viejo):]
+    if resto and not resto.startswith("-"):
+        return None
+    return nuevo + resto + sufijo
+
+
+def _renombrar_media(folder: str, viejo: str, nuevo: str) -> list:
+    """Renombra los ficheros de media que siguen el nombre del juego."""
+    salida = []
+    for sub in MEDIA_DIRS:
+        carpeta = os.path.join(folder, sub)
+        if not os.path.isdir(carpeta):
+            continue
+        try:
+            nombres = sorted(os.listdir(carpeta))
+        except OSError:
+            continue
+        for nombre in nombres:
+            nuevo_nombre = _media_nueva(nombre, viejo, nuevo)
+            if not nuevo_nombre or nuevo_nombre == nombre:
+                continue
+            origen = os.path.join(carpeta, nombre)
+            destino = os.path.join(carpeta, nuevo_nombre)
+            if os.path.exists(destino):
+                continue
+            try:
+                os.rename(origen, destino)
+            except OSError:
+                continue
+            salida.append({"from": origen, "to": destino})
+    return salida
+
+
+def update_gamelist(folder: str, moves: list) -> dict:
+    """Actualiza el gamelist.xml tras un renombrado.
+
+    Para cada ficha que apunta a un fichero renombrado:
+
+    - el ``<path>`` pasa al nombre nuevo;
+    - los ficheros de media que siguen el nombre del juego (en ``images/``,
+      ``videos/``…) se renombran con el tallo nuevo, y las etiquetas de media
+      se apuntan a los ficheros nuevos.
+
+    Asi el ``gamelist.xml`` sigue cuadrando con los ficheros, con la media y
+    con los metadatos: sin esto, EmulationStation se quedaria sin las fichas
+    de los juegos renombrados.
+
+    Devuelve los cambios hechos (para poder deshacerlos) y el texto que
+    tenia el gamelist antes de tocarlo.
+    """
+    gl = os.path.join(folder, "gamelist.xml")
+    vacio = {"ok": True, "cambios": [], "media": [], "gamelist": None}
+    if not os.path.isfile(gl):
+        return vacio
+    try:
+        with open(gl, "r", encoding="utf-8") as fh:
+            antes = fh.read()
+        root = ET.fromstring(antes)
+    except (OSError, ValueError):
+        return {"ok": False, "cambios": [], "media": [], "gamelist": None,
+                "error": "el gamelist.xml no se puede leer"}
+
+    renombres = {}
+    for entrada in moves or []:
+        origen = entrada.get("from") or ""
+        destino = entrada.get("to") or ""
+        if not origen or not destino:
+            continue
+        renombres[os.path.basename(origen)] = os.path.basename(destino)
+
+    cambios = []
+    media = []
+    for game in root.findall("game"):
+        el_path = game.find("path")
+        if el_path is None or not el_path.text:
+            continue
+        ruta = el_path.text.strip()
+        nombre = posixpath.basename(ruta)
+        nuevo_nombre = renombres.get(nombre)
+        if not nuevo_nombre:
+            continue
+        carpeta = posixpath.dirname(ruta)
+        el_path.text = posixpath.join(carpeta, nuevo_nombre) if carpeta else nuevo_nombre
+        cambios.append({"de": ruta, "a": el_path.text})
+
+        viejo_tallo = _tallo(nombre)
+        nuevo_tallo = _tallo(nuevo_nombre)
+        if viejo_tallo == nuevo_tallo:
+            continue
+
+        # Los ficheros de media que siguen el nombre del juego.
+        media += _renombrar_media(folder, viejo_tallo, nuevo_tallo)
+
+        # Y las etiquetas que los apuntan.
+        for tag in MEDIA_TAGS:
+            el = game.find(tag)
+            if el is None or not el.text:
+                continue
+            valor = el.text.strip()
+            base = posixpath.basename(valor)
+            nuevo_base = _media_nueva(base, viejo_tallo, nuevo_tallo)
+            if not nuevo_base or nuevo_base == base:
+                continue
+            subcarpeta = posixpath.dirname(valor.lstrip("./"))
+            origen = os.path.join(folder, subcarpeta.replace("/", os.sep), base)
+            destino = os.path.join(folder, subcarpeta.replace("/", os.sep), nuevo_base)
+            if os.path.isfile(origen) and not os.path.exists(destino):
+                try:
+                    os.rename(origen, destino)
+                    media.append({"from": origen, "to": destino})
+                except OSError:
+                    pass
+            el.text = posixpath.join(posixpath.dirname(valor), nuevo_base)
+
+    if not cambios and not media:
+        return vacio
+
+    try:
+        ET.indent(root, space="    ")
+        xml_out = ('<?xml version="1.0" encoding="UTF-8"?>\n' +
+                   ET.tostring(root, encoding="unicode"))
+        with open(gl, "w", encoding="utf-8") as fh:
+            fh.write(xml_out)
+    except OSError as exc:
+        return {"ok": False, "cambios": cambios, "media": media,
+                "gamelist": None, "error": str(exc)}
+
+    return {"ok": True, "cambios": cambios, "media": media,
+            "gamelist": {"path": gl, "antes": antes}}
+
+
 def apply_plan(plan: dict, folder: str, root: str = "/userdata/system",
                include_review: bool = False) -> dict:
     """Ejecuta el plan: renombra y deja journal para poder deshacer.
@@ -270,13 +428,25 @@ def apply_plan(plan: dict, folder: str, root: str = "/userdata/system",
             except OSError as exc:
                 errors.append({"file": companion, "error": str(exc)})
 
+    # El gamelist.xml y la media se actualizan con los nombres nuevos: si no,
+    # las fichas apuntarian a ficheros que ya no existen y las imagenes se
+    # quedarian sin su juego.
+    gamelist = update_gamelist(folder, moved)
+    moved += gamelist.get("media") or []
+
     if moved:
         journal = _read_journal(root)
-        journal.append({"batch": moved, "when": time.time()})
+        entrada = {"batch": moved, "when": time.time()}
+        if gamelist.get("gamelist"):
+            entrada["gamelist"] = gamelist["gamelist"]
+        journal.append(entrada)
         _write_journal(root, journal[-20:])
 
     return {"ok": not errors, "renamed": len(moved), "skipped": skipped,
-            "errores": errors, "moved": moved}
+            "errores": errors, "moved": moved,
+            "gamelist": {"cambios": len(gamelist.get("cambios") or []),
+                         "media": len(gamelist.get("media") or []),
+                         "error": gamelist.get("error")}}
 
 
 def undo_last(root: str = "/userdata/system") -> dict:
@@ -298,6 +468,15 @@ def undo_last(root: str = "/userdata/system") -> dict:
             restored.append(target)
         except OSError as exc:
             errors.append({"file": target, "error": str(exc)})
+    # El gamelist.xml vuelve a como estaba: con los nombres viejos.
+    gl = batch.get("gamelist")
+    if gl and gl.get("path") and gl.get("antes") is not None:
+        try:
+            with open(gl["path"], "w", encoding="utf-8") as fh:
+                fh.write(gl["antes"])
+        except OSError as exc:
+            errors.append({"file": gl.get("path"), "error": str(exc)})
+
     journal.pop()
     _write_journal(root, journal)
     return {"ok": not errors, "restored": restored, "errores": errors}
