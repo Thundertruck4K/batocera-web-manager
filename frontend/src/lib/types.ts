@@ -875,3 +875,117 @@ export interface ToolsRenameResult {
   gamelist?: ToolsRenameGamelist
   error?: string
 }
+
+/* ── Biblioteca de ROMs ───────────────────────────────────────────────── */
+
+/** Un juego de la biblioteca (un fichero suelto o una carpeta-juego). */
+export interface LibraryArchivo {
+  sistema: string
+  ruta: string
+  nombre: string
+  bytes: number
+  /** True si el juego es una carpeta (Wii, ScummVM, DOSBox...). */
+  carpeta: boolean
+}
+
+/** Un grupo de juegos repetidos. */
+export interface LibraryDuplicado {
+  /** El md5, si el hash completo lo ha confirmado. */
+  md5: string | null
+  /**
+   * Si el grupo está confirmado con el hash completo. Si no lo está, es un
+   * candidato: la huella rápida coincide pero no se ha leído el fichero
+   * entero (es una ISO de 4 GB, y confirmarlas todas serían horas).
+   */
+  confirmado: boolean
+  /** El tamaño de una copia. */
+  bytes: number
+  mb: number
+  /** Cuántas copias hay. */
+  copias: number
+  /** Lo que se libera dejando una sola copia. */
+  ahorro: number
+  ahorro_mb: number
+  ficheros: LibraryArchivo[]
+  nombres: string[]
+  sistemas: string[]
+}
+
+/** El mismo juego repetido en varios sistemas (los arcades, sobre todo). */
+export interface LibraryRepetido {
+  nombre: string
+  sistemas: string[]
+  bytes: number
+  ahorro_mb: number
+  ficheros: LibraryArchivo[]
+}
+
+/** Una lista de la auditoría, recortada (con el total de lo que había). */
+export interface LibraryLista<T> {
+  total: number
+  lista: T[]
+}
+
+/** La radiografía completa de la biblioteca. */
+export interface LibraryAudit {
+  resumen: {
+    sistemas: number
+    juegos: number
+    bytes: number
+    gb: number
+  }
+  duplicados: LibraryDuplicado[]
+  repetidos_entre_sistemas: LibraryRepetido[]
+  /** Fichas del `gamelist.xml` cuyo fichero ya no existe. */
+  fichas_sin_fichero: LibraryLista<{ sistema: string; ruta: string }>
+  /** Juegos de 0 bytes. */
+  ficheros_vacios: LibraryLista<LibraryArchivo>
+  /** Ficheros que no son juegos (notas, listas, saves sueltos). */
+  sobras: LibraryLista<LibraryArchivo>
+  /** Imágenes y vídeos cuyo juego ya no está. */
+  media_huerfana: LibraryLista<{ sistema: string; fichero: string; bytes: number }>
+  partidas: { con_partidas: number; sin_partidas: number }
+  /** El espacio por sistema. */
+  espacio: { sistema: string; juegos: number; bytes: number; gb: number }[]
+  /** Los juegos más grandes. */
+  mayores: LibraryArchivo[]
+}
+
+/** El resumen rápido de la biblioteca (sin hashear nada). */
+export interface LibrarySummary {
+  ok: boolean
+  sistemas: {
+    nombre: string
+    juegos: number
+    bytes: number
+    size_human: string
+    con_gamelist: boolean
+  }[]
+  juegos: number
+  bytes: number
+  gb: number
+}
+
+/** Una tanda que se puede deshacer. */
+export interface LibraryBatch {
+  when?: number
+  tipo: string
+  count: number
+  gamelist: string | null
+  files: string[]
+}
+
+/** El estado del trabajo de auditoría (va en segundo plano). */
+export interface LibraryJob {
+  ok: boolean
+  id: string
+  tipo: string
+  estado: 'trabajando' | 'listo' | 'error'
+  hechos: number
+  total: number
+  actual: string
+  porcentaje: number
+  mensaje: string
+  error?: string
+  resultado?: LibraryAudit
+}

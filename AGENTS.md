@@ -78,7 +78,7 @@ El proyecto se trabaja en **un solo repositorio**:
   (`templates/index.html`), que sigue siendo el respaldo. Ver «Frontend» más abajo.
 - **Paquete `romtools/`**: el backend ya no es un solo fichero. `app.py` sigue siendo el servidor
   HTTP, pero la seccion **Herramientas** (DAT, renombrado y formatos) vive en el paquete
-  `romtools/` (stdlib puro: `dats`, `identify`, `naming`, `sets`, `rename`, `formats`). Se importa
+  `romtools/` (stdlib puro: `dats`, `identify`, `naming`, `sets`, `rename`, `formats`, `library`). Se importa
   de forma protegida (`HAS_ROMTOOLS`): si el paquete no esta en la consola, la API responde con un
   error claro y el resto de la app no se cae. `python3 -m romtools dats --install` baja los DAT.
   - **El nombre destino es el del DAT**, como en Romulus Manager; la composicion propia solo es
@@ -113,6 +113,20 @@ El proyecto se trabaja en **un solo repositorio**:
     repunta las etiquetas; el `gamelist.xml` original se guarda en el journal para que
     `undo_last()` lo restaure integro. La media solo se toca si el nombre es `<tallo>-<algo>`
     exacto, para no pisar la de otro juego que comparte prefijo.
+- **La biblioteca de ROMs se radiografía sin hashearla** (`romtools/library.py`):
+  - **Nunca se hashea la biblioteca entera**: los duplicados se buscan con una **huella rápida**
+    (tamaño + los primeros y los últimos 64 KB) y solo los candidatos se confirman con el hash
+    completo, con un **presupuesto de bytes** (8 GB). Los grupos que no caben salen como
+    *candidato*, no como duplicado confirmado: la interfaz no afirma lo que no sabe.
+  - **Nada se borra**: lo que sobra va a una **cuarentena** (`/userdata/roms/.quarantine/`, dentro de
+    la propia biblioteca, asi que el move es un renombrado) y cada tanda queda en un journal
+    (`batocera_manager_library.json`) para poder **deshacerla**. Limpiar el `gamelist.xml` guarda
+    tambien el texto original.
+  - La ruta de la cuarentena se comprueba: un `../` no puede sacar ficheros de la biblioteca.
+  - La radiografia va **en segundo plano con progreso** (como el plan de renombrado):
+    `GET /api/library/audit/start` + `GET /api/library/job?id=…`.
+  - La ruta `/roms` monta **una pagina con dos pestanas** (ROMs | BIOS): `pages/RomsBios.tsx` decide
+    cual se ve y cada pagina pinta su propia `Topbar`. `pages/Roms.tsx` es la de las ROMs.
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
 - `install.sh` is current (v1.6): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
@@ -159,7 +173,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 755 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 810 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,

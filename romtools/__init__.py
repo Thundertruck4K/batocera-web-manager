@@ -6,6 +6,7 @@ temas que se pueden probar por separado.
 
     dats      de donde salen los DAT, como se descargan y como se indexan
     identify  hashes, firmas de disco y heuristicas de titulo
+    library   el inventario de la biblioteca, los duplicados y la auditoria
     naming    las convenciones de set y como se compone un nombre
     sets      que variante es la buena cuando hay varias
     rename    el plan de renombrado, su ejecucion y la vuelta atras
@@ -19,8 +20,8 @@ ideas (deteccion por magia de cabecera, puntuacion de variantes, renombrado
 segundo la convencion) y sus fuentes de datos.
 """
 
-from . import dats, formats, identify, jobs, naming, progress, rename, sets
+from . import dats, formats, identify, jobs, library, naming, progress, rename, sets
 
-__all__ = ["dats", "formats", "identify", "jobs", "naming", "progress",
-           "rename", "sets"]
+__all__ = ["dats", "formats", "identify", "jobs", "library", "naming",
+           "progress", "rename", "sets"]
 __version__ = "1.0"
