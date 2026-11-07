@@ -403,6 +403,80 @@ def test_reparar_un_sistema_desconocido(appmod, entorno):
     assert "no se conoce el sistema" in resultado["error"]
 
 
+def test_reparar_no_escribe_un_zip_incompleto(appmod, entorno):
+    """Si no se puede reunir todo, no se escribe un ZIP a medias."""
+    entorno["script"].write_text(_script({
+        "adam": {"name": "Coleco Adam", "biosFiles": [
+            {"md5": "", "file": "bios/adam.zip"},
+            {"md5": "01bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 57.u8",
+             "file": "bios/adam.zip"},
+            {"md5": "02bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 58.u8",
+             "file": "bios/adam.zip"},
+        ]}}), encoding="utf-8")
+    _reset(appmod)
+    _zip(entorno["bios"] / "otro.zip", {"alf rev 57.u8": b"ALF ROM"})
+    resultado = appmod.repair_bios(entorno["settings"], "adam", "adam.zip")
+    assert resultado["ok"] is False
+    assert resultado["faltan"] == ["alf rev 58.u8"]
+    # El destino no se crea: mejor no tener nada que tener un ZIP a medias.
+    assert not (entorno["bios"] / "adam.zip").exists()
+
+
+def test_reparar_reutiliza_lo_que_ya_hay_en_el_destino(appmod, entorno):
+    """Lo que el destino ya tiene se cuenta: sólo falta el resto."""
+    entorno["script"].write_text(_script({
+        "adam": {"name": "Coleco Adam", "biosFiles": [
+            {"md5": "", "file": "bios/adam.zip"},
+            {"md5": "01bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 57.u8",
+             "file": "bios/adam.zip"},
+            {"md5": "02bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 58.u8",
+             "file": "bios/adam.zip"},
+        ]}}), encoding="utf-8")
+    _reset(appmod)
+    _zip(entorno["bios"] / "adam.zip", {"alf rev 57.u8": b"ALF ROM"})
+    _zip(entorno["bios"] / "otro.zip", {"alf rev 58.u8": b"ALF ROM 2"})
+    resultado = appmod.repair_bios(entorno["settings"], "adam", "adam.zip")
+    assert resultado["ok"] is True
+    with zipfile.ZipFile(entorno["bios"] / "adam.zip") as z:
+        assert sorted(z.namelist()) == ["alf rev 57.u8", "alf rev 58.u8"]
+
+
+def test_un_zip_incompleto_no_es_reparable(appmod, entorno):
+    """Si ningún otro ZIP tiene lo que falta, el estado es «falta un fichero»."""
+    entorno["script"].write_text(_script({
+        "adam": {"name": "Coleco Adam", "biosFiles": [
+            {"md5": "", "file": "bios/adam.zip"},
+            {"md5": "01bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 57.u8",
+             "file": "bios/adam.zip"},
+            {"md5": "02bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 58.u8",
+             "file": "bios/adam.zip"},
+        ]}}), encoding="utf-8")
+    _reset(appmod)
+    _zip(entorno["bios"] / "adam.zip", {"alf rev 57.u8": b"ALF ROM"})
+    _zip(entorno["bios"] / "otro.zip", {"alf rev 57.u8": b"ALF ROM"})
+    data = appmod.scan_bios(entorno["settings"])
+    fichero = data["systems"]["adam"]["files"][0]
+    assert fichero["estado"] == "miembro_falta"
+    assert fichero["faltan"] == ["alf rev 58.u8"]
+
+
+def test_ausente_si_otro_zip_solo_trae_parte(appmod, entorno):
+    """Si ningún ZIP trae todo lo que hace falta, no es reparable."""
+    entorno["script"].write_text(_script({
+        "adam": {"name": "Coleco Adam", "biosFiles": [
+            {"md5": "", "file": "bios/adam.zip"},
+            {"md5": "01bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 57.u8",
+             "file": "bios/adam.zip"},
+            {"md5": "02bba3bcd46d8a586dd6ec555accc133", "zippedFile": "alf rev 58.u8",
+             "file": "bios/adam.zip"},
+        ]}}), encoding="utf-8")
+    _reset(appmod)
+    _zip(entorno["bios"] / "otro.zip", {"alf rev 57.u8": b"ALF ROM"})
+    data = appmod.scan_bios(entorno["settings"])
+    fichero = data["systems"]["adam"]["files"][0]
+    assert fichero["estado"] == "ausente"
+
+
 def test_reparar_no_sale_de_la_carpeta(appmod, entorno):
     """Una ruta con `..` no se puede colar."""
     entorno["script"].write_text(_script(_catalogo_zip("0" * 32)), encoding="utf-8")

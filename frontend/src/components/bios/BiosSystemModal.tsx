@@ -237,6 +237,8 @@ export function BiosSystemModal({
           /** Sin contenido en la consola: hay que buscarlo por fuera o subirlo. */
           const buscar = conProblema
           const enlaceFichero = file.github || busquedaGitHub(file.file)
+          /** El enlace busca el nombre del fichero, no su ruta. */
+          const nombreFichero = file.file.split('/').pop() ?? file.file
           return (
             <li
               key={file.file}
@@ -338,7 +340,7 @@ export function BiosSystemModal({
                       className="inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
                     >
                       <ExternalLink className="size-3" />
-                      Buscar {file.file} en GitHub
+                      Buscar {nombreFichero} en GitHub
                     </a>
                     {github && (
                       <a

@@ -3194,6 +3194,22 @@ def _member_sources(zindex, members, skip=None):
     return hits
 
 
+def _zip_coverage(zindex, faltan, skip=None):
+    """Qué miembros que faltan hay en los ZIP de la consola.
+
+    Devuelve {miembro: zip}. Si la cobertura llega a todos los que faltan, la
+    BIOS se puede reparar sin salir de la tarjeta.
+    """
+    cubiertos = {}
+    for zrel, contents in zindex.items():
+        if zrel == skip:
+            continue
+        for nombre in faltan:
+            if nombre in contents:
+                cubiertos.setdefault(nombre, zrel)
+    return cubiertos
+
+
 def _bios_entry_state(rel, entry, bios_dir, index, zindex):
     """Estado de un fichero de BIOS esperado. Devuelve (estado, detalle).
 
@@ -3209,11 +3225,12 @@ def _bios_entry_state(rel, entry, bios_dir, index, zindex):
     md5s = entry.get("md5s") or []
     if members:
         # El catálogo dice qué fichero va dentro del ZIP (`zippedFile`).
+        requeridos = [m["name"] for m in members]
         if not exists:
-            source = _member_sources(zindex, members)
-            if source:
-                return "reparable_zip", {"fuente": source[0][0],
-                                         "miembro": source[0][1]}
+            cubiertos = _zip_coverage(zindex, requeridos)
+            if len(cubiertos) == len(requeridos):
+                return "reparable_zip", {"fuente": next(iter(cubiertos.values())),
+                                         "miembro": sorted(cubiertos)[0]}
             return "ausente", {}
         contents = _zip_members(path)
         if contents is None:
@@ -3221,10 +3238,12 @@ def _bios_entry_state(rel, entry, bios_dir, index, zindex):
         faltan = [m["name"] for m in members if m["name"] not in contents]
         if not faltan:
             return "ok", {"miembros": len(members)}
-        source = _member_sources(zindex, members, skip=rel)
-        if source:
-            return "reparable_zip", {"fuente": source[0][0],
-                                     "miembro": source[0][1],
+        # Sólo es reparable si, con lo que hay en la consola, se puede
+        # completar: cada miembro que falta tiene que estar en algún ZIP.
+        cubiertos = _zip_coverage(zindex, faltan, skip=rel)
+        if len(cubiertos) == len(faltan):
+            return "reparable_zip", {"fuente": next(iter(cubiertos.values())),
+                                     "miembro": sorted(cubiertos)[0],
                                      "faltan": faltan}
         return "miembro_falta", {"faltan": faltan}
     if not exists:
@@ -3360,15 +3379,27 @@ def repair_bios(settings, slug, rel):
     # Primero se busca el contenido y sólo después se toca el destino: si no
     # hay nada que poner, el fichero que ya estaba no se mueve de sitio.
     if members:
-        # ZIP: hay que reunir los miembros que exige el catálogo.
+        # ZIP: hay que reunir TODOS los miembros que exige el catálogo.
         wanted = {m["name"]: m.get("md5") for m in members}
         found = {}
-        candidates = [z for z, _ in _member_sources(zindex, members, skip=rel)]
+        # Lo que ya está en el destino se reutiliza (si el ZIP se abre).
+        if dest.exists():
+            contents_dest = _zip_members(dest) or {}
+            for name in wanted:
+                if name not in contents_dest:
+                    continue
+                data = _zip_read_member(dest, name)
+                if data is not None:
+                    found[name] = data
+        # Y lo que falte, de los otros ZIP de la consola.
+        faltan = [n for n in wanted if n not in found]
+        candidates = [z for z, _ in
+                      _member_sources(zindex, [{"name": n} for n in faltan], skip=rel)]
         for zrel in candidates:
             contents = zindex.get(zrel)
             if not contents:
                 contents = _zip_members(Path(bios_dir) / zrel) or {}
-            for name in wanted:
+            for name in faltan:
                 if name in found:
                     continue
                 if name not in contents:
@@ -3379,9 +3410,10 @@ def repair_bios(settings, slug, rel):
                 found[name] = data
             if len(found) == len(wanted):
                 break
-        if not found:
+        if len(found) != len(wanted):
+            # No se escribe un ZIP a medias: el destino no se toca.
             return {"ok": False,
-                    "error": "no se ha encontrado el contenido en la consola",
+                    "error": "no se ha encontrado todo el contenido en la consola",
                     "faltan": [n for n in wanted if n not in found]}
         quarantine = _bios_quarantine(bios_dir, dest) if dest.exists() else None
         tmp = dest.with_suffix(dest.suffix + ".tmp")
