@@ -150,6 +150,40 @@ def tools_rom_files(settings, system, limit=400):
     return out
 
 
+#: Extensiones de un volcado de disco que va dentro de una carpeta (Wii).
+_DUMP_EN_CARPETA = {".wbfs", ".wia"}
+
+
+def _juegos_en_carpetas(folder):
+    """Los juegos que viven dentro de una carpeta (los de Wii).
+
+    En Wii cada juego es una carpeta (``Juego [REXP01]``) con el volcado
+    dentro. Lo que se renombra es la carpeta; el fichero se queda con el
+    codigo del disco, que es como lo guarda Batocera.
+    """
+    out = []
+    try:
+        subcarpetas = sorted(p for p in folder.iterdir() if p.is_dir())
+    except OSError:
+        return out
+    for sub in subcarpetas:
+        if sub.name == "media" or sub.name.lower() in FILTER_DIRS:
+            continue
+        try:
+            hijos = sorted(p for p in sub.iterdir() if p.is_file())
+        except OSError:
+            continue
+        elegido = None
+        for hijo in hijos:
+            if os.path.splitext(hijo.name)[1].lower() in _DUMP_EN_CARPETA:
+                elegido = hijo
+                break
+        if elegido is None:
+            continue
+        out.append({"path": str(elegido), "carpeta": sub.name, "ext": ""})
+    return out
+
+
 def tools_rename_plan(settings, system, min_confidence=0.75):
     """El plan de renombrado de un sistema (no toca el disco)."""
     folder = system_dir(settings, system)
@@ -162,6 +196,7 @@ def tools_rename_plan(settings, system, min_confidence=0.75):
             exts = _TOOLS_EXT
         files = [str(p) for p in sorted(folder.iterdir())
                  if p.is_file() and is_game_file(p.name, exts)]
+        files += _juegos_en_carpetas(folder)
     except OSError:
         pass
     plan = _rt_rename.plan_rename(files, index, min_confidence=min_confidence)

@@ -941,6 +941,169 @@ def test_deshacer_el_renombrado_deja_el_gamelist_como_estaba(tmp_path):
     assert (carpeta / "gamelist.xml").read_text(encoding="utf-8") == GAMELIST
 
 
+# ── Los discos de Wii: el codigo de juego cruza con el DAT ────────────────
+
+#: El DAT de Wii de Redump: el codigo de juego va en el serial.
+WII_DAT = [
+    {"name": "Excite Truck (USA)", "description": "Excite Truck (USA)",
+     "serial": "RVL-REXE-USA", "region": "USA",
+     "roms": [{"name": "Excite Truck (USA).iso", "size": 4699979776,
+               "crc": "762F0503", "md5": "214B54C48427CE47C183E83195DBFCDE",
+               "sha1": "43724FDD3F0DBDBF23DCAD2B3036749B53DE173B"}]},
+    {"name": "Excite Truck (Europe)", "description": "Excite Truck (Europe)",
+     "serial": "RVL-REXP-EUR", "region": "Europe",
+     "roms": [{"name": "Excite Truck (Europe).iso", "size": 4699979776,
+               "crc": "D9D64AFF", "md5": "844E3F34AFF950F7919259D7FDB2E986",
+               "sha1": "D9C2DE6B049BD756FDC553DF0972EF52AE901D0F"}]},
+]
+
+#: El MD5 que lleva el propio juego dentro del volcado.
+WII_MD5 = "5fd682d8ef74b90f8d538f92a75318a1"
+
+
+def _wbfs(codigo="REXP01", titulo="Excite Truck"):
+    """Un volcado de Wii con la informacion del disco, como la lleva el WBFS."""
+    head = bytearray(0x400)
+    head[0:4] = b"WBFS"
+    head[4:8] = (1212416).to_bytes(4, "big")
+    base = 0x200
+    head[base:base + 6] = codigo.encode("ascii")
+    head[base + 0x1C:base + 0x20] = bytes.fromhex("5d1c9ea3")
+    head[base + 0x20:base + 0x20 + len(titulo)] = titulo.encode("ascii")
+    head[base + 0xEC:base + 0xF0] = b"MD5#"
+    head[base + 0xF0:base + 0x100] = bytes.fromhex(WII_MD5)
+    return bytes(head) + b"\x00" * 8192
+
+
+def test_el_volcado_de_wii_dice_su_codigo_de_juego(tmp_path):
+    """Del WBFS se leen el codigo de juego, el MD5 del juego y el titulo."""
+    wad = tmp_path / "REXP01.wbfs"
+    wad.write_bytes(_wbfs())
+
+    disco = identify.wii_disc_info(str(wad))
+
+    assert disco is not None
+    assert disco.game_code == "REXP"
+    assert disco.maker_code == "01"
+    assert disco.md5 == WII_MD5
+    assert disco.title == "Excite Truck"
+    # La region va en el ultimo caracter del codigo de juego.
+    assert disco.region == "EUROPE"
+
+
+def test_un_fichero_normal_no_tiene_informacion_de_disco(tmp_path):
+    """Lo que no es un disco de Wii no se inventa informacion."""
+    rom = tmp_path / "Juego.smd"
+    rom.write_bytes(b"ROM")
+
+    assert identify.wii_disc_info(str(rom)) is None
+
+
+def test_el_indice_del_dat_guarda_el_codigo_de_juego():
+    """El codigo de juego es la clave con la que el DAT identifica un disco."""
+    indice = dats.build_index(WII_DAT)
+
+    assert "REXP" in indice["by_gamecode"]
+    assert indice["by_gamecode"]["REXP"][0]["name"] == "Excite Truck (Europe)"
+
+
+def test_el_volcado_de_wii_se_identifica_por_el_codigo(tmp_path):
+    """El nombre del fichero no dice nada, pero el codigo de dentro si."""
+    wad = tmp_path / "REXP01.wbfs"
+    wad.write_bytes(_wbfs())
+    indice = dats.build_index(WII_DAT)
+
+    match = identify.identify(str(wad), indice, hash_allowed=False)
+
+    assert match.method == "gamecode"
+    assert match.entry["name"] == "Excite Truck (Europe)"
+    assert match.confidence >= 0.95
+    # El cruce enseña los dos lados: el hash del juego y el del DAT.
+    assert match.signature["wii"]["game_code"] == "REXP"
+    assert match.signature["wii"]["md5"] == WII_MD5
+
+
+def test_el_plan_de_wii_renombra_la_carpeta_del_juego(tmp_path):
+    """En Wii el juego es una carpeta: lo que se renombra es la carpeta."""
+    carpeta = tmp_path / "Excite Truck [REXP01]"
+    carpeta.mkdir()
+    (carpeta / "REXP01.wbfs").write_bytes(_wbfs())
+    indice = dats.build_index(WII_DAT)
+
+    plan = rename.plan_rename(
+        [{"path": str(carpeta / "REXP01.wbfs"),
+          "carpeta": "Excite Truck [REXP01]", "ext": ""}], indice)
+
+    assert len(plan["items"]) == 1
+    item = plan["items"][0]
+    assert item["action"] == "renombrar"
+    assert item["method"] == "gamecode"
+    assert item["current"] == "Excite Truck [REXP01]"
+    # La carpeta conserva el sufijo con el codigo del disco.
+    assert item["proposed"] == "Excite Truck (Europe) [REXP01]"
+    # El cruce se enseña con los hashes de los dos lados.
+    assert item["hashes"]["archivo"]["game_code"] == "REXP"
+    assert item["hashes"]["dat"]["crc"] == "D9D64AFF"
+
+
+def test_el_indice_guardado_conserva_el_codigo_de_juego(tmp_path):
+    """El cruce por codigo sobrevive al viaje del indice por disco."""
+    compacto = dats.build_index_compacto(WII_DAT)
+    indice = {"juegos": compacto["juegos"], "by_hash": compacto["by_hash"],
+              "by_serial": compacto["by_serial"], "by_name": compacto["by_name"],
+              "by_name_size": compacto["by_name_size"],
+              "by_title": compacto["by_title"],
+              "by_gamecode": compacto["by_gamecode"]}
+    (tmp_path / "wii.json").write_text(json.dumps(indice), encoding="utf-8")
+
+    cargado = dats.load_index("wii", str(tmp_path))
+
+    assert "REXP" in cargado["by_gamecode"]
+    assert cargado["by_gamecode"]["REXP"][0]["name"] == "Excite Truck (Europe)"
+
+
+def test_al_renombrar_wii_se_actualiza_el_gamelist(tmp_path):
+    """La ruta del gamelist lleva la carpeta, asi que tambien se actualiza."""
+    base = tmp_path / "wii"
+    carpeta = base / "Excite Truck [REXP01]"
+    carpeta.mkdir(parents=True)
+    (carpeta / "REXP01.wbfs").write_bytes(_wbfs())
+    (base / "images").mkdir()
+    (base / "images" / "REXP01-image.png").write_bytes(b"PNG")
+    (base / "gamelist.xml").write_text(
+        '''<?xml version="1.0"?>
+<gameList>
+    <game id="1">
+        <path>./Excite Truck [REXP01]/REXP01.wbfs</path>
+        <name>Excite Truck</name>
+        <image>./images/REXP01-image.png</image>
+        <genre>Conduccion</genre>
+    </game>
+</gameList>
+''', encoding="utf-8")
+    indice = dats.build_index(WII_DAT)
+    plan = rename.plan_rename(
+        [{"path": str(carpeta / "REXP01.wbfs"),
+          "carpeta": "Excite Truck [REXP01]", "ext": ""}], indice)
+
+    salida = rename.apply_plan(plan, str(base), root=str(tmp_path / "journal"))
+
+    assert salida["ok"] is True
+    # Se renombra la carpeta y el volcado se queda dentro con su nombre.
+    assert (base / "Excite Truck (Europe) [REXP01]" / "REXP01.wbfs").exists()
+    gamelist = (base / "gamelist.xml").read_text(encoding="utf-8")
+    assert "<path>./Excite Truck (Europe) [REXP01]/REXP01.wbfs</path>" in gamelist
+    # La media va con el codigo del disco: no se toca.
+    assert (base / "images" / "REXP01-image.png").exists()
+    assert "<genre>Conduccion</genre>" in gamelist
+
+    deshacer = rename.undo_last(root=str(tmp_path / "journal"))
+    assert deshacer["ok"] is True
+    assert (base / "Excite Truck [REXP01]" / "REXP01.wbfs").exists()
+    assert "<path>./Excite Truck [REXP01]/REXP01.wbfs</path>" in \
+        (base / "gamelist.xml").read_text(encoding="utf-8")
+
+
 def test_sin_gamelist_no_pasa_nada(tmp_path):
     """Un sistema sin gamelist.xml se renombra igual, sin que se queje."""
     (tmp_path / "Juego.smd").write_bytes(b"ROM")

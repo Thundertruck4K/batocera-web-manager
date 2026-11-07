@@ -12,6 +12,11 @@ Una ROM se puede identificar de tres maneras, de mas fiable a menos:
    una heuristica: por eso devuelve candidatos con su confianza y nunca
    renombra por debajo del umbral que se le pida.
 
+Los discos de **Wii** tienen una via propia: el volcado (WBFS, WIA) o la ISO
+llevan dentro el **codigo de juego** (``REXP``) y el **hash MD5 del juego**.
+El codigo es la clave que usa el DAT (``RVL-REXP-EUR``), asi que el juego se
+identifica sin heuristicas y sin hashear los 620 MB del volcado.
+
 Las firmas se leen de la cabecera con los offsets de cada formato. Los offsets
 son un hecho del formato, no una implementacion: se pueden comprobar con
 cualquier volcado de disco.
@@ -278,6 +283,118 @@ def _volume_id(head: bytes) -> str | None:
     return text or None
 
 
+# ── Wii: el codigo de juego va dentro del disco ──────────────────────────
+
+#: Numero magico del disco de Wii (5D1C9EA3).
+_WII_DISC_MAGIC = bytes.fromhex("5d1c9ea3")
+#: Marcador del hash MD5 del juego dentro de la informacion del disco.
+_WII_MD5_MARK = b"MD5#"
+#: Distancia entre el marcador y el principio del bloque de informacion.
+_WII_DISC_BASE = 0xEC
+#: La region de un disco de Wii va en el ultimo caracter del codigo de juego.
+WII_REGION_CHARS = {"E": "USA", "P": "EUROPE", "J": "JAPAN", "K": "KOREA",
+                    "T": "TAIWAN"}
+
+
+@dataclass
+class WiiDisc:
+    """Lo que dice de si mismo un volcado de disco de Wii."""
+
+    game_code: str = ""
+    maker_code: str = ""
+    disc_number: int = 0
+    md5: str = ""
+    magic: str = ""
+    title: str = ""
+
+    @property
+    def region(self) -> str:
+        """La region del disco, segun el ultimo caracter del codigo de juego."""
+        return WII_REGION_CHARS.get(self.game_code[-1:].upper(), "")
+
+    def as_dict(self) -> dict:
+        return {k: v for k, v in self.__dict__.items() if v}
+
+
+def _texto_legible(data: bytes) -> str:
+    """El texto de un trozo de bytes, si es texto de verdad."""
+    try:
+        texto = data.decode("ascii")
+    except UnicodeDecodeError:
+        return ""
+    texto = texto.split("\x00")[0].strip()
+    if len(texto) < 3:
+        return ""
+    if not all(c.isprintable() for c in texto):
+        return ""
+    return texto
+
+
+def wii_disc_info(path: str, head: bytes | None = None) -> WiiDisc | None:
+    """La informacion del disco de Wii que lleva dentro un volcado.
+
+    Los volcados de Wii (WBFS, WIA) y las ISO llevan un bloque con el codigo
+    de juego, el codigo de fabricante y el hash MD5 del propio juego. El
+    bloque se localiza por el marcador ``MD5#``, que va siempre en el mismo
+    sitio dentro de el, para que el lector valga igual para los tres formatos.
+
+    Devuelve ``None`` si el fichero no es un disco de Wii.
+    """
+    if head is None:
+        head = _read_head(path, size=0x10000)
+    if not head:
+        return None
+    pos = head.find(_WII_MD5_MARK)
+    if pos < _WII_DISC_BASE:
+        return None
+    base = pos - _WII_DISC_BASE
+    bloque = head[base:base + 0x100]
+    if len(bloque) < 0x20:
+        return None
+    if _WII_DISC_MAGIC not in bloque[0:0x40]:
+        return None
+    codigo = _texto_legible(bloque[0:4])
+    if not codigo or not codigo.isalnum():
+        return None
+    fabricante = bloque[4:6].decode("ascii", "ignore")
+    return WiiDisc(
+        game_code=codigo.upper(),
+        maker_code=fabricante,
+        disc_number=bloque[6],
+        md5=bloque[_WII_DISC_BASE + 4:_WII_DISC_BASE + 20].hex(),
+        magic=_WII_DISC_MAGIC.hex(),
+        title=_texto_legible(bloque[0x20:0x60]),
+    )
+
+
+def match_by_gamecode(index: dict, code: str) -> list:
+    """Las entradas del DAT que tienen ese codigo de juego.
+
+    Un disco de Wii puede tener varias entradas (una por cada variante de
+    idiomas), asi que se devuelven todas y luego se elige una.
+    """
+    if not code:
+        return []
+    mapa = index.get("by_gamecode") or {}
+    encontrados = mapa.get(code.upper()) or []
+    if isinstance(encontrados, dict):
+        return [encontrados]
+    return list(encontrados)
+
+
+def _region_de_entrada(entry: dict) -> str:
+    """La region de una entrada del DAT ("USA", "Europe"...)."""
+    region = (entry.get("region") or "").strip()
+    if region:
+        return region
+    nombre = (entry.get("name") or entry.get("description") or "").upper()
+    for tag in ("USA", "EUROPE", "JAPAN", "KOREA", "TAIWAN", "AUSTRALIA", "BRAZIL"):
+        if "(" + tag in nombre:
+            return tag.title()
+    return ""
+
+
+
 @dataclass
 class Match:
     """Resultado de identificar una ROM contra un DAT."""
@@ -309,6 +426,28 @@ class Match:
             "note": self.note,
             "matched": self.matched,
         }
+
+
+def _elegir_por_codigo(entradas: list, disco: WiiDisc) -> tuple:
+    """Elige la entrada del DAT para un codigo de juego.
+
+    Un mismo disco puede tener varias entradas (una por cada variante de
+    idiomas). Se prefiere la de la misma region y, a igualdad, la que mas se
+    parece al titulo que lleva el disco.
+    """
+    if len(entradas) == 1:
+        return entradas[0], 1
+    region = disco.region
+    scored = []
+    for entrada in entradas:
+        region_dat = _region_de_entrada(entrada).upper()
+        coincide = bool(region) and region_dat.startswith(region[:3])
+        titulo = disco.title or ""
+        nombre = entrada.get("description") or entrada.get("name") or ""
+        parecido = title_similarity(titulo, nombre) if titulo else 0.0
+        scored.append((1 if coincide else 0, parecido, entrada))
+    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return scored[0][2], len(entradas)
 
 
 def match_by_hash(index: dict, hashes: dict) -> dict | None:
@@ -420,7 +559,34 @@ def identify(path: str, index: dict | None, title_hint: str | None = None,
         match.note = "el nombre y el tamano coinciden con los del DAT"
         return match
 
-    # 2 · Por hash: es la prueba definitiva, pero hay que leer el fichero
+    # 2 · Los discos de Wii llevan el codigo de juego dentro: es la via
+    #     segura y no obliga a hashear los 620 MB del volcado. El codigo es
+    #     la clave con la que el DAT identifica ese disco.
+    disco = wii_disc_info(path, head=head)
+    if disco and disco.game_code:
+        match.signature["wii"] = disco.as_dict()
+        encontrados = match_by_gamecode(index, disco.game_code)
+        if encontrados:
+            elegido, variantes = _elegir_por_codigo(encontrados, disco)
+            match.method = "gamecode"
+            match.entry = elegido
+            match.title = elegido.get("description") or elegido.get("name")
+            match.serial = elegido.get("serial")
+            match.candidates = [{"entry": e, "score": 1.0} for e in encontrados]
+            region_disco = disco.region
+            region_dat = _region_de_entrada(elegido)
+            if region_disco and region_dat and not region_dat.upper().startswith(region_disco[:3]):
+                match.confidence = 0.9
+                match.note = (f"el codigo {disco.game_code} es del DAT, pero la region "
+                              f"no cuadra ({region_dat} frente a {region_disco})")
+            else:
+                match.confidence = 0.99
+                match.note = f"codigo de juego {disco.game_code} leido del disco"
+            if variantes > 1:
+                match.note += f" ({variantes} variantes del mismo disco)"
+            return match
+
+    # 3 · Por hash: es la prueba definitiva, pero hay que leer el fichero
     #     entero, asi que solo se hace si el nombre no cuadra y hay presupuesto.
     if hash_allowed:
         hashes = hash_file(path)
@@ -434,7 +600,7 @@ def identify(path: str, index: dict | None, title_hint: str | None = None,
             match.serial = found.get("serial")
             return match
 
-    # 3 · Por el serial del disco.
+    # 4 · Por el serial del disco.
     signature = disc_signature(path, head=head)
     match.signature.update(signature.as_dict())
     found = match_by_serial(index, signature.serial)
@@ -446,7 +612,7 @@ def identify(path: str, index: dict | None, title_hint: str | None = None,
         match.serial = signature.serial
         return match
 
-    # 4 · Por titulo: es una heuristica y se marca como tal.
+    # 5 · Por titulo: es una heuristica y se marca como tal.
     hint = title_hint or os.path.basename(path)
     candidates = match_by_title(index, hint)
     match.candidates = candidates

@@ -544,6 +544,18 @@ def _serial_of(name: str) -> str | None:
     return match.group(1) if match else None
 
 
+def _gamecode_of(serial: str | None) -> str:
+    """El codigo de juego de un serial del DAT ("RVL-REXP-EUR" -> "REXP").
+
+    Es la clave con la que los discos de Wii se identifican: el volcado
+    lleva el codigo dentro y el DAT lo lleva en el serial.
+    """
+    if not serial:
+        return ""
+    match = _GAMECODE_SERIAL_RE.match(serial.strip().upper())
+    return match.group(1) if match else ""
+
+
 def build_index(games: Sequence[dict]) -> dict:
     """Construye los mapas de busqueda a partir de los juegos de un DAT."""
     compacto = build_index_compacto(games)
@@ -556,11 +568,16 @@ def build_index(games: Sequence[dict]) -> dict:
     for clave, posiciones in compacto["by_title"].items():
         by_title[clave] = [juegos[pos] for pos in posiciones]
 
+    by_gamecode = {}
+    for codigo, posiciones in compacto.get("by_gamecode", {}).items():
+        by_gamecode[codigo] = [juegos[pos] for pos in posiciones]
+
     return {"by_hash": _resolver(compacto["by_hash"]),
             "by_serial": _resolver(compacto["by_serial"]),
             "by_name": _resolver(compacto["by_name"]),
             "by_name_size": compacto["by_name_size"],
-            "by_title": by_title}
+            "by_title": by_title,
+            "by_gamecode": by_gamecode}
 
 
 def build_index_compacto(games: Sequence[dict]) -> dict:
@@ -576,6 +593,7 @@ def build_index_compacto(games: Sequence[dict]) -> dict:
     by_name: dict = {}
     by_name_size: dict = {}
     by_title: dict = {}
+    by_gamecode: dict = {}
 
     for pos, game in enumerate(games):
         for rom in game.get("roms", []):
@@ -599,6 +617,14 @@ def build_index_compacto(games: Sequence[dict]) -> dict:
         serial = game.get("serial")
         if serial:
             by_serial.setdefault(serial.upper(), pos)
+        # El codigo de juego (el de los discos de Wii) va en el serial.
+        for candidato in (serial, *(rom.get("serial") for rom in game.get("roms", []))):
+            codigo = _gamecode_of(candidato)
+            if not codigo:
+                continue
+            lista = by_gamecode.setdefault(codigo, [])
+            if pos not in lista and len(lista) < 12:
+                lista.append(pos)
         title = normalize_title(game.get("description") or game.get("name") or "")
         if title:
             bucket = by_title.setdefault(title, [])
@@ -608,7 +634,7 @@ def build_index_compacto(games: Sequence[dict]) -> dict:
     return {"juegos": list(games),
             "by_hash": by_hash, "by_serial": by_serial,
             "by_name": by_name, "by_name_size": by_name_size,
-            "by_title": by_title}
+            "by_title": by_title, "by_gamecode": by_gamecode}
 
 
 # ── Formato clrmamepro (no es XML) ─────────────────────────────────────
@@ -617,6 +643,9 @@ def build_index_compacto(games: Sequence[dict]) -> dict:
 _CLR_FIELD_RE = re.compile(r'(\w+)\s+"([^"]*)"')
 #: ``clave valor`` (sin comillas), como ``size 8192`` o ``crc 931A0BDC``.
 _CLR_PLAIN_RE = re.compile(r'\b(size|crc|md5|sha1|serial)\s+([^\s")]+)')
+
+#: El codigo de juego de un disco va en el serial del DAT ("RVL-REXP-EUR").
+_GAMECODE_SERIAL_RE = re.compile(r"^[A-Z]{2,4}-([A-Z][A-Z0-9]{3})(?:-|$)")
 
 
 def _clr_block(text: str, start: int) -> tuple:
@@ -794,6 +823,7 @@ def install_dat(system: str, cache_dir: str, timeout: int = 600,
         "by_name": index["by_name"],
         "by_name_size": index["by_name_size"],
         "by_title": index["by_title"],
+        "by_gamecode": index["by_gamecode"],
     }
     side = os.path.join(cache_dir, system + ".json")
     with open(side, "w", encoding="utf-8") as fh:
@@ -841,6 +871,15 @@ def load_index(system: str, cache_dir: str) -> dict | None:
         else:
             by_title[clave] = valores
 
+    by_gamecode = {}
+    for codigo, valores in (meta.get("by_gamecode") or {}).items():
+        if isinstance(valores, list):
+            by_gamecode[codigo] = [
+                juegos[v] if isinstance(v, int) and 0 <= v < len(juegos) else v
+                for v in valores]
+        else:
+            by_gamecode[codigo] = valores
+
     return {
         "by_hash": _resolver(meta.get("by_hash", {})),
         "by_serial": _resolver(meta.get("by_serial", {})),
@@ -848,6 +887,7 @@ def load_index(system: str, cache_dir: str) -> dict | None:
         # Los tamanos no son posiciones: se dejan como estan.
         "by_name_size": meta.get("by_name_size", {}),
         "by_title": by_title,
+        "by_gamecode": by_gamecode,
         "system": system,
         "dat": meta.get("dat"),
         "source": meta.get("source"),

@@ -279,9 +279,33 @@ def rom_target_name(entry: dict, filename: str,
             return name
         if backup is None:
             backup = name
-    if backup:
+    if backup and os.path.splitext(backup)[1].lower() == ext:
         return backup
+    # El DAT no trae ningun fichero con esta extension (un volcado de Wii
+    # frente a la ISO que tiene el DAT): se compone el nombre con la del
+    # DAT y se deja la extension del fichero que hay.
     return target_name(entry, ext, options)
+
+
+#: El sufijo con el codigo del disco que llevan las carpetas de Wii.
+_CODE_SUFFIX_RE = re.compile(r"\s*\[([A-Za-z0-9_.-]+)\]\s*$")
+
+
+def folder_target_name(entry: dict, folder_name: str, ext: str = "",
+                       options: NamingOptions | None = None) -> str:
+    """El nombre destino de la carpeta de un juego.
+
+    Los juegos de Wii viven en una carpeta (``Juego [REXP01]``) con el
+    volcado dentro. El nombre lo da el DAT, pero la carpeta conserva el
+    sufijo con el codigo del disco, que es como los guarda Batocera.
+    """
+    base = target_name(entry, "", options)
+    match = _CODE_SUFFIX_RE.search(folder_name or "")
+    if match:
+        base = f"{base} [{match.group(1)}]"
+    if ext:
+        base += ext if ext.startswith(".") else "." + ext
+    return base
 
 
 def fallback_name(filename: str, options: NamingOptions | None = None,

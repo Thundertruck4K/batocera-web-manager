@@ -26,6 +26,7 @@ const METODOS: Record<string, string> = {
   nombre: 'nombre idéntico al del DAT',
   serial: 'serial del disco',
   titulo: 'título parecido',
+  gamecode: 'código de juego del disco',
 }
 
 function etiquetaAccion(item: ToolsRenameItem): { texto: string; clase: string } {
@@ -309,6 +310,17 @@ export function ToolsRenamePage() {
                       )}
                       {item.reason && (
                         <p className="mt-0.5 text-[11px] text-muted-foreground/80">{item.reason}</p>
+                      )}
+                      {item.hashes?.archivo?.game_code && (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+                          Código {item.hashes.archivo.game_code}
+                          {item.hashes.archivo.region ? ` (${item.hashes.archivo.region})` : ''}
+                          {item.hashes.archivo.md5
+                            ? ` · MD5 del juego ${item.hashes.archivo.md5.slice(0, 12)}…`
+                            : ''}
+                          {item.hashes.dat?.crc ? ` · DAT crc ${item.hashes.dat.crc}` : ''}
+                          {item.hashes.dat?.md5 ? ` · md5 ${item.hashes.dat.md5.slice(0, 12)}…` : ''}
+                        </p>
                       )}
                       {item.companions.length > 0 && (
                         <p className="mt-0.5 text-[11px] text-muted-foreground/80">

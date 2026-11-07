@@ -661,6 +661,14 @@ confianza) antes de tocar nada; al aplicar se renombran también el CUE, la M3U 
 acompañantes; y cada tanda deja un journal en `/userdata/system/batocera_manager_renames.json`,
 con un botón para **deshacer** la última.
 
+**En Wii se identifica por el código de juego.** El nombre del fichero no dice nada (el
+volcado se llama `REXP01.wbfs`), pero el disco lleva dentro su código de juego (`REXP`) y el
+hash MD5 del juego, y el DAT guarda ese mismo código en su serial (`RVL-REXP-EUR`). El cruce es
+por tanto exacto y no cuesta hashear los 620 MB del volcado. El plan enseña los dos lados: el
+código y el MD5 que lleva el disco, y el crc32/md5/sha1 que tiene el DAT (que son los de la ISO
+de 4,7 GB, no los del volcado). Cada juego de Wii es una carpeta (`Juego [REXP01]`), así que lo
+que se renombra es la carpeta, conservando el sufijo con el código del disco.
+
 **Renombrar actualiza el `gamelist.xml`.** Un nombre nuevo sin actualizar la lista deja la
 biblioteca descuadrada: EmulationStation seguiría apuntando a ficheros que ya no existen y las
 carátulas se quedarían sin juego. Al aplicar, el manager actualiza el `<path>` de cada ficha,

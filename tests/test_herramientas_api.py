@@ -162,6 +162,29 @@ def test_el_lote_avisa_de_los_ficheros_que_fallan(appmod, tmp_path):
     assert fallidos[0]["error"]
 
 
+#: El DAT de Wii: el codigo de juego va en el serial.
+_WII_DATOS = [
+    {"name": "Excite Truck (USA)", "description": "Excite Truck (USA)",
+     "serial": "RVL-REXE-USA", "region": "USA", "roms": []},
+    {"name": "Excite Truck (Europe)", "description": "Excite Truck (Europe)",
+     "serial": "RVL-REXP-EUR", "region": "Europe", "roms": []},
+]
+
+
+def _wbfs_wii(codigo="REXP01", titulo="Excite Truck"):
+    """Un volcado de Wii con la informacion del disco."""
+    head = bytearray(0x400)
+    head[0:4] = b"WBFS"
+    base = 0x200
+    head[base:base + 6] = codigo.encode("ascii")
+    head[base + 0x1C:base + 0x20] = bytes.fromhex("5d1c9ea3")
+    head[base + 0x20:base + 0x20 + len(titulo)] = titulo.encode("ascii")
+    head[base + 0xEC:base + 0xF0] = b"MD5#"
+    head[base + 0xF0:base + 0x100] = bytes.fromhex(
+        "5fd682d8ef74b90f8d538f92a75318a1")
+    return bytes(head) + b"\x00" * 4096
+
+
 # ── Los DAT ──────────────────────────────────────────────────────────────
 
 def test_el_estado_de_los_dats_dice_como_se_resolvieron(appmod, tmp_path,
@@ -182,6 +205,25 @@ def test_el_estado_de_los_dats_dice_como_se_resolvieron(appmod, tmp_path,
     assert sistemas["snes"]["dat"]
     # Un sistema que no existe no aparece: el frontend lo dice solo.
     assert "inventado" not in sistemas
+
+
+def test_el_plan_de_wii_encuentra_los_juegos_que_viven_en_carpeta(appmod, tmp_path,
+                                                                   monkeypatch):
+    """En Wii cada juego es una carpeta con el volcado dentro."""
+    base = tmp_path / "roms" / "wii"
+    carpeta = base / "Excite Truck [REXP01]"
+    carpeta.mkdir(parents=True)
+    (carpeta / "REXP01.wbfs").write_bytes(_wbfs_wii())
+    indice = appmod._rt_dats.build_index(_WII_DATOS)
+    monkeypatch.setattr(appmod._rt_dats, "load_index", lambda *a, **k: indice)
+
+    plan = appmod.tools_rename_plan(_settings(tmp_path), "wii")
+
+    items = plan["items"]
+    assert len(items) == 1
+    assert items[0]["carpeta"] == "Excite Truck [REXP01]"
+    assert items[0]["method"] == "gamecode"
+    assert items[0]["proposed"] == "Excite Truck (Europe) [REXP01]"
 
 
 def test_al_renombrar_se_actualiza_el_gamelist(appmod, tmp_path):
