@@ -88,6 +88,11 @@ El proyecto se trabaja en **un solo repositorio**:
     juego con mejor region se llevaria el renombrado de otro que comparte subtitulo.
   - **El hash tiene presupuesto** (512 MB por tanda): hashear 42 GB de ROMs es eterno, asi que el
     emparejamiento barato (nombre + tamano) va primero y se avisa cuando no se ha verificado.
+  - **Renombrar regenera el `gamelist.xml`**: `update_gamelist()` actualiza el `<path>` de cada
+    ficha, renombra la media que sigue al juego (`images/`, `videos/`, `manuals/`, `downloads/`) y
+    repunta las etiquetas; el `gamelist.xml` original se guarda en el journal para que
+    `undo_last()` lo restaure integro. La media solo se toca si el nombre es `<tallo>-<algo>`
+    exacto, para no pisar la de otro juego que comparte prefijo.
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
 - `install.sh` is current (v1.6): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running

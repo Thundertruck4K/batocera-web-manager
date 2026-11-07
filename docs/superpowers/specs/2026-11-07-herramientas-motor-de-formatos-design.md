@@ -208,6 +208,24 @@ un CHD de un juego de GameCube tarda minutos, y un lote sin tope sería una conv
 La lista de ficheros de un sistema ya no trae `_info.txt`, `gamelist.xml`, las guardadas (`.srm`,
 `.psv`, `.state`), las capturas, la música ni las notas.
 
+### 5.4 Renombrar es regenerar el `gamelist.xml`
+
+El renombrado no acaba cuando el fichero cambia de nombre: si el `gamelist.xml` se queda con los
+nombres viejos, EmulationStation sigue apuntando a ficheros que ya no existen y las caratulas se
+quedan sin juego. Asi que `apply_plan()` llama a `update_gamelist()`, que:
+
+1. actualiza el `<path>` de cada ficha con el nombre nuevo;
+2. renombra los ficheros de media que siguen al juego (`images/`, `videos/`, `manuals/`,
+   `downloads/`), **solo** si el nombre es exactamente `<tallo>-<algo>` («Clay Fighter-image.png»
+   si, «Clay Fighter 2-image.png» no);
+3. repunta las etiquetas de media (`image`, `video`, `marquee`, `thumbnail`…) y deja el resto de
+   metadatos intactos;
+4. guarda el `gamelist.xml` original en el journal, de modo que `undo_last()` lo restaura integro.
+
+La parte de la SPA que faltaba era el **boton de accion**: el modal de confirmacion estaba escrito
+pero ningun control llamaba a `setConfirmar(true)`, asi que el plan se veia y no se podia aplicar.
+Con el plan calculado aparece **«Aplicar N»**, que abre el modal con la lista de los cambios.
+
 ---
 
 ## 6. Verificación

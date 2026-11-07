@@ -182,3 +182,34 @@ def test_el_estado_de_los_dats_dice_como_se_resolvieron(appmod, tmp_path,
     assert sistemas["snes"]["dat"]
     # Un sistema que no existe no aparece: el frontend lo dice solo.
     assert "inventado" not in sistemas
+
+
+def test_al_renombrar_se_actualiza_el_gamelist(appmod, tmp_path):
+    """El endpoint de renombrado deja el gamelist.xml al día."""
+    base = tmp_path / "roms" / "snes"
+    base.mkdir(parents=True)
+    (base / "images").mkdir()
+    (base / "Juego.smc").write_bytes(b"ROM")
+    (base / "images" / "Juego-image.png").write_bytes(b"PNG")
+    (base / "gamelist.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<gameList><game><path>./Juego.smc</path><name>Juego</name>'
+        '<image>./images/Juego-image.png</image></game></gameList>\n',
+        encoding="utf-8")
+    settings = _settings(tmp_path)
+
+    # Un plan con un solo renombrado, sin necesitar el DAT.
+    plan = {"items": [{"file": "Juego.smc", "proposed": "Juego (USA).smc",
+                       "action": "renombrar", "companions": []}]}
+    monkey = getattr(appmod, "_rt_rename", None)
+    assert monkey is not None
+
+    salida = appmod._rt_rename.apply_plan(plan, str(base),
+                                           root=str(tmp_path / "journal"))
+
+    assert salida["ok"] is True
+    assert (base / "Juego (USA).smc").exists()
+    assert (base / "images" / "Juego (USA)-image.png").exists()
+    gamelist = (base / "gamelist.xml").read_text(encoding="utf-8")
+    assert "./Juego (USA).smc" in gamelist
+    assert "./images/Juego (USA)-image.png" in gamelist

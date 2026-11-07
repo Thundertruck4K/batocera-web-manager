@@ -173,13 +173,21 @@ def tools_rename_plan(settings, system, min_confidence=0.75):
 
 
 def tools_rename_apply(settings, system, include_review=False):
-    """Ejecuta el plan de renombrado y deja journal para poder deshacer."""
+    """Ejecuta el plan de renombrado y deja journal para poder deshacer.
+
+    El ``gamelist.xml`` y la media se actualizan con los nombres nuevos (lo
+    hace el motor de ``romtools``), y EmulationStation se recarga: las tiene
+    en memoria, asi que sin recargarlo seguirian apareciendo los nombres
+    viejos en la TV.
+    """
     folder = system_dir(settings, system)
     plan = tools_rename_plan(settings, system)
     out = _rt_rename.apply_plan(plan, str(folder),
                                 root=tools_journal_root(settings),
                                 include_review=include_review)
     out["system"] = system
+    if out.get("renamed"):
+        out["es"] = reload_es_after_scrape(meta_saved=True)
     return out
 
 
