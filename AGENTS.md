@@ -127,6 +127,12 @@ El proyecto se trabaja en **un solo repositorio**:
     `GET /api/library/audit/start` + `GET /api/library/job?id=…`.
   - La ruta `/roms` monta **una pagina con dos pestanas** (ROMs | BIOS): `pages/RomsBios.tsx` decide
     cual se ve y cada pagina pinta su propia `Topbar`. `pages/Roms.tsx` es la de las ROMs.
+  - **Los juegos que son una carpeta se comparan enteros**: hashear su fichero mas grande compara el
+    motor compartido (ScummVM, DOSBox) y da duplicados falsos — en la consola real eran 5 de 10. La
+    huella rapida es de nombres + tamanos, la confirmacion es del contenido y la agrupacion es por
+    tamano total.
+  - **`Progress.completar()` solo se llama al final** del trabajo: esa llamada marca el job como
+    «listo» con su aviso, asi que entre fases se usa `reiniciar()` o `terminar_unidad()`.
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
 - `install.sh` is current (v1.6): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
