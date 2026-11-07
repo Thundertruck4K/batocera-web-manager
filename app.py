@@ -3034,8 +3034,46 @@ def _match_readme_to_slugs(sections):
     return matched
 
 
+def _bios_catalog_disk_file():
+    """Fichero donde se guarda el último catálogo bueno (respaldo)."""
+    return Path(SETTINGS_FILE).with_name("batocera_manager_bios_catalog.json")
+
+
+def _bios_catalog_disk_read():
+    """Último catálogo guardado en disco, si no es muy viejo."""
+    path = _bios_catalog_disk_file()
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(raw, dict) or not raw.get("systems"):
+        return None
+    if time.time() - float(raw.get("ts") or 0.0) > BIOS_CATALOG_TTL:
+        return None
+    return {"source": raw.get("source") or "cache",
+            "systems": raw.get("systems")}
+
+
+def _bios_catalog_disk_write(data):
+    """Guarda el catálogo bueno para poder usarlo si el script no se lee."""
+    try:
+        path = _bios_catalog_disk_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"ts": time.time(), "source": data.get("source"),
+                                    "systems": data.get("systems")}),
+                        encoding="utf-8")
+    except Exception:
+        pass
+
+
 def get_bios_catalog():
-    """Catálogo de BIOS esperado, con la fuente usada. Cacheado 1 h."""
+    """Catálogo de BIOS esperado, con la fuente usada. Cacheado 1 h.
+
+    El script oficial manda, pero la SD a veces falla al leerlo. Si eso pasa,
+    se usa el último catálogo bueno (guardado en disco) y no el embebido: el
+    embebido es de otra versión y tiene más rutas, así que usarlo haría que
+    todos los estados cambiasen de golpe.
+    """
     now = time.time()
     with _bios_lock:
         cached = _bios_catalog_cache.get("data")
@@ -3043,11 +3081,23 @@ def get_bios_catalog():
             return cached
     data = None
     for candidate in (BIOS_CATALOG_SCRIPT, BIOS_CATALOG_ALT):
-        if candidate.exists():
+        if not candidate.exists():
+            continue
+        # Reintentos: la SD falla al leer de vez en cuando.
+        for _intento in range(3):
             systems = _bios_catalog_from_script(candidate)
             if systems:
                 data = {"source": str(candidate), "systems": systems}
                 break
+            time.sleep(0.3)
+        if data:
+            break
+    if data is None:
+        # Respaldo: el último catálogo bueno (del script, con `zippedFile`).
+        # Va antes que el readme: el readme no dice qué fichero va dentro de
+        # cada ZIP y lista más rutas, así que usarlo haría que todos los
+        # estados cambiasen de golpe.
+        data = _bios_catalog_disk_read()
     if data is None and BIOS_README_FILE.exists():
         sections = _bios_catalog_from_readme(BIOS_README_FILE)
         if sections:
@@ -3055,6 +3105,8 @@ def get_bios_catalog():
                     "systems": _match_readme_to_slugs(sections)}
     if data is None:
         data = {"source": "builtin", "systems": _bios_catalog_from_builtin()}
+    else:
+        _bios_catalog_disk_write(data)
     with _bios_lock:
         _bios_catalog_cache["ts"] = now
         _bios_catalog_cache["data"] = data
@@ -3122,6 +3174,18 @@ def build_bios_index(bios_dir, ttl=BIOS_INDEX_TTL, force=False):
     with _bios_lock:
         _bios_index_cache[bios_dir] = (now, index)
     return index
+
+
+def _bios_invalidate_cache(bios_dir):
+    """Olvida el indice del disco: algo acaba de cambiar en la SD.
+
+    Sin esto, el catalogo sigue viendo la SD como estaba (la cache dura 5
+    minutos) y una BIOS subida a mano no sale hasta que se reescanea.
+    """
+    key = str(bios_dir)
+    with _bios_lock:
+        _bios_index_cache.pop(key, None)
+        _bios_zipidx_cache.pop(key, None)
 
 
 def _zip_members(path):
@@ -3442,6 +3506,7 @@ def repair_bios(settings, slug, rel):
             return {"ok": False, "error": "no se ha encontrado el fichero en la consola"}
         quarantine = _bios_quarantine(bios_dir, dest) if dest.exists() else None
         shutil.copy2(str(origen), str(dest))
+    _bios_invalidate_cache(bios_dir)
     # Verificación final: lo que se ha puesto tiene que estar donde el
     # catálogo lo espera (presencia y estructura; el hash no decide).
     index = build_bios_index(bios_dir, force=True)
@@ -6963,6 +7028,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             result = download_bios_from_url(
                 s.get("bios_dir", "/userdata/bios"), fname, url, expected)
             if result.get("ok"):
+                _bios_invalidate_cache(s.get("bios_dir", "/userdata/bios"))
                 check = _bios_validate_placed(s, system, fname)
                 result["estado"] = check.get("estado")
                 result["presente"] = check.get("presente")
@@ -7314,6 +7380,7 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 entry["presente"] = check.get("presente")
                 entry["valid_md5s"] = _bios_expected_md5s(target_system, target_file)
             saved.append(entry)
+        _bios_invalidate_cache(bios_dir)
         self.send_json({"ok":True,"saved":saved})
 
     def _rename_rom(self, s):

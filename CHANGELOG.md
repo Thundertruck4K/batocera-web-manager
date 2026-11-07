@@ -145,6 +145,17 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Corregido
+- **El modal de BIOS no se actualizaba al subir una BIOS a mano**: el índice del disco se cachea
+  5 minutos, así que el catálogo seguía viendo la SD como estaba y había que cerrar el modal y
+  abrirlo de nuevo para ver los cambios. Ahora, al subir (o reparar o descargar) una BIOS se
+  invalida el índice, y el modal guarda el slug del sistema en vez de una copia: se actualiza solo.
+- **El catálogo de BIOS cambiaba solo de un momento a otro**: cuando la SD fallaba al leer
+  `/usr/bin/batocera-systems`, el manager caía al `readme.txt` (372 rutas frente a las 362 del
+  script) y todos los estados cambiaban de golpe (297 → 307 BIOS «en su sitio», con el total del
+  catálogo bailando entre 362 y 372). Ahora el script se lee con reintentos y se guarda el último
+  catálogo bueno en disco, que es el respaldo.
+- **El botón *Reparar* era un botón inerte**: si el sistema no tenía ninguna BIOS reparable, el
+  botón de lote aparecía deshabilitado. Ahora sólo se muestra cuando hay algo que reparar.
 - **Una BIOS con otro hash ya no se marca como incorrecta**: el estado se decide por presencia y
   estructura, no por el md5. Batocera no es rígido con el hash de las BIOS —las de triforce o hikaru
   lanzan los juegos con el hash que traía la tarjeta—, así que un md5 distinto marcaba como

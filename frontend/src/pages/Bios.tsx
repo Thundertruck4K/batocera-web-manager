@@ -68,7 +68,10 @@ export function BiosPage() {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('problemas')
   const [sort, setSort] = useState<SortKey>('criticidad')
-  const [selected, setSelected] = useState<BiosSystemView | null>(null)
+  /** Slug del sistema abierto en el modal: el modal toma los datos de `systems`,
+   *  así que se actualiza solo cuando cambia el catálogo (por ejemplo, tras
+   *  subir una BIOS a mano). */
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
 
   /* Sistemas con su estado ya calculado. */
@@ -95,6 +98,12 @@ export function BiosPage() {
     }
     return list
   }, [data])
+
+  /** El sistema abierto en el modal, con los datos de ahora mismo. */
+  const selected = useMemo(
+    () => systems.find((system) => system.slug === selectedSlug) ?? null,
+    [systems, selectedSlug],
+  )
 
   /* Filtrado y orden. */
   const filtered = useMemo(() => {
@@ -358,7 +367,7 @@ export function BiosPage() {
                   estado={system.estado}
                   onOpen={() => {
                     triggerHaptic('light')
-                    setSelected(system)
+                    setSelectedSlug(system.slug)
                   }}
                   onRepair={() => repairSystem(system)}
                 />
@@ -370,7 +379,7 @@ export function BiosPage() {
 
       <BiosSystemModal
         open={Boolean(selected)}
-        onClose={() => setSelected(null)}
+        onClose={() => setSelectedSlug(null)}
         slug={selected?.slug ?? ''}
         name={selected?.name ?? ''}
         files={selected?.files ?? []}

@@ -207,22 +207,24 @@ export function BiosSystemModal({
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cerrar
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={!reparables.length || batch}
-            onClick={repairAll}
-          >
-            <Wrench className="size-4" />
-            {batch ? 'Reparando…' : `Reparar ${reparables.length || ''}`.trim()}
-          </Button>
+          {/* El botón sólo aparece si hay algo que reparar: si no, es un botón
+              inerte que no hace nada. */}
+          {reparables.length > 0 && (
+            <Button variant="primary" size="sm" disabled={batch} onClick={repairAll}>
+              <Wrench className="size-4" />
+              {batch ? 'Reparando…' : `Reparar ${reparables.length}`}
+            </Button>
+          )}
         </>
       }
     >
+      {/* El input está oculto, pero no se esconde con `display: none` (con
+          `hidden` no lo alcanza ni el teclado): se queda en el flujo, con
+          tamaño 0, para no ensanchar el documento. */}
       <input
         ref={inputRef}
         type="file"
-        className="hidden"
+        className="h-px w-px border-0 p-0 opacity-0"
         onChange={upload}
         aria-label="Subir una BIOS"
       />
