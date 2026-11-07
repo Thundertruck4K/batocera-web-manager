@@ -497,16 +497,16 @@ export interface BiosFile {
   /** Miembros que faltan dentro del ZIP. */
   faltan: string[]
   skip_key: string
-  /** Enlace para buscar ese fichero en GitHub. */
-  github?: string | null
+  /** Enlace para buscar ese fichero en Google. */
+  busqueda?: string | null
 }
 
 export interface BiosSystem {
   /** Nombre legible del sistema («Coleco Adam»). */
   name: string
   files: BiosFile[]
-  /** Enlace para buscar las BIOS de este sistema en GitHub. */
-  github?: string | null
+  /** Enlace para buscar las BIOS de este sistema en Google. */
+  busqueda?: string | null
 }
 
 export interface BiosCatalog {

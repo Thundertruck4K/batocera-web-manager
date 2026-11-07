@@ -8,7 +8,7 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ### Añadido
 - **El botón *Reparar* ya sirve de algo**: cuando el contenido de una BIOS no está en la propia
-  consola, el manager ofrece las dos vías que quedan: **buscarlo en GitHub** o **subir el archivo**.
+  consola, el manager ofrece las dos vías que quedan: **buscarlo en Google** o **subir el archivo**.
   Antes el botón sólo reparaba lo que ya estaba en la SD, así que en una consola nueva no tenía
   ninguna utilidad.
   - **El hash no decide el estado**: Batocera tampoco es rígido con el hash de las BIOS (las de
@@ -16,9 +16,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     **presencia y estructura**: que el fichero esté donde el catálogo lo espera y que el ZIP lleve
     dentro los ficheros que exige. El md5 se calcula y se enseña como dato, pero ya no hay estado
     «hash distinto»: una BIOS presente con otro hash es una BIOS correcta.
-  - **Enlace directo a GitHub**: cada BIOS y cada sistema llevan su enlace de búsqueda (el nombre
+  - **Enlace directo a Google**: cada BIOS y cada sistema llevan su enlace de búsqueda (el nombre
     exacto del fichero entrecomillado, y las BIOS del sistema), calculados por el backend
-    (`github_bios_search_url()` y `github_sistema_url()`).
+    (`busqueda_fichero_url()` y `busqueda_sistema_url()`).
   - **Subida manual**: el fichero que sube el usuario se coloca en la ruta exacta que pide el
     catálogo y se comprueba que queda bien. Si es un ZIP, hay que subir el ZIP completo.
   - La reparación local va siempre primero y es instantánea: si el contenido ya está en la consola
@@ -144,7 +144,21 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     RA (10 min en memoria en aquella versión; ahora 6 h y también en disco). El rango de juegos sube
     de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
+### Cambiado
+- **La BIOS que falta se busca en Google, no en GitHub**: el enlace ya no es una búsqueda de código
+  en repositorios, sino una búsqueda en `google.com` con el nombre del fichero **entrecomillado**
+  (`"neogeo.zip"`), que es una coincidencia exacta y además mira en toda la web: foros, espejos de
+  colecciones y páginas de emulación. El enlace del sistema busca el nombre entrecomillado con la
+  palabra `bios` (`"Coleco Adam" bios`). El flujo no cambia en lo demás: la app sigue sin alojar ni
+  descargar nada; sólo enlaza y el usuario sube el fichero.
+  - Los nombres de las funciones del backend pasan de `github_bios_search_url()` y
+    `github_sistema_url()` a `busqueda_fichero_url()` y `busqueda_sistema_url()`, y el campo del
+    catálogo de `github` a `busqueda`.
+
 ### Corregido
+- **El README arrastraba endpoints que ya no existen**: la tabla de la API REST seguía incluyendo
+  `/api/bios/sources`, `/api/bios/sources/search` y `/api/bios/install` (los de archive.org, quitados
+  al dejar la búsqueda en repositorios). También se ha puesto al día el contador de tests (692).
 - **El modal de BIOS no se actualizaba al subir una BIOS a mano**: el índice del disco se cachea
   5 minutos, así que el catálogo seguía viendo la SD como estaba y había que cerrar el modal y
   abrirlo de nuevo para ver los cambios. Ahora, al subir (o reparar o descargar) una BIOS se

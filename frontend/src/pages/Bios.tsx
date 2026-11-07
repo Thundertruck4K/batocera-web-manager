@@ -54,8 +54,8 @@ interface BiosSystemView {
   problemas: number
   reparables: number
   estado: BiosEstado
-  /** Enlace para buscar las BIOS de este sistema en GitHub. */
-  github?: string | null
+  /** Enlace para buscar las BIOS de este sistema en Google. */
+  busqueda?: string | null
   /** Criticidad: lo que impide jugar va primero. */
   crit: number
 }
@@ -92,7 +92,7 @@ export function BiosPage() {
         problemas,
         reparables,
         estado: peorEstado(files.map((file) => file.estado)),
-        github: system.github,
+        busqueda: system.busqueda,
         crit: ausentes * 3 + problemas * 2 + reparables * 1.5,
       })
     }
@@ -383,7 +383,7 @@ export function BiosPage() {
         slug={selected?.slug ?? ''}
         name={selected?.name ?? ''}
         files={selected?.files ?? []}
-        github={selected?.github}
+        busqueda={selected?.busqueda}
         onRepaired={refresh}
       />
     </>
