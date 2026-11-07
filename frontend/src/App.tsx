@@ -15,6 +15,8 @@ import { ScraperPage } from '@/pages/Scraper'
 import { SettingsPage } from '@/pages/Settings'
 import { SystemForm } from '@/pages/SystemForm'
 import { Systems } from '@/pages/Systems'
+import { ToolsFormatsPage } from '@/pages/ToolsFormats'
+import { ToolsRenamePage } from '@/pages/ToolsRename'
 
 function ManagerShell() {
   const [version, setVersion] = useState<string>()
@@ -50,6 +52,8 @@ function ManagerShell() {
         <Route path="/sistemas/nuevo" element={<SystemForm />} />
         <Route path="/sistemas/:name/editar" element={<SystemForm />} />
         <Route path="/roms" element={<BiosPage />} />
+        <Route path="/herramientas/formatos" element={<ToolsFormatsPage />} />
+        <Route path="/herramientas/renombrado" element={<ToolsRenamePage />} />
         <Route path="/depuracion" element={<DebugPage />} />
         <Route path="/retroachievements" element={<AchievementsPage />} />
         <Route path="/scraper" element={<ScraperPage />} />

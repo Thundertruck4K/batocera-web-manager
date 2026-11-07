@@ -25,6 +25,7 @@
 #     BM_PORT          puerto del servidor      (def. 5000)
 #     BM_AUTOSTART     s / n: responde ya, sin preguntar
 #     BM_GIT           auto / install / skip    (def. auto)
+#     BM_DATS          auto / all / skip       (def. auto)
 #     BM_NODE          auto / install / skip    (def. auto)
 #     BM_GIT_DIR       dónde se instala Git     (def. $BM_BASE_DIR/mamba)
 #     BM_GIT_BIN_DIR   dónde se enlazan los binarios (def. /usr/bin)
@@ -627,6 +628,10 @@ else
     n=$(find "$SCRIPT_DIR/templates" -type f 2>/dev/null | wc -l | tr -d ' ')
     TOTAL=$(( TOTAL + n ))
   fi
+  if [ -d "$SCRIPT_DIR/romtools" ]; then
+    n=$(find "$SCRIPT_DIR/romtools" -type f 2>/dev/null | wc -l | tr -d ' ')
+    TOTAL=$(( TOTAL + n ))
+  fi
   # Bundle del frontend React: se despliega ya compilado (el dispositivo no tiene Node).
   if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
     n=$(find "$SCRIPT_DIR/frontend/dist" -type f 2>/dev/null | wc -l | tr -d ' ')
@@ -647,6 +652,13 @@ else
         cp "$f" "$INSTALL_DIR/$rel"
         COPIED=$(( COPIED + 1 )); copy_tick
       done < <(find "$SCRIPT_DIR/templates" -type f)
+    fi
+    # El modulo de herramientas de ROMs (DAT, renombrado y formatos).
+    if [ -d "$SCRIPT_DIR/romtools" ]; then
+      rm -rf "$INSTALL_DIR/romtools"
+      cp -R "$SCRIPT_DIR/romtools" "$INSTALL_DIR/romtools"
+      n=$(find "$INSTALL_DIR/romtools" -type f 2>/dev/null | wc -l | tr -d ' ')
+      COPIED=$(( COPIED + n )); copy_tick
     fi
     if [ -d "$SCRIPT_DIR/frontend/dist" ]; then
       # Los assets del bundle llevan hash en el nombre: los de la versión
@@ -739,6 +751,44 @@ else
   printf '     %s%s%s\n' "$CU" "$CMD" "$C0"
   tip "Al entrar en la web te avisaré en Configuración y podrás activarlo con un clic."
 fi
+
+# ── 7 · DAT de los sistemas (para renombrar las ROMs) ───────────────
+# Los DAT son las listas de juegos con el nombre y los hashes de cada
+# fichero. Sin ellos el renombrado no puede saber a que juego pertenece
+# cada ROM. Se descargan de una vez y se guardan en
+# "$BASE_DIR/batocera_manager_dats".
+DATS_MODE="${BM_DATS:-auto}"
+DATS_ANSWER=''
+if [ "$DATS_MODE" = "skip" ]; then
+  :
+elif [ "$DATS_MODE" = "all" ]; then
+  DATS_ANSWER=s
+elif [ -n "${BM_AUTOSTART:-}" ]; then
+  DATS_ANSWER=n
+elif [ -t 0 ]; then
+  printf '\n  %s¿Descargar los DAT de los sistemas?%s\n' "$CY" "$C0"
+  tip "Son las listas de juegos: sin ellas no se puede renombrar por nombre."
+  tip "Unos 40 MB en total. Puedes hacerlo luego en Herramientas > Renombrado."
+  printf '  %s[S]í / [n]o:%s ' "$CY" "$C0"
+  read -r DATS_ANSWER || DATS_ANSWER=''
+else
+  DATS_ANSWER=n
+fi
+DATS_ANSWER="${DATS_ANSWER//[$'\r\n\t ']/}"
+case "$DATS_ANSWER" in
+  s|S|si|sí|Si|Sí|y|Y|yes|YES)
+    hdr
+    sub "Descargando los DAT de los sistemas de Batocera"
+    if ( cd "$INSTALL_DIR" && "$PYTHON" -m romtools dats --install ); then
+      ok "DAT descargados en $BASE_DIR/batocera_manager_dats"
+    else
+      warn "No se pudieron descargar todos los DAT"
+      tip "Puedes reintentarlo luego en Herramientas > Renombrado."
+    fi
+    foot "DAT listos"
+    ;;
+  *) warn "DAT no descargados (se pueden bajar luego en Herramientas > Renombrado)" ;;
+esac
 
 foot "Listo. Abre ${CU}http://BATOCERA:$PORT${C0}${CP}"
 exit 0

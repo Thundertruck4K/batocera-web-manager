@@ -7,6 +7,26 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Sección **Herramientas** en el menú lateral, con dos páginas nuevas: **Formatos** y **Renombrado**.
+  El backend que las sostiene es el paquete nuevo `romtools/` (Python de la librería estándar, sin
+  dependencias), importado de forma protegida: si no está en la consola, la API responde con un error
+  claro y el resto de la app sigue funcionando.
+- **Formatos**: lista los ficheros de un sistema con el formato detectado (BIN+CUE, ISO, PBP, XISO,
+  GCM, CHD, WBFS, WIA, RVZ, MDF/CCD, G64/NDD, 3DO, WAD, NSP, ZIP, IPS…) y deja **convertir**
+  (BIN/CUE ↔ ISO, PBP ↔ BIN/CUE, XDVDF → ISO, GCM → ISO, CHD v5 → BIN), **comprimir** y
+  **descomprimir** en ZIP, y **parchear** con IPS (y deshacer el parche). El resultado se escribe
+  siempre al lado del original, nunca encima.
+- **Renombrado**: ordena la biblioteca con la convención de los sets (título, región e idioma, disco,
+  serial, marcas de volcado), al estilo de Romulus Manager. El **nombre destino es el del DAT**, que
+  es la convención de facto; la composición propia sólo se usa cuando no hay DAT.
+  - Los **DAT** (Redump y No-Intro) se descargan del espejo de `libretro-database` y se cachean en
+    `/userdata/system/batocera_manager_dats/`. Son metadatos: la lista de juegos con sus hashes, sin
+    ninguna ROM. El instalador puede bajarlos de entrada (nuevo paso 7, con `BM_DATS=auto|all|skip`).
+  - El **emparejamiento** va de más fiable a menos: nombre y tamaño (no toca el disco), hash (md5,
+    sha1 y crc32 en una sola pasada), serial del disco y, como último recurso, similitud de títulos.
+    El hash lleva un **presupuesto de 512 MB por tanda**: con bibliotecas de 40 GB se avisa y se sigue.
+  - El **plan se enseña entero** antes de tocar nada (nombre actual, propuesto, método y confianza),
+    renombra también el CUE y la M3U, y cada tanda deja journal con un botón de **deshacer**.
 - **El botón *Reparar* ya sirve de algo**: cuando el contenido de una BIOS no está en la propia
   consola, el manager ofrece las dos vías que quedan: **buscarlo en Google** o **subir el archivo**.
   Antes el botón sólo reparaba lo que ya estaba en la SD, así que en una consola nueva no tenía

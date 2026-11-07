@@ -21,6 +21,12 @@ import type {
   SystemPayload,
   SystemWriteResult,
   ThemesPayload,
+  ToolsActionResult,
+  ToolsDatsStatus,
+  ToolsFormatInfo,
+  ToolsRenamePlan,
+  ToolsRenameResult,
+  ToolsRomFile,
   UiTheme,
 } from './types'
 import { normalizeDashboard, normalizeEsStatus, normalizeGameStats } from './normalize'
@@ -262,4 +268,31 @@ export const api = {
     post<{ ok: boolean }>('/api/bios/missing/skip', { skip_key: skipKey }),
   biosUnskip: (skipKey: string) =>
     post<{ ok: boolean }>('/api/bios/missing/unskip', { skip_key: skipKey }),
+
+  /* Herramientas de ROMs */
+  toolsDats: () => get<ToolsDatsStatus>('/api/tools/dats').then(unwrap),
+  toolsInstallDats: (systems: string[] = []) =>
+    post<{ ok: boolean; results: { ok: boolean; system: string; error?: string }[] }>(
+      '/api/tools/dats/install',
+      { systems },
+    ).then(unwrap),
+  toolsRemoveDat: (system: string) =>
+    post<{ ok: boolean; removed: string[] }>('/api/tools/dats/remove', { system }).then(unwrap),
+  toolsRoms: (system: string) =>
+    get<{ ok: boolean; files: ToolsRomFile[] }>(`/api/tools/roms?system=${enc(system)}`).then(
+      unwrap,
+    ),
+  toolsDetect: (payload: { system: string; file: string }) =>
+    post<ToolsFormatInfo>('/api/tools/formats/detect', payload).then(unwrap),
+  toolsConvert: (payload: { system: string; file: string; target: string }) =>
+    post<ToolsActionResult>('/api/tools/formats/convert', payload).then(unwrap),
+  toolsCompress: (payload: { system: string; file: string }) =>
+    post<ToolsActionResult>('/api/tools/formats/compress', payload).then(unwrap),
+  toolsPatch: (payload: { system: string; file: string; patch: string }) =>
+    post<ToolsActionResult>('/api/tools/formats/patch', payload).then(unwrap),
+  toolsRenamePlan: (system: string) =>
+    get<ToolsRenamePlan>(`/api/tools/rename/plan?system=${enc(system)}`).then(unwrap),
+  toolsRenameApply: (payload: { system: string; include_review?: boolean }) =>
+    post<ToolsRenameResult>('/api/tools/rename/apply', payload).then(unwrap),
+  toolsRenameUndo: () => post<ToolsRenameResult>('/api/tools/rename/undo', {}).then(unwrap),
 }

@@ -672,3 +672,111 @@ export interface ScrapeOptions {
   ss_region: string
   ss_lang: string
 }
+
+
+/* ── Herramientas de ROMs (DAT, formatos y renombrado) ─────────────── */
+
+/** Un sistema de Batocera que tiene un DAT asignado. */
+export interface ToolsDatSystem {
+  system: string
+  source: string
+  source_name: string
+  dat: string
+  instalado: boolean
+  juegos?: number | null
+  tamano?: number | null
+  fecha?: number | null
+}
+
+/** Estado de los DAT descargados. */
+export interface ToolsDatsStatus {
+  ok: boolean
+  dir?: string
+  dats: {
+    system: string
+    file: string
+    size: number
+    dat?: string | null
+    games?: number | null
+    generated?: number
+  }[]
+  sistemas: ToolsDatSystem[]
+  error?: string
+}
+
+/** Un fichero de un sistema con su formato detectado. */
+export interface ToolsRomFile {
+  name: string
+  size: number
+  kind: string
+  label: string
+  actions: string[]
+}
+
+/** Lo que se sabe del formato de un fichero. */
+export interface ToolsFormatInfo {
+  ok: boolean
+  path?: string
+  file?: string
+  kind: string
+  label: string
+  size: number
+  details: Record<string, unknown>
+  actions: string[]
+  error?: string
+}
+
+/** Resultado de unaConversion, compresion o parche. */
+export interface ToolsActionResult {
+  ok: boolean
+  out?: string
+  bin?: string
+  cue?: string
+  size?: number
+  before?: number
+  note?: string
+  error?: string
+}
+
+/** Una linea del plan de renombrado. */
+export interface ToolsRenameItem {
+  path: string
+  file: string
+  current: string
+  proposed: string
+  action: string
+  reason: string
+  confidence: number
+  method: string
+  title?: string | null
+  dat_name?: string | null
+  companions: string[]
+  warnings: string[]
+}
+
+/** El plan completo de renombrado de un sistema. */
+export interface ToolsRenamePlan {
+  ok: boolean
+  system: string
+  con_dat: boolean
+  dat?: string | null
+  items: ToolsRenameItem[]
+  stats: {
+    total: number
+    renombrar: number
+    revisar: number
+    igual: number
+    sin_dat: number
+    identificados: number
+  }
+}
+
+/** Resultado de aplicar o deshacer un renombrado. */
+export interface ToolsRenameResult {
+  ok: boolean
+  renamed?: number
+  restored?: string[]
+  skipped?: { file: string; reason: string }[]
+  errores?: { file: string; error: string }[]
+  error?: string
+}

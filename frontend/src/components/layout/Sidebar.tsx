@@ -1,7 +1,7 @@
 import { motion } from 'motion/react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import { NAV_ITEMS } from '@/lib/nav'
+import { NAV_GROUPS } from '@/lib/nav'
 import { APP_VERSION } from '@/lib/version'
 
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -14,6 +14,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onNavigate, version, esRunning }: SidebarProps) {
+  let index = 0
   return (
     <div className="flex h-full flex-col gap-6 p-4 sm:p-5">
       <div className="flex items-center gap-3 px-1 pt-1">
@@ -30,63 +31,73 @@ export function Sidebar({ onNavigate, version, esRunning }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1">
-        {NAV_ITEMS.map((item, index) => {
-          const Icon = item.icon
-          if (item.pending) {
-            return (
-              <div
-                key={item.to}
-                aria-disabled="true"
-                className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground opacity-45"
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="flex-1 truncate">{item.label}</span>
-                <span className="rounded-full border border-border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
-                  Pronto
-                </span>
-              </div>
-            )
-          }
-
-          return (
-            <motion.div
-              key={item.to}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.25, ease: EASE, delay: Math.min(index * 0.015, 0.05) }}
-            >
-              <NavLink
-                to={item.to}
-                end={item.end}
-                onClick={onNavigate}
-                className={({ isActive }) =>
-                  cn(
-                    'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150',
-                    'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-                    isActive
-                      ? 'bg-accent text-accent-foreground font-semibold'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
+      <nav className="flex flex-1 flex-col gap-4">
+        {NAV_GROUPS.map((group, groupIndex) => (
+          <div key={group.label ?? `grupo-${groupIndex}`} className="flex flex-col gap-1">
+            {group.label && (
+              <p className="px-3 pt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
+                {group.label}
+              </p>
+            )}
+            {group.items.map((item) => {
+              const Icon = item.icon
+              const delay = Math.min(index++ * 0.015, 0.05)
+              if (item.pending) {
+                return (
+                  <div
+                    key={item.to}
+                    aria-disabled="true"
+                    className="flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground opacity-45"
+                  >
                     <Icon className="size-4 shrink-0" />
                     <span className="flex-1 truncate">{item.label}</span>
-                    {isActive && (
-                      <motion.span
-                        layoutId="nav-active"
-                        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                        className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-foreground"
-                      />
+                    <span className="rounded-full border border-border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
+                      Pronto
+                    </span>
+                  </div>
+                )
+              }
+
+              return (
+                <motion.div
+                  key={item.to}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.25, ease: EASE, delay }}
+                >
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      cn(
+                        'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150',
+                        'focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                        isActive
+                          ? 'bg-accent text-accent-foreground font-semibold'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <Icon className="size-4 shrink-0" />
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {isActive && (
+                          <motion.span
+                            layoutId="nav-active"
+                            transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                            className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-foreground"
+                          />
+                        )}
+                      </>
                     )}
-                  </>
-                )}
-              </NavLink>
-            </motion.div>
-          )
-        })}
+                  </NavLink>
+                </motion.div>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="rounded-2xl border border-border bg-muted/50 px-3 py-2.5">
