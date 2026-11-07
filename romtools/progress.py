@@ -99,6 +99,19 @@ class Progress:
         if avisar:
             self._avisar()
 
+    def terminar_unidad(self) -> None:
+        """Una unidad terminada (un fichero, un sistema).
+
+        Sirve para las fases en las que no hay un "fichero" que leer, sino
+        una tarea entera (leer los gamelists, buscar la media huerfana).
+        """
+        with self._lock:
+            self.hechos += 1
+            self.actual = ""
+            self._bytes = 0
+            self._bytes_total = 0
+        self._avisar()
+
     def completar(self) -> None:
         """Marca el trabajo como terminado."""
         with self._lock:

@@ -43,6 +43,7 @@ try:
     from romtools import formats as _rt_formats
     from romtools import identify as _rt_identify
     from romtools import jobs as _rt_jobs
+    from romtools import library as _rt_library
     from romtools import naming as _rt_naming
     from romtools import rename as _rt_rename
     from romtools import sets as _rt_sets
@@ -234,6 +235,69 @@ def tools_rename_apply(settings, system, include_review=False, progreso=None):
     if out.get("renamed"):
         out["es"] = reload_es_after_scrape(meta_saved=True)
     return out
+
+
+# ─── Biblioteca de ROMs: inventario, duplicados y auditoría ─────────────
+# La sección "ROMs y BIOS" tenía solo BIOS: no había forma de ver la
+# biblioteca como conjunto ni de administrarla (duplicados, fichas rotas,
+# ficheros vacíos, media sin juego). Estas funciones la radiografían y la
+# dejan limpia, sin borrar nada: lo que sobra va a una cuarentena y se puede
+# deshacer, igual que el renombrado.
+
+def library_base(settings):
+    """La carpeta donde vive la biblioteca de ROMs."""
+    return str(settings.get("roms_base") or "/userdata/roms")
+
+
+def library_sistemas(settings):
+    """Los sistemas que tienen carpeta de ROMs, con su tamaño."""
+    base = Path(library_base(settings))
+    salida = []
+    for sistema in tools_sistemas(settings):
+        nombre = sistema.get("name") if isinstance(sistema, dict) else str(sistema)
+        if not nombre or nombre.startswith("."):
+            continue
+        if not (base / nombre).is_dir():
+            continue
+        salida.append({
+            "nombre": nombre,
+            "juegos": sistema.get("rom_count", 0),
+            "bytes": sistema.get("total_size", 0),
+            "size_human": sistema.get("size_human", ""),
+            "con_gamelist": bool(sistema.get("has_gamelist")),
+        })
+    return salida
+
+
+def library_exts(settings, sistemas):
+    """Las extensiones que son juego en cada sistema.
+
+    La misma regla que usa el resto de la aplicación (`system_game_extensions`),
+    para que un `.txt` no cuente como juego y una carpeta sí.
+    """
+    exts = {}
+    for sistema in sistemas:
+        nombre = sistema["nombre"] if isinstance(sistema, dict) else str(sistema)
+        try:
+            exts[nombre] = set(system_game_extensions(nombre, settings)) | _TOOLS_EXT
+        except Exception:
+            exts[nombre] = set(_TOOLS_EXT)
+    return exts
+
+
+def library_auditoria(settings, progreso=None):
+    """La radiografía completa de la biblioteca (no toca nada).
+
+    Recorre los sistemas, busca duplicados (por huella rápida), y cuenta lo
+    que falta, lo que sobra y lo que está roto. En una biblioteca de 1,8 TB
+    tarda menos de un minuto: por eso va en segundo plano, con progreso.
+    """
+    sistemas = library_sistemas(settings)
+    exts = library_exts(settings, sistemas)
+    return _rt_library.auditoria(library_base(settings),
+                                 [x["nombre"] for x in sistemas], exts,
+                                 progreso=progreso)
+
 
 
 def tools_resultado(resultado):
@@ -7211,6 +7275,77 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         except Exception as exc:
             self.send_json({"ok": False, "error": str(exc)})
 
+
+    def _library(self, s, path, parts):
+        """Enrutador de ``/api/library/*``: inventario, duplicados y limpieza."""
+        if not HAS_ROMTOOLS:
+            self.send_json({"ok": False,
+                            "error": "el modulo de herramientas no esta disponible",
+                            "detalle": ROMTOOLS_ERROR})
+            return
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        sub = path[len("/api/library/"):] if path.startswith("/api/library/") else ""
+        try:
+            if self.command == "GET":
+                if sub == "summary":
+                    sistemas = library_sistemas(s)
+                    total = sum(x["bytes"] for x in sistemas)
+                    self.send_json({"ok": True, "sistemas": sistemas,
+                                    "juegos": sum(x["juegos"] for x in sistemas),
+                                    "bytes": total,
+                                    "gb": round(total / 1073741824, 1)})
+                    return
+                if sub == "audit/start":
+                    trabajo = _rt_jobs.JOBS.lanzar(
+                        "auditoria",
+                        lambda job: library_auditoria(s, progreso=job.progreso),
+                        mensaje="recorriendo la biblioteca")
+                    self.send_json({"ok": True, "job": trabajo.id})
+                    return
+                if sub == "job":
+                    job_id = (query.get("id") or [""])[0]
+                    trabajo = _rt_jobs.JOBS.obtener(job_id)
+                    if trabajo is None:
+                        self.send_json({"ok": False, "error": "el trabajo no existe"},
+                                       404)
+                        return
+                    self.send_json(trabajo.as_dict())
+                    return
+                if sub == "journal":
+                    self.send_json({"ok": True, "batches": _rt_library.journal_batches(
+                        tools_journal_root(s))})
+                    return
+                self.send_json({"ok": False, "error": "ruta desconocida"}, 404)
+                return
+
+            # POST
+            data = self.read_json() or {}
+            if sub == "quarantine":
+                ficheros = data.get("ficheros") or []
+                if not ficheros:
+                    self.send_json({"ok": False, "error": "no hay ficheros"})
+                    return
+                self.send_json(_rt_library.cuarentena(
+                    library_base(s), ficheros,
+                    root=tools_journal_root(s)))
+                return
+            if sub == "gamelist/clean":
+                sistema = (data.get("sistema") or data.get("system") or "").strip()
+                if not sistema:
+                    self.send_json({"ok": False, "error": "falta el sistema"})
+                    return
+                self.send_json(_rt_library.limpiar_gamelist(
+                    library_base(s), sistema, root=tools_journal_root(s)))
+                return
+            if sub == "undo":
+                self.send_json(_rt_library.undo_last(tools_journal_root(s)))
+                return
+            self.send_json({"ok": False, "error": "ruta desconocida"}, 404)
+        except ValueError as exc:
+            self.send_json({"ok": False, "error": str(exc)})
+        except Exception as exc:
+            self.send_json({"ok": False, "error": str(exc)})
+
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin","*")
@@ -7259,6 +7394,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         # ROM monitor
         elif path.startswith("/api/tools/"):
             self._tools(s, path, parts)
+        elif path.startswith("/api/library/"):
+            self._library(s, path, parts)
         elif path == "/api/rom-systems":
             systems = get_rom_systems_cached(s)
             images  = count_systems_with_images(s, systems)
@@ -7450,6 +7587,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             self._upload_rom(system, s)
         elif path.startswith("/api/tools/"):
             self._tools(s, path, parts)
+        elif path.startswith("/api/library/"):
+            self._library(s, path, parts)
         elif path == "/api/bios/upload":
             self._upload_bios(s)
         elif path == "/api/bios/fetch":

@@ -685,6 +685,43 @@ intactos. La media sólo se renombra cuando el nombre es exactamente `<tallo>-<a
 «Clay Fighter-image.png» sí se renombra y «Clay Fighter 2-image.png» no. El `gamelist.xml` original
 se guarda en el journal: **deshacer** lo deja tal como estaba.
 
+### 📚 Biblioteca de ROMs: duplicados y auditoría
+
+La sección **ROMs y BIOS** (la ruta `/roms`) tenía un problema de coherencia: era solo BIOS. No había
+forma de ver la biblioteca de ROMs como conjunto ni de administrarla. Ahora es **una página con dos
+pestañas**, **ROMs** y **BIOS**, y la de ROMs hace la radiografía completa.
+
+**La auditoría mira la biblioteca entera**, pero no la hashea: eso serían horas en una biblioteca de
+1,8 TB. Los duplicados se buscan con una **huella rápida** (el tamaño más los primeros y los últimos
+64 KB), que es gratis, y solo los candidatos se confirman con el hash completo. Esa confirmación tiene
+un **presupuesto de bytes** (8 GB), así que el grupo que no cabe sale marcado como *candidato* (la
+huella coincide) y no como duplicado confirmado: la interfaz no miente sobre lo que sabe.
+
+Los juegos que son **carpetas** (Wii, ScummVM, DOSBox, los arcades de Lindbergh) se comparan
+**enteros**: su fichero más grande es el motor, que es el mismo para todos los juegos, así que
+hashearlo daría duplicados falsos.
+
+Lo que encuentra:
+
+| Qué | Qué es |
+|---|---|
+| **Duplicados** | Juegos repetidos, con cuántas copias hay y cuánto se puede liberar dejando una |
+| **Fichas sin fichero** | Entradas del `gamelist.xml` que apuntan a un juego que ya no está |
+| **Ficheros vacíos** | Juegos de 0 bytes: no arrancan |
+| **Ficheros que no son juegos** | Notas, listas y demás ficheros sueltos |
+| **Media sin juego** | Imágenes y vídeos cuyo juego ya no está |
+| **Repetidos entre sistemas** | El mismo juego en `naomi` y `atomiswave` (los arcades) |
+| **El espacio por sistema** | Dónde se lleva la memoria de la tarjeta |
+
+**Nada se borra.** Lo que sobra se mueve a una **cuarentena** (`/userdata/roms/.quarantine/`), que
+está dentro de la propia biblioteca: el move es un renombrado, así que es instantáneo y no copia 63 GB.
+Cada tanda queda en un journal y hay un botón de **deshacer** que lo devuelve todo a su sitio. Lo mismo
+con el `gamelist.xml`: al limpiarlo se guarda el texto original, y deshacer lo repone.
+
+Como el resto de los trabajos largos (el plan de renombrado), la auditoría va **en segundo plano con
+barra de progreso**: la página dice qué está haciendo y cuál es el fichero que está mirando, y avisa de
+que no hace falta cerrar la ventana.
+
 **Legal**: el manager no aloja ni descarga ROMs. Los DAT son metadatos públicos; las conversiones,
 compresiones y parches se hacen sobre los ficheros que ya están en tu SD.
 
@@ -744,6 +781,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **EmulationStation** | `/api/es/status` · `/api/es/restart` |
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
+| **Biblioteca** | `/api/library/summary` · `/api/library/audit/start` · `/api/library/job` · `/api/library/journal` · `/api/library/quarantine` · `/api/library/gamelist/clean` · `/api/library/undo` |
 | **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
@@ -759,12 +797,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **777 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **810 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 755 passed in ~30s
+# 810 passed in ~35s
 ```
 
 ---
@@ -791,12 +829,13 @@ batocera_web/
 │   ├── sets.py               # puntuación de variantes y elección por juego
 │   ├── rename.py             # plan, aplicación y deshacer del renombrado
 │   ├── formats.py            # detección, conversión, compresión y parches
+│   ├── library.py            # inventario de la biblioteca, duplicados y auditoría
 │   ├── progress.py           # la cuenta de lo que lleva hecho un trabajo largo
 │   ├── jobs.py               # los trabajos en segundo plano, con su progreso
 │   └── __main__.py            # CLI: `python3 -m romtools dats --install`
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 777 tests con pytest
+├── tests/                    # 810 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

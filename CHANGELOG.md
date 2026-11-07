@@ -7,6 +7,31 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **La sección «ROMs y BIOS» administra la biblioteca de ROMs, no solo las BIOS.** La ruta `/roms`
+  montaba la página de BIOS y ya: no había ninguna forma de ver la biblioteca como conjunto ni de
+  administrarla. Ahora es **una página con dos pestañas** (ROMs | BIOS) y la de ROMs hace la
+  radiografía completa de la biblioteca:
+  - **Duplicados**: se buscan por **huella rápida** (tamaño + los primeros y los últimos 64 KB), no
+    hasheando la biblioteca entera: en 1,8 TB son horas. Los candidatos se confirman con el hash
+    completo, con un **presupuesto de bytes** (8 GB) para que confirmar una ISO de 4 GB no tumbe la
+    radiografía; los que se quedan fuera salen marcados como *candidato*, no como certeza. Los juegos
+    que son **carpetas** (Wii, ScummVM, DOSBox) se comparan **enteros**: su fichero más grande es el
+    motor, que es el mismo para todos los juegos, y hashearlo daba duplicados falsos.
+  - **Auditoría**: fichas del `gamelist.xml` que apuntan a un juego que no existe, ficheros de 0
+    bytes, ficheros que no son juegos (notas, listas), media (imágenes y vídeos) cuyo juego ya no
+    está, el mismo juego repetido en varios sistemas (los arcades) y el espacio por sistema.
+  - **Nada se borra**: lo que sobra se mueve a una **cuarentena** (`/userdata/roms/.quarantine/`),
+    que está dentro de la propia biblioteca, así que el move es un renombrado (instantáneo, sin
+    copiar 63 GB). Cada tanda queda en un journal (`/userdata/system/batocera_manager_library.json`)
+    y hay un botón para **deshacerla**.
+  - **Limpiar el `gamelist.xml`**: se quitan las fichas cuyo fichero ya no existe, guardando el
+    texto original en el journal para poder reponerlo.
+  - La auditoría va **en segundo plano con barra de progreso** (como el plan de renombrado): el
+    endpoint devuelve el identificador del trabajo y el frontend sondea su estado.
+  - **Endpoints nuevos**: `GET /api/library/summary`, `GET /api/library/audit/start`,
+    `GET /api/library/job?id=…`, `GET /api/library/journal`, `POST /api/library/quarantine`,
+    `POST /api/library/gamelist/clean` y `POST /api/library/undo`.
+  - El módulo nuevo `romtools/library.py` (stdlib puro) hace la radiografía; `app.py` solo enruta.
 - **El plan de renombrado va en segundo plano y con barra de progreso.** En un sistema grande
   (miles de juegos, o ISOs de 4 GB que hay que hashear) el cálculo del plan tardaba tanto que la
   página se quedaba en silencio y parecía congelada: el usuario cerraba la ventana y perdía el

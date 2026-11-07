@@ -5,6 +5,9 @@ import type {
   BiosRepairResult,
   CustomSystem,
   CustomSystemDetail,
+  LibraryBatch,
+  LibraryJob,
+  LibrarySummary,
   RandomGame,
   RaGamesPayload,
   RomFolder,
@@ -320,4 +323,36 @@ export const api = {
   toolsRenameApply: (payload: { system: string; include_review?: boolean }) =>
     post<ToolsRenameResult>('/api/tools/rename/apply', payload).then(unwrap),
   toolsRenameUndo: () => post<ToolsRenameResult>('/api/tools/rename/undo', {}).then(unwrap),
+
+  /* Biblioteca de ROMs */
+  /** El resumen rápido: sistemas, juegos y espacio (sin hashear nada). */
+  librarySummary: () => get<LibrarySummary>('/api/library/summary').then(unwrap),
+  /**
+   * Arranca la radiografía de la biblioteca en segundo plano. En una
+   * biblioteca de 1,8 TB tarda, así que va como trabajo con progreso.
+   */
+  libraryAuditStart: () =>
+    get<{ ok: boolean; job: string }>('/api/library/audit/start').then(unwrap),
+  /** El estado del trabajo de auditoría. */
+  libraryJob: (id: string) => get<LibraryJob>(`/api/library/job?id=${enc(id)}`).then(unwrap),
+  /** Las tandas que se pueden deshacer. */
+  libraryJournal: () =>
+    get<{ ok: boolean; batches: LibraryBatch[] }>('/api/library/journal').then(unwrap),
+  /** Mueve ficheros a la cuarentena (no se borra nada: se puede deshacer). */
+  libraryQuarantine: (ficheros: string[]) =>
+    post<{ ok: boolean; movidos: unknown[]; errores: { fichero: string; error: string }[] }>(
+      '/api/library/quarantine',
+      { ficheros },
+    ).then(unwrap),
+  /** Quita del `gamelist.xml` las fichas cuyo fichero ya no existe. */
+  libraryGamelistClean: (sistema: string) =>
+    post<{ ok: boolean; quitadas: number; fichero?: string; error?: string }>(
+      '/api/library/gamelist/clean',
+      { sistema },
+    ).then(unwrap),
+  /** Deshace la última tanda de la biblioteca. */
+  libraryUndo: () =>
+    post<{ ok: boolean; restaurados: string[]; error?: string }>('/api/library/undo', {}).then(
+      unwrap,
+    ),
 }

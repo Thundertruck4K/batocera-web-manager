@@ -12,6 +12,7 @@ import {
 import { useMemo, useState } from 'react'
 import { MetricCard } from '@/components/dashboard/MetricCard'
 import { PageContainer, useShell } from '@/components/layout/AppShell'
+import { SectionTabs, type SectionTab } from '@/components/layout/SectionTabs'
 import { Topbar } from '@/components/layout/Topbar'
 import { BiosSystemCard } from '@/components/bios/BiosSystemCard'
 import { BiosSystemModal } from '@/components/bios/BiosSystemModal'
@@ -60,7 +61,14 @@ interface BiosSystemView {
   crit: number
 }
 
-export function BiosPage() {
+interface BiosPageProps {
+  /** La pestaña activa de la sección «ROMs y BIOS». */
+  tab?: SectionTab
+  /** Cambia de pestaña (si no se pasa, la página va sola). */
+  onTab?: (tab: SectionTab) => void
+}
+
+export function BiosPage({ tab = 'bios', onTab }: BiosPageProps) {
   const { openMenu } = useShell()
   const { showNotify } = useNotify()
   const { data, error, loading, refresh } = useApi(() => api.biosCatalog(), [])
@@ -210,6 +218,8 @@ export function BiosPage() {
       />
 
       <PageContainer>
+        {onTab && <SectionTabs value={tab} onChange={onTab} />}
+
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <CircleAlert className="size-4 shrink-0" />
