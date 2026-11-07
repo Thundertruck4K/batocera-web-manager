@@ -134,7 +134,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 729 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 755 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -240,6 +240,33 @@ El proyecto se trabaja en **un solo repositorio**:
   after a manager restart does not hit the API. `RA_CACHE_TTL` (6 h, configurable with
   `ra_cache_ttl`) is how long the data is served, and `RA_MIN_REFRESH` (60 s) is the minimum gap
   between two downloads even when the user asks for a forced refresh (`?force=1`).
+- **The ROM tools section (DAT, formats, renaming) lives in the `romtools/` package**; `app.py` only
+  routes `/api/tools/*` and imports it in a protected way (`HAS_ROMTOOLS`), so a missing package
+  answers with a clear error and the rest of the app keeps working.
+  - **Conversion actions are identifiers, never text**: `formats.CAPACIDADES` holds
+    `id -> {label, ayuda}` and `formats.FORMAT_CATALOGUE` says which destinations each format admits.
+    The backend returns them as `{id, label, nota}` and the SPA compares `accion.id`. Comparing the
+    labels was the bug that made the "Convert to BIN/CUE" button pick the wrong destination.
+  - **The format is decided by the header, not by the extension**: `detect_format()` looks at the
+    signature first (CHD, WBFS, WIA, RVZ, PBP, XDVDF, GCZ, CISO, CSO, PFS0, XCIH, 3DO, N64, SNES…) and
+    only then at the extension. The N64 byte order comes from its 4-byte magic (`40 12 37 80` native,
+    `80 37 12 40` z64, `37 80 40 12` v64), never from the file name: there are dumps called `.v64`
+    that are big endian.
+  - **CHD goes through `chdman`** (MAME, `/usr/bin/chdman`): `createcd`/`createdvd` to write and
+    `extractraw` to read — its `extractcd` writes a TOC that is not an ISO. The unit is 2.448 bytes on
+    a CD and 2.048 on a DVD, and `chdman info` says which. If `chdman` is missing the conversion says
+    so instead of faking it.
+  - **The DAT map is keyed by the folder name in `/userdata/roms`** (what `system_dir()` uses), not by
+    the libretro slugs nor by `batocera_systems.json`. Systems that are not in the map are resolved
+    **by name** against the real catalogue, and only if the DAT covers **all** the words of the system
+    with a confidence of 0.7 or more (one word was enough before, and "Wolfenstein - Enemy Territory"
+    got paired with "Wolfenstein 3D").
+  - **A conversion never overwrites**: the output name is free (`_salida_libre`: "Game.chd",
+    "Game (1).chd").
+  - **The ISO is rebuilt faithfully**: going back from a BIN/CUE, if the data carries its own volume
+    descriptor the ISO is written back byte for byte (the result is the original); otherwise the plain
+    ISO 9660 skeleton is built. It is written sector by sector: a 4.7 GB DVD does not fit in the
+    console's RAM.
 - The `--port` CLI flag is the only command-line argument supported
 
 ## Workflow

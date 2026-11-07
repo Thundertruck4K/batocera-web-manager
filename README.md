@@ -592,16 +592,28 @@ en Python de la librería estándar (sin dependencias, como el resto del proyect
 
 ### 🧬 Formatos: convertir, comprimir y parchear
 
-**Formatos** lista los ficheros de un sistema con el formato detectado (BIN+CUE, ISO, PBP, XISO, GCM,
-CHD, WBFS, WIA, RVZ, MDF/CCD, G64/NDD, 3DO, WAD, NSP, ZIP, IPS…) y deja actuar sobre ellos:
+**Formatos** lista los ficheros de un sistema con el formato detectado y deja actuar sobre ellos. El
+formato se decide **por la cabecera del fichero**, no por su extensión: un `.iso` de GameCube, un
+`.v64` mal puesto o un `.chd` se reconocen por lo que son de verdad. De la biblioteca real de una
+consola, el 64 % de los ficheros salía antes como «formato desconocido»; ahora se reconoce casi todo
+(BIN+CUE, ISO 9660 y de qué consola es, PBP, XDVDF, GCM, CHD, WBFS, WIA, RVZ, MDF/CCD, G64/NDD, 3DO,
+NSP, XCI, WAD, ZIP, IPS…) y, cuando no se puede convertir, la interfaz lo dice en vez de dejar un
+hueco.
 
 - **Convertir** entre los formatos que se pueden reconstruir sin pérdida: BIN/CUE ↔ ISO, PBP ↔
-  BIN/CUE, XDVDF → ISO, GCM → ISO y CHD (v5) → BIN.
+  BIN/CUE, XDVDF → ISO, GCM → ISO, Nintendo 64 entre sus tres byte orders (`.n64`, `.z64`, `.v64`),
+  Super Nintendo entre `.sfc`, `.smc` y `.fig`, ISO ↔ CSO/CISO/GCZ (PSP, GameCube y Wii) e ISO ↔ CHD.
+- **Convertir en lote**: eliges un destino y se convierten todos los ficheros del sistema que lo
+  admitan, con filtro opcional por formato de origen. El lote acaba con un resumen de cuántos han
+  salido bien y por qué han fallado los que no.
 - **Comprimir** y **descomprimir** en ZIP.
 - **Parchear** con un parche IPS, y deshacerlo.
 
-Cada conversión escribe el fichero nuevo **al lado del original**, nunca encima, así que la
-operación siempre se puede deshacer a mano.
+El CHD se hace con el `chdman` de MAME, que ya viene en Batocera (`/usr/bin/chdman`); si no está, se
+dice que hace falta en vez de fingir que ha salido bien.
+
+Cada conversión escribe el fichero nuevo **al lado del original**, nunca encima (si el nombre ya
+existe, se numera: «Juego (1).chd»), así que la operación siempre se puede deshacer a mano.
 
 ### 🏷️ Renombrado: la convención de los sets
 
@@ -614,10 +626,18 @@ oficial y los hashes de cada fichero; ese nombre *es* la convención, así que e
 cual en vez de inventar uno. Sólo cuando no hay DAT, o cuando el DAT no trae la entrada, se compone
 el nombre con la misma gramática a partir del fichero que ya tienes.
 
-**Los DAT se descargan, no se alojan.** Van al espejo de `libretro-database` (Redump y No-Intro),
-que son metadatos: la lista de juegos con sus hashes, sin una sola ROM. Se guardan en
-`/userdata/system/batocera_manager_dats/` y el instalador puede bajarlos de entrada (paso 7, con
-`BM_DATS=auto|all|skip`).
+**Los DAT se descargan, no se alojan.** Van al espejo de `libretro-database` (Redump y No-Intro), al
+catálogo de DAT por sistema de libretro y al rebuild diario, que son metadatos: la lista de juegos con
+sus hashes, sin una sola ROM. Se guardan en `/userdata/system/batocera_manager_dats/` y el instalador
+puede bajarlos de entrada (paso 7, con `BM_DATS=auto|all|skip`).
+
+**Cada sistema tiene su DAT, y se dice de dónde sale.** La clave es el **nombre de la carpeta del
+sistema** en `/userdata/roms`, que es lo que usa el manager: con 122 sistemas mapeados sobre las
+carpetas que existen de verdad, el renombrado funciona en toda la biblioteca y no sólo en el 3DO. Para
+los sistemas que no están en el mapa, el DAT se busca **por nombre** contra el catálogo real, y sólo se
+acepta si el DAT cubre **todas** las palabras del sistema y con una confianza de 0,7 o más (si no,
+«Wolfenstein - Enemy Territory» acababa emparejado con «Wolfenstein 3D»). La interfaz lo enseña:
+«DAT listo», o «DAT por nombre (confianza 92 %)», o «este sistema no tiene DAT disponible».
 
 **Cómo se empareja un fichero con su juego**, de más fiable a menos:
 
@@ -701,7 +721,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
-| **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/apply` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
+| **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/batch` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/apply` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
 | **Actualización** | `/api/update` · `/api/app-update` |
 
 Los contadores de la biblioteca salen de `GET /api/info`: `rom_systems_count` (los sistemas con juegos),
@@ -713,12 +733,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **729 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **755 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 729 passed in ~30s
+# 755 passed in ~30s
 ```
 
 ---

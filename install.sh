@@ -768,7 +768,7 @@ elif [ -n "${BM_AUTOSTART:-}" ]; then
 elif [ -t 0 ]; then
   printf '\n  %s¿Descargar los DAT de los sistemas?%s\n' "$CY" "$C0"
   tip "Son las listas de juegos: sin ellas no se puede renombrar por nombre."
-  tip "Unos 40 MB en total. Puedes hacerlo luego en Herramientas > Renombrado."
+  tip "Sólo se bajan las de los sistemas que tienes con juegos. Puedes hacerlo luego en Herramientas > Renombrado."
   printf '  %s[S]í / [n]o:%s ' "$CY" "$C0"
   read -r DATS_ANSWER || DATS_ANSWER=''
 else
@@ -779,7 +779,24 @@ case "$DATS_ANSWER" in
   s|S|si|sí|Si|Sí|y|Y|yes|YES)
     hdr
     sub "Descargando los DAT de los sistemas de Batocera"
-    if ( cd "$INSTALL_DIR" && "$PYTHON" -m romtools dats --install ); then
+    # Sólo se bajan los DAT de los sistemas que tienen juegos dentro: una
+    # consola con cinco sistemas no necesita los DAT de los otros ciento
+    # veinte (y algunos DAT de Redump ocupan decenas de megabytes).
+    DAT_SYSTEMS=''
+    if [ -d /userdata/roms ]; then
+      for dir in /userdata/roms/*/; do
+        [ -d "$dir" ] || continue
+        if [ -n "$(ls -A "$dir" 2>/dev/null)" ]; then
+          DAT_SYSTEMS="$DAT_SYSTEMS $(basename "$dir")"
+        fi
+      done
+    fi
+    if [ -n "$DAT_SYSTEMS" ]; then
+      DAT_CMD="dats --install $DAT_SYSTEMS"
+    else
+      DAT_CMD="dats --install"
+    fi
+    if ( cd "$INSTALL_DIR" && "$PYTHON" -m romtools $DAT_CMD ); then
       ok "DAT descargados en $BASE_DIR/batocera_manager_dats"
     else
       warn "No se pudieron descargar todos los DAT"

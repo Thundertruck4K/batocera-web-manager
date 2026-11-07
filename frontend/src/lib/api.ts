@@ -22,8 +22,8 @@ import type {
   SystemWriteResult,
   ThemesPayload,
   ToolsActionResult,
+  ToolsBatchResult,
   ToolsDatsStatus,
-  ToolsFormatInfo,
   ToolsRenamePlan,
   ToolsRenameResult,
   ToolsRomFile,
@@ -276,18 +276,28 @@ export const api = {
       '/api/tools/dats/install',
       { systems },
     ).then(unwrap),
-  toolsRemoveDat: (system: string) =>
-    post<{ ok: boolean; removed: string[] }>('/api/tools/dats/remove', { system }).then(unwrap),
+  toolsDatsRemove: (system: string) =>
+    post<{ ok: boolean; removed?: string[]; error?: string }>('/api/tools/dats/remove', {
+      system,
+    }).then(unwrap),
   toolsRoms: (system: string) =>
     get<{ ok: boolean; files: ToolsRomFile[] }>(`/api/tools/roms?system=${enc(system)}`).then(
       unwrap,
     ),
-  toolsDetect: (payload: { system: string; file: string }) =>
-    post<ToolsFormatInfo>('/api/tools/formats/detect', payload).then(unwrap),
+  /** Convierte un fichero al destino pedido (`chd`, `zip`, `bin-cue`…). */
   toolsConvert: (payload: { system: string; file: string; target: string }) =>
     post<ToolsActionResult>('/api/tools/formats/convert', payload).then(unwrap),
+  /**
+   * Convierte en lote los ficheros del sistema que admitan el destino.
+   * Si se manda `kind`, sólo se convierten los de ese formato.
+   */
+  toolsConvertBatch: (payload: { system: string; target: string; kind?: string }) =>
+    post<ToolsBatchResult>('/api/tools/formats/batch', payload).then(unwrap),
+  /** Comprime un fichero en ZIP (es el destino `zip` de la conversión). */
   toolsCompress: (payload: { system: string; file: string }) =>
-    post<ToolsActionResult>('/api/tools/formats/compress', payload).then(unwrap),
+    post<ToolsActionResult>('/api/tools/formats/convert', { ...payload, target: 'zip' }).then(
+      unwrap,
+    ),
   toolsPatch: (payload: { system: string; file: string; patch: string }) =>
     post<ToolsActionResult>('/api/tools/formats/patch', payload).then(unwrap),
   toolsRenamePlan: (system: string) =>

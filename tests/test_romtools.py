@@ -5,8 +5,11 @@ sin red y sin consola: los DAT de prueba se escriben a mano y las imagenes
 sinteticas se construyen sector a sector.
 """
 
+import json
+import os
 import struct
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -498,7 +501,10 @@ def test_un_bin_con_cue_se_detecta_como_set(tmp_path):
     info = formats.detect_format(str(tmp_path / "juego.bin"))
     assert info.kind == "bin-cue"
     assert info.label == "BIN + CUE"
-    assert "convertir a PBP" in info.actions
+    # Las acciones son identificadores: el frontend los compara, no sus textos.
+    ids = [accion["id"] for accion in info.actions]
+    assert "pbp" in ids
+    assert all(isinstance(accion["id"], str) for accion in info.actions)
     assert info.details["cue"] == "juego.cue"
 
 
@@ -575,7 +581,281 @@ def test_comprimir_y_descomprimir(tmp_path):
 
 
 def test_el_catalogo_de_formatos_es_coherente():
-    """Cada formato del catalogo tiene etiqueta y acciones."""
+    """Cada formato del catalogo tiene etiqueta y sus acciones son reales."""
     for kind, (etiqueta, acciones) in formats.FORMAT_CATALOGUE.items():
         assert etiqueta
-        assert acciones
+        # Hay formatos que no se pueden convertir (un RVZ, un WAD): lo que no
+        # puede ser es apuntar a una conversion que no existe.
+        for accion in acciones:
+            assert accion in formats.CAPACIDADES
+
+
+def test_las_capacidades_tienen_label():
+    """Cada capacidad sabe como se llama y que hace."""
+    for id_capacidad, cap in formats.CAPACIDADES.items():
+        assert cap["label"]
+        assert cap["ayuda"]
+
+
+# ── El motor de conversiones revisado ───────────────────────────────────
+
+def _iso_de_prueba(tmp_path, nombre="juego.iso", sectores=40):
+    """Un ISO 9660 minimo, con su descriptor de volumen."""
+    iso = tmp_path / nombre
+    with open(iso, "wb") as fh:
+        for i in range(sectores):
+            sector = bytearray(2048)
+            if i == 16:
+                sector[0] = 1        # descriptor de volumen primario
+                sector[1:6] = b"CD001"
+                sector[6] = 1
+            fh.write(bytes(sector))
+    return iso
+
+
+def test_la_magia_de_nintendo_64_dice_el_byte_order(tmp_path):
+    """El byte order se ve en la cabecera, no en el nombre del fichero."""
+    cuerpo = bytes(range(256)) * 4
+    casos = {
+        "juego.n64": (b"\x40\x12\x37\x80", "n64-n64"),
+        "juego.z64": (b"\x80\x37\x12\x40", "n64-z64"),
+        "juego.v64": (b"\x37\x80\x40\x12", "n64-v64"),
+    }
+    for nombre, (magia, kind) in casos.items():
+        ruta = tmp_path / nombre
+        ruta.write_bytes(magia + cuerpo)
+        info = formats.detect_format(str(ruta))
+        assert info.kind == kind, nombre
+
+
+def test_un_v64_mal_puesto_se_detecta_por_la_magia(tmp_path):
+    """Hay volcados que se llaman .v64 y estan en big endian."""
+    ruta = tmp_path / "raro.v64"
+    ruta.write_bytes(b"\x40\x12\x37\x80" + bytes(64))
+    assert formats.detect_format(str(ruta)).kind == "n64-n64"
+
+
+def test_las_tres_rom_de_nintendo_64_son_la_misma(tmp_path):
+    """De native a little endian y a byte swapped, y de vuelta."""
+    cuerpo = bytes(range(256)) * 8
+    n64 = tmp_path / "juego.n64"
+    n64.write_bytes(b"\x40\x12\x37\x80" + cuerpo)
+
+    z64 = formats.convert(str(n64), "z64")
+    datos = open(z64["out"], "rb").read()
+    assert datos[:4] == b"\x80\x37\x12\x40"
+    assert datos[4:] == formats._swap32(cuerpo)
+
+    v64 = formats.convert(str(n64), "v64")
+    datos = open(v64["out"], "rb").read()
+    assert datos[:4] == b"\x37\x80\x40\x12"
+
+    vuelta = formats.convert(v64["out"], "z64")
+    assert open(vuelta["out"], "rb").read()[:4] == b"\x80\x37\x12\x40"
+
+
+def test_las_rom_de_super_nintendo_cambian_de_cabecera(tmp_path):
+    """SFC, SMC y FIG son la misma ROM con otra cabecera delante."""
+    cuerpo = bytes(range(256)) * 8
+    smc = tmp_path / "juego.smc"
+    cabecera = bytearray(512)
+    cabecera[0x08:0x0A] = b"\xaa\xbb"
+    smc.write_bytes(bytes(cabecera) + cuerpo)
+
+    sfc = formats.convert(str(smc), "sfc")
+    assert open(sfc["out"], "rb").read() == cuerpo
+
+    fig = formats.convert(str(smc), "fig")
+    datos = open(fig["out"], "rb").read()
+    assert datos[:4] == b"FIG "
+    assert datos[1024:] == cuerpo
+
+    vuelta = formats.convert(fig["out"], "sfc")
+    assert open(vuelta["out"], "rb").read() == cuerpo
+
+
+def test_el_cso_va_y_vuelve(tmp_path):
+    """Un CSO se comprime y se descomprime sin perder un byte."""
+    iso = _iso_de_prueba(tmp_path)
+    original = iso.read_bytes()
+
+    cso = formats.convert(str(iso), "cso")
+    assert open(cso["out"], "rb").read(4) == b"CSO!"
+
+    vuelta = formats.convert(cso["out"], "iso")
+    assert open(vuelta["out"], "rb").read() == original
+
+
+def test_el_ciso_va_y_vuelve(tmp_path):
+    """Un CISO se comprime y se descomprime sin perder un byte."""
+    iso = _iso_de_prueba(tmp_path)
+    original = iso.read_bytes()
+
+    ciso = formats.convert(str(iso), "ciso")
+    assert open(ciso["out"], "rb").read(4) == b"CISO"
+
+    vuelta = formats.convert(ciso["out"], "iso")
+    assert open(vuelta["out"], "rb").read() == original
+
+
+def test_el_gcz_va_y_vuelve(tmp_path):
+    """Un GCZ se comprime y se descomprime sin perder un byte."""
+    iso = _iso_de_prueba(tmp_path)
+    original = iso.read_bytes()
+
+    gcz = formats.convert(str(iso), "gcz")
+    assert open(gcz["out"], "rb").read(4) == b"\x01\xc0\x0b\xb1"
+
+    vuelta = formats.convert(gcz["out"], "iso")
+    assert open(vuelta["out"], "rb").read() == original
+
+
+def test_extraer_un_zip(tmp_path):
+    """Un ZIP se extrae en una carpeta al lado."""
+    origen = tmp_path / "juego.zip"
+    with zipfile.ZipFile(origen, "w") as zf:
+        zf.writestr("dentro.txt", "hola")
+    salida = formats.convert(str(origen), "extraer")
+    assert (Path(salida["out"]) / "dentro.txt").read_text() == "hola"
+
+
+def test_las_conversiones_no_pisan_el_original(tmp_path):
+    """Dos conversiones del mismo fichero no se pisan entre si."""
+    iso = _iso_de_prueba(tmp_path)
+    primera = formats.convert(str(iso), "zip")
+    segunda = formats.convert(str(iso), "zip")
+    assert primera["out"] != segunda["out"]
+    assert iso.exists()
+
+
+def test_el_iso_de_un_bin_cue_conserva_el_original(tmp_path):
+    """Al ir y volver, el ISO vuelve a ser el que era."""
+    iso = _iso_de_prueba(tmp_path)
+    original = iso.read_bytes()
+
+    bin_cue = formats.convert(str(iso), "bin-cue")
+    assert os.path.getsize(bin_cue["out"]) == 40 * 2352
+
+    vuelta = formats.convert(bin_cue["cue"], "iso")
+    assert open(vuelta["out"], "rb").read() == original
+
+
+def test_el_chd_necesita_el_chdman(tmp_path):
+    """Sin chdman se explica, no se finge que ha salido bien."""
+    if formats.chdman_disponible():
+        return
+    iso = _iso_de_prueba(tmp_path)
+    try:
+        formats.convert(str(iso), "chd")
+    except ValueError as exc:
+        assert "chdman" in str(exc)
+    else:
+        raise AssertionError("deberia haber fallado sin chdman")
+
+
+def test_el_chd_distingue_los_dos_tipos_de_sector():
+    """Un CHD de ISO y otro de BIN/CUE guardan los sectores distinto.
+
+    El que viene de un BIN/CUE lleva el sector entero (sincronizacion y
+    cabecera); el que viene de un ISO guarda los 2.048 bytes de datos sin
+    cabecera. Hay que saber cual de los dos es para no leer basura.
+    """
+    # Modo 2352: cada unidad lleva sus 12 bytes de sincronizacion y los 4
+    # de cabecera delante de los datos.
+    unidades = b""
+    for i in range(20):
+        unidad = bytearray(2448)
+        if i == 16:
+            unidad[16] = 1
+            unidad[17:22] = b"CD001"
+        unidades += bytes(unidad)
+    assert formats._chd_modo(unidades, 2448) == 16
+
+    # Modo 2048: los datos van seguidos, y detras viene el relleno.
+    unidades = b""
+    for i in range(20):
+        unidad = bytearray(2448)
+        if i == 16:
+            unidad[0] = 1
+            unidad[1:6] = b"CD001"
+        unidades += bytes(unidad)
+    assert formats._chd_modo(unidades, 2448) == 0
+
+
+def test_el_indice_compacto_se_guarda_y_se_vuelve_a_leer(tmp_path):
+    """En disco el indice guarda la posicion del juego; al leerlo, el juego.
+
+    Si guardara el juego entero en cada hash, el indice de un DAT grande
+    ocuparia gigabytes: el de Super Nintendo pesa mas de 800 KB y tiene
+    miles de juegos.
+    """
+    juegos = [
+        {"name": "Juego (USA)", "description": "Juego (USA)",
+         "cloneof": "", "region": "USA", "serial": "SLUS-00001",
+         "roms": [{"name": "Juego (USA).bin", "size": 1234, "crc": "ABCDEF12",
+                   "md5": "0" * 32, "sha1": "1" * 40, "serial": ""}]},
+        {"name": "Otro (Europa)", "description": "Otro (Europa)",
+         "cloneof": "", "region": "Europe", "serial": "SLES-00002",
+         "roms": [{"name": "Otro (Europa).bin", "size": 4321, "crc": "12345678",
+                   "md5": "2" * 32, "sha1": "3" * 40, "serial": ""}]},
+    ]
+    compacto = dats.build_index_compacto(juegos)
+    # En el indice compacto lo que se guarda es la posicion del juego.
+    assert compacto["by_hash"]["crc32:ABCDEF12"] == 0
+    clave = next(iter(compacto["by_name_size"]))
+    assert compacto["by_name_size"][clave] == 1234
+
+    meta = {"system": "prueba", "games": len(juegos),
+            "juegos": compacto["juegos"],
+            "by_hash": compacto["by_hash"],
+            "by_serial": compacto["by_serial"],
+            "by_name": compacto["by_name"],
+            "by_name_size": compacto["by_name_size"],
+            "by_title": compacto["by_title"]}
+    (tmp_path / "prueba.json").write_text(json.dumps(meta), encoding="utf-8")
+
+    indice = dats.load_index("prueba", str(tmp_path))
+
+    assert indice["by_hash"]["crc32:ABCDEF12"]["name"] == "Juego (USA)"
+    assert indice["by_serial"]["SLES-00002"]["name"] == "Otro (Europa)"
+    assert indice["by_name_size"][clave] == 1234
+    titulo = next(iter(indice["by_title"]))
+    assert indice["by_title"][titulo][0]["name"] == "Juego (USA)"
+
+
+def test_los_metadatos_del_dat_no_viven_en_el_indice(tmp_path):
+    """El estado de los DAT se lee sin cargar el indice.
+
+    El indice puede pesar varios megas (el de un DAT grande tiene la lista
+    de juegos); leerlo entero en cada consulta se comería la memoria de la
+    consola. Los metadatos van en su propio fichero.
+    """
+    indice = {"juegos": [{"name": "Juego " * 40} for _ in range(200)],
+              "by_hash": {"sha1:" + "a" * 40: 0}}
+    (tmp_path / "prueba.json").write_text(json.dumps(indice), encoding="utf-8")
+    (tmp_path / "prueba.dat").write_bytes(b"clrmamepro (\n)")
+    (tmp_path / "prueba.meta.json").write_text(
+        json.dumps({"system": "prueba", "source": "libretro-no-intro",
+                    "dat": "Nintendo - Prueba", "games": 200}),
+        encoding="utf-8")
+
+    ficheros = dats.dat_files(str(tmp_path))
+
+    assert len(ficheros) == 1
+    assert ficheros[0]["system"] == "prueba"
+    assert ficheros[0]["games"] == 200
+    assert ficheros[0]["dat"] == "Nintendo - Prueba"
+
+
+def test_un_dat_sin_metadatos_sigue_visto(tmp_path):
+    """Un DAT instalado antes de la separacion se lee igual."""
+    (tmp_path / "prueba.json").write_text(
+        json.dumps({"system": "prueba", "source": "libretro-no-intro",
+                    "dat": "Nintendo - Prueba", "games": 7,
+                    "by_hash": {}}), encoding="utf-8")
+    (tmp_path / "prueba.dat").write_bytes(b"clrmamepro (\n)")
+
+    ficheros = dats.dat_files(str(tmp_path))
+
+    assert ficheros[0]["games"] == 7
+    assert ficheros[0]["dat"] == "Nintendo - Prueba"
