@@ -31,6 +31,17 @@ def test_el_boton_de_reparar_solo_si_hay_algo_que_reparar():
     assert "reparables.length > 0" in h
 
 
+def test_al_subir_se_refresca_el_catalogo():
+    """Tras subir, el modal se refresca: `onRepaired` vuelve a pedir el catálogo.
+
+    Sin esto, el modal seguía enseñando el estado anterior y había que
+    cerrarlo y abrirlo de nuevo.
+    """
+    h = MODAL.read_text(encoding="utf-8")
+    assert "await api.biosUpload(" in h
+    assert "onRepaired()" in h
+
+
 def test_el_input_de_ficheros_no_esta_oculto():
     """Con `display: none` el input no lo alcanza ni el teclado."""
     h = MODAL.read_text(encoding="utf-8")
