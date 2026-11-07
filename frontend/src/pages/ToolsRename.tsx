@@ -22,9 +22,9 @@ import { cn } from '@/lib/utils'
 /** Como se explica cada tipo de coincidencia. */
 const METODOS: Record<string, string> = {
   hash: 'hash exacto del DAT',
-  nombre: 'nombre identico al del DAT',
+  nombre: 'nombre idéntico al del DAT',
   serial: 'serial del disco',
-  titulo: 'titulo parecido',
+  titulo: 'título parecido',
 }
 
 function etiquetaAccion(item: ToolsRenameItem): { texto: string; clase: string } {
@@ -60,6 +60,13 @@ export function ToolsRenamePage() {
     () => (dats.data?.sistemas ?? []).find((item) => item.system === system) ?? null,
     [dats.data, system],
   )
+
+  /**
+   * Si el backend no ha resuelto un DAT para este sistema no hay plan que
+   * calcular: se avisa y se bloquea el botón.
+   */
+  const sinDat =
+    !!system && !!dats.data && (!datDelSistema || datDelSistema.resuelto === 'ninguno')
 
   const calcular = async () => {
     if (!system) return
@@ -147,7 +154,7 @@ export function ToolsRenamePage() {
         subtitle="Poner las ROMs con el nombre que les da el DAT"
         onMenu={openMenu}
         actions={
-          <IconButton label="Volver a calcular el plan" onClick={calcular}>
+          <IconButton label="Volver a calcular el plan" onClick={calcular} disabled={!system || sinDat}>
             <RefreshCw className={cn('size-4', busy && 'animate-spin')} />
           </IconButton>
         }
@@ -186,21 +193,32 @@ export function ToolsRenamePage() {
               ))}
             </select>
 
-            {datDelSistema?.instalado ? (
-              <span className="rounded-xl border border-border bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground">
-                DAT listo · {datDelSistema.juegos?.toLocaleString('es-ES')} juegos
-              </span>
-            ) : (
-              <Button
-                variant="primary"
-                size="sm"
-                disabled={!system || busy}
-                onClick={instalarDat}
-              >
-                <Database className="size-4" />
-                Descargar el DAT
-              </Button>
-            )}
+            {system && dats.data ? (
+              sinDat ? (
+                <span className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700 dark:text-amber-400">
+                  Este sistema no tiene DAT disponible
+                </span>
+              ) : datDelSistema?.instalado ? (
+                <span
+                  title={datDelSistema?.dat ?? undefined}
+                  className="rounded-xl border border-border bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground"
+                >
+                  {datDelSistema?.resuelto === 'nombre'
+                    ? `DAT por nombre · ${datDelSistema?.dat} (confianza ${Math.round((datDelSistema?.confianza ?? 0) * 100)} %)`
+                    : `DAT listo · ${(datDelSistema?.juegos ?? 0).toLocaleString('es-ES')} juegos`}
+                </span>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={!system || busy}
+                  onClick={instalarDat}
+                >
+                  <Database className="size-4" />
+                  Descargar el DAT
+                </Button>
+              )
+            ) : null}
           </div>
         </PanelCard>
 
@@ -210,7 +228,9 @@ export function ToolsRenamePage() {
             subtitle={
               plan
                 ? `${plan.stats.total} ficheros · ${plan.stats.renombrar} para renombrar · ${plan.stats.revisar} para revisar`
-                : 'Primero elige el sistema y calcula el plan: no se toca nada hasta que lo apliques'
+                : sinDat
+                  ? 'Este sistema no tiene DAT disponible: no se puede calcular el plan'
+                  : 'Primero elige el sistema y calcula el plan: no se toca nada hasta que lo apliques'
             }
             icon={<FileSignature className="size-4" />}
             actions={
@@ -221,23 +241,34 @@ export function ToolsRenamePage() {
                     Deshacer
                   </Button>
                 )}
-                <Button size="sm" variant="primary" onClick={calcular} disabled={!system || busy}>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={calcular}
+                  disabled={!system || busy || sinDat}
+                >
                   <History className="size-4" />
                   Calcular el plan
                 </Button>
               </>
             }
           >
-            {!plan ? (
+            {sinDat ? (
               <EmptyState
                 icon={<FileSignature className="size-5" />}
-                title="Todavia no hay plan"
-                description="El plan se calcula en memoria: son los nombres que tendria cada ROM segun su DAT."
+                title="Este sistema no tiene DAT disponible"
+                description="El manager no ha encontrado ningún DAT para este sistema, así que no hay plan de renombrado que calcular."
+              />
+            ) : !plan ? (
+              <EmptyState
+                icon={<FileSignature className="size-5" />}
+                title="Todavía no hay plan"
+                description="El plan se calcula en memoria: son los nombres que tendría cada ROM según su DAT."
               />
             ) : plan.items.length === 0 ? (
               <EmptyState
                 title="No hay ficheros que renombrar"
-                description={`La carpeta de ${plan.system} esta vacia.`}
+                description={`La carpeta de ${plan.system} está vacía.`}
               />
             ) : (
               <ul className="divide-y divide-border">
@@ -274,6 +305,15 @@ export function ToolsRenamePage() {
                   )
                 })}
               </ul>
+            )}
+
+            {plan && plan.stats.sin_dat > 0 && (
+              <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+                <CircleAlert className="size-4 shrink-0" />
+                <span>
+                  {plan.stats.sin_dat} ficheros se quedan sin renombrar: no aparecen en el DAT.
+                </span>
+              </p>
             )}
           </PanelCard>
         </div>

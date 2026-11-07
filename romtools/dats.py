@@ -40,6 +40,7 @@ fichero y por titulo.
 
 from __future__ import annotations
 
+import difflib
 import io
 import json
 import os
@@ -64,7 +65,9 @@ _MIRROR = ("https://github.com/hugo19941994/auto-datfile-generator/releases/"
 
 #: Espejo de libretro-database: ficheros sueltos, sin tokens ni scraping.
 _LIBRETRO = ("https://raw.githubusercontent.com/libretro/libretro-database/"
-             "master/metadat/")
+             "master/")
+_LIBRETRO_METADAT = _LIBRETRO + "metadat/"
+_LIBRETRO_DAT = _LIBRETRO + "dat/"
 
 #: Fuentes de DAT conocidas.
 SOURCES = {
@@ -72,14 +75,21 @@ SOURCES = {
         "name": "Redump (libretro)",
         "author": "redump.org",
         "kind": "discos",
-        "base": _LIBRETRO + "redump/",
+        "base": _LIBRETRO_METADAT + "redump/",
         "files": True,
     },
     "libretro-no-intro": {
         "name": "No-Intro (libretro)",
         "author": "no-intro.org",
         "kind": "cartuchos",
-        "base": _LIBRETRO + "no-intro/",
+        "base": _LIBRETRO_METADAT + "no-intro/",
+        "files": True,
+    },
+    "libretro-dat": {
+        "name": "Libretro (DAT por sistema)",
+        "author": "libretro",
+        "kind": "sistemas",
+        "base": _LIBRETRO_DAT,
         "files": True,
     },
     "redump": {
@@ -100,36 +110,66 @@ SOURCES = {
     },
 }
 
-#: De cada sistema de Batocera, que DAT le toca. El nombre es exactamente el
-#: del fichero en el espejo de libretro.
+#: De cada sistema de Batocera, que DAT le toca.
+#:
+#: La clave es **el nombre de la carpeta en /userdata/roms**, que es lo que usa
+#: el backend para abrir la carpeta del sistema. El valor es la fuente y el
+#: nombre exacto del fichero DAT en el espejo.
+#:
+#: Las fuentes son:
+#:
+#: - ``libretro-redump`` / ``libretro-no-intro``: ficheros sueltos en el espejo
+#:   de ``libretro-database``. Son los DAT de una sola version por sistema, sin
+#:   variantes de volcado: los que se usan para renombrar.
+#: - ``redump`` / ``no-intro``: el rebuild diario, que tiene mas sistemas
+#:   (placas de recreativa, PC-88, X68000...) pero son ZIP: se baja solo el
+#:   miembro que interesa.
 SYSTEM_DAT = {
-    # ── Discos: Redump ──
+    # ── Discos: Redump (libretro) ──
+    "3do": ("libretro-redump", "The 3DO Company - 3DO"),
     "psx": ("libretro-redump", "Sony - PlayStation"),
     "ps2": ("libretro-redump", "Sony - PlayStation 2"),
     "ps3": ("libretro-redump", "Sony - PlayStation 3"),
     "psp": ("libretro-redump", "Sony - PlayStation Portable"),
     "saturn": ("libretro-redump", "Sega - Saturn"),
-    "segacd": ("libretro-redump", "Sega - Mega-CD - Sega CD"),
+    "megacd": ("libretro-redump", "Sega - Mega-CD - Sega CD"),
     "xbox": ("libretro-redump", "Microsoft - Xbox"),
     "xbox360": ("libretro-redump", "Microsoft - Xbox 360"),
-    "gc": ("libretro-redump", "Nintendo - GameCube"),
+    "gamecube": ("libretro-redump", "Nintendo - GameCube"),
     "wii": ("libretro-redump", "Nintendo - Wii"),
-    "3do": ("libretro-redump", "The 3DO Company - 3DO"),
-    "pcecd": ("libretro-redump", "NEC - PC Engine CD - TurboGrafx-CD"),
-    "dc": ("libretro-redump", "Sega - Dreamcast"),
+    "dreamcast": ("libretro-redump", "Sega - Dreamcast"),
     "naomi": ("libretro-redump", "Sega - Naomi"),
     "naomi2": ("libretro-redump", "Sega - Naomi 2"),
-    "jaguarcd": ("libretro-redump", "Atari - Jaguar CD"),
+    "pcenginecd": ("libretro-redump", "NEC - PC Engine CD - TurboGrafx-CD"),
+    "pc98": ("libretro-redump", "NEC - PC-98"),
+    "pcfx": ("libretro-redump", "NEC - PC-FX"),
     "cdi": ("libretro-redump", "Philips - CD-i"),
-    "pc-9800": ("libretro-redump", "NEC - PC-98"),
-    "pc-fx": ("libretro-redump", "NEC - PC-FX"),
-    # ── Cartuchos: No-Intro ──
+    "jaguarcd": ("libretro-redump", "Atari - Jaguar CD"),
+    # ── Discos: Redump (rebuild diario) ──
+    "chihiro": ("redump", "Arcade - Sega - Chihiro"),
+    "lindbergh": ("redump", "Arcade - Sega - Lindbergh"),
+    "triforce": ("redump", "Arcade - Namco - Sega - Nintendo - Triforce"),
+    "namco2x6": ("redump", "Arcade - Namco - System 246"),
+    "neogeocd": ("redump", "SNK - Neo Geo CD"),
+    "amigacd32": ("libretro-dat", "Commodore - CD32"),
+    "amigacdtv": ("redump", "Commodore - Amiga CDTV"),
+    "fmtowns": ("redump", "Fujitsu - FM-Towns"),
+    "pc88": ("redump", "NEC - PC-88 series"),
+    "x68000": ("redump", "Sharp - X68000"),
+    "archimedes": ("redump", "Acorn - Archimedes"),
+    "macintosh": ("redump", "Apple - Macintosh"),
+    # ── Cartuchos: No-Intro (libretro) ──
     "snes": ("libretro-no-intro", "Nintendo - Super Nintendo Entertainment System"),
+    "snes-msu1": ("libretro-no-intro", "Nintendo - Super Nintendo Entertainment System"),
     "nes": ("libretro-no-intro", "Nintendo - Nintendo Entertainment System"),
     "gb": ("libretro-no-intro", "Nintendo - Game Boy"),
+    "gb2players": ("libretro-no-intro", "Nintendo - Game Boy"),
+    "sgb": ("libretro-no-intro", "Nintendo - Game Boy"),
     "gbc": ("libretro-no-intro", "Nintendo - Game Boy Color"),
+    "gbc2players": ("libretro-no-intro", "Nintendo - Game Boy Color"),
     "gba": ("libretro-no-intro", "Nintendo - Game Boy Advance"),
     "n64": ("libretro-no-intro", "Nintendo - Nintendo 64"),
+    "n64dd": ("libretro-no-intro", "Nintendo - Nintendo 64DD"),
     "virtualboy": ("libretro-no-intro", "Nintendo - Virtual Boy"),
     "megadrive": ("libretro-no-intro", "Sega - Mega Drive - Genesis"),
     "mastersystem": ("libretro-no-intro", "Sega - Master System - Mark III"),
@@ -139,29 +179,105 @@ SYSTEM_DAT = {
     "atari2600": ("libretro-no-intro", "Atari - 2600"),
     "atari5200": ("libretro-no-intro", "Atari - 5200"),
     "atari7800": ("libretro-no-intro", "Atari - 7800"),
-    "atari-800": ("libretro-no-intro", "Atari - 8-bit Family"),
+    "atari800": ("libretro-no-intro", "Atari - 8-bit Family"),
     "lynx": ("libretro-no-intro", "Atari - Lynx"),
+    "camplynx": ("libretro-no-intro", "Atari - Lynx"),
     "jaguar": ("libretro-no-intro", "Atari - Jaguar"),
     "vectrex": ("libretro-no-intro", "GCE - Vectrex"),
-    "wonderswan": ("libretro-no-intro", "Bandai - WonderSwan"),
-    "wonderswancolor": ("libretro-no-intro", "Bandai - WonderSwan Color"),
+    "wswan": ("libretro-no-intro", "Bandai - WonderSwan"),
+    "wswanc": ("libretro-no-intro", "Bandai - WonderSwan Color"),
     "ngp": ("libretro-no-intro", "SNK - Neo Geo Pocket"),
     "ngpc": ("libretro-no-intro", "SNK - Neo Geo Pocket Color"),
     "c64": ("libretro-no-intro", "Commodore - 64"),
-    "vic20": ("libretro-no-intro", "Commodore - VIC-20"),
-    "amiga": ("libretro-no-intro", "Commodore - Amiga"),
-    "amstradcpc": ("libretro-no-intro", "Amstrad - CPC"),
+    "c20": ("libretro-no-intro", "Commodore - VIC-20"),
+    "amiga1200": ("libretro-no-intro", "Commodore - Amiga"),
+    "amiga500": ("libretro-no-intro", "Commodore - Amiga"),
+    "amstradcpc": ("libretro-dat", "Amstrad - CPC"),
     "intellivision": ("libretro-no-intro", "Mattel - Intellivision"),
     "supervision": ("libretro-no-intro", "Watara - Supervision"),
     "channelf": ("libretro-no-intro", "Fairchild - Channel F"),
-    "apf": ("libretro-no-intro", "APF - Imagination Machine"),
+    "apfm1000": ("no-intro", "APF - Imagination Machine"),
     "odyssey2": ("libretro-no-intro", "Magnavox - Odyssey2"),
-    "videopac-g7400": ("libretro-no-intro", "Philips - Videopac+"),
+    "videopacplus": ("libretro-no-intro", "Philips - Videopac+"),
     "msx1": ("libretro-no-intro", "Microsoft - MSX"),
     "msx2": ("libretro-no-intro", "Microsoft - MSX2"),
-    "zxspectrum": ("libretro-no-intro", "Sinclair - ZX Spectrum +3"),
-    "pce": ("libretro-no-intro", "NEC - PC Engine - TurboGrafx 16"),
+    "zxspectrum": ("libretro-dat", "Sinclair - ZX Spectrum"),
+    "pcengine": ("libretro-no-intro", "NEC - PC Engine - TurboGrafx 16"),
+    "supergrafx": ("no-intro", "NEC - PC Engine SuperGrafx"),
     "scv": ("libretro-no-intro", "Epoch - Super Cassette Vision"),
+    "cassettevision": ("libretro-no-intro", "Epoch - Super Cassette Vision"),
+    "colecovision": ("libretro-no-intro", "Coleco - ColecoVision"),
+    "advision": ("libretro-no-intro", "Entex - Adventure Vision"),
+    "arcadia": ("libretro-no-intro", "Emerson - Arcadia 2001"),
+    "gameandwatch": ("no-intro", "Nintendo - Game & Watch"),
+    "gamecom": ("libretro-no-intro", "Tiger - Game.com"),
+    "gamepock": ("no-intro", "Epoch - Game Pocket Computer"),
+    "gp32": ("libretro-no-intro", "GamePark - GP32"),
+    "arduboy": ("libretro-no-intro", "Arduboy Inc - Arduboy"),
+    "fds": ("libretro-no-intro", "Nintendo - Family Computer Disk System"),
+    "3ds": ("libretro-no-intro", "Nintendo - Nintendo 3DS"),
+    "nds": ("libretro-no-intro", "Nintendo - Nintendo DS"),
+    "psvita": ("libretro-no-intro", "Sony - PlayStation Vita"),
+    "wiiu": ("libretro-dat", "Nintendo - Wii U"),
+    "pokemini": ("libretro-no-intro", "Nintendo - Pokemon Mini"),
+    "loopy": ("no-intro", "Casio - Loopy (BigEndian)"),
+    "gamate": ("no-intro", "Bit Corporation - Gamate"),
+    "megaduck": ("no-intro", "Welback - Mega Duck"),
+    "sufami": ("libretro-no-intro", "Nintendo - Sufami Turbo"),
+    "supracan": ("no-intro", "Funtech - Super Acan"),
+    "sega32x": ("libretro-no-intro", "Sega - 32X"),
+    "ti99": ("no-intro", "Texas Instruments - TI-99-4A (A2R)"),
+    "sc3000": ("no-intro", "Sega - SG-1000 - SC-3000"),
+    "x1": ("no-intro", "Sharp - X1 (Waveform)"),
+    "gmaster": ("libretro-no-intro", "Hartung - Game Master"),
+    "gx4000": ("libretro-no-intro", "NEC - PC Engine - TurboGrafx 16"),
+    # ── Sistemas que solo cubre el conjunto `dat/` de libretro ──
+    "atomiswave": ("libretro-dat", "Atomiswave"),
+    "neogeo": ("libretro-dat", "SNK - Neo Geo"),
+    "switch": ("libretro-dat", "Nintendo - Nintendo Switch"),
+    "scummvm": ("libretro-dat", "ScummVM"),
+    "zx81": ("libretro-dat", "Sinclair - ZX 81"),
+    "tic80": ("libretro-dat", "TIC-80"),
+    "tvc": ("libretro-dat", "Videoton - TV-Computer"),
+    "uzebox": ("libretro-dat", "Uzebox"),
+    "vircon32": ("libretro-dat", "Vircon32"),
+    "wasm4": ("libretro-dat", "WASM-4"),
+    "traider1": ("libretro-dat", "Tomb Raider"),
+    "cplus4": ("libretro-no-intro", "Commodore - Plus-4"),
+    "vsmile": ("libretro-no-intro", "VTech - V.Smile"),
+    "astrocade": ("no-intro", "Bally - Astrocade"),
+    "atarist": ("no-intro", "Atari - Atari ST"),
+    "crvision": ("no-intro", "VTech - CreatiVision"),
+    "pv1000": ("no-intro", "Casio - PV-1000"),
+    "satellaview": ("no-intro", "Nintendo - Satellaview"),
+    "vc4000": ("no-intro", "Interton - VC 4000"),
+}
+
+#: Palabras extra de un sistema, para buscarlo por nombre cuando no esta en el
+#: mapa. Solo se usan si la busqueda automatica falla.
+SYSTEM_ALIASES = {
+    "gamecube": "gc",
+    "dreamcast": "dc",
+    "megacd": "segacd mega cd sega cd",
+    "megadrive": "genesis md smd",
+    "pcengine": "pce turbografx turbo grafx",
+    "pcenginecd": "pcecd turbografx cd",
+    "atari800": "8 bit 8-bit x8",
+    "snes": "super nes super famicom",
+    "nes": "famicom",
+    "n64": "nintendo 64",
+    "gba": "game boy advance",
+    "gbc": "game boy color",
+    "gb": "game boy",
+    "3do": "3do company panasonic",
+    "lynx": "atari lynx camputers",
+    "naomi": "sega naomi",
+    "wswan": "wonderswan bandai",
+    "wswanc": "wonderswan color bandai",
+    "mame": "arcade mame",
+    "fbneo": "arcade final burn neo",
+    "neogeo": "arcade neo geo snk",
+    "atomiswave": "arcade sega atomiswave",
 }
 
 #: Serial de disco entre corchetes: ``[SLUS-00237]``.
@@ -430,13 +546,38 @@ def _serial_of(name: str) -> str | None:
 
 def build_index(games: Sequence[dict]) -> dict:
     """Construye los mapas de busqueda a partir de los juegos de un DAT."""
+    compacto = build_index_compacto(games)
+    juegos = compacto["juegos"]
+
+    def _resolver(mapa: dict) -> dict:
+        return {clave: juegos[pos] for clave, pos in mapa.items()}
+
+    by_title = {}
+    for clave, posiciones in compacto["by_title"].items():
+        by_title[clave] = [juegos[pos] for pos in posiciones]
+
+    return {"by_hash": _resolver(compacto["by_hash"]),
+            "by_serial": _resolver(compacto["by_serial"]),
+            "by_name": _resolver(compacto["by_name"]),
+            "by_name_size": compacto["by_name_size"],
+            "by_title": by_title}
+
+
+def build_index_compacto(games: Sequence[dict]) -> dict:
+    """Los mapas de busqueda guardando la posicion del juego.
+
+    Los mapas guardan **la posicion del juego** en la lista, no el juego
+    entero. Si guardaran el juego, el indice de un DAT grande (el de Super
+    Nintendo tiene miles de juegos) ocuparia gigabytes: cada hash repetiria
+    la lista de roms del juego al que pertenece.
+    """
     by_hash: dict = {}
     by_serial: dict = {}
     by_name: dict = {}
     by_name_size: dict = {}
     by_title: dict = {}
 
-    for game in games:
+    for pos, game in enumerate(games):
         for rom in game.get("roms", []):
             for key, value in (("sha1", rom.get("sha1")), ("md5", rom.get("md5")),
                                 ("crc32", rom.get("crc"))):
@@ -445,26 +586,27 @@ def build_index(games: Sequence[dict]) -> dict:
                 # El CRC32 se guarda en mayusculas (es como viene en los
                 # DAT) y los demas en minusculas.
                 value = value.upper() if key == "crc32" else value.lower()
-                by_hash.setdefault(f"{key}:{value}", game)
+                by_hash.setdefault(f"{key}:{value}", pos)
             rom_name = rom.get("name") or ""
             if rom_name:
                 key = normalize_title(os.path.splitext(os.path.basename(rom_name))[0])
                 if key:
-                    by_name.setdefault(key, game)
+                    by_name.setdefault(key, pos)
                     by_name_size.setdefault(key, rom.get("size") or 0)
             serial = rom.get("serial") or game.get("serial")
             if serial:
-                by_serial.setdefault(serial.upper(), game)
+                by_serial.setdefault(serial.upper(), pos)
         serial = game.get("serial")
         if serial:
-            by_serial.setdefault(serial.upper(), game)
+            by_serial.setdefault(serial.upper(), pos)
         title = normalize_title(game.get("description") or game.get("name") or "")
         if title:
             bucket = by_title.setdefault(title, [])
             if len(bucket) < 12:
-                bucket.append(game)
+                bucket.append(pos)
 
-    return {"by_hash": by_hash, "by_serial": by_serial,
+    return {"juegos": list(games),
+            "by_hash": by_hash, "by_serial": by_serial,
             "by_name": by_name, "by_name_size": by_name_size,
             "by_title": by_title}
 
@@ -560,6 +702,32 @@ def parse_clrmamepro(path: str) -> list:
 
 # ── Cache en disco ──────────────────────────────────────────────────────
 
+def _leer_meta(cache_dir: str, slug: str) -> dict:
+    """Los metadatos de un DAT instalado (o un diccionario vacio).
+
+    Se leen del fichero de metadatos, que es diminuto. Si no existe (un DAT
+    instalado antes de esta separacion), se recurre al indice, que si lleva
+    los metadatos dentro.
+    """
+    meta_side = os.path.join(cache_dir, slug + ".meta.json")
+    if os.path.exists(meta_side):
+        try:
+            with open(meta_side, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (OSError, ValueError):
+            return {}
+    side = os.path.join(cache_dir, slug + ".json")
+    if not os.path.exists(side):
+        return {}
+    try:
+        with open(side, "r", encoding="utf-8") as fh:
+            meta = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    return {clave: meta.get(clave) for clave in
+            ("system", "source", "dat", "version", "generated", "games")}
+
+
 def dat_files(cache_dir: str) -> list:
     """Los DAT descargados, con su estado."""
     out = []
@@ -572,28 +740,25 @@ def dat_files(cache_dir: str) -> list:
         path = os.path.join(cache_dir, name)
         info = {"system": slug, "file": path, "size": os.path.getsize(path),
                 "source": None, "dat": None, "version": None, "games": None}
-        side = os.path.join(cache_dir, slug + ".json")
-        if os.path.exists(side):
-            try:
-                with open(side, "r", encoding="utf-8") as fh:
-                    meta = json.load(fh)
-                info["source"] = meta.get("source")
-                info["dat"] = meta.get("dat")
-                info["version"] = meta.get("version")
-                info["games"] = meta.get("games")
-                info["generated"] = meta.get("generated")
-            except (OSError, ValueError):
-                pass
+        meta = _leer_meta(cache_dir, slug)
+        if meta:
+            info["source"] = meta.get("source")
+            info["dat"] = meta.get("dat")
+            info["version"] = meta.get("version")
+            info["games"] = meta.get("games")
+            info["generated"] = meta.get("generated")
         out.append(info)
     return out
 
 
 def install_dat(system: str, cache_dir: str, timeout: int = 600,
-                progress: Callable | None = None) -> dict:
+                progress: Callable | None = None,
+                catalogo: list | None = None) -> dict:
     """Descarga e indexa el DAT de un sistema de Batocera."""
-    if system not in SYSTEM_DAT:
+    resolucion = resolve_dat(system, None, catalogo)
+    if not resolucion:
         raise ValueError(f"el sistema «{system}» no tiene DAT configurado")
-    source, dat_name = SYSTEM_DAT[system]
+    source, dat_name = resolucion["source"], resolucion["dat"]
 
     info = download_dat(source, dat_name, cache_dir, timeout=timeout, progress=progress)
     target = os.path.join(cache_dir, system + ".dat")
@@ -603,7 +768,7 @@ def install_dat(system: str, cache_dir: str, timeout: int = 600,
     if progress:
         progress(f"leyendo {dat_name}…")
     games = parse_dat(target)
-    index = build_index(games)
+    index = build_index_compacto(games)
 
     meta = {
         "system": system,
@@ -612,6 +777,18 @@ def install_dat(system: str, cache_dir: str, timeout: int = 600,
         "version": info.get("version"),
         "generated": time.time(),
         "games": len(games),
+    }
+    # Los metadatos van en su propio fichero, aparte del indice: el estado
+    # de los DAT solo necesita saber de donde salio cada uno y cuantos
+    # juegos tiene, y el indice puede pesar varios megas. Si se leyera entero
+    # en cada consulta, un DAT grande se comeria la memoria de la consola.
+    meta_side = os.path.join(cache_dir, system + ".meta.json")
+    with open(meta_side, "w", encoding="utf-8") as fh:
+        json.dump(meta, fh, ensure_ascii=False)
+
+    indice = {
+        # La lista de juegos va una sola vez: los mapas guardan la posicion.
+        "juegos": index["juegos"],
         "by_hash": index["by_hash"],
         "by_serial": index["by_serial"],
         "by_name": index["by_name"],
@@ -620,7 +797,7 @@ def install_dat(system: str, cache_dir: str, timeout: int = 600,
     }
     side = os.path.join(cache_dir, system + ".json")
     with open(side, "w", encoding="utf-8") as fh:
-        json.dump(meta, fh, ensure_ascii=False)
+        json.dump(indice, fh, ensure_ascii=False)
 
     return {"system": system, "source": source, "dat": dat_name,
             "version": info.get("version"), "games": len(games),
@@ -637,12 +814,40 @@ def load_index(system: str, cache_dir: str) -> dict | None:
             meta = json.load(fh)
     except (OSError, ValueError):
         return None
+    juegos = meta.get("juegos") or []
+
+    def _resolver(mapa: dict) -> dict:
+        """Los mapas guardan la posicion del juego; aqui se resuelve.
+
+        Un indice viejo (con el juego entero dentro) tambien vale: los
+        valores que no son numeros se dejan como estaban.
+        """
+        if not juegos:
+            return mapa
+        salida = {}
+        for clave, valor in mapa.items():
+            if isinstance(valor, int) and 0 <= valor < len(juegos):
+                salida[clave] = juegos[valor]
+            else:
+                salida[clave] = valor
+        return salida
+
+    by_title = {}
+    for clave, valores in (meta.get("by_title") or {}).items():
+        if isinstance(valores, list):
+            by_title[clave] = [
+                juegos[v] if isinstance(v, int) and 0 <= v < len(juegos) else v
+                for v in valores]
+        else:
+            by_title[clave] = valores
+
     return {
-        "by_hash": meta.get("by_hash", {}),
-        "by_serial": meta.get("by_serial", {}),
-        "by_name": meta.get("by_name", {}),
+        "by_hash": _resolver(meta.get("by_hash", {})),
+        "by_serial": _resolver(meta.get("by_serial", {})),
+        "by_name": _resolver(meta.get("by_name", {})),
+        # Los tamanos no son posiciones: se dejan como estan.
         "by_name_size": meta.get("by_name_size", {}),
-        "by_title": meta.get("by_title", {}),
+        "by_title": by_title,
         "system": system,
         "dat": meta.get("dat"),
         "source": meta.get("source"),
@@ -654,7 +859,7 @@ def load_index(system: str, cache_dir: str) -> dict | None:
 def remove_dat(system: str, cache_dir: str) -> dict:
     """Borra el DAT y su indice de un sistema."""
     removed = []
-    for name in (system + ".dat", system + ".json"):
+    for name in (system + ".dat", system + ".json", system + ".meta.json"):
         path = os.path.join(cache_dir, name)
         if os.path.exists(path):
             os.remove(path)
@@ -662,10 +867,222 @@ def remove_dat(system: str, cache_dir: str) -> dict:
     return {"ok": True, "removed": removed}
 
 
-def systems_with_dat() -> list:
-    """Los sistemas de Batocera que tienen DAT, con su fuente."""
+def systems_with_dat(sistemas=None, catalogo=None) -> list:
+    """Los sistemas de Batocera que tienen DAT, con su fuente.
+
+    ``sistemas`` es la lista de sistemas que ve el manager (slug y nombre
+    legible). Para los que no estan en el mapa se busca por nombre contra el
+    catalogo real, y se anota con que confianza se resolvio.
+    """
     out = []
+    vistos = set()
     for system, (source, dat_name) in sorted(SYSTEM_DAT.items()):
         out.append({"system": system, "source": source,
-                    "source_name": SOURCES[source]["name"], "dat": dat_name})
+                    "source_name": SOURCES[source]["name"], "dat": dat_name,
+                    "confianza": 1.0, "resuelto": "mapa"})
+        vistos.add(system)
+
+    for item in sistemas or []:
+        if isinstance(item, dict):
+            system = item.get("name") or ""
+            nombre = item.get("fullname") or ""
+        else:
+            system = str(item)
+            nombre = ""
+        if not system or system in vistos:
+            continue
+        resolucion = resolve_dat(system, nombre, catalogo)
+        if not resolucion:
+            continue
+        out.append({**resolucion,
+                    "source_name": SOURCES.get(resolucion["source"], {}).get(
+                        "name", resolucion["source"])})
+        vistos.add(system)
     return out
+
+
+# ── Catalogo en vivo y resolucion por nombre ────────────────────────────
+
+#: GitHub lista el contenido de una carpeta con su API.
+_LIBRETRO_API = ("https://api.github.com/repos/libretro/libretro-database/"
+                 "contents/metadat/{}")
+
+#: Cuanto tiempo se considera bueno el catalogo descargado (un dia).
+_CATALOGO_TTL = 86400
+
+
+def _tokens(texto: str) -> set:
+    """Palabras significativas de un nombre de sistema o de DAT.
+
+    Las palabras sueltas pegadas a numeros cuentan tambien unidas: «MZ-700» y
+    «MZ700» comparten «mz700», y asi un numero suelto («800») no empareja dos
+    sistemas distintos por casualidad.
+    """
+    limpio = re.sub(r"\(.*?\)", " ", texto.lower())
+    palabras = set()
+    for parte in re.split(r"[^A-Za-z0-9+]+", limpio):
+        if len(parte) > 1 and not parte.isdigit() and parte not in _RUIDO:
+            palabras.add(parte)
+    for grupo in re.findall(r"[a-z]+[0-9]+|[0-9]+[a-z]+", limpio):
+        if len(grupo) > 2:
+            palabras.add(grupo)
+    return palabras
+
+
+#: Palabras que no distinguen un sistema de otro.
+_RUIDO = {
+    "the", "company", "series", "system", "systems", "game", "games",
+    "interactive", "multimedia", "super", "entertainment", "computer",
+    "compatible", "disc", "discs", "family", "edition", "collection",
+    "source", "code", "and", "for", "de", "del", "la", "el", "arcade",
+}
+
+
+def _catalogo_fichero(cache_dir: str) -> str:
+    return os.path.join(cache_dir, "catalogo.json")
+
+
+def catalogue(cache_dir: str | None = None, timeout: int = 90,
+              refresh: bool = False) -> list:
+    """Los DAT que hay disponibles ahora mismo.
+
+    Se leen del espejo de libretro (ficheros sueltos) y del rebuild diario
+    (que tiene mas sistemas, en ZIP). Se cachean un dia en disco.
+    """
+    if cache_dir:
+        ruta = _catalogo_fichero(cache_dir)
+        if not refresh and os.path.exists(ruta):
+            try:
+                with open(ruta, "r", encoding="utf-8") as fh:
+                    meta = json.load(fh)
+                if (time.time() - meta.get("generado", 0)) < _CATALOGO_TTL:
+                    return meta.get("catalogo", [])
+            except (OSError, ValueError):
+                pass
+
+    items = []
+    for carpeta, source in (("redump", "libretro-redump"),
+                            ("no-intro", "libretro-no-intro")):
+        for nombre in _listar_libretro(carpeta, timeout):
+            items.append({"dat": nombre, "source": source})
+    for nombre in _listar_libretro_dat(timeout):
+        items.append({"dat": nombre, "source": "libretro-dat"})
+    for source in ("redump", "no-intro"):
+        # El indice de cada fuente se cachea en disco: la segunda vez no se
+        # vuelve a descargar el XML entero.
+        for entrada in fetch_index(source, cache_dir, refresh=refresh,
+                                   timeout=timeout):
+            nombre = entrada.get("name") or ""
+            if not nombre or nombre.startswith("Source Code"):
+                continue
+            items.append({"dat": nombre, "source": source})
+
+    if cache_dir:
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(_catalogo_fichero(cache_dir), "w", encoding="utf-8") as fh:
+                json.dump({"generado": time.time(), "catalogo": items}, fh,
+                          ensure_ascii=False)
+        except OSError:
+            pass
+    return items
+
+
+def _listar_libretro(carpeta: str, timeout: int = 90) -> list:
+    """Los DAT sueltos del espejo de libretro."""
+    request = urllib.request.Request(
+        _LIBRETRO_API.format(carpeta),
+        headers={"User-Agent": "batocera-web-manager"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            datos = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError):
+        return []
+    return [f["name"][:-4] for f in datos
+            if isinstance(f, dict) and f.get("name", "").endswith(".dat")]
+
+
+def _listar_libretro_dat(timeout: int = 90) -> list:
+    """Los DAT sueltos de la carpeta `dat/` de libretro."""
+    request = urllib.request.Request(
+        _LIBRETRO_API.replace("metadat/", "dat/"),
+        headers={"User-Agent": "batocera-web-manager"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            datos = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError):
+        return []
+    return [f["name"][:-4] for f in datos
+            if isinstance(f, dict) and f.get("name", "").endswith(".dat")]
+
+
+def _listar_rebuild(archivo: str, timeout: int = 300) -> list:
+    """Los DAT del rebuild diario (vienen en un ZIP, aqui solo los nombres)."""
+    url = _MIRROR + archivo
+    try:
+        with urllib.request.urlopen(
+                urllib.request.Request(url, headers={"User-Agent": "batocera-web-manager"}),
+                timeout=timeout) as response:
+            texto = response.read().decode("utf-8", "replace")
+    except (urllib.error.URLError, OSError):
+        return []
+    nombres = re.findall(r"<name>([^<]+)</name>", texto)
+    return sorted({n.replace("&amp;", "&") for n in nombres})
+
+
+def resolve_dat(system: str, nombre: str | None = None,
+                catalogo: list | None = None) -> dict | None:
+    """El DAT que le toca a un sistema de Batocera.
+
+    Primero se mira el mapa. Si el sistema no esta, se busca por nombre
+    contra el catalogo real: gana el DAT que mas palabras comparte, pero solo
+    si gana con ventaja (si hay empate, no se arriesga).
+    """
+    if system in SYSTEM_DAT:
+        source, dat_name = SYSTEM_DAT[system]
+        return {"system": system, "source": source, "dat": dat_name,
+                "confianza": 1.0, "resuelto": "mapa"}
+
+    if not catalogo:
+        return None
+
+    sistema_tokens = _tokens(nombre or system)
+    sistema_tokens |= _tokens(system.replace("-", " ").replace("_", " "))
+    alias = SYSTEM_ALIASES.get(system)
+    if alias:
+        sistema_tokens |= _tokens(alias)
+    if not sistema_tokens:
+        return None
+
+    # Cuantos DAT comparten cada palabra: una palabra que aparece en muchos
+    # DAT no vale casi nada, y una que aparece en uno solo vale mucho.
+    apariciones = {}
+    for item in catalogo:
+        for token in _tokens(item["dat"]):
+            apariciones[token] = apariciones.get(token, 0) + 1
+
+    mejor = None
+    for item in catalogo:
+        comunes = sistema_tokens & _tokens(item["dat"])
+        if not comunes:
+            continue
+        # Se exige que el DAT cubra **todas** las palabras del sistema: si solo
+        # coincide en una palabra generica («Wolfenstein») no es el mismo
+        # sistema («Wolfenstein 3D» no es «Enemy Territory»).
+        if len(comunes) < len(sistema_tokens):
+            continue
+        peso = sum(1.0 / apariciones.get(t, 1) for t in comunes)
+        ratio = difflib.SequenceMatcher(
+            None, (nombre or system).lower(), item["dat"].lower()).ratio()
+        puntos = peso * 10 + ratio * 3
+        if mejor is None or puntos > mejor[0]:
+            mejor = (puntos, item)
+
+    if mejor is None:
+        return None
+    puntos, item = mejor
+    confianza = round(min(1.0, puntos / 14), 2)
+    if confianza < 0.7:
+        return None
+    return {"system": system, "source": item["source"], "dat": item["dat"],
+            "confianza": confianza, "resuelto": "nombre"}

@@ -52,17 +52,19 @@ def cmd_install(args) -> int:
     os.makedirs(cache, exist_ok=True)
 
     fallos = []
+    catalogo = dats.catalogue(cache, timeout=args.timeout)
     for system in systems:
-        if system not in dats.SYSTEM_DAT:
+        resolucion = dats.resolve_dat(system, None, catalogo)
+        if not resolucion:
             print(f"  [X] {system}: no tiene DAT configurado")
             fallos.append(system)
             continue
-        source, dat_name = dats.SYSTEM_DAT[system]
+        dat_name = resolucion["dat"]
         print(f"  · {system} ({dat_name})")
         try:
             started = time.time()
             info = dats.install_dat(system, cache, timeout=args.timeout,
-                                    progress=_log)
+                                    progress=_log, catalogo=catalogo)
             print(f"    [OK] {info['games']} juegos, "
                   f"{info['size'] / 1048576:.1f} MiB, "
                   f"{time.time() - started:.0f} s")

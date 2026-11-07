@@ -29,10 +29,12 @@ biblioteca estandar se detecta y se explica, pero no se simula.
 
 from __future__ import annotations
 
+import gzip
 import os
 import re
 import shutil
 import struct
+import subprocess
 import zipfile
 import zlib
 from dataclasses import dataclass, field
@@ -70,30 +72,101 @@ class FormatInfo:
         }
 
 
-#: Como se llama cada formato y que se puede hacer con el.
+#: Cada conversion posible: su identificador, el texto del boton y la
+#: explicacion. El backend devuelve estos identificadores y el frontend los
+#: pinta: no se comparan etiquetas de texto.
+CAPACIDADES = {
+    "iso": {"label": "ISO", "ayuda": "imagen de 2048 bytes por sector"},
+    "bin-cue": {"label": "BIN + CUE", "ayuda": "imagen original de 2352 bytes"},
+    "pbp": {"label": "PBP", "ayuda": "formato de PlayStation"},
+    "chd": {"label": "CHD", "ayuda": "imagen comprimida: ocupa menos"},
+    "cso": {"label": "CSO", "ayuda": "ISO comprimida"},
+    "gcz": {"label": "GCZ", "ayuda": "ISO de GameCube comprimida"},
+    "ciso": {"label": "CISO", "ayuda": "ISO comprimida"},
+    "rvz": {"label": "RVZ", "ayuda": "imagen de Dolphin"},
+    "wia": {"label": "WIA", "ayuda": "imagen de Wii"},
+    "wbfs": {"label": "WBFS", "ayuda": "particion de Wii"},
+    "nsp": {"label": "NSP", "ayuda": "paquete de Nintendo Switch"},
+    "xci": {"label": "XCI", "ayuda": "cartucho de Nintendo Switch"},
+    "n64": {"label": "N64", "ayuda": "big endian"},
+    "z64": {"label": "Z64", "ayuda": "little endian"},
+    "v64": {"label": "V64", "ayuda": "byte swapped"},
+    "sfc": {"label": "SFC", "ayuda": "super nintendo sin cabecera"},
+    "smc": {"label": "SMC", "ayuda": "super nintendo con cabecera"},
+    "fig": {"label": "FIG", "ayuda": "super nintendo con cabecera de 512 bytes"},
+    "zip": {"label": "ZIP", "ayuda": "comprimido en ZIP"},
+    "extraer": {"label": "Extraer", "ayuda": "descomprimir en una carpeta al lado"},
+    "gcm": {"label": "GCM", "ayuda": "imagen de GameCube"},
+    "xiso": {"label": "XISO", "ayuda": "imagen de Xbox"},
+}
+
+#: Como se llama cada formato y a que se puede convertir.
 FORMAT_CATALOGUE = {
-    "bin-cue": ("BIN + CUE", ["convertir a ISO", "convertir a PBP", "comprimir", "identificar"]),
-    "iso": ("ISO 9660", ["convertir a BIN/CUE", "comprimir", "identificar"]),
-    "pbp": ("PBP (PlayStation)", ["convertir a BIN/CUE", "comprimir", "identificar"]),
-    "xiso": ("XDVDF (Xbox)", ["convertir a ISO", "comprimir", "identificar"]),
-    "gcm": ("GCM (GameCube)", ["convertir a ISO", "comprimir", "identificar"]),
-    "gciso": ("GCISO (GameCube)", ["comprimir", "identificar"]),
-    "chd": ("CHD (compressed hunks)", ["convertir a ISO", "identificar"]),
-    "wbfs": ("WBFS (Wii)", ["identificar"]),
-    "wia": ("WIA (Wii)", ["identificar"]),
-    "rvz": ("RVZ", ["identificar"]),
-    "mdf": ("MDF / CCD / IMG", ["identificar"]),
-    "g64": ("G64 / NDD", ["identificar"]),
-    "3do": ("3DO", ["identificar"]),
-    "wad": ("WAD (Nintendo DS)", ["identificar"]),
-    "nsp": ("NSP (Nintendo Switch)", ["identificar"]),
-    "zip": ("ZIP", ["descomprimir", "identificar"]),
-    "ips": ("Parche IPS", ["aplicar"]),
-    "bps": ("Parche BPS", ["identificar"]),
+    "bin-cue": ("BIN + CUE", ["iso", "pbp", "chd", "zip"]),
+    "iso": ("ISO 9660", ["bin-cue", "chd", "zip"]),
+    "iso-gamecube": ("ISO de GameCube", ["gcz", "ciso", "chd", "zip"]),
+    "iso-wii": ("ISO de Wii", ["chd", "zip"]),
+    "iso-ps1": ("ISO de PlayStation", ["bin-cue", "pbp", "chd", "zip"]),
+    "iso-ps2": ("ISO de PlayStation 2", ["chd", "zip"]),
+    "pbp": ("PBP (PlayStation)", ["bin-cue", "iso", "zip"]),
+    "chd": ("CHD (imagen comprimida)", ["iso", "bin-cue"]),
+    "gcm": ("GCM (GameCube)", ["iso", "zip"]),
+    "xiso": ("XDVDF (Xbox)", ["iso", "zip"]),
+    "cso": ("CSO (PSP)", ["iso", "zip"]),
+    "gcz": ("GCZ (GameCube)", ["iso", "zip"]),
+    "ciso": ("CISO (GameCube o Wii)", ["iso", "zip"]),
+    "rvz": ("RVZ (Dolphin)", []),
+    "wia": ("WIA (Wii)", []),
+    "wbfs": ("WBFS (Wii)", []),
+    "mdf": ("MDF / CCD / IMG", []),
+    "gdi": ("GDI (Dreamcast)", []),
+    "cdi": ("CDI (DiscJuggler)", []),
+    "g64": ("G64 / NDD", []),
+    "n64-z64": ("Nintendo 64 (little endian)", ["n64", "v64"]),
+    "n64-n64": ("Nintendo 64 (big endian)", ["z64", "v64"]),
+    "n64-v64": ("Nintendo 64 (byte swapped)", ["z64", "n64"]),
+    "snes-smc": ("Super Nintendo (con cabecera)", ["sfc", "fig"]),
+    "snes-sfc": ("Super Nintendo (sin cabecera)", ["smc", "fig"]),
+    "snes-fig": ("Super Nintendo (FIG)", ["sfc", "smc"]),
+    "megadrive": ("Mega Drive", ["zip"]),
+    "3do-iso": ("3DO", ["zip"]),
+    "nesica": ("Nesica (arcade)", []),
+    "atari8": ("Atari 8-bit", []),
+    "pcengine-rom": ("PC Engine (rom)", []),
+    "wad": ("WAD (Nintendo DS)", []),
+    "nsp": ("NSP (Nintendo Switch)", []),
+    "xci": ("XCI (Nintendo Switch)", []),
+    "3ds": ("Nintendo 3DS", []),
+    "zip": ("ZIP", ["extraer"]),
+    "ips": ("Parche IPS", []),
+    "bps": ("Parche BPS", []),
+    "desconocido": ("Formato no reconocido", []),
 }
 
 #: Formatos que se pueden convertir a ISO.
-CONVERTIBLE_TO_ISO = ("bin-cue", "iso", "pbp", "xiso", "gcm", "chd")
+CONVERTIBLE_TO_ISO = ("bin-cue", "iso", "iso-gamecube", "iso-wii", "iso-ps1",
+                      "iso-ps2", "pbp", "xiso", "gcm", "chd", "cso", "gcz",
+                      "ciso")
+
+
+def acciones_de(info) -> list:
+    """Las conversiones que admite un fichero, ya en forma de botones.
+
+    Devuelve una lista de ``{"id", "label", "nota"}``. Si esta vacia, el
+    fichero no se puede convertir: el frontend lo dice en vez de dejar un
+    hueco.
+    """
+    datos = FORMAT_CATALOGUE.get(info.kind)
+    if not datos:
+        return []
+    out = []
+    for id_accion in datos[1]:
+        cap = CAPACIDADES.get(id_accion)
+        if not cap:
+            continue
+        out.append({"id": id_accion, "label": cap["label"],
+                    "nota": cap["ayuda"]})
+    return out
 
 
 # ── Deteccion ───────────────────────────────────────────────────────────
@@ -113,159 +186,226 @@ def _head(path: str, size: int = 64) -> bytes:
         return b""
 
 
-def detect_format(path: str) -> FormatInfo:
-    """Detecta el formato de un fichero de ROM."""
+def detect_format(path: str, sistema: str | None = None) -> FormatInfo:
+    """Detecta el formato de un fichero de ROM.
+
+    Se mira la cabecera primero (que no miente) y la extension despues. El
+    ``sistema`` es el slug de Batocera: sirve de pista, no de veredicto, porque
+    hay ficheros con la extension cambiada.
+    """
     path = os.path.abspath(path)
     size = _size(path)
     ext = os.path.splitext(path)[1].lower()
-    stem = os.path.splitext(os.path.basename(path))[0]
-
     info = FormatInfo(path=path, size=size)
+    head = _head(path, 0x100)
 
-    # Un .cue describe su BIN: se mira el binario, no el texto.
+    def puesto(kind, **detalles):
+        """Asigna el formato y sus capacidades."""
+        datos = FORMAT_CATALOGUE.get(kind, ("Desconocido", []))
+        info.kind = kind
+        info.label = datos[0]
+        info.details = detalles
+        info.actions = acciones_de(info)
+        return info
+
+    # ── 1 · Firmas de disco ──────────────────────────────────────────────
+    if head.startswith(b"MComprHD"):
+        return puesto("chd", **_chd_header(path))
+
+    if head.startswith(b"WBFS"):
+        return puesto("wbfs", **_wbfs_header(path))
+
+    if head.startswith(b"WIA\x00"):
+        return puesto("wia")
+
+    if head.startswith(b"RVZ\x00"):
+        return puesto("rvz")
+
+    if head.startswith(b"PBP\x01"):
+        return puesto("pbp", **_pbp_header(path))
+
+    if head.startswith(b"MICROSOFT*XBOX*MEDIA") or b"XBOXMEDIA" in head[:0x10000]:
+        return puesto("xiso")
+
+    if head[:4] == b"\x01\xc0\x0b\xb1":
+        return puesto("gcz")
+
+    if head.startswith(b"CISO"):
+        return puesto("ciso")
+
+    if head.startswith(b"CSO!"):
+        return puesto("cso")
+
+    if head.startswith(b"WUX0") or head.startswith(b"WUD0"):
+        return puesto("wbfs")
+
+    if head.startswith(b"PFS0"):
+        return puesto("nsp")
+
+    if head.startswith(b"XCIH"):
+        return puesto("xci")
+
+    if head.startswith(b"NCSD") or head.startswith(b"NCCH"):
+        return puesto("3ds")
+
+    if head.startswith(b"NCSD") or head[:2] == b"\x00\x00" and ext == ".cia":
+        return puesto("3ds")
+
+    # Nintendo 64: el byte order se ve en la magia, no en el nombre. Hay
+    # volcados que se llaman .v64 y estan en big endian (y al reves).
+    if head[:4] in (b"\x40\x12\x37\x80", b"\x80\x37\x12\x40", b"\x37\x80\x40\x12"):
+        if head[:4] == b"\x80\x37\x12\x40":
+            return puesto("n64-z64", orden="little endian")
+        if head[:4] == b"\x40\x12\x37\x80":
+            return puesto("n64-n64", orden="big endian")
+        return puesto("n64-v64", orden="byte swapped")
+
+    # 3DO: cabecera propia, con «CD-ROM» en el 0x28.
+    if head[:7] == b"\x01ZZZZZ\x01" or head[0x28:0x34] == b"CD-ROM":
+        return puesto("3do-iso", cabecera="3DO")
+
+    # Super Nintendo y Mega Drive: la cabecera de copista tiene «aa bb» en el 8.
+    if head[0x08:0x0A] == b"\xaa\xbb":
+        if (head[0x0A] or 0) in (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x0A, 0x0B):
+            return puesto("snes-smc", cabecera=512)
+        return puesto("megadrive", cabecera=512)
+
+    # ── 2 · Un CUE describe su BIN: se mira el binario, no el texto ───────
     if ext == ".cue":
         bin_path = _bin_for_cue(path)
         if bin_path:
-            info.kind = "bin-cue"
-            info.label = FORMAT_CATALOGUE["bin-cue"][0]
-            info.details = {"bin": os.path.basename(bin_path),
-                            "cue": os.path.basename(path)}
-            info.actions = list(FORMAT_CATALOGUE["bin-cue"][1])
-            return info
+            return puesto("bin-cue", bin=os.path.basename(bin_path),
+                          cue=os.path.basename(path))
 
-    head = _head(path, 0x100)
+    # ── 3 · Imagen de disco: se mira de que consola es ─────────────────
+    # Un ISO 9660 lleva su «CD001» en el sector 16, pero los discos de
+    # GameCube y de Wii son imagenes propias sin descriptor de volumen: se
+    # reconocen por la magia de la consola.
+    if ext in (".iso", ".bin", ".img"):
+        plataforma = _plataforma_iso(path)
+        if plataforma or _looks_iso(path):
+            detalles = {"plataforma": plataforma} if plataforma else {}
+            if plataforma in (None, "ps1", "ps2"):
+                detalles["volume_id"] = _iso_volume_id(path)
+            if plataforma == "gamecube":
+                return puesto("iso-gamecube", **detalles)
+            if plataforma == "wii":
+                return puesto("iso-wii", **detalles)
+            if plataforma == "ps2":
+                return puesto("iso-ps2", **detalles)
+            if plataforma == "ps1":
+                return puesto("iso-ps1", **detalles)
+            return puesto("iso", **detalles)
 
-    if head.startswith(b"MComprHD"):
-        info.kind = "chd"
-        info.label = FORMAT_CATALOGUE["chd"][0]
-        info.details = _chd_header(path)
-        info.actions = list(FORMAT_CATALOGUE["chd"][1])
-        return info
-
-    if head.startswith(b"WBFS"):
-        info.kind = "wbfs"
-        info.label = FORMAT_CATALOGUE["wbfs"][0]
-        info.details = _wbfs_header(path)
-        info.actions = list(FORMAT_CATALOGUE["wbfs"][1])
-        return info
-
-    if head.startswith(b"WIA\x00"):
-        info.kind = "wia"
-        info.label = FORMAT_CATALOGUE["wia"][0]
-        info.actions = list(FORMAT_CATALOGUE["wia"][1])
-        return info
-
-    if head.startswith(b"RVZ\x00"):
-        info.kind = "rvz"
-        info.label = FORMAT_CATALOGUE["rvz"][0]
-        info.actions = list(FORMAT_CATALOGUE["rvz"][1])
-        return info
-
-    if head.startswith(b"PBP\x01"):
-        info.kind = "pbp"
-        info.label = FORMAT_CATALOGUE["pbp"][0]
-        info.details = _pbp_header(path)
-        info.actions = list(FORMAT_CATALOGUE["pbp"][1])
-        return info
-
-    if head.startswith(b"MICROSOFT*XBOX*MEDIA") or b"XBOXMEDIA" in head[:0x10000]:
-        info.kind = "xiso"
-        info.label = FORMAT_CATALOGUE["xiso"][0]
-        info.actions = list(FORMAT_CATALOGUE["xiso"][1])
-        return info
-
+    # ── 4 · Por extension ───────────────────────────────────────────────
     if ext == ".gcm":
-        info.kind = "gcm"
-        info.label = FORMAT_CATALOGUE["gcm"][0]
-        info.actions = list(FORMAT_CATALOGUE["gcm"][1])
-        return info
+        return puesto("gcm")
 
-    if ext == ".wbfs":
-        info.kind = "wbfs"
-        info.label = FORMAT_CATALOGUE["wbfs"][0]
-        info.actions = list(FORMAT_CATALOGUE["wbfs"][1])
-        return info
+    if ext in (".gdi",):
+        return puesto("gdi")
 
-    if ext in (".iso", ".bin") and _looks_iso(path):
-        info.kind = "iso"
-        info.label = FORMAT_CATALOGUE["iso"][0]
-        info.details = {"volume_id": _iso_volume_id(path)}
-        info.actions = list(FORMAT_CATALOGUE["iso"][1])
-        return info
+    if ext in (".cdi",):
+        return puesto("cdi")
 
-    if ext in (".iso", ".gci") and head[0x14:0x18] == b"\x00\x00\x00\x00":
-        pass  # sigue siendo ISO: la comprobacion de arriba ya lo ha cubierto
-
-    if ext in (".mdf", ".img", ".ccd"):
-        info.kind = "mdf"
-        info.label = FORMAT_CATALOGUE["mdf"][0]
-        info.actions = list(FORMAT_CATALOGUE["mdf"][1])
-        return info
+    if ext in (".mdf", ".img", ".ccd", ".nrg", ".mds"):
+        return puesto("mdf")
 
     if ext in (".g64", ".ndd"):
-        info.kind = "g64"
-        info.label = FORMAT_CATALOGUE["g64"][0]
-        info.actions = list(FORMAT_CATALOGUE["g64"][1])
-        return info
+        return puesto("g64")
 
     if ext in (".3do", ".iso3"):
-        info.kind = "3do"
-        info.label = FORMAT_CATALOGUE["3do"][0]
-        info.actions = list(FORMAT_CATALOGUE["3do"][1])
-        return info
+        return puesto("3do-iso", cabecera="3DO")
 
-    if ext == ".wad":
-        info.kind = "wad"
-        info.label = FORMAT_CATALOGUE["wad"][0]
-        info.actions = list(FORMAT_CATALOGUE["wad"][1])
-        return info
+    if ext in (".nesica",):
+        return puesto("nesica")
 
-    if ext == ".nsp":
-        info.kind = "nsp"
-        info.label = FORMAT_CATALOGUE["nsp"][0]
-        info.actions = list(FORMAT_CATALOGUE["nsp"][1])
-        return info
+    if ext in (".atr", ".xex"):
+        return puesto("atari8")
 
-    if ext in (".zip", ".gz", ".7z", ".rar"):
-        info.kind = "zip" if ext == ".zip" else "archive"
-        info.label = "ZIP" if ext == ".zip" else f"Archivo {ext[1:].upper()}"
-        info.actions = list(FORMAT_CATALOGUE["zip"][1]) if ext == ".zip" else []
-        return info
+    if ext in (".pce",):
+        return puesto("pcengine-rom")
+
+    if ext in (".wad",):
+        return puesto("wad")
+
+    if ext in (".nsp",):
+        return puesto("nsp")
+
+    if ext in (".xci",):
+        return puesto("xci")
+
+    if ext in (".3ds", ".cci", ".cia", ".zcci"):
+        return puesto("3ds")
+
+    if ext in (".z64", ".n64", ".v64"):
+        # Sin la magia (ficheros truncados o vacios): se fia de la extension.
+        return puesto({"z64": "n64-z64", "n64": "n64-n64",
+                       "v64": "n64-v64"}[ext[1:]], orden="por extension")
+
+    if ext in (".smc", ".sfc", ".fig", ".swc"):
+        if ext == ".fig":
+            return puesto("snes-fig", cabecera=512)
+        if ext == ".smc":
+            return puesto("snes-smc", cabecera=512)
+        # Un .sfc puede llevar cabecera de copista: se comprueba el «aa bb».
+        if head[0x08:0x0A] == b"\xaa\xbb" or head[0x7FC0:0x7FC2] == b"\xaa\xbb" \
+                or head[0xFFC0:0xFFC2] == b"\xaa\xbb":
+            return puesto("snes-sfc", cabecera="sin cabecera de copista")
+        return puesto("snes-sfc", cabecera="sin cabecera de copista")
+
+    if ext in (".smd", ".md", ".gen", ".sgd", ".sg"):
+        return puesto("megadrive")
+
+    if ext == ".zip":
+        return puesto("zip")
+    if ext in (".gz", ".7z", ".rar", ".tar"):
+        return puesto("desconocido", extension=ext)
 
     if ext == ".ips":
-        info.kind = "ips"
-        info.label = FORMAT_CATALOGUE["ips"][0]
-        info.actions = list(FORMAT_CATALOGUE["ips"][1])
-        return info
-
+        return puesto("ips")
     if ext == ".bps":
-        info.kind = "bps"
-        info.label = FORMAT_CATALOGUE["bps"][0]
-        info.actions = list(FORMAT_CATALOGUE["bps"][1])
-        return info
+        return puesto("bps")
 
-    # Un .bin con CUE hermano es un set BIN+CUE completo: se ofrecen todas
-    # las conversiones, no solo las de un BIN suelto.
+    # Un .bin con CUE hermano es un set BIN+CUE completo.
     if ext == ".bin":
         cue = _cue_for_bin(path)
         if cue:
-            info.kind = "bin-cue"
-            info.label = FORMAT_CATALOGUE["bin-cue"][0]
-            info.details = {"bin": os.path.basename(path),
-                            "cue": os.path.basename(cue)}
-            info.actions = list(FORMAT_CATALOGUE["bin-cue"][1])
-            return info
+            return puesto("bin-cue", bin=os.path.basename(path),
+                          cue=os.path.basename(cue))
+        if size and size % SECTOR_RAW == 0:
+            return puesto("bin-cue", sectores=size // SECTOR_RAW, cue=None)
 
-    # Un .bin suelto (sin CUE) es un volcado de 2352 bytes por sector.
-    if ext == ".bin" and size % SECTOR_RAW == 0 and size > 0:
-        info.kind = "bin-cue"
-        info.label = "BIN (sin CUE)"
-        info.details = {"sectors": size // SECTOR_RAW}
-        info.actions = ["convertir a ISO", "comprimir", "identificar"]
-        return info
+    if ext == ".bin" and sistema == "megadrive":
+        return puesto("megadrive")
 
-    info.details = {"ext": ext}
-    return info
+    return puesto("desconocido", extension=ext)
+
+
+def _plataforma_iso(path: str) -> str | None:
+    """De que consola es un ISO 9660 (si se puede saber).
+
+    Se mira la cabecera que cada consola pone en su sitio: GameCube y Wii
+    tienen su magia, y PlayStation y PS2 se distinguen por el ``SYSTEM.CNF``
+    (que dice ``BOOT`` o ``BOOT2``).
+    """
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0x1C)
+            if fh.read(4) == b"\xc2\x33\x9f\x3d":
+                return "gamecube"
+            fh.seek(0x18)
+            if fh.read(4) == b"\x5d\x1c\x9e\xa3":
+                return "wii"
+            fh.seek(0)
+            head = fh.read(0x10000)
+    except OSError:
+        return None
+
+    if b"BOOT2" in head:
+        return "ps2"
+    if b"BOOT=cdrom" in head or b"BOOT = cdrom" in head:
+        return "ps1"
+    return None
 
 
 def _looks_iso(path: str) -> bool:
@@ -505,18 +645,13 @@ def _root_record(lba: int, size: int) -> bytes:
     return bytes(record)
 
 
-def build_iso(sectors: Iterable[bytes], volume_id: str = "BWM") -> bytes:
-    """Construye un ISO 9660 valido a partir de sectores de 2048 bytes.
+def _iso_esqueleto(volume_id: str, total_data: int) -> bytes:
+    """El esqueleto de un ISO 9660: area de sistema, PVD, tablas y raiz.
 
     Es el mismo esqueleto que usan las herramientas de conversion clasicas:
     area de sistema, descriptor de volumen, tabla de rutas, directorio raiz y
-    los datos.
+    los datos (que van aparte, para no tenerlos en memoria).
     """
-    data = bytearray()
-    for sector in sectors:
-        data.extend(sector[:SECTOR_ISO].ljust(SECTOR_ISO, b"\x00"))
-    total_data = len(data) // SECTOR_ISO
-
     lba_pvd = 16
     lba_term = 17
     lba_path_l = 18
@@ -577,8 +712,46 @@ def build_iso(sectors: Iterable[bytes], volume_id: str = "BWM") -> bytes:
     out.extend(entrada_l.ljust(SECTOR_ISO, b"\x00"))
     out.extend(entrada_m.ljust(SECTOR_ISO, b"\x00"))
     out.extend(root)
-    out.extend(data)
     return bytes(out)
+
+
+def build_iso(sectors: Iterable[bytes], volume_id: str = "BWM") -> bytes:
+    """Construye un ISO 9660 valido a partir de sectores de 2048 bytes.
+
+    Se usa para ISO de prueba y para imagenes pequenas; para las conversiones
+    grandes se usa :func:`_escribir_iso`, que va a disco sector a sector.
+    """
+    data = bytearray()
+    for sector in sectors:
+        data.extend(sector[:SECTOR_ISO].ljust(SECTOR_ISO, b"\x00"))
+    return _iso_esqueleto(volume_id, len(data) // SECTOR_ISO) + bytes(data)
+
+
+def _escribir_iso(sectores: Iterable[bytes], out_path: str,
+                  volume_id: str = "BWM", total_data: int = 0) -> dict:
+    """Escribe un ISO a partir de los sectores de datos, sin cargarlos todos.
+
+    Si los datos ya traen su propio descriptor de volumen, el ISO se
+    reconstruye byte a byte: es lo que pasa cuando un ISO se convierte en
+    BIN/CUE y vuelve, y asi el resultado es identico al original (con su
+    sistema de ficheros intacto). Si no lo traen, se monta el esqueleto de
+    ISO 9660 de toda la vida.
+    """
+    primeros = []
+    for sector in sectores:
+        primeros.append(sector[:SECTOR_ISO].ljust(SECTOR_ISO, b"\x00"))
+        if len(primeros) >= 21:
+            break
+    conserva = any(s[1:6] == b"CD001" and s[0] in (1, 2) for s in primeros)
+
+    with open(out_path, "wb") as fh:
+        if not conserva:
+            fh.write(_iso_esqueleto(volume_id, total_data))
+        for sector in primeros:
+            fh.write(sector)
+        for sector in sectores:
+            fh.write(sector[:SECTOR_ISO].ljust(SECTOR_ISO, b"\x00"))
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path)}
 
 
 # ── Conversiones ────────────────────────────────────────────────────────
@@ -619,11 +792,11 @@ def bin_cue_to_iso(cue_path: str, out_path: str) -> dict:
                 yield user
 
     volume = os.path.splitext(os.path.basename(bin_path))[0][:32]
-    with open(out_path, "wb") as fh:
-        fh.write(build_iso(sectors(), volume_id=volume))
-    return {"ok": True, "out": out_path,
-            "size": os.path.getsize(out_path),
-            "note": "solo la primera pista de datos"}
+    total = os.path.getsize(bin_path) // SECTOR_RAW
+    salida = _escribir_iso(sectors(), out_path, volume_id=volume,
+                            total_data=total)
+    salida["note"] = "solo la primera pista de datos"
+    return salida
 
 
 def raw_bin_to_iso(bin_path: str, out_path: str) -> dict:
@@ -647,11 +820,11 @@ def raw_bin_to_iso(bin_path: str, out_path: str) -> dict:
                 yield user
 
     volume = os.path.splitext(os.path.basename(bin_path))[0][:32]
-    with open(out_path, "wb") as fh:
-        fh.write(build_iso(sectors(), volume_id=volume))
-    return {"ok": True, "out": out_path,
-            "size": os.path.getsize(out_path),
-            "note": "el BIN no tenia CUE: se han usado los sectores en bruto"}
+    total = os.path.getsize(bin_path) // SECTOR_RAW
+    salida = _escribir_iso(sectors(), out_path, volume_id=volume,
+                            total_data=total)
+    salida["note"] = "el BIN no tenia CUE: se han usado los sectores en bruto"
+    return salida
 
 
 def iso_to_bin_cue(iso_path: str, out_bin: str | None = None,
@@ -803,92 +976,737 @@ def gcm_to_iso(gcm_path: str, out_path: str | None = None) -> dict:
             "note": "imagen GCISO (volcado de los sectores)"}
 
 
-def chd_to_iso(chd_path: str, out_path: str | None = None) -> dict:
-    """Extrae el contenido de un CHD v5 (compresion zlib) a un BIN.
+# ── Nombres de salida ───────────────────────────────────────────────────
 
-    El CHD guarda los datos en «hunks» comprimidos, con una tabla que dice
-    cuanto ocupa cada uno. Se leen en orden y se descomprimen con zlib.
+def _salida_libre(path: str, ext: str) -> str:
+    """Un nombre de salida que no pise nada.
+
+    Si ya existe «Juego.chd» sale «Juego (1).chd»: nunca se sobrescribe un
+    fichero sin querer.
     """
-    out_path = out_path or os.path.splitext(chd_path)[0] + ".bin"
-    with open(chd_path, "rb") as fh:
-        head = fh.read(0x100)
-        if not head.startswith(b"MComprHD"):
-            raise ValueError("no es un CHD")
-        version, _flags, compression = struct.unpack(">III", head[8:20])
-        if version < 5:
-            raise ValueError(f"solo se pueden leer los CHD v5 (este es v{version})")
-        if compression not in (0, 1):
-            raise ValueError(f"solo se puede descomprimir zlib o sin comprimir (este usa {compression})")
-        total_frames, bytes_per_frame = struct.unpack(">II", head[0x18:0x20])
-        total_hunks, = struct.unpack(">I", head[0x28:0x2C])
-        data_offset, _meta_offset, map_offset = struct.unpack(">QQQ", head[0x50:0x68])
-        fh.seek(map_offset)
-        map_data = fh.read(total_hunks * 4)
-        sizes = struct.unpack(f">{total_hunks}I", map_data)
-
-        fh.seek(data_offset)
-        with open(out_path, "wb") as dst:
-            for size in sizes:
-                chunk = fh.read(size)
-                if compression == 1:
-                    chunk = zlib.decompress(chunk)
-                dst.write(chunk)
-    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
-            "frames": total_frames, "bytes_per_frame": bytes_per_frame}
+    base = os.path.splitext(os.path.basename(path))[0]
+    carpeta = os.path.dirname(path)
+    destino = os.path.join(carpeta, base + ext)
+    numero = 1
+    while os.path.exists(destino):
+        destino = os.path.join(carpeta, f"{base} ({numero}){ext}")
+        numero += 1
+    return destino
 
 
-def convert(path: str, target: str, out_path: str | None = None) -> dict:
-    """Convierte un fichero al formato pedido."""
+def _stem_libre(path: str) -> str:
+    """Un nombre sin extension del que salen el BIN y su CUE.
+
+    Los dos tienen que estar libres: el CUE apunta al BIN, asi que si el BIN
+    ya existe el nombre no vale aunque el CUE no este.
+    """
+    base = os.path.splitext(os.path.basename(path))[0]
+    carpeta = os.path.dirname(path)
+    stem = os.path.join(carpeta, base)
+    numero = 1
+    while os.path.exists(stem + ".bin") or os.path.exists(stem + ".cue"):
+        stem = os.path.join(carpeta, f"{base} ({numero})")
+        numero += 1
+    return stem
+
+
+def _escribir_cue(bin_path: str, cue_path: str) -> None:
+    """Escribe el CUE que accompanye a un BIN de una pista."""
+    with open(cue_path, "w", encoding="latin-1", newline="\r\n") as fh:
+        fh.write(f'FILE "{os.path.basename(bin_path)}" BINARY\n')
+        fh.write("  TRACK 01 MODE1/2352\n")
+        fh.write("    INDEX 01 00:00:00\n")
+
+
+# ── Nintendo 64 ─────────────────────────────────────────────────────────
+
+def _swap16(data: bytes) -> bytes:
+    """Intercambia los bytes de cada palabra de 16 bits."""
+    out = bytearray(data)
+    out[0::2], out[1::2] = out[1::2], out[0::2]
+    return bytes(out)
+
+
+def _swap32(data: bytes) -> bytes:
+    """Invierte cada grupo de 4 bytes (las palabras de 32 bits)."""
+    out = bytearray(data)
+    out[0::4], out[1::4], out[2::4], out[3::4] = (
+        out[3::4], out[2::4], out[1::4], out[0::4])
+    return bytes(out)
+
+
+#: De un byte order a otro, que intercambios hay que hacer.
+#:
+#: Las tres ROM de Nintendo 64 son la misma con los bytes cambiados de sitio:
+#: la nativa va en big endian (``.n64``, magia ``40 12 37 80``), la little
+#: endian (``.z64``, ``80 37 12 40``) y la byte swapped (``.v64``,
+#: ``37 80 40 12``). De la nativa a la little endian se invierte cada grupo de
+#: 4 bytes; de la nativa a la byte swapped ademas se intercambian los bytes de
+#: cada palabra de 16 bits.
+_N64_PASOS = {
+    ("n64", "z64"): (_swap32,),
+    ("z64", "n64"): (_swap32,),
+    ("n64", "v64"): (_swap32, _swap16),
+    ("v64", "n64"): (_swap16, _swap32),
+    ("z64", "v64"): (_swap16,),
+    ("v64", "z64"): (_swap16,),
+}
+
+
+def n64_convert(path: str, target: str, out_path: str | None = None) -> dict:
+    """Convierte una ROM de Nintendo 64 entre sus tres byte orders.
+
+    El byte order se deduce de la cabecera, no del nombre: hay volcados que
+    se llaman ``.v64`` y estan en big endian.
+    """
     path = os.path.abspath(path)
     info = detect_format(path)
-    target = (target or "").lower()
+    origen = {"n64-z64": "z64", "n64-n64": "n64", "n64-v64": "v64"}.get(info.kind)
+    if origen is None:
+        raise ValueError("no es una ROM de Nintendo 64")
+    destino = (target or "").lower()
+    pasos = _N64_PASOS.get((origen, destino))
+    if pasos is None:
+        raise ValueError(f"no se puede convertir de {origen} a {destino}")
 
-    if target == "iso":
-        if info.kind == "bin-cue":
-            if path.lower().endswith(".cue"):
-                return bin_cue_to_iso(path, out_path or _replace_ext(path, ".iso"))
-            # El BIN puede traerse su CUE al lado o no: con CUE se respeta la
-            # pista que dice el CUE; sin CUE se usan los sectores en bruto.
-            cue = _cue_for_bin(path)
-            if cue:
-                return bin_cue_to_iso(cue, out_path or _replace_ext(path, ".iso"))
-            return raw_bin_to_iso(path, out_path or _replace_ext(path, ".iso"))
-        if info.kind == "iso":
-            return {"ok": True, "out": path, "note": "ya era un ISO"}
-        if info.kind == "pbp":
-            out_dir = os.path.dirname(path)
-            tmp = os.path.join(out_dir, os.path.splitext(os.path.basename(path))[0] + ".bin")
-            pbp_to_bin_cue(path, out_dir)
-            cue = os.path.join(out_dir, os.path.splitext(os.path.basename(path))[0] + ".cue")
-            return bin_cue_to_iso(cue, out_path or _replace_ext(path, ".iso"))
-        if info.kind == "xiso":
-            return xiso_to_iso(path, out_path or _replace_ext(path, ".iso"))
-        if info.kind == "gcm":
-            return gcm_to_iso(path, out_path or _replace_ext(path, ".iso"))
-        if info.kind == "chd":
-            out = out_path or _replace_ext(path, ".bin")
-            return chd_to_iso(path, out)
-        raise ValueError(f"no se puede convertir de {info.label} a ISO")
+    out_path = out_path or _salida_libre(path, "." + destino)
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(path, "rb") as src, open(out_path, "wb") as dst:
+        while True:
+            trozo = src.read(1 << 20)
+            if not trozo:
+                break
+            for paso in pasos:
+                trozo = paso(trozo)
+            dst.write(trozo)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": f"convertida de {origen} a {destino}"}
 
-    if target == "bin-cue":
-        if info.kind == "iso":
-            return iso_to_bin_cue(path, out_path)
-        if info.kind == "pbp":
-            return pbp_to_bin_cue(path, out_path and os.path.dirname(out_path))
-        raise ValueError(f"no se puede convertir de {info.label} a BIN/CUE")
 
-    if target == "pbp":
-        if info.kind == "bin-cue":
-            if path.lower().endswith(".cue"):
-                cue = path
+# ── Super Nintendo ──────────────────────────────────────────────────────
+
+#: La cabecera de copista de la Super Nintendo son 512 bytes.
+_SNES_CABECERA = 512
+
+
+def _snes_partes(path: str) -> tuple:
+    """Separa una ROM de Super Nintendo en (cabeza, cuerpo, tipo).
+
+    Hay tres variantes: la ``.sfc`` va pelada, la ``.smc`` lleva delante una
+    cabecera de copista de 512 bytes con el «aa bb» en el 8, y la ``.fig``
+    lleva delante su propia cabecera de 512 bytes (que empieza por «FIG »).
+    """
+    with open(path, "rb") as fh:
+        head = fh.read(_SNES_CABECERA)
+        rest = fh.read()
+    if head[:4] == b"FIG ":
+        return head, rest, "fig"
+    if head[0x08:0x0A] == b"\xaa\xbb":
+        return head, rest, "smc"
+    return head, rest, "sfc"
+
+
+def _snes_cuerpo(path: str) -> bytes:
+    """La ROM de Super Nintendo sin ninguna cabecera delante."""
+    head, rest, tipo = _snes_partes(path)
+    if tipo == "fig":
+        # La FIG lleva su cabecera y despues la ROM con su cabecera de copista.
+        if rest[0x08:0x0A] == b"\xaa\xbb":
+            return rest[_SNES_CABECERA:]
+        return rest
+    if tipo == "smc":
+        return rest
+    return head + rest
+
+
+def _snes_cabecera_copista() -> bytes:
+    """La cabecera de copista de 512 bytes (la que lleva el «aa bb»)."""
+    cabecera = bytearray(_SNES_CABECERA)
+    cabecera[0x08:0x0A] = b"\xaa\xbb"
+    return bytes(cabecera)
+
+
+def snes_convert(path: str, target: str, out_path: str | None = None) -> dict:
+    """Convierte una ROM de Super Nintendo entre SFC, SMC y FIG."""
+    destino = (target or "").lower()
+    if destino not in ("sfc", "smc", "fig"):
+        raise ValueError(f"no se puede convertir a {destino}")
+    path = os.path.abspath(path)
+    cuerpo = _snes_cuerpo(path)
+    if not cuerpo:
+        raise ValueError("el fichero esta vacio")
+
+    if destino == "sfc":
+        datos = cuerpo
+        nota = "cabecera de copista quitada"
+    elif destino == "smc":
+        datos = _snes_cabecera_copista() + cuerpo
+        nota = "cabecera de copista anadida"
+    else:
+        cabecera = bytearray(_SNES_CABECERA)
+        cabecera[0x00:0x04] = b"FIG "
+        cabecera[0x04:0x08] = b"alnd"
+        cabecera[0x08:0x0C] = b"ver "
+        cabecera[0x0C:0x10] = b"NTSC"
+        nombre = os.path.splitext(os.path.basename(path))[0][:31]
+        # El nombre ocupa 32 bytes fijos: si se escribe mas corto, la
+        # cabecera se encoge y el fichero sale mal.
+        cabecera[0x10:0x30] = nombre.encode("ascii", "replace").ljust(32, b"\x00")[:32]
+        datos = bytes(cabecera) + _snes_cabecera_copista() + cuerpo
+        nota = "cabecera FIG anadida"
+
+    out_path = out_path or _salida_libre(path, "." + destino)
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "wb") as fh:
+        fh.write(datos)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": nota}
+
+
+# ── ZIP ─────────────────────────────────────────────────────────────────
+
+def extract_zip(path: str, out_dir: str | None = None) -> dict:
+    """Descomprime un ZIP en una carpeta al lado.
+
+    Es lo que necesitan las sets de recreativa, que vienen en ZIP.
+    """
+    path = os.path.abspath(path)
+    if out_dir is None:
+        base = os.path.splitext(os.path.basename(path))[0]
+        carpeta = os.path.dirname(path)
+        out_dir = os.path.join(carpeta, base)
+        numero = 1
+        while os.path.exists(out_dir):
+            out_dir = os.path.join(carpeta, f"{base} ({numero})")
+            numero += 1
+    os.makedirs(out_dir, exist_ok=True)
+    with zipfile.ZipFile(path) as zf:
+        miembros = zf.namelist()
+        raiz = os.path.abspath(out_dir)
+        for member in miembros:
+            destino = os.path.normpath(os.path.join(out_dir, member))
+            if not os.path.abspath(destino).startswith(raiz):
+                raise ValueError("el ZIP intenta escribir fuera de la carpeta")
+        zf.extractall(out_dir)
+    return {"ok": True, "out": out_dir, "nota": "contenido extraido",
+            "miembros": len(miembros)}
+
+
+# ── Formatos comprimidos: CSO, CISO y GCZ ───────────────────────────────
+
+#: Bloque de 2048 bytes con el que se trocean los CSO y los CISO.
+_BLOQUE = 2048
+
+
+def _bloques_leer(fh, block_size: int, total: int):
+    """Lee los bloques de un CSO o un CISO.
+
+    Cada bloque lleva delante cuatro bytes con el tamano de los datos que
+    siguen. Si ese tamano es el del bloque, los datos van sin comprimir; si
+    no, van comprimidos con deflate.
+    """
+    leidos = 0
+    while leidos < total:
+        cabecera = fh.read(4)
+        if len(cabecera) < 4:
+            break
+        (tam,) = struct.unpack("<I", cabecera)
+        if tam == block_size:
+            datos = fh.read(block_size)
+        else:
+            datos = fh.read(tam)
+            if not datos:
+                break
+            try:
+                datos = zlib.decompress(datos)
+            except zlib.error as exc:
+                raise ValueError(f"el bloque comprimido no se puede descomprimir: {exc}")
+        if not datos:
+            break
+        yield datos
+        leidos += len(datos)
+
+
+def _bloques_escribir(dst, src, block_size: int) -> None:
+    """Escribe un fichero como bloques de CSO o CISO."""
+    while True:
+        bloque = src.read(block_size)
+        if not bloque:
+            break
+        if len(bloque) < block_size:
+            bloque = bloque.ljust(block_size, b"\x00")
+        comprimido = zlib.compress(bloque, 9)
+        if len(comprimido) >= block_size:
+            dst.write(struct.pack("<I", block_size))
+            dst.write(bloque)
+        else:
+            dst.write(struct.pack("<I", len(comprimido)))
+            dst.write(comprimido)
+
+
+def cso_to_iso(cso_path: str, out_path: str) -> dict:
+    """Descomprime un CSO (PSP) a ISO."""
+    with open(cso_path, "rb") as fh:
+        head = fh.read(24)
+        if head[:4] != b"CSO!":
+            raise ValueError("no es un CSO")
+        (header_size,) = struct.unpack("<I", head[4:8])
+        (uncompressed,) = struct.unpack("<Q", head[8:16])
+        (block_size,) = struct.unpack("<I", head[16:20])
+        if not block_size:
+            raise ValueError("el CSO no tiene tamano de bloque")
+        fh.seek(header_size)
+        with open(out_path, "wb") as out:
+            for datos in _bloques_leer(fh, block_size, uncompressed):
+                out.write(datos)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "descomprimido con deflate"}
+
+
+def iso_to_cso(iso_path: str, out_path: str) -> dict:
+    """Comprime un ISO a CSO version 1 (deflate).
+
+    La version 2 (LZ4) no se escribe: haria falta la libreria de LZ4, que no
+    esta en la consola.
+    """
+    total = _size(iso_path)
+    with open(iso_path, "rb") as src, open(out_path, "wb") as dst:
+        dst.write(b"CSO!" + struct.pack("<I", 24) + struct.pack("<Q", total)
+                  + struct.pack("<I", _BLOQUE) + struct.pack("<I", 1))
+        _bloques_escribir(dst, src, _BLOQUE)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "CSO version 1 (deflate)"}
+
+
+def ciso_to_iso(ciso_path: str, out_path: str) -> dict:
+    """Descomprime un CISO (GameCube o Wii) a ISO."""
+    with open(ciso_path, "rb") as fh:
+        head = fh.read(24)
+        if head[:4] != b"CISO":
+            raise ValueError("no es un CISO")
+        (header_size,) = struct.unpack("<I", head[4:8])
+        (uncompressed,) = struct.unpack("<Q", head[8:16])
+        (block_size,) = struct.unpack("<I", head[16:20])
+        if not block_size:
+            raise ValueError("el CISO no tiene tamano de bloque")
+        fh.seek(header_size)
+        with open(out_path, "wb") as out:
+            for datos in _bloques_leer(fh, block_size, uncompressed):
+                out.write(datos)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "descomprimido con deflate"}
+
+
+def iso_to_ciso(iso_path: str, out_path: str) -> dict:
+    """Comprime un ISO a CISO (bloques de 2048 con deflate)."""
+    total = _size(iso_path)
+    with open(iso_path, "rb") as src, open(out_path, "wb") as dst:
+        dst.write(b"CISO" + struct.pack("<I", 24) + struct.pack("<Q", total)
+                  + struct.pack("<I", _BLOQUE) + struct.pack("<I", 0))
+        _bloques_escribir(dst, src, _BLOQUE)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "CISO con deflate"}
+
+
+def gcz_to_iso(gcz_path: str, out_path: str) -> dict:
+    """Descomprime un GCZ (GameCube) a ISO: es un gzip con cuatro bytes delante."""
+    with open(gcz_path, "rb") as fh:
+        if fh.read(4) != b"\x01\xc0\x0b\xb1":
+            raise ValueError("no es un GCZ")
+        with gzip.GzipFile(fileobj=fh) as gz, open(out_path, "wb") as out:
+            shutil.copyfileobj(gz, out, 1 << 20)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "descomprimido con gzip"}
+
+
+def iso_to_gcz(iso_path: str, out_path: str) -> dict:
+    """Comprime un ISO de GameCube a GCZ (un gzip con cuatro bytes delante)."""
+    with open(iso_path, "rb") as src, open(out_path, "wb") as dst:
+        dst.write(b"\x01\xc0\x0b\xb1")
+        with gzip.GzipFile(fileobj=dst, mode="wb", compresslevel=6) as gz:
+            shutil.copyfileobj(src, gz, 1 << 20)
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "comprimido con gzip"}
+
+
+# ── CHD, con el chdman de MAME ──────────────────────────────────────────
+
+#: Rutas donde puede estar el chdman de MAME.
+_CHDMAN_RUTAS = ("/usr/bin/chdman", "/usr/local/bin/chdman",
+                 "/usr/bin/mame/chdman")
+
+#: Un CD cabe en 737.280.000 bytes; a partir de ahi es un DVD.
+_TAMANO_CD = 737280000
+
+
+def _chdman_path() -> str | None:
+    """Donde esta el chdman, si esta."""
+    exe = shutil.which("chdman")
+    if exe:
+        return exe
+    for ruta in _CHDMAN_RUTAS:
+        if os.path.isfile(ruta) and os.access(ruta, os.X_OK):
+            return ruta
+    return None
+
+
+def chdman_disponible() -> bool:
+    """Si la consola tiene el chdman de MAME."""
+    return _chdman_path() is not None
+
+
+def _chdman(args: list, timeout: int = 7200) -> str:
+    """Ejecuta el chdman y devuelve su salida."""
+    exe = _chdman_path()
+    if not exe:
+        raise ValueError("chdman no esta en la consola: no se pueden convertir CHD")
+    try:
+        res = subprocess.run([exe] + args, capture_output=True, text=True,
+                             timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise ValueError("chdman ha tardado demasiado y se ha parado")
+    if res.returncode != 0:
+        mensaje = (res.stderr or res.stdout or "").strip()
+        raise ValueError(mensaje[-400:] or "chdman no pudo hacer la conversion")
+    return res.stdout or ""
+
+
+def _chdman_numero(texto: str, etiqueta: str) -> int:
+    """Un numero de la salida de «chdman info» («Unit Size: 2,448 bytes»)."""
+    match = re.search(rf"{re.escape(etiqueta)}:\s*([\d,.]+)", texto)
+    if not match:
+        return 0
+    try:
+        return int(match.group(1).replace(",", "").replace(".", ""))
+    except ValueError:
+        return 0
+
+
+def _chd_unidades(chd_path: str) -> tuple:
+    """El tamano de la unidad y el numero de unidades de un CHD.
+
+    chdman lo dice en su «info»: en un CD la unidad son 2.448 bytes (el
+    sector con su correccion de errores) y en un DVD 2.048.
+    """
+    info = _chdman(["info", "-i", chd_path])
+    unit_size = _chdman_numero(info, "Unit Size")
+    total = _chdman_numero(info, "Total Units")
+    if not unit_size:
+        raise ValueError("chdman no ha dicho el tamano de la unidad del CHD")
+    return unit_size, total
+
+
+def iso_to_chd(iso_path: str, out_path: str) -> dict:
+    """Comprime un ISO en un CHD con el chdman de MAME.
+
+    Se usa «createcd» para un CD y «createdvd» para un DVD, que es lo que
+    espera cada emulador.
+    """
+    total = _size(iso_path)
+    if total > _TAMANO_CD:
+        _chdman(["createdvd", "-i", iso_path, "-o", out_path, "-c", "zlib"])
+        nota = "comprimido en un CHD de DVD"
+    else:
+        _chdman(["createcd", "-i", iso_path, "-o", out_path, "-c", "cdzl"])
+        nota = "comprimido en un CHD de CD"
+    if not os.path.exists(out_path):
+        raise ValueError("chdman no ha creado el CHD")
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": nota}
+
+
+def _chd_datos(chd_path: str) -> bytes:
+    """Saca los datos en crudo de un CHD y devuelve el tamano de la unidad."""
+    unit_size, total = _chd_unidades(chd_path)
+    crudo = chd_path + ".crudo"
+    try:
+        _chdman(["extractraw", "-i", chd_path, "-o", crudo])
+        with open(crudo, "rb") as fh:
+            datos = fh.read()
+    finally:
+        if os.path.exists(crudo):
+            os.remove(crudo)
+    return datos, unit_size
+
+
+def _chd_tiene_pvd(datos: bytes, unit_size: int, offset: int) -> bool:
+    """Si con este desplazamiento el disco trae su descriptor de volumen."""
+    inicio = 16 * unit_size
+    if inicio + unit_size > len(datos):
+        return False
+    sector = datos[inicio + offset:inicio + offset + SECTOR_ISO]
+    return len(sector) == SECTOR_ISO and sector[1:6] == b"CD001"
+
+
+def _chd_modo(datos: bytes, unit_size: int) -> int:
+    """De donde empiezan los datos de usuario dentro de cada unidad.
+
+    Hay dos clases de CHD y se distinguen por como se guardaron los sectores:
+
+    - El CHD hecho de un **BIN/CUE** guarda el sector entero: sus 12 bytes de
+      sincronizacion, los 4 de cabecera y los 2.048 de datos (más la
+      correccion de errores). Los datos empiezan en el 16.
+    - El CHD hecho de un **ISO** guarda los 2.048 bytes de datos sin cabecera
+      (más 400 bytes de relleno). Los datos empiezan en el 0.
+
+    Si el disco tiene sistema de ficheros, se decide por el descriptor de
+    volumen; si no, por la sincronizacion del primer sector con contenido.
+    """
+    if unit_size <= SECTOR_ISO:
+        return 0
+    for offset in (16, 0):
+        if _chd_tiene_pvd(datos, unit_size, offset):
+            return offset
+    for inicio in range(0, len(datos) - unit_size + 1, unit_size):
+        unidad = datos[inicio:inicio + unit_size]
+        if not any(unidad[:SECTOR_ISO]):
+            continue        # sector vacio: no dice nada
+        if unidad[0:12] == b"\x00" * 12 and unidad[12] == 0x01:
+            return 16
+        return 0
+    return 16
+
+
+def chd_to_iso(chd_path: str, out_path: str | None = None) -> dict:
+    """Saca el ISO de un CHD.
+
+    El CHD guarda las unidades del disco: en un CD son 2.448 bytes (el sector
+    con su correccion de errores) y en un DVD 2.048. De dentro de cada unidad
+    se saca el sector de 2.048 bytes, tenga o no cabecera.
+    """
+    chd_path = os.path.abspath(chd_path)
+    out_path = out_path or _salida_libre(chd_path, ".iso")
+    datos, unit_size = _chd_datos(chd_path)
+    offset = _chd_modo(datos, unit_size)
+    with open(out_path, "wb") as out:
+        for inicio in range(0, len(datos) - unit_size + 1, unit_size):
+            unidad = datos[inicio:inicio + unit_size]
+            out.write(unidad[offset:offset + SECTOR_ISO])
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "extraido con chdman"}
+
+
+def chd_to_bin_cue(chd_path: str, out_bin: str | None = None,
+                   out_cue: str | None = None) -> dict:
+    """Saca el BIN (2352 bytes por sector) y su CUE de un CHD."""
+    chd_path = os.path.abspath(chd_path)
+    if out_bin is None or out_cue is None:
+        stem = _stem_libre(chd_path)
+        out_bin = out_bin or stem + ".bin"
+        out_cue = out_cue or stem + ".cue"
+    datos, unit_size = _chd_datos(chd_path)
+    if unit_size < SECTOR_RAW:
+        raise ValueError("un DVD no se puede convertir a BIN/CUE")
+    offset = _chd_modo(datos, unit_size)
+    with open(out_bin, "wb") as out:
+        for inicio in range(0, len(datos) - unit_size + 1, unit_size):
+            unidad = datos[inicio:inicio + unit_size]
+            if offset == 16:
+                # El sector ya viene con su sincronizacion y su cabecera.
+                out.write(unidad[0:SECTOR_RAW])
             else:
-                cue = _cue_for_bin(path)
-            if not cue:
-                raise ValueError("para convertir a PBP hace falta el CUE del BIN")
-            return bin_cue_to_pbp(cue, out_path or _replace_ext(cue, ".pbp"))
-        raise ValueError(f"no se puede convertir de {info.label} a PBP")
+                # Venian sin cabecera: se monta el sector MODE1.
+                out.write(_user_to_sector(unidad[0:SECTOR_ISO]))
+    _escribir_cue(out_bin, out_cue)
+    return {"ok": True, "out": out_bin, "cue": out_cue,
+            "size": os.path.getsize(out_bin),
+            "nota": "extraido con chdman"}
+
+
+# ── El despachador ──────────────────────────────────────────────────────
+
+def convert(path: str, target: str, out_path: str | None = None,
+            sistema: str | None = None) -> dict:
+    """Convierte un fichero al formato pedido.
+
+    ``target`` es el identificador de una capacidad (los de
+    :data:`CAPACIDADES`), no una etiqueta de texto.
+    """
+    path = os.path.abspath(path)
+    target = (target or "").lower()
+    if not target:
+        raise ValueError("no se ha dicho a que formato convertir")
+    info = detect_format(path, sistema)
+    kind = info.kind
+
+    if target == "zip":
+        return compress_zip(path, out_path or _salida_libre(path, ".zip"))
+    if target == "extraer":
+        if kind != "zip":
+            raise ValueError("solo se puede extraer un ZIP")
+        return extract_zip(path, out_path)
+    if target in ("n64", "z64", "v64"):
+        return n64_convert(path, target, out_path)
+    if target in ("sfc", "smc", "fig"):
+        return snes_convert(path, target, out_path)
+    if target == "iso":
+        return _a_iso(path, kind, out_path)
+    if target == "bin-cue":
+        return _a_bin_cue(path, kind, out_path)
+    if target == "pbp":
+        return _a_pbp(path, kind, out_path)
+    if target == "chd":
+        return _a_chd(path, kind, out_path)
+    if target == "gcz":
+        return _a_gcz(path, kind, out_path)
+    if target == "ciso":
+        return _a_ciso(path, kind, out_path)
+    if target == "cso":
+        return _a_cso(path, kind, out_path)
 
     raise ValueError(f"conversion no soportada: {target}")
+
+
+def _a_iso(path: str, kind: str, out_path: str | None = None) -> dict:
+    """Lleva cualquier disco a un ISO de 2048 bytes por sector."""
+    salida = out_path or _salida_libre(path, ".iso")
+    if kind == "bin-cue":
+        cue = path if path.lower().endswith(".cue") else _cue_for_bin(path)
+        if cue:
+            return bin_cue_to_iso(cue, salida)
+        return raw_bin_to_iso(path, salida)
+    if kind.startswith("iso"):
+        return {"ok": True, "out": path, "nota": "ya era un ISO"}
+    if kind == "pbp":
+        stem = _stem_libre(path)
+        _pbp_a_bin_cue(path, stem + ".bin", stem + ".cue")
+        try:
+            return bin_cue_to_iso(stem + ".cue", salida)
+        finally:
+            for sobra in (stem + ".bin", stem + ".cue"):
+                if os.path.exists(sobra):
+                    os.remove(sobra)
+    if kind == "xiso":
+        return xiso_to_iso(path, salida)
+    if kind == "gcm":
+        return gcm_to_iso(path, salida)
+    if kind == "chd":
+        return chd_to_iso(path, salida)
+    if kind == "cso":
+        return cso_to_iso(path, salida)
+    if kind == "gcz":
+        return gcz_to_iso(path, salida)
+    if kind == "ciso":
+        return ciso_to_iso(path, salida)
+    raise ValueError(f"no se puede convertir de {kind} a ISO")
+
+
+def _a_bin_cue(path: str, kind: str, out_path: str | None = None) -> dict:
+    """Lleva un disco a un BIN de 2352 bytes con su CUE."""
+    if kind == "bin-cue":
+        return {"ok": True, "out": path, "nota": "ya era un BIN/CUE"}
+    if kind.startswith("iso"):
+        if out_path:
+            out_bin = out_path if out_path.lower().endswith(".bin") else out_path + ".bin"
+            out_cue = os.path.splitext(out_bin)[0] + ".cue"
+        else:
+            stem = _stem_libre(path)
+            out_bin = stem + ".bin"
+            out_cue = stem + ".cue"
+        iso_to_bin_cue(path, out_bin, out_cue)
+        return {"ok": True, "out": out_bin, "cue": out_cue,
+                "size": os.path.getsize(out_bin),
+                "nota": "convertido a BIN/CUE"}
+    if kind == "chd":
+        return chd_to_bin_cue(path, out_path)
+    if kind == "pbp":
+        stem = _stem_libre(path)
+        out_bin = stem + ".bin"
+        out_cue = stem + ".cue"
+        _pbp_a_bin_cue(path, out_bin, out_cue)
+        return {"ok": True, "out": out_bin, "cue": out_cue,
+                "size": os.path.getsize(out_bin),
+                "nota": "convertido a BIN/CUE"}
+    raise ValueError(f"no se puede convertir de {kind} a BIN/CUE")
+
+
+def _a_pbp(path: str, kind: str, out_path: str | None = None) -> dict:
+    """Lleva un disco de PlayStation a un PBP."""
+    if kind == "pbp":
+        return {"ok": True, "out": path, "nota": "ya era un PBP"}
+    if kind == "bin-cue":
+        cue = path if path.lower().endswith(".cue") else _cue_for_bin(path)
+        if not cue:
+            raise ValueError("para convertir a PBP hace falta el CUE del BIN")
+        salida = out_path or _salida_libre(cue, ".pbp")
+        return bin_cue_to_pbp(cue, salida)
+    if kind == "iso-ps1":
+        salida = out_path or _salida_libre(path, ".pbp")
+        return _iso_a_pbp(path, salida)
+    raise ValueError(f"no se puede convertir de {kind} a PBP")
+
+
+def _a_chd(path: str, kind: str, out_path: str | None = None) -> dict:
+    """Lleva un ISO a un CHD."""
+    if kind == "chd":
+        return {"ok": True, "out": path, "nota": "ya era un CHD"}
+    if not kind.startswith("iso"):
+        raise ValueError(f"no se puede convertir de {kind} a CHD")
+    salida = out_path or _salida_libre(path, ".chd")
+    return iso_to_chd(path, salida)
+
+
+def _a_gcz(path: str, kind: str, out_path: str | None = None) -> dict:
+    """Lleva un ISO de GameCube a un GCZ."""
+    if kind == "gcz":
+        return {"ok": True, "out": path, "nota": "ya era un GCZ"}
+    if not kind.startswith("iso"):
+        raise ValueError(f"no se puede convertir de {kind} a GCZ")
+    salida = out_path or _salida_libre(path, ".gcz")
+    return iso_to_gcz(path, salida)
+
+
+def _a_ciso(path: str, kind: str, out_path: str | None = None) -> dict:
+    """Lleva un ISO de GameCube o Wii a un CISO."""
+    if kind == "ciso":
+        return {"ok": True, "out": path, "nota": "ya era un CISO"}
+    if not kind.startswith("iso"):
+        raise ValueError(f"no se puede convertir de {kind} a CISO")
+    salida = out_path or _salida_libre(path, ".ciso")
+    return iso_to_ciso(path, salida)
+
+
+def _a_cso(path: str, kind: str, out_path: str | None = None) -> dict:
+    """Lleva un ISO de PSP a un CSO."""
+    if kind == "cso":
+        return {"ok": True, "out": path, "nota": "ya era un CSO"}
+    if not kind.startswith("iso"):
+        raise ValueError(f"no se puede convertir de {kind} a CSO")
+    salida = out_path or _salida_libre(path, ".cso")
+    return iso_to_cso(path, salida)
+
+
+def _pbp_a_bin_cue(pbp_path: str, out_bin: str, out_cue: str) -> dict:
+    """Saca los datos de un PBP a un BIN y escribe su CUE."""
+    with open(pbp_path, "rb") as fh:
+        head = fh.read(0x100)
+        if not head.startswith(b"PBP\x01"):
+            raise ValueError("no es un fichero PBP")
+        offsets = struct.unpack(">5I", head[4:0x18])
+        fh.seek(offsets[0])
+        with open(out_bin, "wb") as dst:
+            while True:
+                chunk = fh.read(1 << 20)
+                if not chunk:
+                    break
+                dst.write(chunk)
+    _escribir_cue(out_bin, out_cue)
+    return {"ok": True, "out": out_bin, "cue": out_cue,
+            "size": os.path.getsize(out_bin)}
+
+
+def _iso_a_pbp(iso_path: str, out_path: str) -> dict:
+    """De un ISO de PlayStation a un PBP."""
+    stem = _stem_libre(iso_path)
+    out_bin = stem + ".bin"
+    out_cue = stem + ".cue"
+    try:
+        iso_to_bin_cue(iso_path, out_bin, out_cue)
+        return bin_cue_to_pbp(out_cue, out_path)
+    finally:
+        for sobra in (out_bin, out_cue):
+            if os.path.exists(sobra):
+                os.remove(sobra)
 
 
 def _replace_ext(path: str, ext: str) -> str:

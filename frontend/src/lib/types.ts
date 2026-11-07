@@ -676,65 +676,112 @@ export interface ScrapeOptions {
 
 /* ── Herramientas de ROMs (DAT, formatos y renombrado) ─────────────── */
 
-/** Un sistema de Batocera que tiene un DAT asignado. */
+/** Cómo se ha emparejado el DAT de un sistema con el sistema del manager. */
+export type ToolsDatResolucion = 'mapa' | 'nombre' | 'ninguno'
+
+/** Un sistema visto por el manager y el DAT que le toca (o no). */
 export interface ToolsDatSystem {
   system: string
-  source: string
-  source_name: string
-  dat: string
+  /** Fuente del DAT (p.ej. `libretro-no-intro`). `null` si no hay DAT. */
+  source: string | null
+  /** Nombre legible de la fuente. `null` si no hay DAT. */
+  source_name: string | null
+  /** Nombre del DAT. `null` si no hay DAT. */
+  dat: string | null
+  /** Confianza del emparejamiento por nombre (de 0 a 1). */
+  confianza: number
+  /** `mapa`: exacto. `nombre`: por nombre. `ninguno`: sin DAT. */
+  resuelto: ToolsDatResolucion
+  /** Si el DAT está descargado en la consola. */
   instalado: boolean
+  /** Juegos que lista el DAT. */
   juegos?: number | null
+  /** Tamaño del DAT en bytes. */
   tamano?: number | null
+  /** Fecha de instalación (epoch). */
   fecha?: number | null
 }
 
-/** Estado de los DAT descargados. */
+/** Un DAT descargado en la consola. */
+export interface ToolsDatFile {
+  system: string
+  file: string
+  size: number
+  /** Fuente de la que salió el DAT. */
+  source?: string | null
+  /** Nombre del DAT. */
+  dat?: string | null
+  /** Juegos que lista el DAT. */
+  games?: number | null
+}
+
+/** Estado de los DAT: los que hay instalados y el DAT que le toca a cada sistema. */
 export interface ToolsDatsStatus {
   ok: boolean
+  /** Carpeta donde se guardan los DAT. */
   dir?: string
-  dats: {
-    system: string
-    file: string
-    size: number
-    dat?: string | null
-    games?: number | null
-    generated?: number
-  }[]
+  dats: ToolsDatFile[]
+  /** Un estado por sistema. Los que no tienen DAT vienen con `resuelto: 'ninguno'`. */
   sistemas: ToolsDatSystem[]
   error?: string
+}
+
+/** Una conversión que admite un fichero. */
+export interface ToolsFormatAction {
+  /** Destino que se manda al backend (`chd`, `zip`, `bin-cue`…). */
+  id: string
+  /** Texto del botón. */
+  label: string
+  /** Explicación corta de la conversión (puede ir vacía). */
+  nota?: string
 }
 
 /** Un fichero de un sistema con su formato detectado. */
 export interface ToolsRomFile {
   name: string
   size: number
+  /** Identificador técnico del formato (`gc-iso`, `n64-z64`…). */
   kind: string
+  /** Nombre legible del formato. */
   label: string
-  actions: string[]
+  /** Consola a la que pertenece, si el backend lo sabe. */
+  plataforma?: string | null
+  /** Conversiones que admite este fichero. Vacío = no se puede convertir. */
+  acciones: ToolsFormatAction[]
 }
 
-/** Lo que se sabe del formato de un fichero. */
-export interface ToolsFormatInfo {
+/** Resultado de una conversión, una compresión o un parche. */
+export interface ToolsActionResult {
   ok: boolean
-  path?: string
-  file?: string
-  kind: string
-  label: string
-  size: number
-  details: Record<string, unknown>
-  actions: string[]
+  /** Ruta del fichero nuevo. */
+  out?: string
+  /** Tamaño del resultado en bytes. */
+  size?: number
+  /** Explicación del backend. */
+  nota?: string
+  /** Variante antigua del mensaje que devuelve el backend. */
+  note?: string
   error?: string
 }
 
-/** Resultado de unaConversion, compresion o parche. */
-export interface ToolsActionResult {
+/** Un fichero convertido dentro de un lote. */
+export interface ToolsBatchItem {
+  file: string
+  out: string
   ok: boolean
-  out?: string
-  bin?: string
-  cue?: string
-  size?: number
-  before?: number
-  note?: string
+  error: string | null
+}
+
+/** Resumen de una conversión en lote. */
+export interface ToolsBatchResult {
+  ok: boolean
+  /** Resultado de cada fichero del lote. */
+  hechos: ToolsBatchItem[]
+  resumen: {
+    total: number
+    hechos: number
+    fallos: number
+  }
   error?: string
 }
 

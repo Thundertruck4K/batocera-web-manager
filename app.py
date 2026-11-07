@@ -51,8 +51,11 @@ except Exception as _rt_exc:      # pragma: no cover - solo si falta el paquete
     HAS_ROMTOOLS = False
     ROMTOOLS_ERROR = str(_rt_exc)
 
-#: Ficheros que no son ROMs y no se renombran ni se convierten.
-_TOOLS_SKIP = {".xml", ".txt", ".log", ".sav", ".state", ".db", ".cfg", ".ini"}
+#: Extensiones que el motor de formatos sabe reconocer y que el catalogo del
+#: sistema no siempre declara (las listas de EmulationStation van por su lado).
+_TOOLS_EXT = {".fig", ".gcz", ".ciso", ".xiso", ".nesica", ".atr", ".xex",
+               ".g64", ".ndd", ".rvz", ".wia", ".wud", ".wux", ".ncds",
+               ".n3ds", ".3dsx", ".elf", ".prg", ".iso3"}
 
 
 def tools_dir(settings=None):
@@ -68,6 +71,29 @@ def tools_journal_root(settings=None):
     return str(tools_dir(settings).parent)
 
 
+def tools_sistemas(settings=None):
+    """Los sistemas que ve el manager, con su nombre legible."""
+    try:
+        return get_rom_systems_cached(settings or {})
+    except Exception:
+        return []
+
+
+def tools_catalogo(settings=None, refresh=False):
+    """El catalogo de DAT que hay disponibles ahora mismo.
+
+    Se cachea un dia en la carpeta de los DAT: la primera vez hay que
+    descargar los indices, pero despues es instantaneo.
+    """
+    if not HAS_ROMTOOLS:
+        return []
+    try:
+        return _rt_dats.catalogue(str(tools_dir(settings)), timeout=20,
+                                  refresh=refresh)
+    except Exception:
+        return []
+
+
 def tools_dats_status(settings=None):
     """Que DAT hay descargados y que sistemas los admiten."""
     if not HAS_ROMTOOLS:
@@ -76,7 +102,8 @@ def tools_dats_status(settings=None):
     cache = tools_dir(settings)
     installed = {info["system"]: info for info in _rt_dats.dat_files(str(cache))}
     sistemas = []
-    for item in _rt_dats.systems_with_dat():
+    for item in _rt_dats.systems_with_dat(tools_sistemas(settings),
+                                          tools_catalogo(settings)):
         info = installed.get(item["system"])
         sistemas.append({
             **item,
@@ -97,19 +124,27 @@ def tools_rom_files(settings, system, limit=400):
         items = sorted(folder.iterdir())
     except OSError:
         return out
+    # Un fichero es un juego si lo dice el sistema (sus extensiones en
+    # `es_systems.cfg`) o si el motor de formatos lo reconoce: la misma regla
+    # que usa el resto de la app, mas los formatos que se pueden convertir.
+    try:
+        exts = system_game_extensions(system, settings) | _TOOLS_EXT
+    except Exception:
+        exts = _TOOLS_EXT
     for item in items:
         if not item.is_file() or item.name.startswith("."):
             continue
-        if item.suffix.lower() in _TOOLS_SKIP:
+        if not is_game_file(item.name, exts):
             continue
         try:
             size = item.stat().st_size
         except OSError:
             continue
-        info = _rt_formats.detect_format(str(item))
+        info = _rt_formats.detect_format(str(item), system)
         out.append({"name": item.name, "size": size,
                     "kind": info.kind, "label": info.label,
-                    "actions": info.actions})
+                    "plataforma": info.details.get("plataforma"),
+                    "acciones": info.actions})
         if len(out) >= limit:
             break
     return out
@@ -121,9 +156,12 @@ def tools_rename_plan(settings, system, min_confidence=0.75):
     index = _rt_dats.load_index(system, str(tools_dir(settings)))
     files = []
     try:
+        try:
+            exts = system_game_extensions(system, settings) | _TOOLS_EXT
+        except Exception:
+            exts = _TOOLS_EXT
         files = [str(p) for p in sorted(folder.iterdir())
-                 if p.is_file() and not p.name.startswith(".")
-                 and p.suffix.lower() not in _TOOLS_SKIP]
+                 if p.is_file() and is_game_file(p.name, exts)]
     except OSError:
         pass
     plan = _rt_rename.plan_rename(files, index, min_confidence=min_confidence)
@@ -145,13 +183,69 @@ def tools_rename_apply(settings, system, include_review=False):
     return out
 
 
+def tools_resultado(resultado):
+    """Normaliza lo que devuelve el motor de formatos."""
+    out = {"ok": bool(resultado.get("ok", True))}
+    for clave in ("out", "size", "cue", "miembros"):
+        if resultado.get(clave) is not None:
+            out[clave] = resultado[clave]
+    for clave in ("nota", "note"):
+        if resultado.get(clave):
+            out["nota"] = resultado[clave]
+            break
+    return out
+
+
 def tools_convert(settings, system, name, target):
-    """Convierte un fichero de un sistema al formato pedido."""
+    """Convierte un fichero de un sistema al formato pedido.
+
+    ``target`` es el identificador de una capacidad (``chd``, ``zip``,
+    ``bin-cue``…), no una etiqueta de texto.
+    """
     folder = system_dir(settings, system)
     path = safe_path_under(folder, name)
     if not path.is_file():
         raise ValueError("el fichero no existe")
-    return _rt_formats.convert(str(path), target)
+    return tools_resultado(_rt_formats.convert(str(path), target,
+                                               sistema=system))
+
+
+#: Cuantos ficheros se convierten como mucho en un lote. Un CHD de un juego
+#: de GameCube tarda minutos, asi que un lote sin limite se quedaria
+#: colgado esperando.
+_TOOLS_LOTE_MAX = 50
+
+
+def tools_convert_batch(settings, system, target, kind=None,
+                         limit=_TOOLS_LOTE_MAX):
+    """Convierte en lote los ficheros de un sistema que admitan el destino.
+
+    Solo se convierten los que el backend dice que admiten ese destino: si no,
+    el lote avisaria de errores que el usuario ya ve en la lista.
+    """
+    folder = system_dir(settings, system)
+    archivos = tools_rom_files(settings, system, limit=1000)
+    hechos = []
+    for item in archivos:
+        if kind and item["kind"] != kind:
+            continue
+        if not any(a.get("id") == target for a in item.get("acciones") or []):
+            continue
+        if len(hechos) >= limit:
+            break
+        try:
+            path = safe_path_under(folder, item["name"])
+            resultado = _rt_formats.convert(str(path), target, sistema=system)
+            hechos.append({"file": item["name"],
+                           "out": resultado.get("out") or "",
+                           "ok": True, "error": None})
+        except Exception as exc:
+            hechos.append({"file": item["name"], "out": "", "ok": False,
+                           "error": str(exc)})
+    ok = sum(1 for h in hechos if h["ok"])
+    return {"ok": True, "hechos": hechos,
+            "resumen": {"total": len(hechos), "hechos": ok,
+                        "fallos": len(hechos) - ok}}
 
 
 def tools_compress(settings, system, name):
@@ -6964,12 +7058,16 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             data = self.read_json() or {}
             if sub == "dats/install":
                 systems = data.get("systems") or []
+                catalogo = tools_catalogo(s)
                 if not systems:
-                    systems = [x["system"] for x in _rt_dats.systems_with_dat()]
+                    systems = [x["system"] for x in
+                               _rt_dats.systems_with_dat(tools_sistemas(s),
+                                                         catalogo)]
                 results = []
                 for system in systems:
                     try:
-                        info = _rt_dats.install_dat(system, str(tools_dir(s)))
+                        info = _rt_dats.install_dat(system, str(tools_dir(s)),
+                                                     catalogo=catalogo)
                         results.append({"ok": True, **info})
                     except Exception as exc:
                         results.append({"ok": False, "system": system, "error": str(exc)})
@@ -6995,6 +7093,14 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 if not system or not name:
                     self.send_json({"ok": False, "error": "faltan 'system' o 'file'"}); return
                 self.send_json(tools_convert(s, system, name, target)); return
+            if sub == "formats/batch":
+                system = (data.get("system") or "").strip()
+                target = (data.get("target") or "").strip()
+                kind = (data.get("kind") or "").strip() or None
+                if not system or not target:
+                    self.send_json({"ok": False,
+                                    "error": "faltan 'system' o 'target'"}); return
+                self.send_json(tools_convert_batch(s, system, target, kind)); return
             if sub == "formats/compress":
                 system = (data.get("system") or "").strip()
                 name = (data.get("file") or "").strip()

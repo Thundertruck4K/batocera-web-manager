@@ -7,6 +7,26 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **La sección de conversiones se rehace de arriba abajo.** La radiografía de la consola real
+  (2.378 ficheros) decía que el 64 % de la biblioteca se detectaba como «formato desconocido» y que
+  sólo el 3DO tenía DAT: el mapa de sistemas usaba los slugs de libretro (`gc`, `dc`, `segacd`…) en
+  vez de los de Batocera (`gamecube`, `dreamcast`, `megacd`…), y la detección miraba la extensión
+  antes que la cabecera. Ahora:
+  - **La detección decide por la cabecera**: CHD, WBFS, WIA, RVZ, PBP, XDVDF, GCZ, CISO, CSO, NSP,
+    XCI, 3DS, 3DO, N64, SNES, Mega Drive y el ISO 9660 (que además dice **de qué consola es**:
+    GameCube, Wii, PS1 o PS2).
+  - **Conversiones nuevas**: Nintendo 64 entre sus tres byte orders (`.n64`, `.z64`, `.v64`), Super
+    Nintendo entre `.sfc`, `.smc` y `.fig`, ZIP a carpeta, ISO a CSO, CISO y GCZ (y de vuelta), y CHD
+    con el `chdman` de MAME, que ya viene en Batocera.
+  - **El mapa de DAT** se rehizo con los 122 slugs reales de la consola y se añadieron dos fuentes
+    más (la carpeta `dat/` de `libretro-database` y el rebuild diario). Para los sistemas que no están
+    en el mapa, el DAT se busca **por nombre** contra el catálogo real, y la interfaz dice **cómo se
+    resolvió** cada uno (`mapa` o `nombre`) y con qué confianza.
+  - **La conversión en lote** (endpoint nuevo `POST /api/tools/formats/batch`): convierte todos los
+    ficheros de un sistema que admitan el destino elegido, con filtro opcional por formato de
+    origen, y devuelve un resumen (convertidos, fallidos y el motivo de cada fallo).
+- **`THIRD_PARTY.md`**: las referencias de terceros (Game-Format-Converter, OpenROM, Dolphin,
+  Romulus Manager), el `chdman` de MAME y de dónde salen los DAT, con la licencia de cada uno.
 - **Sección **Herramientas** en el menú lateral, con dos páginas nuevas: **Formatos** y **Renombrado**.
   El backend que las sostiene es el paquete nuevo `romtools/` (Python de la librería estándar, sin
   dependencias), importado de forma protegida: si no está en la consola, la API responde con un error
@@ -176,6 +196,42 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     catálogo de `github` a `busqueda`.
 
 ### Corregido
+- **El botón de conversión se equivocaba de destino**: comparaba etiquetas de texto («¿es "Convertir a
+  BIN/CUE"?»), así que con más de un destino posible la acción iba al formato equivocado o no
+  aparecía. Ahora cada fichero devuelve sus conversiones como identificadores (`iso`, `bin-cue`,
+  `pbp`, `chd`, `cso`, `gcz`, `ciso`, `zip`, `extraer`, `n64`, `z64`, `v64`, `sfc`, `smc`, `fig`…), y
+  la interfaz los compara por identificador.
+- **El renombrado sólo funcionaba en el 3DO**: el mapa de DAT usaba los slugs de libretro y sólo
+  coincidían tres con los de Batocera. Con el mapa rehecho con los slugs reales (validados contra
+  `es_systems.cfg` y contra las carpetas que existen) el renombrado tiene DAT para 122 sistemas.
+- **La magia de Nintendo 64 tenía dos de las tres cambiadas**: `37 80 40 12` (la byte swapped) se
+  tomaba por little endian y `80 37 12 40` (la little endian) por big endian, así que el cambio de
+  byte order salía mal. Ahora cada byte order se reconoce por su magia, no por el nombre del fichero
+  (hay volcados que se llaman `.v64` y están en big endian).
+- **El ISO que salía de un BIN/CUE tenía el directorio raíz vacío**: el juego estaba dentro, pero el
+  sistema de ficheros no lo tenía, así que un emulador de PlayStation no veía nada. Ahora, al volver
+  de un BIN/CUE, si los datos traen su propio descriptor de volumen el ISO se reconstruye byte a byte
+  (y sale idéntico al original); si no, se monta el esqueleto de ISO 9660 de toda la vida.
+- **El ISO se cargaba entero en memoria**: con un DVD de 4,7 GB la consola se quedaban sin RAM. Ahora
+  se escribe sector a sector.
+- **El emparejamiento por nombre daba falsos positivos**: «Wolfenstein - Enemy Territory» se
+  emparejaba con «Wolfenstein 3D». Ahora el DAT tiene que **cubrir todas** las palabras del sistema y
+  la confianza tiene que ser de 0,7 o más.
+- **El índice del DAT se guardaba enorme**: cada hash repetía el juego entero
+  (con su lista de roms y sus hashes), así que el índice del DAT de Super
+  Nintendo pesaba **2,1 GB** y llenaba la tarjeta de la consola. Ahora los mapas
+  guardan la posición del juego y la lista va una sola vez: el mismo índice
+  ocupa unos pocos megas.
+- **El estado de los DAT se comía la memoria de la consola**: para saber de
+  dónde salía cada DAT y cuántos juegos tenía, se leía el índice entero, que
+  lleva la lista de juegos dentro. Con el índice de un DAT grande, el manager
+  llegó a usar 5 GB de RAM y lo mató el sistema (el `oom-kill` está en el
+  `dmesg` de la consola). Ahora los metadatos van en su propio fichero
+  (`.meta.json`) y el índice sólo se lee cuando hace falta renombrar.
+- **La lista de ficheros de un sistema incluía los que no son juegos**: `_info.txt`, `gamelist.xml`,
+  guardadas (`.srm`, `.psv`, `.state`), capturas, música y notas. Ahora sólo se listan los juegos.
+- **Las conversiones nunca se comían el original**: si ya existía el fichero de salida, se numeraba
+  («Juego (1).chd») en vez de sobrescribir.
 - **El README arrastraba endpoints que ya no existen**: la tabla de la API REST seguía incluyendo
   `/api/bios/sources`, `/api/bios/sources/search` y `/api/bios/install` (los de archive.org, quitados
   al dejar la búsqueda en repositorios). También se ha puesto al día el contador de tests (692).
