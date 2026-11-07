@@ -512,7 +512,7 @@ def test_reparar_no_sale_de_la_carpeta(appmod, entorno):
     assert resultado["ok"] is False
 
 
-# ── La búsqueda de la BIOS que falta: GitHub y subida manual ──────────
+# ── La búsqueda de la BIOS que falta: Google y subida manual ──────────
 
 def test_reparable_ruta_por_nombre(appmod, entorno):
     """El mismo nombre de fichero está en otra carpeta: se puede colocar."""
@@ -543,28 +543,36 @@ def test_reparar_por_nombre(appmod, entorno):
     assert (entorno["bios"] / "5200.rom").read_bytes() == b"otra version"
 
 
-def test_el_catalogo_trae_el_enlace_de_github(appmod, entorno):
-    """Cada BIOS y cada sistema llevan su enlace para buscarlos en GitHub."""
+def test_el_catalogo_trae_el_enlace_de_busqueda(appmod, entorno):
+    """Cada BIOS y cada sistema llevan su enlace para buscarlos en Google."""
     entorno["script"].write_text(_script({
         "atari5200": {"name": "Atari 5200", "biosFiles": [
             {"md5": "", "file": "bios/5200.rom"}]}}), encoding="utf-8")
     _reset(appmod)
     data = appmod.scan_bios(entorno["settings"])
     sistema = data["systems"]["atari5200"]
-    assert "github.com" in sistema["github"]
-    assert "5200.rom" in sistema["files"][0]["github"]
+    assert "google.com" in sistema["busqueda"]
+    assert "5200.rom" in sistema["files"][0]["busqueda"]
 
 
-def test_el_enlace_de_github_busca_el_nombre_exacto(appmod):
+def test_el_enlace_de_busqueda_busca_el_nombre_exacto(appmod):
     """El enlace busca el nombre del fichero, entrecomillado."""
-    url = appmod.github_bios_search_url("neogeo/neo-geo.7z")
-    assert url.startswith("https://github.com/search?q=")
+    url = appmod.busqueda_fichero_url("neogeo/neo-geo.7z")
+    assert url.startswith("https://www.google.com/search?q=")
     assert "neo-geo.7z" in url
     assert "%22" in url
 
 
+def test_el_enlace_del_sistema_busca_el_nombre_entrecomillado(appmod):
+    """El enlace del sistema busca el nombre entrecomillado, con «bios»."""
+    url = appmod.busqueda_sistema_url("neogeo", "Neo Geo")
+    assert url.startswith("https://www.google.com/search?q=")
+    assert "%22Neo%20Geo%22" in url
+    assert "bios" in url
+
+
 def test_no_hay_fuentes_de_archive(appmod):
-    """Ya no se busca en archive.org: el flujo es GitHub y subida manual."""
+    """Ya no se busca en archive.org: el flujo es búsqueda externa y subida."""
     for nombre in ("bios_sources", "search_bios_sources", "install_bios_source",
                    "repair_bios_from_source"):
         assert not hasattr(appmod, nombre), nombre

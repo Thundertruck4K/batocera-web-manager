@@ -25,8 +25,8 @@ interface BiosSystemModalProps {
   name: string
   /** Ficheros de BIOS que exige el catálogo para este sistema. */
   files: BiosFile[]
-  /** Enlace para buscar las BIOS de este sistema en GitHub. */
-  github?: string | null
+  /** Enlace para buscar las BIOS de este sistema en Google. */
+  busqueda?: string | null
   /** Se llama cuando algo ha cambiado y hay que refrescar la lista. */
   onRepaired: () => void
 }
@@ -45,9 +45,9 @@ function humanSize(bytes: number | null): string {
 }
 
 /** Enlace de respaldo si el backend no lo manda. */
-function busquedaGitHub(file: string): string {
+function busquedaGoogle(file: string): string {
   const nombre = file.split('/').pop() ?? file
-  return `https://github.com/search?q=${encodeURIComponent(`"${nombre}"`)}&type=code`
+  return `https://www.google.com/search?q=${encodeURIComponent(`"${nombre}"`)}`
 }
 
 /**
@@ -55,7 +55,7 @@ function busquedaGitHub(file: string): string {
  * acciones para arreglarlo.
  *
  * El flujo es el de Batocera en la realidad: si el fichero está en su sitio,
- * no hay nada que hacer; si no está, se busca por fuera (GitHub) o lo sube el
+ * no hay nada que hacer; si no está, se busca por fuera (Google) o lo sube el
  * usuario. «Reparar» mueve contenido que ya está en la propia consola, que es
  * lo único que se puede hacer sin red.
  */
@@ -65,7 +65,7 @@ export function BiosSystemModal({
   slug,
   name,
   files,
-  github,
+  busqueda,
   onRepaired,
 }: BiosSystemModalProps) {
   const { showNotify } = useNotify()
@@ -130,7 +130,7 @@ export function BiosSystemModal({
         message:
           error instanceof Error
             ? error.message
-            : 'El contenido no está en la tarjeta: búscalo en GitHub o súbelo.',
+            : 'El contenido no está en la tarjeta: búscalo en Google o súbelo.',
       })
     } finally {
       setBusy(null)
@@ -238,7 +238,7 @@ export function BiosSystemModal({
           const conProblema = esProblema(file.estado)
           /** Sin contenido en la consola: hay que buscarlo por fuera o subirlo. */
           const buscar = conProblema
-          const enlaceFichero = file.github || busquedaGitHub(file.file)
+          const enlaceFichero = file.busqueda || busquedaGoogle(file.file)
           /** El enlace busca el nombre del fichero, no su ruta. */
           const nombreFichero = file.file.split('/').pop() ?? file.file
           return (
@@ -331,7 +331,7 @@ export function BiosSystemModal({
                   </p>
                   <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                     No hay nada que reparar por dentro: el contenido no está en la tarjeta.
-                    Búscalo por tu cuenta en GitHub y súbelo aquí; la app lo deja en su sitio.
+                    Búscalo por tu cuenta en Google y súbelo aquí; la app lo deja en su sitio.
                     {file.members.length > 0 && ' Si es un ZIP, sube el ZIP completo.'}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -342,17 +342,17 @@ export function BiosSystemModal({
                       className="inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
                     >
                       <ExternalLink className="size-3" />
-                      Buscar {nombreFichero} en GitHub
+                      Buscar {nombreFichero} en Google
                     </a>
-                    {github && (
+                    {busqueda && (
                       <a
-                        href={github}
+                        href={busqueda}
                         target="_blank"
                         rel="noreferrer noopener"
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
                       >
                         <ExternalLink className="size-3" />
-                        Buscar las BIOS de {name} en GitHub
+                        Buscar las BIOS de {name} en Google
                       </a>
                     )}
                     <Button

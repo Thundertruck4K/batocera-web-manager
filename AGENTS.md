@@ -205,12 +205,14 @@ El proyecto se trabaja en **un solo repositorio**:
     destination**, so a failed repair never leaves the system without its BIOS.
   - Endpoints: `GET /api/bios/catalog`, `GET /api/bios/summary`, `POST /api/bios/scan`,
     `POST /api/bios/repair`. The SPA section is `pages/Bios.tsx` (+ `components/bios/`).
-- **A missing BIOS is found on GitHub or uploaded by hand** — there is no third-party catalogue.
-  - `github_bios_search_url()` builds a GitHub code search for the exact file name (quoted) and
-    `github_sistema_url()` one for the whole system; both travel in the catalogue payload
-    (`github` per file and per system) so the UI never builds them itself.
+- **A missing BIOS is found on Google or uploaded by hand** — there is no third-party catalogue.
+  - `busqueda_fichero_url()` builds a Google search for the exact file name (quoted) and
+    `busqueda_sistema_url()` one for the whole system (name quoted plus `bios`); both travel in the
+    catalogue payload (`busqueda` per file and per system) so the UI never builds them itself.
+    Google replaced the GitHub code search on purpose: a quoted search finds the file across the
+    whole web (forums, collection mirrors, emulation pages), not only in code repositories.
   - The app **downloads nothing by itself**: no collections are indexed and nothing is fetched
-    automatically. The user finds the file (GitHub) and uploads it; the upload lands it in the exact
+    automatically. The user finds the file (Google) and uploads it; the upload lands it in the exact
     path the catalogue expects and the result is checked.
   - The old archive.org integration (item metadata, HTTP Range ZIP reading, source cache in
     `batocera_manager_bios_sources.json`) was removed on purpose: searching there took 30-120 s from

@@ -22,7 +22,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-696%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-692%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -571,12 +571,12 @@ ZIP o en otra carpeta), el manager lo reúne y lo coloca en la ruta exacta que p
 comprueba el resultado y deja el fichero original en `/userdata/bios/.quarantine/`. Si no hay nada
 que poner, no toca el destino.
 
-**Si no está en la consola: GitHub o subida manual.** El botón *Reparar* no se queda en «no se ha
+**Si no está en la consola: Google o subida manual.** El botón *Reparar* no se queda en «no se ha
 encontrado»: si el contenido no está en la SD, la app ofrece las dos vías que quedan —**buscarlo en
-GitHub** (enlace directo al nombre exacto del fichero y otro a las BIOS del sistema) o **subir el
-archivo** (la app lo deja en su sitio y comprueba que queda bien colocado—. No hay descarga
-automática de nada: son BIOS con copyright y la app no aloja ni baja colecciones por su cuenta. Si
-el BIOS es un ZIP, hay que subir el ZIP completo.
+Google** (enlace directo con el nombre exacto del fichero entrecomillado y otro con las BIOS del
+sistema) o **subir el archivo** (la app lo deja en su sitio y comprueba que queda bien colocado—.
+No hay descarga automática de nada: son BIOS con copyright y la app no aloja ni baja colecciones por
+su cuenta. Si el BIOS es un ZIP, hay que subir el ZIP completo.
 
 ---
 
@@ -624,7 +624,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **EmulationStation** | `/api/es/status` · `/api/es/restart` |
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
-| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` · `/api/bios/sources` · `/api/bios/sources/search` · `/api/bios/install` |
+| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
 | **Actualización** | `/api/update` · `/api/app-update` |
@@ -638,12 +638,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **696 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **692 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 696 passed in ~30s
+# 692 passed in ~30s
 ```
 
 ---
@@ -665,7 +665,7 @@ batocera_web/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 696 tests con pytest
+├── tests/                    # 692 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

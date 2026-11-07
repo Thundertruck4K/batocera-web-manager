@@ -1,6 +1,6 @@
 """Tests del asistente de BIOS faltantes (enfoque legal-primero).
 
-La app NO distribuye fuentes de BIOS: solo ofrece un enlace de búsqueda en GitHub
+La app NO distribuye fuentes de BIOS: solo ofrece un enlace de búsqueda en Google
 y una descarga desde una URL que el usuario proporciona. El hash se calcula y se
 enseña como dato, pero no decide nada: Batocera no es rígido con él.
 """
@@ -13,12 +13,14 @@ ROOT = Path(__file__).resolve().parent.parent
 APP = ROOT / "app.py"
 
 
-# ─── Enlace de búsqueda en GitHub ──────────────────────────────────────
+# ─── Enlace de búsqueda en Google ───────────────────────────────────────
 
-def test_github_bios_search_url(appmod):
-    url = appmod.github_bios_search_url("scph5501.bin")
-    assert url.startswith("https://github.com/search?")
+def test_busqueda_fichero_url(appmod):
+    """El enlace va a Google con el nombre del fichero entrecomillado."""
+    url = appmod.busqueda_fichero_url("scph5501.bin")
+    assert url.startswith("https://www.google.com/search?q=")
     assert "scph5501.bin" in url
+    assert "%22" in url
 
 
 # ─── Descargador ───────────────────────────────────────────────────────

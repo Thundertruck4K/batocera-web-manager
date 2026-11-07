@@ -3364,11 +3364,11 @@ def scan_bios(settings, force=False):
                 "fuente": detalle.get("fuente"),
                 "faltan": detalle.get("faltan") or [],
                 "skip_key": f"{slug}/{rel}",
-                "github": github_bios_search_url(rel),
+                "busqueda": busqueda_fichero_url(rel),
             })
         files.sort(key=lambda f: f["file"])
         systems[slug] = {"name": info["name"], "files": files,
-                         "github": github_sistema_url(slug, info["name"])}
+                         "busqueda": busqueda_sistema_url(slug, info["name"])}
     extras = [rel for rel in index["files"] if rel.lower() not in expected_paths]
     return {
         "source": catalog["source"],
@@ -3410,7 +3410,7 @@ def repair_bios(settings, slug, rel):
 
     Sólo se mueve contenido que ya está en la consola: si no hay nada que
     poner, el destino no se toca y se dice con claridad, para que el usuario
-    lo busque por su cuenta (GitHub) o lo suba a mano.
+    lo busque por su cuenta (Google) o lo suba a mano.
 
     Para un fichero normal se copia el contenido que ya está en la consola.
     Para un ZIP se reconstruye con los miembros que exige el catálogo
@@ -3528,23 +3528,25 @@ def _bios_urlopen(url, timeout=30):
         return resp.read(MAX_BIOS_DOWNLOAD + 1)
 
 
-def github_bios_search_url(filename):
-    """URL de búsqueda de código en GitHub para localizar un archivo BIOS.
+def busqueda_fichero_url(filename):
+    """URL de búsqueda en Google para localizar un archivo BIOS.
 
     La app solo enlaza a la búsqueda; no descarga ni aloja nada por su cuenta.
     Se busca el nombre exacto del fichero (entrecomillado) porque es el que
-    tiene que acabar en la SD.
+    tiene que acabar en la SD. En Google, la búsqueda entrecomillada encuentra
+    el fichero en toda la web: foros, espejos de colecciones y páginas de
+    emulación, no sólo en repositorios de código.
     """
     nombre = str(filename or "").rsplit("/", 1)[-1]
     q = urllib.parse.quote(f'"{nombre}"')
-    return f"https://github.com/search?q={q}&type=code"
+    return f"https://www.google.com/search?q={q}"
 
 
-def github_sistema_url(slug, name=None):
-    """URL de búsqueda en GitHub de las BIOS de un sistema."""
+def busqueda_sistema_url(slug, name=None):
+    """URL de búsqueda en Google de las BIOS de un sistema."""
     etiqueta = (name or slug or "").strip()
-    q = urllib.parse.quote(f"{etiqueta} bios")
-    return f"https://github.com/search?q={q}&type=repositories"
+    q = urllib.parse.quote(f'"{etiqueta}" bios')
+    return f"https://www.google.com/search?q={q}"
 
 
 def download_bios_from_url(bios_dir, filename, url, expected_md5s=None, timeout=30):

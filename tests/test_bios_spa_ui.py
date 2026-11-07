@@ -47,3 +47,19 @@ def test_el_input_de_ficheros_no_esta_oculto():
     h = MODAL.read_text(encoding="utf-8")
     assert 'className="hidden"' not in h
     assert "h-px w-px" in h or "sr-only" in h
+
+
+def test_el_modal_busca_en_google():
+    """La BIOS que falta se busca en Google, no en GitHub."""
+    h = MODAL.read_text(encoding="utf-8")
+    assert "google.com/search" in h
+    assert "github.com" not in h
+    assert "en Google" in h
+
+
+def test_la_pagina_usa_el_enlace_de_busqueda():
+    """La vista de sistemas recibe el enlace del catálogo, no el de GitHub."""
+    h = PAGINA.read_text(encoding="utf-8")
+    assert "busqueda: system.busqueda" in h
+    assert "busqueda={selected?.busqueda}" in h
+    assert "system.github" not in h
