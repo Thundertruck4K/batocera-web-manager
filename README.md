@@ -631,6 +631,13 @@ catálogo de DAT por sistema de libretro y al rebuild diario, que son metadatos:
 sus hashes, sin una sola ROM. Se guardan en `/userdata/system/batocera_manager_dats/` y el instalador
 puede bajarlos de entrada (paso 7, con `BM_DATS=auto|all|skip`).
 
+**El cálculo del plan lleva su propia barra de progreso.** En un sistema grande el cálculo
+tarda (hay que identificar miles de ficheros y a veces hashear ISOs de 4 GB), así que va **en un
+hilo aparte**: la página enseña una barra con los ficheros que lleva revisados y el que está
+mirando ahora mismo, y el trabajo no se pierde aunque el usuario siga usando la aplicación. Los
+endpoints `GET /api/tools/rename/plan/start` y `POST /api/tools/rename/apply/start` devuelven el
+identificador del trabajo y `GET /api/tools/rename/job?id=…` dice cómo va.
+
 **Cada sistema tiene su DAT, y se dice de dónde sale.** La clave es el **nombre de la carpeta del
 sistema** en `/userdata/roms`, que es lo que usa el manager: con 122 sistemas mapeados sobre las
 carpetas que existen de verdad, el renombrado funciona en toda la biblioteca y no sólo en el 3DO. Para
@@ -699,6 +706,7 @@ Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/syste
                           │   index.html
                           └── romtools/          # paquete de DAT, renombrado y formatos
                               dats · identify · naming · sets · rename · formats
+                              progress · jobs
 ```
 
 - **`app.py`** — servidor HTTP puro (`http.server`) con todos los endpoints, lectura de
@@ -706,7 +714,8 @@ Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/syste
   de ScreenScraper, TheGamesDB e IGDB. Sin frameworks.
 - **`romtools/`** — paquete del backend para las herramientas de ROMs: catálogo y descarga de
   DAT, identificación por hash, firma de disco y título, gramática de los nombres de set,
-  motor de renombrado con plan y deshacer, y conversión, compresión y parches de formatos.
+  motor de renombrado con plan y deshacer, conversión, compresión y parches de formatos, y el
+  motor de trabajos en segundo plano con su barra de progreso.
   Es Python de la librería estándar, como todo lo demás, y se importa de forma protegida:
   si el paquete no está, la API de herramientas responde con un error claro y el resto de la
   app sigue funcionando.
@@ -738,7 +747,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
-| **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/batch` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/apply` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
+| **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/batch` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/plan/start` · `/api/tools/rename/apply` · `/api/tools/rename/apply/start` · `/api/tools/rename/job` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
 | **Actualización** | `/api/update` · `/api/app-update` |
 
 Los contadores de la biblioteca salen de `GET /api/info`: `rom_systems_count` (los sistemas con juegos),
@@ -750,7 +759,7 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **755 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **777 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
@@ -782,10 +791,12 @@ batocera_web/
 │   ├── sets.py               # puntuación de variantes y elección por juego
 │   ├── rename.py             # plan, aplicación y deshacer del renombrado
 │   ├── formats.py            # detección, conversión, compresión y parches
+│   ├── progress.py           # la cuenta de lo que lleva hecho un trabajo largo
+│   ├── jobs.py               # los trabajos en segundo plano, con su progreso
 │   └── __main__.py            # CLI: `python3 -m romtools dats --install`
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 729 tests con pytest
+├── tests/                    # 777 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

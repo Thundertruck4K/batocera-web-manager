@@ -836,6 +836,34 @@ export interface ToolsRenameGamelist {
   error?: string | null
 }
 
+/**
+ * El estado de un trabajo largo (el plan de renombrado o su aplicacion).
+ *
+ * El backend arranca el trabajo en un hilo aparte y devuelve su id; el
+ * cliente va preguntando por el estado hasta que acaba, asi que se ve que
+ * la aplicacion sigue trabajando en vez de quedarse en silencio.
+ */
+export interface ToolsJob {
+  ok: boolean
+  id: string
+  tipo: string
+  /** `trabajando` mientras dura, `listo` al terminar, `error` si falla. */
+  estado: 'trabajando' | 'listo' | 'error'
+  /** Cuantos ficheros lleva revisados. */
+  hechos: number
+  /** Cuantos ficheros hay en total. */
+  total: number
+  /** El fichero que esta mirando ahora mismo. */
+  actual: string
+  /** De 0 a 100. */
+  porcentaje: number
+  /** Lo que esta haciendo ("identificando los ficheros"...). */
+  mensaje: string
+  error?: string
+  /** El resultado, si el trabajo ha terminado bien. */
+  resultado?: ToolsRenamePlan | ToolsRenameResult
+}
+
 /** Resultado de aplicar o deshacer un renombrado. */
 export interface ToolsRenameResult {
   ok: boolean

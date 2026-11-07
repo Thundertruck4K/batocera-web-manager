@@ -24,6 +24,7 @@ import type {
   ToolsActionResult,
   ToolsBatchResult,
   ToolsDatsStatus,
+  ToolsJob,
   ToolsRenamePlan,
   ToolsRenameResult,
   ToolsRomFile,
@@ -302,6 +303,20 @@ export const api = {
     post<ToolsActionResult>('/api/tools/formats/patch', payload).then(unwrap),
   toolsRenamePlan: (system: string) =>
     get<ToolsRenamePlan>(`/api/tools/rename/plan?system=${enc(system)}`).then(unwrap),
+  /**
+   * Arranca el calculo del plan en segundo plano y devuelve el id del
+   * trabajo. En una biblioteca grande el calculo tarda, y asi el usuario ve
+   * el progreso en vez de una pagina en silencio.
+   */
+  toolsRenamePlanStart: (system: string) =>
+    get<{ ok: boolean; job: string }>(`/api/tools/rename/plan/start?system=${enc(system)}`).then(
+      unwrap,
+    ),
+  /** El estado de un trabajo en curso (cuanto lleva, que esta haciendo). */
+  toolsRenameJob: (id: string) => get<ToolsJob>(`/api/tools/rename/job?id=${enc(id)}`).then(unwrap),
+  /** Aplica el renombrado en segundo plano (tambien devuelve un trabajo). */
+  toolsRenameApplyStart: (payload: { system: string; include_review?: boolean }) =>
+    post<{ ok: boolean; job: string }>('/api/tools/rename/apply/start', payload).then(unwrap),
   toolsRenameApply: (payload: { system: string; include_review?: boolean }) =>
     post<ToolsRenameResult>('/api/tools/rename/apply', payload).then(unwrap),
   toolsRenameUndo: () => post<ToolsRenameResult>('/api/tools/rename/undo', {}).then(unwrap),

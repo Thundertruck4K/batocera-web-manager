@@ -28,6 +28,7 @@ from typing import Iterable, Sequence
 
 from . import naming, sets
 from .identify import Match, identify
+from .progress import Progress
 
 #: Donde se guarda el journal de renombrados.
 JOURNAL_NAME = "batocera_manager_renames.json"
@@ -175,7 +176,8 @@ def plan_rename(files: Sequence[str], index: dict | None,
                 options: naming.NamingOptions | None = None,
                 region_priority: Sequence[str] = sets.DEFAULT_REGION_PRIORITY,
                 min_confidence: float = 0.75,
-                hash_budget: int = 512 * 1024 * 1024) -> dict:
+                hash_budget: int = 512 * 1024 * 1024,
+                progreso=None) -> dict:
     """Calcula el plan de renombrado de una lista de ficheros.
 
     ``index`` es el indice del DAT del sistema (o ``None`` si no hay DAT: en
@@ -187,14 +189,23 @@ def plan_rename(files: Sequence[str], index: dict | None,
     segundo caso lo que se renombra es la **carpeta** (los juegos de Wii
     viven en ``Juego [REXP01]/REXP01.wbfs``) y el fichero de dentro se
     queda como estaba.
+
+    ``progreso`` es una funcion que recibe el estado (cuanto lleva hecho,
+    que fichero va, que porcentaje). Con una biblioteca grande el calculo
+    tarda: sin avisar, la aplicacion parece congelada.
     """
     opts = options or naming.NamingOptions()
     items: list = []
     # El hash obliga a leer el fichero entero: con bibliotecas de 40 GB eso
     # es eterno, asi que se lleva un presupuesto de bytes.
     restante = hash_budget
+    # El progreso: por ficheros y, dentro de cada uno, por bytes leidos.
+    prog = Progress(len(files), "identificando los ficheros", notificar=progreso)
+    prog.avisar()
 
-    for unidad in sorted(files, key=lambda u: u.get("path", "") if isinstance(u, dict) else str(u)):
+    unidades = sorted(files,
+                      key=lambda u: u.get("path", "") if isinstance(u, dict) else str(u))
+    for indice, unidad in enumerate(unidades):
         if isinstance(unidad, dict):
             path = unidad.get("path") or ""
             carpeta = (unidad.get("carpeta") or "").replace(os.sep, "/")
@@ -211,16 +222,19 @@ def plan_rename(files: Sequence[str], index: dict | None,
         ext = os.path.splitext(current)[1]
         item = RenameItem(path=path, current=current, carpeta=carpeta)
 
+        try:
+            tamano = os.path.getsize(path)
+        except OSError:
+            tamano = 0
+        prog.empezar(current, tamano, hechos=indice)
+
         if index:
-            try:
-                tamano = os.path.getsize(path)
-            except OSError:
-                tamano = 0
             hashear = tamano <= restante
             if hashear:
                 restante -= tamano
             match: Match = identify(path, index, title_hint=os.path.splitext(current)[0],
-                                    hash_allowed=hashear)
+                                    hash_allowed=hashear,
+                                    on_bytes=prog.leidos)
             item.method = match.method
             item.confidence = match.confidence
             item.entry = match.entry
@@ -276,6 +290,8 @@ def plan_rename(files: Sequence[str], index: dict | None,
             item.companions = [os.path.basename(c) for c in companions_of(path)]
 
         items.append(item)
+
+    prog.completar()
 
     stats = {
         "total": len(items),
@@ -469,18 +485,26 @@ def update_gamelist(folder: str, moves: list) -> dict:
 
 
 def apply_plan(plan: dict, folder: str, root: str = "/userdata/system",
-               include_review: bool = False) -> dict:
+               include_review: bool = False, progreso=None) -> dict:
     """Ejecuta el plan: renombra y deja journal para poder deshacer.
 
     ``include_review`` permite renombrar tambien los ficheros marcados como
     «revisar» (los que tienen coincidencia por titulo pero poca confianza).
+
+    ``progreso`` recibe el estado del trabajo: renombrar miles de ficheros
+    y actualizar la media y el ``gamelist.xml`` tambien tarda.
     """
     folder = os.path.abspath(folder)
     moved = []
     skipped = []
     errors = []
+    # El progreso: renombrar y actualizar la media tambien tardan.
+    prog = Progress(len(plan.get("items") or []), "renombrando los ficheros",
+                    notificar=progreso)
+    prog.avisar()
 
-    for item in plan.get("items", []):
+    for indice, item in enumerate(plan.get("items") or []):
+        prog.empezar(item.get("file") or "", 0, indice)
         action = item.get("action")
         if action == "renombrar" or (include_review and action == "revisar"):
             pass
@@ -545,6 +569,8 @@ def apply_plan(plan: dict, folder: str, root: str = "/userdata/system",
                 moved.append({"from": companion_path, "to": new_companion, "when": time.time()})
             except OSError as exc:
                 errors.append({"file": companion, "error": str(exc)})
+
+    prog.completar()
 
     # El gamelist.xml y la media se actualizan con los nombres nuevos: si no,
     # las fichas apuntarian a ficheros que ya no existen y las imagenes se

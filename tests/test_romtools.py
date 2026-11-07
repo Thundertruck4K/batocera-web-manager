@@ -8,12 +8,13 @@ sinteticas se construyen sector a sector.
 import json
 import os
 import struct
+import time
 import zipfile
 from pathlib import Path
 
 import pytest
 
-from romtools import dats, formats, identify, naming, rename, sets
+from romtools import dats, formats, identify, jobs, naming, progress, rename, sets
 
 # ── DAT de prueba ───────────────────────────────────────────────────────
 
@@ -1114,3 +1115,115 @@ def test_sin_gamelist_no_pasa_nada(tmp_path):
 
     assert salida["ok"] is True
     assert (tmp_path / "Juego (USA).smd").exists()
+
+
+# ── El progreso del plan de renombrado ────────────────────────────────────
+
+def test_el_progreso_avanza_por_bytes():
+    """Dentro de un fichero, la barra se mueve por bytes leidos."""
+    prog = progress.Progress(4, "identificando los ficheros")
+
+    prog.empezar("Juego.iso", 100, hechos=0)
+    prog.leidos(25)
+    assert prog.estado()["porcentaje"] == 6   # la cuarta parte de un fichero
+
+    prog.leidos(75)
+    assert prog.estado()["porcentaje"] == 25  # el fichero entero
+
+    prog.completar()
+    estado = prog.estado()
+    assert estado["porcentaje"] == 100
+    assert estado["terminado"] is True
+
+
+def test_el_plan_avisa_del_progreso(tmp_path):
+    """El plan va contando los ficheros que lleva revisados."""
+    (tmp_path / "Juego (USA).smd").write_bytes(b"ROM")
+    (tmp_path / "Otro (USA).smd").write_bytes(b"ROM")
+    indice = {"by_name": {}, "by_hash": {}, "by_serial": {}, "by_title": {}}
+    estados = []
+
+    plan = rename.plan_rename([str(tmp_path / "Juego (USA).smd"),
+                                str(tmp_path / "Otro (USA).smd")],
+                               indice, progreso=estados.append)
+
+    assert len(plan["items"]) == 2
+    assert estados, "el plan tiene que avisar del progreso"
+    assert estados[0]["total"] == 2, "el total se sabe antes de empezar"
+    assert estados[-1]["porcentaje"] == 100
+    assert estados[-1]["total"] == 2
+    assert estados[-1]["terminado"] is True
+    # Se ve que fichero se esta mirando.
+    assert any(e["actual"] == "Juego (USA).smd" for e in estados)
+
+
+def test_el_plan_mueve_la_barra_mientras_hashea(tmp_path):
+    """Dentro de un fichero grande hay estados intermedios."""
+    rom = tmp_path / "Juego desconocido.iso"
+    rom.write_bytes(b"x" * (3 * 1024 * 1024))
+    indice = {"by_name": {}, "by_hash": {}, "by_serial": {}, "by_title": {}}
+    estados = []
+
+    rename.plan_rename([str(rom)], indice, progreso=estados.append)
+
+    intermedios = [e for e in estados if 0 < e["porcentaje"] < 100]
+    assert intermedios, "la barra tiene que moverse mientras se hashea"
+
+
+def test_el_trabajo_devuelve_el_resultado():
+    """Un trabajo en segundo plano acaba con su resultado."""
+    registro = jobs.Jobs()
+
+    trabajo = registro.lanzar("plan", lambda job: {"ok": True, "items": []})
+    for _ in range(300):
+        if trabajo.estado != "trabajando":
+            break
+        time.sleep(0.01)
+
+    assert trabajo.estado == "listo"
+    estado = trabajo.as_dict()
+    assert estado["ok"] is True
+    assert estado["resultado"]["items"] == []
+    assert estado["porcentaje"] == 100
+
+
+def test_el_trabajo_que_falla_lo_dice():
+    """Si el trabajo revienta, se dice por que."""
+    registro = jobs.Jobs()
+
+    def revienta(job):
+        raise RuntimeError("se ha roto")
+
+    trabajo = registro.lanzar("plan", revienta)
+    for _ in range(300):
+        if trabajo.estado != "trabajando":
+            break
+        time.sleep(0.01)
+
+    assert trabajo.estado == "error"
+    assert "se ha roto" in trabajo.as_dict()["error"]
+
+
+def test_el_trabajo_guarda_el_progreso():
+    """El trabajo va guardando el progreso que le pasa el calculo."""
+    registro = jobs.Jobs()
+    vistos = []
+
+    def tarea(job):
+        job.progreso({"hechos": 3, "total": 10, "porcentaje": 30,
+                      "actual": "Juego.iso", "mensaje": "identificando"})
+        vistos.append(job.as_dict())
+        return {"ok": True}
+
+    trabajo = registro.lanzar("plan", tarea)
+    for _ in range(300):
+        if trabajo.estado != "trabajando":
+            break
+        time.sleep(0.01)
+
+    assert trabajo.estado == "listo"
+    assert vistos, "el trabajo tiene que guardar el progreso"
+    assert vistos[0]["hechos"] == 3
+    assert vistos[0]["total"] == 10
+    assert vistos[0]["porcentaje"] == 30
+    assert vistos[0]["actual"] == "Juego.iso"

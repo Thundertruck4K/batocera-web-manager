@@ -65,8 +65,13 @@ _ISO_VD_OFFSET = 0x8000
 _PS_WINDOW = (0x8000, 0x8800)
 
 
-def hash_file(path: str, algorithms: Sequence[str] = ("md5", "sha1", "crc32")) -> dict:
-    """Calcula los hashes de un fichero (en un solo paso de lectura)."""
+def hash_file(path: str, algorithms: Sequence[str] = ("md5", "sha1", "crc32"),
+              on_bytes=None) -> dict:
+    """Calcula los hashes de un fichero (en un solo paso de lectura).
+
+    ``on_bytes`` recibe cuantos bytes se han leido: sirve para que la barra
+    de progreso avance mientras se hashea un fichero grande.
+    """
     wanted = {a.lower() for a in algorithms}
     digests = {a: hashlib.new(a) for a in wanted if a in ("md5", "sha1", "sha256")}
     crc = 0
@@ -77,6 +82,8 @@ def hash_file(path: str, algorithms: Sequence[str] = ("md5", "sha1", "crc32")) -
             if not chunk:
                 break
             size += len(chunk)
+            if on_bytes is not None:
+                on_bytes(len(chunk))
             for dig in digests.values():
                 dig.update(chunk)
             if "crc32" in wanted:
@@ -532,11 +539,15 @@ def match_by_title(index: dict, title: str, limit: int = 5,
 
 
 def identify(path: str, index: dict | None, title_hint: str | None = None,
-             head: bytes | None = None, hash_allowed: bool = True) -> Match:
+             head: bytes | None = None, hash_allowed: bool = True,
+             on_bytes=None) -> Match:
     """Identifica una ROM contra el indice de un DAT.
 
     ``hash_allowed`` permite saltarse el calculo de hashes (que obliga a
     leer el fichero entero) cuando la biblioteca es muy grande.
+
+    ``on_bytes`` recibe cuantos bytes se han leido del fichero: es lo que
+    mueve la barra de progreso del plan.
     """
     match = Match(path=path)
     if not index:
@@ -589,7 +600,7 @@ def identify(path: str, index: dict | None, title_hint: str | None = None,
     # 3 · Por hash: es la prueba definitiva, pero hay que leer el fichero
     #     entero, asi que solo se hace si el nombre no cuadra y hay presupuesto.
     if hash_allowed:
-        hashes = hash_file(path)
+        hashes = hash_file(path, on_bytes=on_bytes)
         match.signature["hashes"] = hashes
         found = match_by_hash(index, hashes)
         if found:

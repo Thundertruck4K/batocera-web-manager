@@ -7,6 +7,21 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **El plan de renombrado va en segundo plano y con barra de progreso.** En un sistema grande
+  (miles de juegos, o ISOs de 4 GB que hay que hashear) el cálculo del plan tardaba tanto que la
+  página se quedaba en silencio y parecía congelada: el usuario cerraba la ventana y perdía el
+  trabajo. Ahora:
+  - **El cálculo va en un hilo aparte** (el paquete nuevo `romtools/jobs.py`): el endpoint devuelve
+    el identificador del trabajo y el frontend va preguntando por su estado. Los endpoints
+    antiguos (`GET /api/tools/rename/plan` y `POST /api/tools/rename/apply`) siguen funcionando.
+  - **La barra se mueve por bytes leídos**, no sólo por ficheros: hashear una ISO es un solo
+    fichero y se lleva el 90 % del tiempo, así que con un contador de ficheros la barra se quedaba
+    parada justo en lo que más tarda.
+  - **Endpoints nuevos**: `GET /api/tools/rename/plan/start`, `POST /api/tools/rename/apply/start`
+    y `GET /api/tools/rename/job?id=…` (el estado del trabajo: cuántos ficheros lleva, cuál está
+    mirando y qué porcentaje).
+  - El **renombrado** (que también recalcula el plan) va en segundo plano, y el `gamelist.xml` y
+    la media se actualizan con el mismo mecanismo.
 - **La sección de conversiones se rehace de arriba abajo.** La radiografía de la consola real
   (2.378 ficheros) decía que el 64 % de la biblioteca se detectaba como «formato desconocido» y que
   sólo el 3DO tenía DAT: el mapa de sistemas usaba los slugs de libretro (`gc`, `dc`, `segacd`…) en

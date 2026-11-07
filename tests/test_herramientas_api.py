@@ -6,6 +6,7 @@ ese contrato.
 """
 
 import struct
+import time
 
 import pytest
 
@@ -255,3 +256,98 @@ def test_al_renombrar_se_actualiza_el_gamelist(appmod, tmp_path):
     gamelist = (base / "gamelist.xml").read_text(encoding="utf-8")
     assert "./Juego (USA).smc" in gamelist
     assert "./images/Juego (USA)-image.png" in gamelist
+
+
+# ── El plan en segundo plano, con progreso ────────────────────────────────
+
+class _HandlerFalso:
+    """El enrutador de `/api/tools` sin levantar el servidor entero."""
+
+    command = "GET"
+
+    def __init__(self, path, cuerpo=None):
+        self.path = path
+        self.cuerpo = cuerpo or {}
+        self.respondido = None
+
+    def read_json(self):
+        return self.cuerpo
+
+    def send_json(self, data, code=200):
+        self.respondido = (code, data)
+
+
+def _espera(trabajo):
+    for _ in range(300):
+        if trabajo.estado != "trabajando":
+            break
+        time.sleep(0.01)
+    return trabajo
+
+
+def test_el_plan_avisa_del_progreso(appmod, tmp_path):
+    """El calculo del plan va contando lo que lleva hecho."""
+    _snes(tmp_path)
+    settings = _settings(tmp_path)
+    estados = []
+
+    appmod.tools_rename_plan(settings, "snes", progreso=estados.append)
+
+    assert estados, "el plan tiene que avisar del progreso"
+    assert estados[-1]["porcentaje"] == 100
+    assert estados[-1]["total"] == 1
+
+
+def test_el_endpoint_arranca_el_plan_en_segundo_plano(appmod, tmp_path):
+    """`rename/plan/start` arranca un trabajo y `rename/job` lo consulta."""
+    _snes(tmp_path)
+    settings = _settings(tmp_path)
+
+    arranque = _HandlerFalso("/api/tools/rename/plan/start?system=snes")
+    appmod.BatoceraHandler._tools(arranque, settings,
+                                  "/api/tools/rename/plan/start", [])
+
+    codigo, datos = arranque.respondido
+    assert codigo == 200
+    assert datos["ok"] is True
+    trabajo = _espera(appmod._rt_jobs.JOBS.obtener(datos["job"]))
+    assert trabajo.estado == "listo"
+
+    consulta = _HandlerFalso(f"/api/tools/rename/job?id={datos['job']}")
+    appmod.BatoceraHandler._tools(consulta, settings, "/api/tools/rename/job", [])
+
+    codigo, estado = consulta.respondido
+    assert codigo == 200
+    assert estado["estado"] == "listo"
+    assert estado["resultado"]["stats"]["total"] == 1
+
+
+def test_el_endpoint_del_trabajo_que_no_existe(appmod, tmp_path):
+    """Preguntar por un trabajo que no esta da error, no un fallo raro."""
+    settings = _settings(tmp_path)
+
+    consulta = _HandlerFalso("/api/tools/rename/job?id=inventado")
+    appmod.BatoceraHandler._tools(consulta, settings, "/api/tools/rename/job", [])
+
+    codigo, datos = consulta.respondido
+    assert codigo == 404
+    assert datos["ok"] is False
+
+
+def test_el_endpoint_de_aplicar_arranca_un_trabajo(appmod, tmp_path):
+    """`rename/apply/start` tambien va en segundo plano."""
+    _snes(tmp_path)
+    settings = _settings(tmp_path)
+
+    arranque = _HandlerFalso("/api/tools/rename/apply/start")
+    arranque.command = "POST"
+    arranque.cuerpo = {"system": "snes"}
+    appmod.BatoceraHandler._tools(arranque, settings,
+                                  "/api/tools/rename/apply/start", [])
+
+    codigo, datos = arranque.respondido
+    assert codigo == 200
+    assert datos["ok"] is True
+    trabajo = _espera(appmod._rt_jobs.JOBS.obtener(datos["job"]))
+    assert trabajo.estado == "listo"
+    assert trabajo.as_dict()["resultado"]["ok"] is True

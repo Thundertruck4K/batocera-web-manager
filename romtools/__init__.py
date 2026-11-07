@@ -10,6 +10,8 @@ temas que se pueden probar por separado.
     sets      que variante es la buena cuando hay varias
     rename    el plan de renombrado, su ejecucion y la vuelta atras
     formats   deteccion, conversion, compresion y parcheo
+    progress  la cuenta de lo que lleva hecho un trabajo largo
+    jobs      los trabajos en segundo plano, con su progreso
 
 La inspiracion viene del proyecto OpenROM (https://github.com/M5Devs/OpenROM),
 que es GPL v3: aqui no se ha copiado su codigo, solo se han reaprovechado
@@ -17,7 +19,8 @@ ideas (deteccion por magia de cabecera, puntuacion de variantes, renombrado
 segundo la convencion) y sus fuentes de datos.
 """
 
-from . import dats, formats, identify, naming, rename, sets
+from . import dats, formats, identify, jobs, naming, progress, rename, sets
 
-__all__ = ["dats", "formats", "identify", "naming", "rename", "sets"]
+__all__ = ["dats", "formats", "identify", "jobs", "naming", "progress",
+           "rename", "sets"]
 __version__ = "1.0"
