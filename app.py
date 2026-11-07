@@ -33,6 +33,148 @@ try:
 except ImportError:
     HAS_PIL = False
 
+
+# ─── Herramientas de ROMs (DAT, formatos y renombrado) ───────────────────
+# El paquete `romtools` trae los DAT, la identificacion de las ROM, el motor
+# de nombres y las conversiones de formato. Vive aparte de app.py porque ya
+# no cabria dentro: son cuatro temas con sus propios tests.
+try:
+    from romtools import dats as _rt_dats
+    from romtools import formats as _rt_formats
+    from romtools import identify as _rt_identify
+    from romtools import naming as _rt_naming
+    from romtools import rename as _rt_rename
+    from romtools import sets as _rt_sets
+    HAS_ROMTOOLS = True
+    ROMTOOLS_ERROR = ""
+except Exception as _rt_exc:      # pragma: no cover - solo si falta el paquete
+    HAS_ROMTOOLS = False
+    ROMTOOLS_ERROR = str(_rt_exc)
+
+#: Ficheros que no son ROMs y no se renombran ni se convierten.
+_TOOLS_SKIP = {".xml", ".txt", ".log", ".sav", ".state", ".db", ".cfg", ".ini"}
+
+
+def tools_dir(settings=None):
+    """Carpeta donde se guardan los DAT descargados."""
+    base = "/userdata/system"
+    if settings:
+        base = str(settings.get("tools_base") or base)
+    return Path(base) / "batocera_manager_dats"
+
+
+def tools_journal_root(settings=None):
+    """Carpeta donde se guarda el journal de renombrados."""
+    return str(tools_dir(settings).parent)
+
+
+def tools_dats_status(settings=None):
+    """Que DAT hay descargados y que sistemas los admiten."""
+    if not HAS_ROMTOOLS:
+        return {"ok": False, "error": "el modulo de herramientas no esta disponible",
+                "dats": [], "sistemas": []}
+    cache = tools_dir(settings)
+    installed = {info["system"]: info for info in _rt_dats.dat_files(str(cache))}
+    sistemas = []
+    for item in _rt_dats.systems_with_dat():
+        info = installed.get(item["system"])
+        sistemas.append({
+            **item,
+            "instalado": bool(info),
+            "juegos": (info or {}).get("games"),
+            "tamano": (info or {}).get("size"),
+            "fecha": (info or {}).get("generated"),
+        })
+    return {"ok": True, "dir": str(cache),
+            "dats": list(installed.values()), "sistemas": sistemas}
+
+
+def tools_rom_files(settings, system, limit=400):
+    """Los ficheros de un sistema, con el formato detectado."""
+    folder = system_dir(settings, system)
+    out = []
+    try:
+        items = sorted(folder.iterdir())
+    except OSError:
+        return out
+    for item in items:
+        if not item.is_file() or item.name.startswith("."):
+            continue
+        if item.suffix.lower() in _TOOLS_SKIP:
+            continue
+        try:
+            size = item.stat().st_size
+        except OSError:
+            continue
+        info = _rt_formats.detect_format(str(item))
+        out.append({"name": item.name, "size": size,
+                    "kind": info.kind, "label": info.label,
+                    "actions": info.actions})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def tools_rename_plan(settings, system, min_confidence=0.75):
+    """El plan de renombrado de un sistema (no toca el disco)."""
+    folder = system_dir(settings, system)
+    index = _rt_dats.load_index(system, str(tools_dir(settings)))
+    files = []
+    try:
+        files = [str(p) for p in sorted(folder.iterdir())
+                 if p.is_file() and not p.name.startswith(".")
+                 and p.suffix.lower() not in _TOOLS_SKIP]
+    except OSError:
+        pass
+    plan = _rt_rename.plan_rename(files, index, min_confidence=min_confidence)
+    plan["ok"] = True
+    plan["system"] = system
+    plan["con_dat"] = bool(index)
+    plan["dat"] = (index or {}).get("dat")
+    return plan
+
+
+def tools_rename_apply(settings, system, include_review=False):
+    """Ejecuta el plan de renombrado y deja journal para poder deshacer."""
+    folder = system_dir(settings, system)
+    plan = tools_rename_plan(settings, system)
+    out = _rt_rename.apply_plan(plan, str(folder),
+                                root=tools_journal_root(settings),
+                                include_review=include_review)
+    out["system"] = system
+    return out
+
+
+def tools_convert(settings, system, name, target):
+    """Convierte un fichero de un sistema al formato pedido."""
+    folder = system_dir(settings, system)
+    path = safe_path_under(folder, name)
+    if not path.is_file():
+        raise ValueError("el fichero no existe")
+    return _rt_formats.convert(str(path), target)
+
+
+def tools_compress(settings, system, name):
+    """Comprime un fichero de un sistema en un ZIP."""
+    folder = system_dir(settings, system)
+    path = safe_path_under(folder, name)
+    if not path.is_file():
+        raise ValueError("el fichero no existe")
+    return _rt_formats.compress_zip(str(path))
+
+
+def tools_patch(settings, system, name, patch_name):
+    """Aplica un parche IPS a una ROM de un sistema."""
+    folder = system_dir(settings, system)
+    path = safe_path_under(folder, name)
+    patch = safe_path_under(folder, patch_name)
+    if not path.is_file():
+        raise ValueError("la ROM no existe")
+    if not patch.is_file():
+        raise ValueError("el parche no existe")
+    return _rt_formats.apply_ips(str(path), str(patch))
+
+
 HOST, PORT = "0.0.0.0", 5000
 APP_VERSION = "1.5"   # única fuente: la portada y el banner la reciben de aquí
 
@@ -6782,6 +6924,105 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
     def read_json(self):
         return json.loads(self.read_body() or b"{}")
 
+
+    # ── Herramientas de ROMs ─────────────────────────────────────────────
+    def _tools(self, s, path, parts):
+        """Enrutador de ``/api/tools/*``: DAT, formatos y renombrado."""
+        if not HAS_ROMTOOLS:
+            self.send_json({"ok": False,
+                            "error": "el modulo de herramientas no esta disponible",
+                            "detalle": ROMTOOLS_ERROR})
+            return
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        sub = path[len("/api/tools/"):] if path.startswith("/api/tools/") else ""
+        try:
+            if self.command == "GET":
+                if sub in ("systems", "dats"):
+                    self.send_json(tools_dats_status(s)); return
+                if sub == "formats":
+                    self.send_json({"ok": True,
+                                    "catalogo": _rt_formats.FORMAT_CATALOGUE,
+                                    "convertibles": list(_rt_formats.CONVERTIBLE_TO_ISO)}); return
+                if sub == "roms":
+                    system = (query.get("system") or [""])[0]
+                    if not system:
+                        self.send_json({"ok": False, "error": "falta el sistema"}); return
+                    self.send_json({"ok": True, "system": system,
+                                    "files": tools_rom_files(s, system)}); return
+                if sub == "rename/plan":
+                    system = (query.get("system") or [""])[0]
+                    if not system:
+                        self.send_json({"ok": False, "error": "falta el sistema"}); return
+                    minimo = float((query.get("min") or ["0.75"])[0])
+                    self.send_json(tools_rename_plan(s, system, minimo)); return
+                if sub == "rename/journal":
+                    self.send_json({"ok": True, "batches": _rt_rename.journal_batches(
+                        tools_journal_root(s))}); return
+                self.send_json({"ok": False, "error": "ruta desconocida"}, 404); return
+
+            # POST
+            data = self.read_json() or {}
+            if sub == "dats/install":
+                systems = data.get("systems") or []
+                if not systems:
+                    systems = [x["system"] for x in _rt_dats.systems_with_dat()]
+                results = []
+                for system in systems:
+                    try:
+                        info = _rt_dats.install_dat(system, str(tools_dir(s)))
+                        results.append({"ok": True, **info})
+                    except Exception as exc:
+                        results.append({"ok": False, "system": system, "error": str(exc)})
+                self.send_json({"ok": True, "results": results}); return
+            if sub == "dats/remove":
+                system = (data.get("system") or "").strip()
+                if not system:
+                    self.send_json({"ok": False, "error": "falta el sistema"}); return
+                self.send_json(_rt_dats.remove_dat(system, str(tools_dir(s)))); return
+            if sub == "formats/detect":
+                system = (data.get("system") or "").strip()
+                name = (data.get("file") or "").strip()
+                if not system or not name:
+                    self.send_json({"ok": False, "error": "faltan 'system' o 'file'"}); return
+                folder = system_dir(s, system)
+                path = safe_path_under(folder, name)
+                info = _rt_formats.detect_format(str(path))
+                self.send_json({"ok": True, **info.as_dict()}); return
+            if sub == "formats/convert":
+                system = (data.get("system") or "").strip()
+                name = (data.get("file") or "").strip()
+                target = (data.get("target") or "iso").strip()
+                if not system or not name:
+                    self.send_json({"ok": False, "error": "faltan 'system' o 'file'"}); return
+                self.send_json(tools_convert(s, system, name, target)); return
+            if sub == "formats/compress":
+                system = (data.get("system") or "").strip()
+                name = (data.get("file") or "").strip()
+                if not system or not name:
+                    self.send_json({"ok": False, "error": "faltan 'system' o 'file'"}); return
+                self.send_json(tools_compress(s, system, name)); return
+            if sub == "formats/patch":
+                system = (data.get("system") or "").strip()
+                name = (data.get("file") or "").strip()
+                patch = (data.get("patch") or "").strip()
+                if not system or not name or not patch:
+                    self.send_json({"ok": False,
+                                    "error": "faltan 'system', 'file' o 'patch'"}); return
+                self.send_json(tools_patch(s, system, name, patch)); return
+            if sub == "rename/apply":
+                system = (data.get("system") or "").strip()
+                if not system:
+                    self.send_json({"ok": False, "error": "falta el sistema"}); return
+                self.send_json(tools_rename_apply(s, system,
+                                                  bool(data.get("include_review")))); return
+            if sub == "rename/undo":
+                self.send_json(_rt_rename.undo_last(tools_journal_root(s))); return
+            self.send_json({"ok": False, "error": "ruta desconocida"}, 404)
+        except ValueError as exc:
+            self.send_json({"ok": False, "error": str(exc)})
+        except Exception as exc:
+            self.send_json({"ok": False, "error": str(exc)})
+
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin","*")
@@ -6828,6 +7069,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 except Exception as e: self.send_json({"ok":False,"error":str(e)})
             else: self.send_json({"ok":False,"error":"No encontrado"})
         # ROM monitor
+        elif path.startswith("/api/tools/"):
+            self._tools(s, path, parts)
         elif path == "/api/rom-systems":
             systems = get_rom_systems_cached(s)
             images  = count_systems_with_images(s, systems)
@@ -7017,6 +7260,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
         elif len(parts)==4 and parts[:2]==["api","rom-systems"] and parts[3]=="upload":
             system = urllib.parse.unquote(parts[2])
             self._upload_rom(system, s)
+        elif path.startswith("/api/tools/"):
+            self._tools(s, path, parts)
         elif path == "/api/bios/upload":
             self._upload_bios(s)
         elif path == "/api/bios/fetch":

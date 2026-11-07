@@ -48,7 +48,7 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 | [BIOS](#-bios) | [Estructura del proyecto](#-estructura-del-proyecto) | [Arquitectura](#-arquitectura) |
 | [Requisitos](#-requisitos-y-compatibilidad) | [Seguridad](#-seguridad) | [Preguntas frecuentes](#-preguntas-frecuentes) |
 | [Roadmap](#-roadmap) | [Contribuir](#-contribuir) | [Apoyar el proyecto](#-apoyar-el-proyecto) |
-| [Licencia](#-licencia) | | |
+| [Herramientas de ROMs](#-herramientas-de-roms) | [Licencia](#-licencia) | |
 
 ---
 
@@ -140,6 +140,10 @@ La unificación deja las cosas así:
   presente* y *media ausente*; con un modal flotante se escapea el sistema entero o un juego suelto,
   con la carátula a la vista y las tres fuentes en orden de prioridad (ScreenScraper primero y
   TheGamesDB e IGDB como respaldo).
+- **🧰 Herramientas de ROMs** — dos páginas nuevas en el sidebar, bajo **Herramientas**:
+  **Formatos** (detectar, convertir, comprimir y parchear las imágenes de tus sistemas de discos)
+  y **Renombrado** (ordenar la biblioteca con la convención de los sets, como hace Romulus
+  Manager, usando los DAT oficiales de Redump y No-Intro).
 - **🌐 Cero dependencias** — sólo la librería estándar de Python. Opcionalmente Pillow, y sólo para
   generar logos de relleno.
 
@@ -580,9 +584,71 @@ su cuenta. Si el BIOS es un ZIP, hay que subir el ZIP completo.
 
 ---
 
+## 🧰 Herramientas de ROMs
+
+En el menú lateral, **Herramientas** agrupa dos páginas que trabajan sobre los ficheros de la
+biblioteca: **Formatos** y **Renombrado**. El backend que las sostiene es el paquete `romtools/`,
+en Python de la librería estándar (sin dependencias, como el resto del proyecto).
+
+### 🧬 Formatos: convertir, comprimir y parchear
+
+**Formatos** lista los ficheros de un sistema con el formato detectado (BIN+CUE, ISO, PBP, XISO, GCM,
+CHD, WBFS, WIA, RVZ, MDF/CCD, G64/NDD, 3DO, WAD, NSP, ZIP, IPS…) y deja actuar sobre ellos:
+
+- **Convertir** entre los formatos que se pueden reconstruir sin pérdida: BIN/CUE ↔ ISO, PBP ↔
+  BIN/CUE, XDVDF → ISO, GCM → ISO y CHD (v5) → BIN.
+- **Comprimir** y **descomprimir** en ZIP.
+- **Parchear** con un parche IPS, y deshacerlo.
+
+Cada conversión escribe el fichero nuevo **al lado del original**, nunca encima, así que la
+operación siempre se puede deshacer a mano.
+
+### 🏷️ Renombrado: la convención de los sets
+
+**Renombrado** ordena la biblioteca con la convención que usan Romulus Manager y las sets de
+GoodTools: el título, la región y el idioma, el número de disco, el serial entre corchetes y las
+marcas de volcado (`[!]` verificado, `[b]` con datos malos, `[f]` arreglado, `[t]` traducido).
+
+**El nombre destino es el del DAT.** Un DAT (Redump o No-Intro) es la lista de juegos con el nombre
+oficial y los hashes de cada fichero; ese nombre *es* la convención, así que el manager lo copia tal
+cual en vez de inventar uno. Sólo cuando no hay DAT, o cuando el DAT no trae la entrada, se compone
+el nombre con la misma gramática a partir del fichero que ya tienes.
+
+**Los DAT se descargan, no se alojan.** Van al espejo de `libretro-database` (Redump y No-Intro),
+que son metadatos: la lista de juegos con sus hashes, sin una sola ROM. Se guardan en
+`/userdata/system/batocera_manager_dats/` y el instalador puede bajarlos de entrada (paso 7, con
+`BM_DATS=auto|all|skip`).
+
+**Cómo se empareja un fichero con su juego**, de más fiable a menos:
+
+1. **Nombre y tamaño**: si el nombre del fichero y su tamaño coinciden con los del DAT, es el juego.
+   No toca el disco, y es el caso mayoritario.
+2. **Hash**: md5, sha1 y crc32 en una sola pasada. Es la prueba definitiva, pero obliga a leer el
+   fichero entero, así que el plan lleva un **presupuesto de 512 MB** por tanda: con bibliotecas de
+   40 GB no se hashea todo, se avisa y se sigue con lo demás.
+3. **Serial del disco**: el identificador que va dentro de la imagen (`SLUS_010.10`, `SLES-022.41`,
+   `GALE01`, `RVL-RZ4E`, `T-503 8914`…).
+4. **Título**: se comparan los títulos sin las etiquetas entre paréntesis, con una similitud que
+   mezcla secuencia de caracteres y palabras.
+
+Cuando el emparejamiento es por título es una **heurística**, y así se enseña: el plan marca la
+confianza y deja la fila para revisar. Entre los candidatos se elige **la variante del mismo juego**
+(el título y el disco identifican un juego; la región no), y dentro de ese juego gana la que
+prefieras: primero la región, luego la revisión, luego las marcas de volcado.
+
+**Nada se renombra a ciegas.** El plan se enseña entero (nombre actual, nombre propuesto, método y
+confianza) antes de tocar nada; al aplicar se renombran también el CUE, la M3U y el resto de
+acompañantes; y cada tanda deja un journal en `/userdata/system/batocera_manager_renames.json`,
+con un botón para **deshacer** la última.
+
+**Legal**: el manager no aloja ni descarga ROMs. Los DAT son metadatos públicos; las conversiones,
+compresiones y parches se hacen sobre los ficheros que ya están en tu SD.
+
+---
+
 ## 🧱 Arquitectura
 
-Intencionadamente sencilla: **un proceso, un fichero de servidor y un cliente**.
+Intencionadamente sencilla: **un proceso, un servidor y un cliente**.
 
 ```
 Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/system/…
@@ -592,13 +658,21 @@ Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/syste
                           │                      └── batocera_manager_settings.json
                           │
                           ├── frontend/dist/     # SPA de React (contenido estático)
-                          └── templates/         # interfaz clásica de respaldo
-                              index.html
+                          ├── templates/         # interfaz clásica de respaldo
+                          │   index.html
+                          └── romtools/          # paquete de DAT, renombrado y formatos
+                              dats · identify · naming · sets · rename · formats
 ```
 
 - **`app.py`** — servidor HTTP puro (`http.server`) con todos los endpoints, lectura de
   `/proc` y `/sys` para las métricas, escritura de configuraciones de EmulationStation y los clientes
   de ScreenScraper, TheGamesDB e IGDB. Sin frameworks.
+- **`romtools/`** — paquete del backend para las herramientas de ROMs: catálogo y descarga de
+  DAT, identificación por hash, firma de disco y título, gramática de los nombres de set,
+  motor de renombrado con plan y deshacer, y conversión, compresión y parches de formatos.
+  Es Python de la librería estándar, como todo lo demás, y se importa de forma protegida:
+  si el paquete no está, la API de herramientas responde con un error claro y el resto de la
+  app sigue funcionando.
 - **`frontend/`** — la SPA de React + Tailwind. El servidor sirve `frontend/dist/` tal cual (con
   la versión inyectada en un `<meta>`); si ese bundle no está, cae a `templates/index.html`.
 - **`templates/index.html`** — interfaz clásica completa (HTML, CSS y JavaScript en un solo
@@ -627,6 +701,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
+| **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/apply` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
 | **Actualización** | `/api/update` · `/api/app-update` |
 
 Los contadores de la biblioteca salen de `GET /api/info`: `rom_systems_count` (los sistemas con juegos),
@@ -638,12 +713,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **692 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **729 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 692 passed in ~30s
+# 729 passed in ~30s
 ```
 
 ---
@@ -663,9 +738,17 @@ batocera_web/
 │   └── package.json
 ├── templates/
 │   └── index.html            # interfaz clásica (HTML + CSS + JS), sirve de respaldo
+├── romtools/                 # paquete del backend para DAT, renombrado y formatos
+│   ├── dats.py               # fuentes, descarga, caché y parseo de los DAT
+│   ├── identify.py           # hashes, firmas de disco y similitud de títulos
+│   ├── naming.py             # gramática de los nombres de set
+│   ├── sets.py               # puntuación de variantes y elección por juego
+│   ├── rename.py             # plan, aplicación y deshacer del renombrado
+│   ├── formats.py            # detección, conversión, compresión y parches
+│   └── __main__.py            # CLI: `python3 -m romtools dats --install`
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 692 tests con pytest
+├── tests/                    # 729 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

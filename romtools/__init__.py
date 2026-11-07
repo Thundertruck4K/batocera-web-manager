@@ -1,0 +1,23 @@
+"""Herramientas de ROMs: DAT, identificacion, renombrado y formatos.
+
+Este paquete es puro Python de la biblioteca estandar, como el resto del
+manager. Vive aparte de ``app.py`` porque ya no cabe dentro: son cuatro
+temas que se pueden probar por separado.
+
+    dats      de donde salen los DAT, como se descargan y como se indexan
+    identify  hashes, firmas de disco y heuristicas de titulo
+    naming    las convenciones de set y como se compone un nombre
+    sets      que variante es la buena cuando hay varias
+    rename    el plan de renombrado, su ejecucion y la vuelta atras
+    formats   deteccion, conversion, compresion y parcheo
+
+La inspiracion viene del proyecto OpenROM (https://github.com/M5Devs/OpenROM),
+que es GPL v3: aqui no se ha copiado su codigo, solo se han reaprovechado
+ideas (deteccion por magia de cabecera, puntuacion de variantes, renombrado
+segundo la convencion) y sus fuentes de datos.
+"""
+
+from . import dats, formats, identify, naming, rename, sets
+
+__all__ = ["dats", "formats", "identify", "naming", "rename", "sets"]
+__version__ = "1.0"
