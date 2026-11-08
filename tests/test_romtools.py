@@ -207,6 +207,37 @@ def test_la_rom_se_identifica_por_nombre(tmp_path):
     assert match.confidence >= 0.8
 
 
+def test_la_busqueda_por_titulo_no_usa_las_palabras_de_las_etiquetas(tmp_path):
+    """«(USA)» no puede ser la palabra que encuentra el juego.
+
+    En el DAT de PlayStation 2, «(USA)» comparte palabra con un cuarto de los
+    titulos (2.260 candidatos de 11.065) y la busqueda se iba a 0,3 s por
+    fichero: comparar ps2 entero tardaba 33 s. Las palabras de la busqueda
+    salen del titulo **pelado**, sin etiquetas.
+    """
+    ruta = tmp_path / "Cosa (USA).bin"
+    ruta.write_bytes(b"x")
+    indice = {"by_hash": {}, "by_serial": {}, "by_name": {},
+              "by_title": {"juego usa": [{"name": "Juego (USA).bin",
+                                          "description": "Juego (USA)",
+                                          "roms": [{"name": "Juego (USA).bin"}]}]}}
+    match = identify.identify(str(ruta), indice)
+    assert match.candidates == []
+
+
+def test_el_titulo_pelado_si_encuentra_el_juego(tmp_path):
+    """Lo de antes sigue funcionando: el juego se encuentra por el titulo."""
+    ruta = tmp_path / "Juego (USA).bin"
+    ruta.write_bytes(b"x")
+    indice = {"by_hash": {}, "by_serial": {}, "by_name": {},
+              "by_title": {"juego usa": [{"name": "Juego (USA).bin",
+                                          "description": "Juego (USA)",
+                                          "roms": [{"name": "Juego (USA).bin"}]}]}}
+    match = identify.identify(str(ruta), indice)
+    assert match.method == "titulo"
+    assert match.entry["name"] == "Juego (USA).bin"
+
+
 # ── Nombres ─────────────────────────────────────────────────────────────
 
 def test_el_nombre_del_dat_se_descompone():

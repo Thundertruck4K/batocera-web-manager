@@ -844,7 +844,7 @@ def load_index(system: str, cache_dir: str) -> dict | None:
             meta = json.load(fh)
     except (OSError, ValueError):
         return None
-    juegos = meta.get("juegos") or []
+    juegos = meta.get("juegos") or meta.get("games") or []
 
     def _resolver(mapa: dict) -> dict:
         """Los mapas guardan la posicion del juego; aqui se resuelve.
@@ -888,6 +888,10 @@ def load_index(system: str, cache_dir: str) -> dict | None:
         "by_name_size": meta.get("by_name_size", {}),
         "by_title": by_title,
         "by_gamecode": by_gamecode,
+        # La lista de juegos, para quien necesite el DAT entero (comparar la
+        # biblioteca con el, por ejemplo). Los mapas guardan la posicion, asi
+        # que la lista no se duplica: ya esta en memoria.
+        "juegos": juegos,
         "system": system,
         "dat": meta.get("dat"),
         "source": meta.get("source"),

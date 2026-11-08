@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MetricCard } from '@/components/dashboard/MetricCard'
+import { FaltantesPanel } from '@/components/library/FaltantesPanel'
 import { PageContainer, useShell } from '@/components/layout/AppShell'
 import { SectionTabs, type SectionTab } from '@/components/layout/SectionTabs'
 import { Topbar } from '@/components/layout/Topbar'
@@ -21,7 +22,12 @@ import { Progress } from '@/components/ui/Progress'
 import { useApi } from '@/hooks/useApi'
 import { useNotify } from '@/hooks/useNotify'
 import { api } from '@/lib/api'
-import type { LibraryAudit, LibraryDuplicado, LibraryJob } from '@/lib/types'
+import type {
+  LibraryAudit,
+  LibraryDuplicado,
+  LibraryFaltantes,
+  LibraryJob,
+} from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /** La clave con la que se identifica un fichero en la interfaz. */
@@ -63,6 +69,75 @@ export function RomsPage({ tab, onTab }: RomsPageProps) {
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set())
   /** Para no tocar el estado si el usuario se ha ido de la pagina. */
   const montado = useRef(true)
+
+  /* ── Lo que falta ─────────────────────────────────────────────────── */
+
+  const sistemasDat = useApi(() => api.libraryMissingSystems(), [])
+  const [sistemaFaltantes, setSistemaFaltantes] = useState('')
+  const [faltantes, setFaltantes] = useState<LibraryFaltantes | null>(null)
+  const [trabajoFaltantes, setTrabajoFaltantes] = useState<LibraryJob | null>(null)
+  const [busyFaltantes, setBusyFaltantes] = useState(false)
+
+  // El primer sistema con DAT es el que se selecciona por defecto.
+  useEffect(() => {
+    const lista = sistemasDat.data?.sistemas ?? []
+    if (!sistemaFaltantes && lista.length) setSistemaFaltantes(lista[0].sistema)
+  }, [sistemasDat.data, sistemaFaltantes])
+
+  /**
+   * Espera a que termine la comparacion con el DAT. Va en segundo plano:
+   * comparar un sistema entero con su DAT tarda, asi que se ve el progreso.
+   */
+  const esperarJobFaltantes = async (id: string): Promise<LibraryFaltantes | null> => {
+    for (;;) {
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      const estado = await api.libraryJob(id)
+      if (!montado.current) return null
+      setTrabajoFaltantes(estado)
+      if (estado.estado === 'listo') return (estado.resultado as LibraryFaltantes) ?? null
+      if (estado.estado === 'error') {
+        throw new Error(estado.error || 'La comparacion ha fallado')
+      }
+    }
+  }
+
+  /**
+   * Cambia el sistema del panel. El resultado anterior es de otro sistema, asi
+   * que se limpia: si no, se ven datos que no son de lo que esta elegido.
+   */
+  const cambiarSistemaFaltantes = (sistema: string) => {
+    setSistemaFaltantes(sistema)
+    setFaltantes(null)
+    setTrabajoFaltantes(null)
+  }
+
+  const compararFaltantes = async () => {
+    if (!sistemaFaltantes) return
+    setBusyFaltantes(true)
+    setTrabajoFaltantes(null)
+    try {
+      const { job } = await api.libraryMissingStart(sistemaFaltantes)
+      const resultado = await esperarJobFaltantes(job)
+      if (!resultado) return
+      setFaltantes(resultado)
+      showNotify({
+        variant: 'success',
+        title: 'Comparado con el DAT',
+        message: `${resultado.faltantes} versiones que no tienes en ${resultado.sistema}.`,
+      })
+    } catch (error) {
+      showNotify({
+        variant: 'error',
+        title: 'No se pudo comparar con el DAT',
+        message: error instanceof Error ? error.message : 'Error inesperado.',
+      })
+    } finally {
+      if (montado.current) {
+        setBusyFaltantes(false)
+        setTrabajoFaltantes(null)
+      }
+    }
+  }
   useEffect(() => () => { montado.current = false }, [])
 
   /* ── La auditoría ─────────────────────────────────────────────────── */
@@ -450,6 +525,19 @@ export function RomsPage({ tab, onTab }: RomsPageProps) {
               </div>
             )}
           </PanelCard>
+        </div>
+
+        {/* Lo que falta */}
+        <div className="mt-4">
+          <FaltantesPanel
+            sistemas={sistemasDat.data?.sistemas ?? []}
+            sistema={sistemaFaltantes}
+            onSistema={cambiarSistemaFaltantes}
+            resultado={faltantes}
+            trabajo={trabajoFaltantes}
+            onComparar={compararFaltantes}
+            busy={busyFaltantes}
+          />
         </div>
 
         {/* El espacio por sistema */}

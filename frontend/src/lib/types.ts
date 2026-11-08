@@ -975,6 +975,91 @@ export interface LibraryBatch {
   files: string[]
 }
 
+/** Un sistema que tiene DAT instalado. */
+export interface LibraryDatSistema {
+  sistema: string
+  /** Cuántos juegos trae el DAT de ese sistema. */
+  juegos_dat: number
+  dat: string | null
+  fuente: string | null
+  version: string | null
+}
+
+/** Una versión del juego que tienes (emparejada con el DAT). */
+export interface LibraryVariante {
+  /** El nombre que le da el DAT. */
+  nombre: string
+  /** El fichero (o carpeta) de la biblioteca. */
+  fichero: string
+  /** Cómo se ha emparejado: nombre, hash, gamecode, serial o titulo. */
+  metodo: string
+  confianza: number
+}
+
+/** Una versión del DAT que no tienes. */
+export interface LibraryFaltante {
+  nombre: string
+  /** `disco`, `region`, `revision`, `idioma` o `version`. */
+  motivo: string
+  /** Lo que concreta el motivo (el número de disco, la región...). */
+  detalle: string
+  /** Si esta versión puntúa más alto que la que tienes. */
+  mejor: boolean
+  puntuacion: number
+  /** Cuántos volcados distintos hay con ese nombre en el DAT. */
+  copias?: number
+}
+
+/** Un juego del que tienes alguna versión y faltan otras. */
+export interface LibraryGrupoFaltante {
+  /** El nombre del juego, sin las etiquetas. */
+  titulo: string
+  variantes: LibraryVariante[]
+  faltan: LibraryFaltante[]
+  /** Los números de disco que no tienes. */
+  discos_faltantes: number[]
+}
+
+/** El resultado de comparar un sistema con su DAT. */
+export interface LibraryFaltantes {
+  ok: boolean
+  sistema: string
+  /** Cuántos juegos tiene el DAT. */
+  juegos_dat: number
+  /** Cuántos juegos hay en la biblioteca del sistema. */
+  juegos_biblioteca: number
+  /** Cuántos se han emparejado con una entrada del DAT. */
+  encontrados: number
+  /** Cuántos no salen en el DAT (mods, traducciones, homebrew). */
+  sin_dat: number
+  /**
+   * Cuántos coinciden por el título pero no del todo: puede que ya los
+   * tengas y el nombre no cuadre, así que no se afirma que falten.
+   */
+  quizas?: number
+  /** Los juegos con coincencia dudosa, para poder verlos. */
+  quizas_lista?: { fichero: string; candidato: string; puntuacion: number }[]
+  /** Cuántos juegos tienen más versiones de las que tienes. */
+  grupos: number
+  /** Cuántas versiones te faltan. */
+  faltantes: number
+  /** Cuántas de esas son una versión mejor que la que tienes. */
+  mejores: number
+  /** Cuántos juegos tienen un disco sin conseguir. */
+  discos: number
+  /**
+   * Cuántos de esos juegos tienen además alguna versión que puntúa más que
+   * la que tienes. Es lo que cuenta el filtro «Mejores versiones».
+   */
+  grupos_mejores?: number
+  detalle: LibraryGrupoFaltante[]
+  detalle_recortado: boolean
+  sin_dat_lista: { fichero: string; tamano: number }[]
+  /** Si se ha hasheado algo (si no, el emparejamiento es por nombre o título). */
+  hasheado: boolean
+  error?: string
+}
+
 /** El estado del trabajo de auditoría (va en segundo plano). */
 export interface LibraryJob {
   ok: boolean
@@ -987,5 +1072,6 @@ export interface LibraryJob {
   porcentaje: number
   mensaje: string
   error?: string
-  resultado?: LibraryAudit
+  /** El resultado depende del trabajo: la auditoría o la comparación con el DAT. */
+  resultado?: unknown
 }
