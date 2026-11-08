@@ -285,6 +285,13 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     catálogo de `github` a `busqueda`.
 
 ### Corregido
+- **Un DAT instalado antes del último cambio de formato se quedaba sin comparar**: el índice
+  antiguo guardaba el juego entero dentro de cada mapa y solo el número de juegos, así que la
+  comparación con la biblioteca fallaba con «el DAT de este sistema está vacío» (pasaba con el 3DO
+  en la consola de desarrollo, que anunciaba 684 juegos y no dejaba comparar ni uno). Ahora, si el
+  índice es del formato viejo, **se reconstruye desde el DAT**, que sigue descargado, y se deja
+  escrito en el formato nuevo. No se reconstruye con los mapas, porque cada mapa guarda un solo
+  juego por nombre y se perderían los juegos que comparten nombre.
 - **El renombrado no se podía aplicar desde la interfaz**: el modal de confirmación estaba escrito,
   pero ningún botón llamaba a `setConfirmar(true)`, así que se veía el plan y no había forma de
   aplicarlo. Ahora, con el plan calculado, aparece el botón **«Aplicar N»**, que abre el modal con

@@ -163,6 +163,11 @@ El proyecto se trabaja en **un solo repositorio**:
     interfaz: el backend va **sin acentos** a proposito.
   - Endpoints: `GET /api/library/missing/systems` y `GET /api/library/missing/start?system=...`
     (en segundo plano, con el mismo `GET /api/library/job?id=...` que la auditoria).
+  - **Un indice de DAT viejo se rehace desde el DAT**: `dats.load_index()` detecta que no tiene la
+    lista de juegos (los indices anteriores guardaban el juego entero dentro de cada mapa) y
+    reconstruye el indice desde el `.dat`, que sigue en la cache, dejandolo escrito en el formato
+    nuevo. **No se reconstruye con los mapas**: cada mapa guarda un solo juego por nombre, asi que
+    se perderian los juegos que comparten nombre (en el 3DO, 69 de 684).
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
 - `install.sh` is current (v1.6): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
@@ -215,7 +220,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 838 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 841 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,

@@ -834,6 +834,75 @@ def install_dat(system: str, cache_dir: str, timeout: int = 600,
             "file": target, "size": os.path.getsize(target)}
 
 
+def _migrar_indice(system: str, cache_dir: str, meta: dict) -> dict | None:
+    """Reconstruye un indice viejo y lo deja en el formato nuevo.
+
+    Un indice instalado antes de que los mapas guardaran la posicion del
+    juego lleva el juego entero dentro de cada mapa, y en «games» solo el
+    numero de juegos. Ese indice no sirve para comparar la biblioteca con el
+    DAT: le falta la lista de juegos.
+
+    Como el DAT sigue descargado, se vuelve a construir el indice desde el
+    DAT, que es la fuente de verdad, y se deja escrito en el formato nuevo.
+    Reconstruirlo con los mapas no vale: los mapas guardan un solo juego por
+    nombre, asi que se perderian los juegos que comparten nombre.
+
+    Devuelve el indice compacto nuevo, o ``None`` si no se pudo rehacer.
+    """
+    dat = os.path.join(cache_dir, system + ".dat")
+    juegos = None
+    if os.path.exists(dat):
+        try:
+            juegos = parse_dat(dat)
+        except (OSError, ValueError):
+            juegos = None
+    if not juegos:
+        return None
+
+    indice = build_index_compacto(juegos)
+
+    lado = os.path.join(cache_dir, system + ".json")
+    temporal = lado + ".tmp"
+    try:
+        with open(temporal, "w", encoding="utf-8") as fh:
+            json.dump({
+                "juegos": indice["juegos"],
+                "by_hash": indice["by_hash"],
+                "by_serial": indice["by_serial"],
+                "by_name": indice["by_name"],
+                "by_name_size": indice["by_name_size"],
+                "by_title": indice["by_title"],
+                "by_gamecode": indice.get("by_gamecode", {}),
+            }, fh, ensure_ascii=False)
+        os.replace(temporal, lado)
+    except OSError:
+        try:
+            os.remove(temporal)
+        except OSError:
+            pass
+
+    lado_meta = os.path.join(cache_dir, system + ".meta.json")
+    temporal_meta = lado_meta + ".tmp"
+    try:
+        with open(temporal_meta, "w", encoding="utf-8") as fh:
+            json.dump({
+                "system": system,
+                "source": meta.get("source"),
+                "dat": meta.get("dat"),
+                "version": meta.get("version"),
+                "generated": meta.get("generated") or time.time(),
+                "games": len(juegos),
+            }, fh, ensure_ascii=False)
+        os.replace(temporal_meta, lado_meta)
+    except OSError:
+        try:
+            os.remove(temporal_meta)
+        except OSError:
+            pass
+
+    return indice
+
+
 def load_index(system: str, cache_dir: str) -> dict | None:
     """El indice de un sistema ya descargado (o ``None``)."""
     side = os.path.join(cache_dir, system + ".json")
@@ -844,7 +913,17 @@ def load_index(system: str, cache_dir: str) -> dict | None:
             meta = json.load(fh)
     except (OSError, ValueError):
         return None
-    juegos = meta.get("juegos") or meta.get("games") or []
+    juegos = meta.get("juegos")
+    mapas = meta
+    if not isinstance(juegos, list):
+        # Indice viejo: no tiene la lista de juegos (solo el numero). Se
+        # rehace desde el DAT, que sigue descargado, y se deja escrito en el
+        # formato nuevo.
+        compacto = _migrar_indice(system, cache_dir, meta)
+        if compacto is None:
+            return None
+        juegos = compacto["juegos"]
+        mapas = compacto
 
     def _resolver(mapa: dict) -> dict:
         """Los mapas guardan la posicion del juego; aqui se resuelve.
@@ -863,7 +942,7 @@ def load_index(system: str, cache_dir: str) -> dict | None:
         return salida
 
     by_title = {}
-    for clave, valores in (meta.get("by_title") or {}).items():
+    for clave, valores in (mapas.get("by_title") or {}).items():
         if isinstance(valores, list):
             by_title[clave] = [
                 juegos[v] if isinstance(v, int) and 0 <= v < len(juegos) else v
@@ -872,7 +951,7 @@ def load_index(system: str, cache_dir: str) -> dict | None:
             by_title[clave] = valores
 
     by_gamecode = {}
-    for codigo, valores in (meta.get("by_gamecode") or {}).items():
+    for codigo, valores in (mapas.get("by_gamecode") or {}).items():
         if isinstance(valores, list):
             by_gamecode[codigo] = [
                 juegos[v] if isinstance(v, int) and 0 <= v < len(juegos) else v
@@ -881,11 +960,11 @@ def load_index(system: str, cache_dir: str) -> dict | None:
             by_gamecode[codigo] = valores
 
     return {
-        "by_hash": _resolver(meta.get("by_hash", {})),
-        "by_serial": _resolver(meta.get("by_serial", {})),
-        "by_name": _resolver(meta.get("by_name", {})),
+        "by_hash": _resolver(mapas.get("by_hash", {})),
+        "by_serial": _resolver(mapas.get("by_serial", {})),
+        "by_name": _resolver(mapas.get("by_name", {})),
         # Los tamanos no son posiciones: se dejan como estan.
-        "by_name_size": meta.get("by_name_size", {}),
+        "by_name_size": mapas.get("by_name_size", {}),
         "by_title": by_title,
         "by_gamecode": by_gamecode,
         # La lista de juegos, para quien necesite el DAT entero (comparar la
