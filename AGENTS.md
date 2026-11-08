@@ -191,8 +191,11 @@ El proyecto se trabaja en **un solo repositorio**:
   tokens (`bg-foreground` apagada, `bg-primary-foreground` encendida) para que contraste en los dos
   temas.
 - **Un filtro enseña lo que su numero dice**: el numero de una pastilla cuenta lo que el filtro
-  muestra (juegos, no versiones). Y al cambiar el sistema de una comparacion, el resultado del
-  sistema anterior se limpia: si no, se ven datos de otro sistema.
+  muestra (juegos, no versiones). Y **cada cifra dice su unidad**: el resumen cuenta juegos en unas
+  cifras y versiones en otras, asi que la etiqueta lo dice («juegos con mas versiones», «versiones
+  que no tienes») y los filtros se llaman «juegos con…» cuando cuentan juegos. Al cambiar el
+  sistema de una comparacion, el resultado del sistema anterior se limpia: si no, se ven datos de
+  otro sistema.
 - **La API no cambia**: el frontend consume los mismos endpoints `/api/*` que la interfaz clásica.
   `frontend/src/lib/api.ts` es el cliente tipado; `frontend/src/lib/normalize.ts` rellena los campos
   que faltan cuando el backend las deja vacíos (fuera de Linux no hay `/proc` ni `/sys`) para que la
