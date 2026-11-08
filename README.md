@@ -841,12 +841,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **838 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **841 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 838 passed in ~35s
+# 841 passed in ~35s
 ```
 
 ---
@@ -880,7 +880,7 @@ batocera_web/
 │   └── __main__.py            # CLI: `python3 -m romtools dats --install`
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 838 tests con pytest
+├── tests/                    # 841 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

@@ -107,6 +107,70 @@ def test_el_indice_se_guarda_y_se_cree(tmp_path):
     assert "crc32:ABCD1234" in cargado["by_hash"]
 
 
+def test_un_indice_viejo_se_rehace_desde_el_dat(tmp_path):
+    """Un indice del formato viejo no tiene la lista de juegos: se rehace.
+
+    Los indices instalados antes de que los mapas guardaran la posicion del
+    juego llevan el juego entero dentro de cada mapa y en «games» solo el
+    numero. Sin la lista de juegos no se puede comparar la biblioteca con el
+    DAT, asi que el indice se reconstruye desde el DAT, que sigue ahi.
+    """
+    _escribir(tmp_path, "prueba.dat", CLRMAMEPRO)
+    juegos = dats.parse_dat(str(tmp_path / "prueba.dat"))
+    viejo = dats.build_index(juegos)          # los mapas con el juego entero
+    meta = {"system": "prueba", "source": "test", "dat": "Prueba",
+            "version": "2026.01.01", "games": len(juegos)}
+    meta.update(viejo)
+    (tmp_path / "prueba.json").write_text(json.dumps(meta), encoding="utf-8")
+
+    cargado = dats.load_index("prueba", str(tmp_path))
+
+    # La lista de juegos esta y es la del DAT, no la reconstruida con los mapas.
+    assert [j["name"] for j in cargado["juegos"]] == ["Juego (USA)", "Otro (Europe)"]
+    assert cargado["by_hash"]["crc32:ABCD1234"]["name"] == "Juego (USA)"
+    assert cargado["by_name"]["juego usa"]["name"] == "Juego (USA)"
+
+    # El indice queda escrito en el formato nuevo, con su fichero de metadatos.
+    guardado = json.loads((tmp_path / "prueba.json").read_text(encoding="utf-8"))
+    assert isinstance(guardado["juegos"], list)
+    assert len(guardado["juegos"]) == 2
+    assert guardado["by_name"]["juego usa"] == 0     # una posicion, no el juego
+    meta_lado = json.loads((tmp_path / "prueba.meta.json").read_text(encoding="utf-8"))
+    assert meta_lado["games"] == 2
+    assert meta_lado["dat"] == "Prueba"
+
+
+def test_un_indice_viejo_sin_dat_no_se_inventa(tmp_path):
+    """Si el DAT no esta, el indice viejo no se puede rehacer: no se inventa."""
+    juegos = dats.parse_dat(_escribir(tmp_path, "otro.dat", CLRMAMEPRO))
+    viejo = dats.build_index(juegos)
+    meta = {"system": "prueba", "source": "test", "dat": "Prueba",
+            "games": len(juegos)}
+    meta.update(viejo)
+    (tmp_path / "prueba.json").write_text(json.dumps(meta), encoding="utf-8")
+
+    assert dats.load_index("prueba", str(tmp_path)) is None
+
+
+def test_la_migracion_no_toca_un_indice_ya_nuevo(tmp_path):
+    """Un indice en el formato nuevo se lee tal cual, sin reescribirlo."""
+    _escribir(tmp_path, "prueba.dat", CLRMAMEPRO)
+    compacto = dats.build_index_compacto(dats.parse_dat(str(tmp_path / "prueba.dat")))
+    indice = {"juegos": compacto["juegos"], "by_hash": compacto["by_hash"],
+              "by_serial": compacto["by_serial"], "by_name": compacto["by_name"],
+              "by_name_size": compacto["by_name_size"],
+              "by_title": compacto["by_title"],
+              "by_gamecode": compacto.get("by_gamecode", {})}
+    (tmp_path / "prueba.json").write_text(json.dumps(indice), encoding="utf-8")
+    antes = (tmp_path / "prueba.json").read_text(encoding="utf-8")
+
+    cargado = dats.load_index("prueba", str(tmp_path))
+
+    assert len(cargado["juegos"]) == 2
+    assert (tmp_path / "prueba.json").read_text(encoding="utf-8") == antes
+    assert not (tmp_path / "prueba.meta.json").exists()
+
+
 def test_cada_sistema_de_batocera_tiene_su_dat():
     """El mapa de sistemas tiene los nombres de DAT que se usan de verdad."""
     assert dats.SYSTEM_DAT["ps2"] == ("libretro-redump", "Sony - PlayStation 2")
