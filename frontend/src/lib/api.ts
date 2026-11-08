@@ -6,6 +6,7 @@ import type {
   CustomSystem,
   CustomSystemDetail,
   LibraryBatch,
+  LibraryDatSistema,
   LibraryJob,
   LibrarySummary,
   RandomGame,
@@ -350,6 +351,21 @@ export const api = {
       '/api/library/gamelist/clean',
       { sistema },
     ).then(unwrap),
+  /**
+   * Los sistemas que tienen DAT instalado. Solo se leen los metadatos: el
+   * índice de un sistema grande pesa 18 MB y aquí no hace falta.
+   */
+  libraryMissingSystems: () =>
+    get<{ ok: boolean; sistemas: LibraryDatSistema[] }>('/api/library/missing/systems').then(unwrap),
+  /**
+   * Compara la biblioteca de un sistema con su DAT: dice qué otras versiones
+   * hay de los juegos que ya tienes. Va en segundo plano porque comparar un
+   * sistema entero con su DAT tarda.
+   */
+  libraryMissingStart: (sistema: string) =>
+    get<{ ok: boolean; job: string }>(`/api/library/missing/start?system=${enc(sistema)}`).then(
+      unwrap,
+    ),
   /** Deshace la última tanda de la biblioteca. */
   libraryUndo: () =>
     post<{ ok: boolean; restaurados: string[]; error?: string }>('/api/library/undo', {}).then(

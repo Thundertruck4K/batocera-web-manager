@@ -40,6 +40,7 @@ except ImportError:
 # no cabria dentro: son cuatro temas con sus propios tests.
 try:
     from romtools import dats as _rt_dats
+    from romtools import faltantes as _rt_faltantes
     from romtools import formats as _rt_formats
     from romtools import identify as _rt_identify
     from romtools import jobs as _rt_jobs
@@ -283,6 +284,20 @@ def library_exts(settings, sistemas):
         except Exception:
             exts[nombre] = set(_TOOLS_EXT)
     return exts
+
+
+def library_faltantes(settings, sistema, progreso=None):
+    """Lo que falta de los juegos que tienes (solo informacion).
+
+    Compara la biblioteca de un sistema con su DAT y dice que otras versiones
+    hay de los juegos que ya tienes. Va **por sistema**: cargar los 17
+    indices a la vez son 55 MB de JSON, y en la consola eso son cientos de MB
+    de memoria.
+    """
+    exts = library_exts(settings, [sistema]).get(sistema) or set(_TOOLS_EXT)
+    return _rt_faltantes.faltantes(library_base(settings), sistema, exts,
+                                   str(tools_dir(settings)),
+                                   progreso=progreso)
 
 
 def library_auditoria(settings, progreso=None):
@@ -7314,6 +7329,23 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 if sub == "journal":
                     self.send_json({"ok": True, "batches": _rt_library.journal_batches(
                         tools_journal_root(s))})
+                    return
+                if sub == "missing/systems":
+                    self.send_json({"ok": True,
+                                    "sistemas": _rt_faltantes.sistemas_con_dat(
+                                        str(tools_dir(s)))})
+                    return
+                if sub == "missing/start":
+                    sistema = (query.get("system") or [""])[0].strip()
+                    if not sistema:
+                        self.send_json({"ok": False, "error": "falta el sistema"})
+                        return
+                    trabajo = _rt_jobs.JOBS.lanzar(
+                        "faltantes",
+                        lambda job: library_faltantes(s, sistema,
+                                                      progreso=job.progreso),
+                        mensaje="comparando con el DAT")
+                    self.send_json({"ok": True, "job": trabajo.id})
                     return
                 self.send_json({"ok": False, "error": "ruta desconocida"}, 404)
                 return

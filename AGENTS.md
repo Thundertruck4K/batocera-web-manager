@@ -78,7 +78,8 @@ El proyecto se trabaja en **un solo repositorio**:
   (`templates/index.html`), que sigue siendo el respaldo. Ver «Frontend» más abajo.
 - **Paquete `romtools/`**: el backend ya no es un solo fichero. `app.py` sigue siendo el servidor
   HTTP, pero la seccion **Herramientas** (DAT, renombrado y formatos) vive en el paquete
-  `romtools/` (stdlib puro: `dats`, `identify`, `naming`, `sets`, `rename`, `formats`, `library`). Se importa
+  `romtools/` (stdlib puro: `dats`, `identify`, `naming`, `sets`, `rename`, `formats`, `library`,
+  `faltantes`). Se importa
   de forma protegida (`HAS_ROMTOOLS`): si el paquete no esta en la consola, la API responde con un
   error claro y el resto de la app no se cae. `python3 -m romtools dats --install` baja los DAT.
   - **El nombre destino es el del DAT**, como en Romulus Manager; la composicion propia solo es
@@ -133,6 +134,35 @@ El proyecto se trabaja en **un solo repositorio**:
     tamano total.
   - **`Progress.completar()` solo se llama al final** del trabajo: esa llamada marca el job como
     «listo» con su aviso, asi que entre fases se usa `reiniciar()` o `terminar_unidad()`.
+- **El DAT de un sistema se compara con la biblioteca, pero solo por sistema**
+  (`romtools/faltantes.py`):
+  - **No se lista «todo lo que falta»**: el DAT de PlayStation 2 tiene 13.618 juegos y una biblioteca
+    normal tiene 300. Lo que informa es **de los juegos que ya tienes, que otras versiones hay**, mas
+    los **discos que faltan** de un juego con varios discos.
+  - **La comparacion va por sistema y a peticion**: cargar los 17 indices a la vez son 55 MB de JSON
+    (el de scummvm son 18 MB solo) y en la consola son cientos de MB de objetos de Python. Ya hubo un
+    `oom-kill` por un indice de 2,1 GB: no se repite.
+  - **Tres clases, y las decide el nombre, no el parecido**: por el **titulo pelado** (sin
+    etiquetas) se sabe si es el mismo juego, y por la **region que declara el nombre** se sabe si es
+    esa variante. Los dos tienen que decirlo: si el DAT dice «(USA)» y el fichero no dice nada, el
+    juego esta identificado pero la variante no, y va a **«quizas»** (no se afirma ni que lo tienes
+    ni que te falta). Si no se parece ni el titulo, es otro juego (un mod o una traduccion) y va a
+    **«sin DAT»**. **Los dudosos no se cuentan como «sin DAT»**: son juegos que quiza ya tienes.
+  - **El parecido entre caracteres tiene un sesgo**: el nombre con **menos** etiquetas gana, asi que
+    «Super Mario 64» se parece mas a «Super Mario 64 (USA)» (0,881) que a «(Japan)» (0,758). Por eso
+    la region que declara el nombre va **por delante** del parecido, y no al reves.
+  - **Las palabras de la busqueda por titulo salen del titulo pelado**: con la query entera, «(USA)»
+    comparte palabra con un cuarto de los titulos del DAT de PlayStation 2 (2.260 candidatos de
+    11.065) y la busqueda se iba a 0,3 s por fichero (comparar ps2 entero tardaba 33 s; con el titulo
+    pelado, 4 s).
+  - **Las carpetas se comparan con su nombre, sin la extension del motor**: «Myst.scummvm» es
+    «Myst», y con la extension no se empareja nada.
+  - **Cada coincidencia dice como se ha emparejado** (nombre, hash, codigo de disco, serial o titulo):
+    una coincidencia por nombre no es lo mismo que una por hash.
+  - **El motivo va como codigo** (`disco`, `region`, `revision`, `idioma`, `version`) y lo traduce la
+    interfaz: el backend va **sin acentos** a proposito.
+  - Endpoints: `GET /api/library/missing/systems` y `GET /api/library/missing/start?system=...`
+    (en segundo plano, con el mismo `GET /api/library/job?id=...` que la auditoria).
 - ROM scan has a 60-second in-memory cache (`_rom_cache`)
 - Settings are read from JSON file on every request (no in-memory cache for settings)
 - `install.sh` is current (v1.6): installs to `/userdata/system/batocera_web/` (matches the default `app_path`), pure stdlib, no Flask. Supports `BM_BASE_DIR`, `BM_CUSTOM_SH`, `BM_PYTHON`, `BM_PORT` overrides. It validates the port (1-65535), **rewrites** the `# [batocera-manager]` block of `custom.sh` (never duplicates it and never keeps a stale port/path), starts the block with a `pkill` that kills the previous instance, and restarts the manager if it was already running
@@ -160,6 +190,9 @@ El proyecto se trabaja en **un solo repositorio**:
   `left` el navegador la centraba y al activarse se salía del carril. El color de la bola sale de los
   tokens (`bg-foreground` apagada, `bg-primary-foreground` encendida) para que contraste en los dos
   temas.
+- **Un filtro enseña lo que su numero dice**: el numero de una pastilla cuenta lo que el filtro
+  muestra (juegos, no versiones). Y al cambiar el sistema de una comparacion, el resultado del
+  sistema anterior se limpia: si no, se ven datos de otro sistema.
 - **La API no cambia**: el frontend consume los mismos endpoints `/api/*` que la interfaz clásica.
   `frontend/src/lib/api.ts` es el cliente tipado; `frontend/src/lib/normalize.ts` rellena los campos
   que faltan cuando el backend las deja vacíos (fuera de Linux no hay `/proc` ni `/sys`) para que la
@@ -179,7 +212,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 810 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 838 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,

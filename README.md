@@ -727,6 +727,49 @@ compresiones y parches se hacen sobre los ficheros que ya están en tu SD.
 
 ---
 
+### 🧭 Lo que falta: las otras versiones de los juegos que tienes
+
+El DAT de un sistema es la lista de **todos** sus juegos. Comparado con tu biblioteca dice qué te
+falta... pero la lista completa no informa de nada: el DAT de PlayStation 2 tiene 13.618 juegos y una
+biblioteca normal tiene 300. Decir «te faltan 13.300 juegos» no es información.
+
+Lo que sí informa es lo contrario: **de los juegos que ya tienes, qué otras versiones hay**. Si tienes
+«Super Mario 64 (Japan)» y el DAT tiene también la americana y la europea, quizá te interesa la
+americana. Y si el juego tiene tres discos y solo tienes el primero, ese disco sí falta de verdad.
+
+Por eso la sección **Lo que falta** no lista todo lo que falta, sino **las variantes de los juegos que
+tienes**. De cada juego:
+
+| | |
+|---|---|
+| **Tienes** | El nombre que le da el DAT y **cómo se ha emparejado**: por el nombre, por el hash, por el código del disco, por el serial o por el título (este último, avisando de que conviene revisarlo) |
+| **Faltan** | Cada versión que no tienes, con el **motivo**: `te falta el disco 2`, `otra región (USA)`, `otra revisión`, `otro idioma` u `otra versión` |
+
+Cuando la versión que falta **puntúa más alto** que la que tienes (un volcado verificado frente a uno
+con datos malos, por ejemplo), sale con la etiqueta **«versión mejor»**. Los filtros son *todo*,
+*faltan discos* y *mejores versiones*.
+
+La comparación es **por sistema y a petición**, y va **en segundo plano con barra de progreso**: cargar
+los 17 índices de golpe son 55 MB de JSON, que en la consola son cientos de MB de memoria. Además, los
+ficheros grandes no se hashean si no caben en el **presupuesto de 512 MB**: se emparejan por el nombre o
+por el título, y la interfaz lo dice.
+
+**No se afirma lo que no se sabe**, y para eso hay dos reglas:
+
+- **El juego** lo dicen los títulos pelados (sin etiquetas): tienen que ser el mismo. «Tomb Raider  I»
+  y «Tomb Raider (USA)» se parecen mucho y son juegos distintos.
+- **La variante** la dice la región (o la revisión) que declara el nombre: tiene que ser la misma en
+  los dos lados. Si el DAT dice «(USA)» y tu fichero no dice nada, el juego está identificado pero
+  **la variante no**: esos van a **«quizá»** y no se cuentan ni como que los tienes ni como que te
+  faltan.
+
+Y los que ni siquiera se parecen (mods, traducciones) se cuentan aparte, como los que no salen en el
+DAT.
+
+**Nada se toca**: esta sección solo informa. No borra, no renombra y no descarga nada.
+
+---
+
 ## 🧱 Arquitectura
 
 Intencionadamente sencilla: **un proceso, un servidor y un cliente**.
@@ -743,7 +786,7 @@ Navegador  ──HTTP──▶  app.py (http.server)  ──▶  /userdata/syste
                           │   index.html
                           └── romtools/          # paquete de DAT, renombrado y formatos
                               dats · identify · naming · sets · rename · formats
-                              progress · jobs
+                              library · faltantes · progress · jobs
 ```
 
 - **`app.py`** — servidor HTTP puro (`http.server`) con todos los endpoints, lectura de
@@ -781,7 +824,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **EmulationStation** | `/api/es/status` · `/api/es/restart` |
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
-| **Biblioteca** | `/api/library/summary` · `/api/library/audit/start` · `/api/library/job` · `/api/library/journal` · `/api/library/quarantine` · `/api/library/gamelist/clean` · `/api/library/undo` |
+| **Biblioteca** | `/api/library/summary` · `/api/library/audit/start` · `/api/library/job` · `/api/library/journal` · `/api/library/quarantine` · `/api/library/gamelist/clean` · `/api/library/undo` · `/api/library/missing/systems` · `/api/library/missing/start` |
 | **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
@@ -797,12 +840,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **810 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **838 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 810 passed in ~35s
+# 838 passed in ~35s
 ```
 
 ---
@@ -830,12 +873,13 @@ batocera_web/
 │   ├── rename.py             # plan, aplicación y deshacer del renombrado
 │   ├── formats.py            # detección, conversión, compresión y parches
 │   ├── library.py            # inventario de la biblioteca, duplicados y auditoría
+│   ├── faltantes.py          # qué otras versiones hay de los juegos que ya tienes
 │   ├── progress.py           # la cuenta de lo que lleva hecho un trabajo largo
 │   ├── jobs.py               # los trabajos en segundo plano, con su progreso
 │   └── __main__.py            # CLI: `python3 -m romtools dats --install`
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 810 tests con pytest
+├── tests/                    # 838 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto

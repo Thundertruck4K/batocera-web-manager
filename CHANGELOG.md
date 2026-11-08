@@ -7,6 +7,40 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **«Lo que falta»: el DAT de un sistema comparado con tu biblioteca.** El DAT es la lista de
+  todos los juegos de un sistema, así que comparado con la biblioteca dice qué te falta... pero la
+  lista completa no informa de nada: el DAT de PlayStation 2 tiene 13.618 juegos y una biblioteca
+  normal tiene 300, y decir «te faltan 13.300 juegos» no es información.
+  - Lo que sí informa es lo contrario: **de los juegos que ya tienes, qué otras versiones hay**. Si
+    tienes «Super Mario 64 (Japan)» y el DAT tiene también la americana, quizá te interesa la
+    americana. Y si el juego tiene tres discos y solo tienes el primero, ese disco sí falta de verdad.
+  - Por cada juego, la interfaz dice **qué tienes** (el nombre del DAT y **cómo se ha emparejado**:
+    por el nombre, por el hash, por el código del disco, por el serial o por el título) y **qué te
+    falta**, con el **motivo**: `te falta el disco 2`, `otra región (USA)`, `otra revisión`,
+    `otro idioma` u `otra versión`.
+  - Se marca la **versión mejor**: cuando la que falta puntúa más alto que la que tienes (un volcado
+    verificado frente a uno con datos malos, por ejemplo), sale con la etiqueta «versión mejor».
+  - **La comparación es por sistema y a petición**, y va **en segundo plano con barra de progreso**:
+    cargar los 17 índices a la vez son 55 MB de JSON, que en la consola son cientos de MB de memoria.
+  - Los ficheros grandes no se hashean si no caben en el **presupuesto de 512 MB**: se emparejan por
+    el nombre o por el título, y la interfaz lo dice.
+  - **No se afirma lo que no se sabe**, y para eso hay dos reglas:
+    - **El juego** lo dicen los títulos pelados (sin etiquetas): tienen que ser el mismo.
+      «Tomb Raider  I» y «Tomb Raider (USA)» se parecen mucho y son juegos distintos.
+    - **La variante** la dice la región (o la revisión) que declara el nombre: tiene que ser la
+      misma en los dos lados. Si el DAT dice «(USA)» y tu fichero no dice nada, el juego está
+      identificado pero **la variante no**: eso va a «quizá» y no se cuenta ni como que lo tienes
+      ni como que te falta.
+    - Los que ni siquiera se parecen (mods, traducciones) se cuentan aparte, como los que no salen
+      en el DAT.
+  - **Nada se borra, se renombra ni se descarga**: esta sección solo informa.
+  - **Endpoints nuevos**: `GET /api/library/missing/systems` y
+    `GET /api/library/missing/start?system=…`.
+  - El módulo nuevo `romtools/faltantes.py` (stdlib puro) hace la comparación; `app.py` solo enruta.
+  - Con la consola real, de principio a fin: Nintendo 64 de 1 a 3 s (275 juegos en la biblioteca),
+    Nintendo 3DS 2 s (33), GameCube 3 s (574), PlayStation 2 de 4 a 10 s (106, con 13.618 juegos en el
+    DAT) y Super Nintendo de 3 a 11 s (136). Los ficheros que no caben en el presupuesto de hash se
+    emparejan por el nombre o por el título, y la interfaz lo dice.
 - **La sección «ROMs y BIOS» administra la biblioteca de ROMs, no solo las BIOS.** La ruta `/roms`
   montaba la página de BIOS y ya: no había ninguna forma de ver la biblioteca como conjunto ni de
   administrarla. Ahora es **una página con dos pestañas** (ROMs | BIOS) y la de ROMs hace la

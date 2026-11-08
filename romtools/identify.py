@@ -389,16 +389,54 @@ def match_by_gamecode(index: dict, code: str) -> list:
     return list(encontrados)
 
 
+#: Los nombres de region, tal y como se enseñan, con los sinonimos que usan
+#: los DAT. Sin esto, el DAT las trae en mayusculas ("USA", "EUROPE") y el
+#: titulo las pone ("Usa", "Europe").
+_REGIONES = {
+    "USA": "USA", "US": "USA", "AMERICA": "USA",
+    "EUROPE": "Europe", "EU": "Europe", "EUR": "Europe", "PAL": "Europe",
+    "JAPAN": "Japan", "JP": "Japan", "JPN": "Japan", "NTSC-J": "Japan",
+    "WORLD": "World", "MULTI": "World", "WORLDWIDE": "World",
+    "KOREA": "Korea", "CHINA": "China", "TAIWAN": "Taiwan",
+    "BRAZIL": "Brazil", "AUSTRALIA": "Australia", "CANADA": "Canada",
+    "SPAIN": "Spain", "ITALY": "Italy", "FRANCE": "France",
+    "GERMANY": "Germany", "NETHERLANDS": "Netherlands", "SWEDEN": "Sweden",
+    "NORWAY": "Norway", "DENMARK": "Denmark", "FINLAND": "Finland",
+    "PORTUGAL": "Portugal", "RUSSIA": "Russia", "TURKEY": "Turkey",
+    "ASIA": "Asia", "UNKNOWN": "Unknown", "UND": "Unknown",
+}
+
+#: Las etiquetas de un nombre de DAT: ``(USA)``, ``(Europe, Australia)``.
+_ETIQUETA_RE = re.compile(r"\(([^()]*)\)")
+
+
 def _region_de_entrada(entry: dict) -> str:
-    """La region de una entrada del DAT ("USA", "Europe"...)."""
+    """La region de una entrada del DAT ("USA", "Europe"...).
+
+    La region puede venir en el campo o en las etiquetas, y las etiquetas la
+    pueden llevar con mas de un pais ("(Europe, Australia)"). Se mira la
+    primera que se sepa.
+    """
     region = (entry.get("region") or "").strip()
     if region:
-        return region
-    nombre = (entry.get("name") or entry.get("description") or "").upper()
-    for tag in ("USA", "EUROPE", "JAPAN", "KOREA", "TAIWAN", "AUSTRALIA", "BRAZIL"):
-        if "(" + tag in nombre:
-            return tag.title()
+        return _REGIONES.get(region.upper(), region)
+    nombre = entry.get("name") or entry.get("description") or ""
+    for etiqueta in _ETIQUETA_RE.findall(nombre):
+        for parte in etiqueta.split(","):
+            canon = _REGIONES.get(parte.strip().upper())
+            if canon:
+                return canon
     return ""
+
+
+def region_of(name: str) -> str:
+    """La region de un nombre de DAT ("Juego (USA)" -> "USA").
+
+    Es la misma regla que usa `_region_de_entrada`, pero sobre un nombre
+    suelto: la sirve para comparar dos versiones y decir en que se
+    diferencian.
+    """
+    return _region_de_entrada({"name": name or ""})
 
 
 
@@ -510,10 +548,16 @@ def match_by_title(index: dict, title: str, limit: int = 5,
     El indice trae ``by_title`` con las entradas agrupadas por titulo
     normalizado: solo se comparan las que comparten palabras, que es donde
     estan las coincidencias de verdad.
+
+    Las palabras se sacan del titulo **pelado** (sin etiquetas): con la
+    query entera, «(USA)» comparte palabra con un cuarto de los titulos del
+    DAT de PlayStation 2 (2.260 candidatos de 11.065) y la busqueda se iba a
+    0,3 s por fichero. Las claves del indice se quedan como estaban, asi que
+    los candidatos reales no cambian: lo que se deja de mirar es el ruido.
     """
     if not title:
         return []
-    words = {w for w in normalize_title(title).split() if len(w) > 2}
+    words = {w for w in normalize_title(bare_title(title)).split() if len(w) > 2}
     if not words:
         return []
     by_title = index.get("by_title", {})
