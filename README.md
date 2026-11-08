@@ -747,7 +747,8 @@ tienes**. De cada juego:
 
 Cuando la versión que falta **puntúa más alto** que la que tienes (un volcado verificado frente a uno
 con datos malos, por ejemplo), sale con la etiqueta **«versión mejor»**. Los filtros son *todo*,
-*faltan discos* y *mejores versiones*.
+*juegos con discos que faltan* y *juegos con versión mejor*: cada cifra dice si cuenta juegos o
+versiones, para que dos números parecidos no se confundan.
 
 La comparación es **por sistema y a petición**, y va **en segundo plano con barra de progreso**: cargar
 los 17 índices de golpe son 55 MB de JSON, que en la consola son cientos de MB de memoria. Además, los

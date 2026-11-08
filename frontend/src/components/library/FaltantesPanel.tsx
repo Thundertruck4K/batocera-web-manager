@@ -169,8 +169,8 @@ export function FaltantesPanel({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Resumen valor={resultado.grupos} texto="juegos con más versiones" />
             <Resumen valor={resultado.faltantes} texto="versiones que no tienes" />
-            <Resumen valor={resultado.mejores} texto="hay una versión mejor" />
-            <Resumen valor={resultado.discos} texto="les falta un disco" />
+            <Resumen valor={resultado.mejores} texto="versiones que son mejores" />
+            <Resumen valor={resultado.discos} texto="juegos a los que falta un disco" />
           </div>
 
           <p className="text-[11px] leading-relaxed text-muted-foreground">
@@ -208,10 +208,10 @@ export function FaltantesPanel({
               Todo ({resultado.grupos})
             </Pill>
             <Pill active={filtro === 'discos'} onClick={() => setFiltro('discos')}>
-              Faltan discos ({resultado.discos})
+              Juegos con discos que faltan ({resultado.discos})
             </Pill>
             <Pill active={filtro === 'mejores'} onClick={() => setFiltro('mejores')}>
-              Mejores versiones ({resultado.grupos_mejores ?? gruposConMejores})
+              Juegos con versión mejor ({resultado.grupos_mejores ?? gruposConMejores})
             </Pill>
           </PillBar>
 

@@ -160,8 +160,9 @@ En la pagina «ROMs y BIOS», seccion **«Lo que falta»**:
 - El resultado son tarjetas por juego: lo que tienes (con como se ha
   emparejado), lo que falta (con el motivo) y, si procede, el aviso de que
   hay una version mejor.
-- Filtros: **todo**, **solo los que faltan discos** y **solo mejores
-  versiones**.
+- Filtros: **todo**, **juegos con discos que faltan** y **juegos con
+  version mejor**. Los filtros cuentan **juegos**; el resumen cuenta **variantes**
+  y cada cifra dice su unidad, para que dos numeros parecidos no se confundan.
 
 ## Endpoints
 
