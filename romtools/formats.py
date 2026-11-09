@@ -113,20 +113,20 @@ CAPACIDADES = {
 FORMAT_CATALOGUE = {
     "bin-cue": ("BIN + CUE", ["iso", "pbp", "chd", "zip", "7z"]),
     "iso": ("ISO 9660", ["bin-cue", "chd", "cso", "gcz", "ciso", "pbp", "zip", "7z"]),
-    "iso-gamecube": ("ISO de GameCube", ["gcz", "ciso", "rvz", "wbfs", "chd", "zip", "7z"]),
-    "iso-wii": ("ISO de Wii", ["rvz", "wbfs", "ciso", "chd", "zip", "7z"]),
+    "iso-gamecube": ("ISO de GameCube", ["gcz", "ciso", "rvz", "chd", "zip", "7z"]),
+    "iso-wii": ("ISO de Wii", ["rvz", "ciso", "chd", "zip", "7z"]),
     "iso-ps1": ("ISO de PlayStation", ["bin-cue", "pbp", "chd", "zip", "7z"]),
     "iso-ps2": ("ISO de PlayStation 2", ["chd", "cso", "zip", "7z"]),
     "pbp": ("PBP (PlayStation)", ["bin-cue", "iso", "zip", "7z"]),
     "chd": ("CHD (imagen comprimida)", ["iso", "bin-cue"]),
-    "gcm": ("GCM (GameCube)", ["iso", "zip", "7z"]),
+    "gcm": ("GCM (GameCube)", ["iso", "rvz", "zip", "7z"]),
     "xiso": ("XDVDF (Xbox)", ["iso", "zip", "7z"]),
     "cso": ("CSO (PSP)", ["iso", "zip", "7z"]),
-    "gcz": ("GCZ (GameCube)", ["iso", "zip", "7z"]),
+    "gcz": ("GCZ (GameCube)", ["iso", "rvz", "zip", "7z"]),
     "ciso": ("CISO (GameCube o Wii)", ["iso", "zip", "7z"]),
-    "rvz": ("RVZ (Dolphin)", []),
-    "wia": ("WIA (Wii)", []),
-    "wbfs": ("WBFS (Wii)", []),
+    "rvz": ("RVZ (Dolphin)", ["iso", "wbfs"]),
+    "wia": ("WIA (Wii)", ["rvz"]),
+    "wbfs": ("WBFS (Wii)", ["rvz", "zip", "7z"]),
     "mdf": ("MDF / CCD / IMG / MDS", ["iso"]),
     "gdi": ("GDI (Dreamcast)", ["iso"]),
     # El CDI es un contenedor binario del que no se sabe leer la sesion:
@@ -159,7 +159,7 @@ FORMAT_CATALOGUE = {
 #: Formatos que se pueden convertir a ISO.
 CONVERTIBLE_TO_ISO = ("bin-cue", "iso", "iso-gamecube", "iso-wii", "iso-ps1",
                       "iso-ps2", "pbp", "xiso", "gcm", "chd", "cso", "gcz",
-                      "ciso", "gdi", "mdf", "cdi", "nrg")
+                      "ciso", "gdi", "mdf", "cdi", "nrg", "rvz")
 
 
 def acciones_de(info) -> list:
@@ -254,7 +254,9 @@ def detect_format(path: str, sistema: str | None = None) -> FormatInfo:
     if head.startswith(b"WIA\x00"):
         return puesto("wia")
 
-    if head.startswith(b"RVZ\x00"):
+    if head[:3] == b"RVZ":
+        # Un RVZ de verdad empieza por «RVZ\x01» (la version va en el
+        # cuarto byte), no por «RVZ\x00»: se busca la marca y ya.
         return puesto("rvz")
 
     if head.startswith(b"PBP\x01"):
@@ -2338,6 +2340,133 @@ def nrg_to_iso(nrg_path: str, out_path: str | None = None) -> dict:
     return salida
 
 
+
+# ── El rom-converto: RVZ, WBFS y WIA ───────────────────────────────────
+
+#: Rutas donde puede estar el rom-converto. En la consola se instala en
+#: ``/userdata/system/bin`` (que sobrevive a los reinicios) y se enlaza en
+#: ``/usr/bin``, que es lo que lleva el PATH.
+_ROM_CONVERTO_RUTAS = ("/usr/bin/rom-converto", "/usr/local/bin/rom-converto",
+                       "/userdata/system/bin/rom-converto")
+
+#: De que formato de origen sale cada RVZ: la familia de comandos del
+#: rom-converto y la operacion. ``dol`` es GameCube y ``rvl`` es Wii.
+_RVZ_ORIGENES = {
+    "iso-gamecube": ("dol", "compress"),
+    "gcm": ("dol", "compress"),
+    "gcz": ("dol", "migrate"),
+    "iso-wii": ("rvl", "compress"),
+    "wbfs": ("rvl", "compress"),
+    "wia": ("rvl", "migrate"),
+}
+
+
+def _rom_converto_path() -> str | None:
+    """Donde esta el rom-converto, si esta."""
+    exe = shutil.which("rom-converto")
+    if exe:
+        return exe
+    for ruta in _ROM_CONVERTO_RUTAS:
+        if os.path.isfile(ruta) and os.access(ruta, os.X_OK):
+            return ruta
+    return None
+
+
+def rom_converto_disponible() -> bool:
+    """Si la consola tiene el rom-converto."""
+    return _rom_converto_path() is not None
+
+
+def _rom_converto(args: list, timeout: int = 7200) -> str:
+    """Ejecuta el rom-converto y devuelve su salida.
+
+    Se le pasa ``--no-update-check`` porque no tiene sentido que cada
+    conversion se vaya a la red a preguntar si hay una version nueva.
+    """
+    exe = _rom_converto_path()
+    if not exe:
+        raise ValueError("rom-converto no esta en la consola: "
+                         "no se pueden convertir RVZ ni WBFS")
+    try:
+        res = subprocess.run([exe, "--no-update-check"] + args,
+                             capture_output=True, text=True,
+                             errors="replace", timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise ValueError("rom-converto tardo demasiado y se ha parado")
+    if res.returncode != 0:
+        mensaje = (res.stderr or res.stdout or "").strip()
+        raise ValueError(mensaje[-400:] or "rom-converto no pudo hacer la conversion")
+    return res.stdout or ""
+
+
+def _rom_converto_consola(path: str, sistema: str | None = None) -> str:
+    """De que consola es un RVZ: ``gamecube`` o ``wii``.
+
+    Lo dice el propio rom-converto (``info`` lo cuenta: «Format: Wii
+    (RVZ)»). Si el sistema ya se sabe, no hace falta preguntarle: se
+    respeta lo que dice el sistema al que pertenece el fichero.
+    """
+    slug = (sistema or "").strip().lower()
+    if slug in ("gamecube", "wii"):
+        return slug
+    salida = _rom_converto(["info", path])
+    if re.search(r"GameCube", salida, re.IGNORECASE):
+        return "gamecube"
+    if re.search(r"\bWii\b", salida, re.IGNORECASE):
+        return "wii"
+    return ""
+
+
+def _a_rvz(path: str, kind: str, out_path: str | None = None,
+           sistema: str | None = None) -> dict:
+    """Lleva un disco de GameCube o de Wii a un RVZ."""
+    if kind == "rvz":
+        return {"ok": True, "out": path, "nota": "ya era un RVZ"}
+    ruta = _RVZ_ORIGENES.get(kind)
+    if not ruta:
+        if kind == "iso" and (sistema or "").strip().lower() in ("gamecube", "wii"):
+            # La ISO no traia la marca de la consola, pero el sistema al que
+            # pertenece dice de que consola es.
+            ruta = _RVZ_ORIGENES["iso-gamecube" if sistema.strip().lower() == "gamecube"
+                                 else "iso-wii"]
+        elif kind == "iso":
+            raise ValueError("no se sabe de que consola es la ISO: "
+                             "el RVZ es de GameCube o de Wii")
+        else:
+            raise ValueError(f"no se puede convertir de {kind} a RVZ")
+    familia, operacion = ruta
+    salida = out_path or _salida_libre(path, ".rvz")
+    _rom_converto([familia, operacion, path, "-o", salida])
+    return {"ok": True, "out": salida, "size": _size(salida),
+            "nota": "convertido a RVZ con el rom-converto"}
+
+
+def _a_wbfs(path: str, kind: str, out_path: str | None = None,
+            sistema: str | None = None) -> dict:
+    """Lleva un RVZ de Wii a un WBFS."""
+    if kind == "wbfs":
+        return {"ok": True, "out": path, "nota": "ya era un WBFS"}
+    if kind != "rvz":
+        raise ValueError("el WBFS solo se puede sacar de un RVZ: "
+                         "el rom-converto no lo crea desde una ISO")
+    consola = _rom_converto_consola(path, sistema)
+    if consola == "gamecube":
+        raise ValueError("el WBFS es de Wii: este RVZ es de GameCube")
+    salida = out_path or _salida_libre(path, ".wbfs")
+    _rom_converto(["rvl", "decompress", path, "-o", salida])
+    return {"ok": True, "out": salida, "size": _size(salida),
+            "nota": "convertido a WBFS con el rom-converto"}
+
+
+def _rvz_a_iso(path: str, salida: str, sistema: str | None = None) -> dict:
+    """Descomprime un RVZ a un ISO."""
+    consola = _rom_converto_consola(path, sistema)
+    familia = "dol" if consola == "gamecube" else "rvl"
+    _rom_converto([familia, "decompress", path, "-o", salida])
+    return {"ok": True, "out": salida, "size": _size(salida),
+            "nota": "descomprimido el RVZ con el rom-converto"}
+
+
 # ── El despachador ──────────────────────────────────────────────────────
 
 def convert(path: str, target: str, out_path: str | None = None,
@@ -2365,17 +2494,15 @@ def convert(path: str, target: str, out_path: str | None = None,
             return extract_7z(path, out_path)
         raise ValueError("solo se puede extraer un ZIP o un 7Z")
     if target == "rvz":
-        raise ValueError("no se puede convertir a RVZ: falta la utilidad dolphin-tool")
-    if target in ("wbfs", "wia"):
-        raise ValueError(f"no se puede convertir a {target.upper()}: "
-                         "falta la utilidad wiitool")
-        return extract_zip(path, out_path)
+        return _a_rvz(path, kind, out_path, sistema)
+    if target == "wbfs":
+        return _a_wbfs(path, kind, out_path, sistema)
     if target in ("n64", "z64", "v64"):
         return n64_convert(path, target, out_path)
     if target in ("sfc", "smc", "fig"):
         return snes_convert(path, target, out_path)
     if target == "iso":
-        return _a_iso(path, kind, out_path)
+        return _a_iso(path, kind, out_path, sistema)
     if target == "bin-cue":
         return _a_bin_cue(path, kind, out_path)
     if target == "pbp":
@@ -2392,9 +2519,12 @@ def convert(path: str, target: str, out_path: str | None = None,
     raise ValueError(f"conversion no soportada: {target}")
 
 
-def _a_iso(path: str, kind: str, out_path: str | None = None) -> dict:
+def _a_iso(path: str, kind: str, out_path: str | None = None,
+           sistema: str | None = None) -> dict:
     """Lleva cualquier disco a un ISO de 2048 bytes por sector."""
     salida = out_path or _salida_libre(path, ".iso")
+    if kind == "rvz":
+        return _rvz_a_iso(path, salida, sistema)
     if kind == "bin-cue":
         cue = path if path.lower().endswith(".cue") else _cue_for_bin(path)
         if cue:

@@ -52,6 +52,13 @@ NODE_MARKER="# [batocera-node]"
 NODE_TAG_END="# [/batocera-node]"
 GIT_MARKER="# [batocera-git]"
 GIT_TAG_END="# [/batocera-git]"
+TOOLS_MARKER="# [batocera-tools]"
+TOOLS_TAG_END="# [/batocera-tools]"
+# Utilidades de conversion que instala el usuario a mano (el rom-converto,
+# por ejemplo). Viven en /userdata/system/bin, que sobrevive a los
+# reinicios, y se enlazan en /usr/bin, que es lo que lleva el PATH.
+TOOLS_DIR="${BM_TOOLS_DIR:-$BASE_DIR/bin}"
+TOOLS_BIN_DIR="${BM_TOOLS_BIN_DIR:-/usr/bin}"
 # Patrón con el que se localizan los procesos del manager. El punto va
 # escapado para que `app.py` no se lea como un comodín.
 KILL_PATTERN='python3.*app\.py'
@@ -453,6 +460,28 @@ install_node() {
   ok "Bloque $NODE_MARKER escrito en $SERVICE_SCRIPT"
 }
 
+# El bloque # [batocera-tools] se ejecuta en cada arranque: enlaza en
+# /usr/bin las utilidades de conversion que haya en /userdata/system/bin.
+# /usr es un overlay que se pierde al reiniciar, así que el enlace hay que
+# recrearlo cada vez (igual que el de git y el de node).
+write_tools_block() {
+  local tmp="$SERVICE_SCRIPT.toolsblock.$$"
+  {
+    printf '%s\n' "$TOOLS_MARKER"
+    printf '%s\n' '# Utilidades de conversion (opcional) - enlaces al PATH'
+    printf '%s\n' "TOOLS_HOME=\"$TOOLS_DIR\""
+    printf '%s\n' 'if [ -d "$TOOLS_HOME" ]; then'
+    printf '%s\n' '  for t in "$TOOLS_HOME"/*; do'
+    printf '%s\n' '    [ -x "$t" ] || continue'
+    printf '%s\n' '    [ -w "$TOOLS_BIN_DIR" ] && ln -sf "$t" "$TOOLS_BIN_DIR/$(basename "$t")" || true'
+    printf '%s\n' '  done'
+    printf '%s\n' 'fi'
+    printf '%s\n' "$TOOLS_TAG_END"
+  } > "$tmp"
+  write_block "$TOOLS_MARKER" "$TOOLS_TAG_END" "$tmp"
+  rm -f "$tmp"
+}
+
 # ═══════════════════════════════════════════════════════════════
 #  Validación de utilidades
 #
@@ -733,6 +762,10 @@ if [ "$AUTO" = 1 ]; then
   write_block "$MARKER" "$TAG_END" "$BLOCK_FILE"
   rm -f "$BLOCK_FILE"
   kv "Arranque automático" "✔ bloque en $SERVICE_SCRIPT"
+
+  # Las utilidades de conversion que el usuario haya instalado a mano
+  # (el rom-converto, por ejemplo) se enlazan al PATH en cada arranque.
+  write_tools_block
 
   # Si ya había una instancia corriendo se para: si no, seguiría
   # sirviendo el código de antes de la actualización.

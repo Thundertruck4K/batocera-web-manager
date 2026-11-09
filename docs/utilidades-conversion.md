@@ -31,7 +31,7 @@ hace el manager son idénticos a los que hace el propio MAME.
 
 | Utilidad | Para qué sirve | Licencia | Dónde está | Cómo se consigue |
 |---|---|---|---|---|
-| **rom-converto** | **La más completa**: CSO, ZSO, CHD, RVZ, WBFS, WIA, GCZ, XISO, NSP, XCI, 3DS (CIA/CCI/Z3DS), PBP, ZAR, PS3, NDS | MIT | [DevYukine/rom-converto](https://github.com/DevYukine/rom-converto) | **Publica binarios estáticos para Linux `x86_64`** (`rom-converto-cli-linux-x64`): hay que bajar el binario y copiarlo a `/usr/bin`. Es la vía más fácil de todas |
+| **rom-converto** | **La más completa**: CSO, ZSO, CHD, RVZ, WBFS, WIA, GCZ, XISO, NSP, XCI, 3DS (CIA/CCI/Z3DS), PBP, ZAR, PS3, NDS | MIT | [DevYukine/rom-converto](https://github.com/DevYukine/rom-converto) | **Publica binarios estáticos para Linux `x86_64`** (`rom-converto-cli-linux-x64`): hay que bajar el binario y copiarlo a `/userdata/system/bin` (ver [§7](#7-instalar-el-rom-converto)). Es la vía más fácil de todas |
 | **nodtool** (nod) | Crea y extrae los comprimidos de Dolphin: **CISO, GCZ, RVZ, WBFS, WIA y GCM** | Apache-2.0 | [encounter/nod](https://github.com/encounter/nod) | Compilarlo (Rust) o bajar el binario |
 | **dolphin-tool** | Crea y extrae **RVZ**, el comprimido de Dolphin (GameCube y Wii). La wiki de Batocera lo marca como **el recomendado** | GPL-2.0-or-later | [dolphin-emu/dolphin](https://github.com/dolphin-emu/dolphin) | No se puede con lo que hay: el `dolphin-emu` de Batocera es la interfaz gráfica y el paquete **no** construye la herramienta de línea de comandos |
 | **wiitool** | Crea y extrae **WBFS** y **WIA**, los formatos de Wii | GPL-3.0-or-later | [WiiTools/wiitool](https://github.com/WiiTools/wiitool) | Compilarlo |
@@ -82,7 +82,9 @@ instalar.
   el binario a `/usr/bin`, darle permisos de ejecución y, si se quiere que
   sobreviva a las actualizaciones, añadir un paquete al *buildroot* de Batocera.
 - El caso fácil es **rom-converto**: un binario estático de Rust, sin
-  dependencias de ejecución, que se copia a `/usr/bin` y ya está.
+  dependencias de ejecución, que se copia a `/usr/bin` y ya está (el
+  apartado 7 explica la receta que se sigue aquí, con la ruta que
+  sobrevive a los reinicios).
 
 ## 5. Qué hace el manager y qué no
 
@@ -112,7 +114,69 @@ Las que dependen de un binario externo: **CHD** (el `chdman`) y **7Z** (el
 **WBFS** y **WIA** (con el `rom-converto`, el `nodtool`, el `dolphin-tool` o el
 `wiitool`).
 
-## 6. Referencias
+Con el **rom-converto** instalado, el manager convierte de verdad a **RVZ**
+(el formato que recomienda la wiki de Batocera para GameCube y Wii) y saca
+el **WBFS** de un RVZ de Wii. Lo que el rom-converto **no** sabe hacer, el
+manager no lo ofrece: no crea WBFS desde una ISO (sólo desde un RVZ) ni
+genera WIA (sólo la lee).
+
+## 7. Instalar el rom-converto
+
+Es el camino que se ha probado en la consola real (Batocera 43.1, `x86_64`).
+El binario es de la release **v0.24.0** y es estático: no necesita nada de
+la consola.
+
+```bash
+# 1. Descargar el binario y su suma de comprobación
+cd /tmp
+wget -O rom-converto https://github.com/DevYukine/rom-converto/releases/download/v0.24.0/rom-converto-cli-linux-x64
+wget -O rom-converto.sha256 https://github.com/DevYukine/rom-converto/releases/download/v0.24.0/rom-converto-cli-linux-x64.sha256
+
+# 2. Comprobar que es el binario de verdad (sha256 publicado: 0d4abd56…)
+sha256sum -c rom-converto.sha256
+
+# 3. Instalarlo donde sobrevive a los reinicios
+mkdir -p /userdata/system/bin
+install -m 755 rom-converto /userdata/system/bin/rom-converto
+
+# 4. Enlazarlo en el PATH
+ln -sf /userdata/system/bin/rom-converto /usr/bin/rom-converto
+rom-converto --version
+```
+
+El paso 4 se repite en cada arranque, porque `/usr` es un overlay que se
+pierde al reiniciar. Para que no haya que hacerlo a mano, el `install.sh`
+escribe un bloque `# [batocera-tools]` en el `custom.sh` que enlaza en
+`/usr/bin` todo lo ejecutable que haya en `/userdata/system/bin`:
+
+```bash
+# [batocera-tools]
+# Utilidades de conversion (opcional) - enlaces al PATH
+TOOLS_HOME="/userdata/system/bin"
+if [ -d "$TOOLS_HOME" ]; then
+  for t in "$TOOLS_HOME"/*; do
+    [ -x "$t" ] || continue
+    [ -w "/usr/bin" ] && ln -sf "$t" "/usr/bin/$(basename "$t")" || true
+  done
+fi
+# [/batocera-tools]
+```
+
+**Qué se puede hacer con él** (comprobado sobre la consola, con un juego de
+GameCube y otro de Wii de verdad):
+
+| Conversión | Comando | Tiempo |
+|---|---|---|
+| ISO de GameCube → **RVZ** | `rom-converto dol compress juego.iso -o juego.rvz` | 968 MiB → 519 MiB en 18 s |
+| WBFS de Wii → **RVZ** | `rom-converto rvl compress juego.wbfs -o juego.rvz` | 90 MiB → 77 MiB en 2,4 s |
+| GCZ o WIA → **RVZ** | `rom-converto dol migrate` / `rvl migrate` | |
+| RVZ → **ISO** | `rom-converto dol decompress` / `rvl decompress` | |
+| RVZ de Wii → **WBFS** | `rom-converto rvl decompress juego.rvz -o juego.wbfs` | |
+
+El **nivel de compresión** es el que trae la herramienta (22, calidad de
+archivo); Dolphin recomienda el 5, que va mucho más rápido.
+
+## 8. Referencias
 
 - Wiki de Batocera, sistemas: <https://wiki.batocera.org/systems> — los
   formatos que admite cada sistema.

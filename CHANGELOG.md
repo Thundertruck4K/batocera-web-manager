@@ -7,6 +7,23 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **El `rom-converto` se puede instalar en la consola y el manager lo usa de verdad.** Es el
+  programa más completo que hay para convertir imágenes de disco (RVZ, WBFS, WIA, GCZ, XISO,
+  NSP, XCI, 3DS…), con licencia MIT y binarios estáticos para Linux.
+  - **Cómo se instala**: se baja el binario `rom-converto-cli-linux-x64` de su release, se
+    comprueba su `sha256` y se copia a `/userdata/system/bin`, que es la ruta que sobrevive a los
+    reinicios. El `install.sh` deja escrito un bloque `# [batocera-tools]` en el `custom.sh` que
+    lo enlaza en `/usr/bin` (que es lo que lleva el PATH) en cada arranque, porque `/usr` es un
+    overlay que se pierde al reiniciar.
+  - **Lo que hace el manager con él**: **ISO o GCM de GameCube → RVZ**, **ISO o WBFS de Wii →
+    RVZ**, **GCZ o WIA → RVZ**, **RVZ → ISO** y **RVZ de Wii → WBFS**. El RVZ es el formato que
+    recomienda la wiki de Batocera para GameCube y Wii.
+  - **Lo que no se ofrece**: el rom-converto no crea un WBFS desde una ISO (sólo desde un RVZ) ni
+    genera WIA (sólo la lee), así que esos botones no se ofrecen: es mejor que no aparecer a que
+    aparecer y fallar.
+  - **Un fallo de la detección de RVZ**: se buscaba un RVZ que empezara por `RVZ\x00`, pero los
+    RVZ de verdad empiezan por `RVZ\x01` (la versión va en el cuarto byte), así que **no se
+    detectaba ninguno**. Ahora se busca la marca y ya.
 - **Los formatos que se ofrecen dependen ahora del sistema, no sólo del formato del fichero.** Antes
   la sección de Formatos miraba la cabecera de la imagen y decía «esto se puede convertir en CHD, en
   ZIP…», sin mirar **para qué sistema** es: así que un PSP ofrecía comprimir en ZIP (que el PSP no
@@ -22,8 +39,8 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     para cualquier ROM. En una SNES el ZIP ahorra mucho espacio; en un PSP, donde el ZIP no se lee,
     no se ofrece.
   - **Las utilidades que faltan se avisan, no se fingen**: si una conversión necesita el
-    `dolphin-tool` (el RVZ) o el `wiitool` (el WBFS) y no están en la consola, el botón sale
-    desactivado, en ámbar, con el motivo y con el nombre de lo que falta.
+    `rom-converto` (el RVZ y el WBFS) y no está en la consola, el botón sale desactivado, en
+    ámbar, con el motivo y con el nombre de lo que falta.
   - **Panel del sistema**: con el sistema elegido se ven los formatos que admite, cuál es el
     preferido, las compresiones disponibles y la nota de la wiki sobre ese sistema.
   - **Panel de utilidades**: la lista de programas de conversión con su licencia, su página y si

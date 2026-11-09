@@ -69,7 +69,7 @@ HERRAMIENTAS = {
         "url": "https://github.com/DevYukine/rom-converto",
         "licencia": "MIT",
         "para": "La mas completa de todas: convierte entre CSO, ZSO, CHD, RVZ, WBFS, WIA, GCZ, XISO, NSP, XCI, 3DS, PBP, ZAR y mas.",
-        "instalar": "No viene en la consola: hay que bajar el binario estatico linux-x64 de su release y copiarlo a /usr/bin.",
+        "instalar": "No viene en la consola: se baja el binario estatico linux-x64 de su release, se copia a /userdata/system/bin y se enlaza en /usr/bin (ver docs/utilidades-conversion.md).",
     },
     "nodtool": {
         "nombre": "nodtool (nod)",
@@ -153,7 +153,6 @@ HERRAMIENTA_ACCION = {
     "7z": "7z",
     "rvz": "rom-converto",
     "wbfs": "rom-converto",
-    "wia": "rom-converto",
 }
 
 #: Las compresiones no dependen del formato del fichero sino del sistema: si
