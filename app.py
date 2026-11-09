@@ -3392,6 +3392,13 @@ BIOS_QUARANTINE     = ".quarantine"
 #: descargar una BIOS es copiarla a su sitio.
 BIOS_FUENTE_URL = "http://rgsretro1986.ds78102.seedhost.eu/update/Batocera/bios/"
 
+#: El escaneo de BIOS que esta corriendo ahora mismo (si hay alguno). El
+#: modal del primer arranque y el boton de la pagina pueden pedirlo los dos, y
+#: dos escaneos escribiendo las mismas BIOS a la vez es una carrera que no
+#: hace falta: si ya hay uno en marcha, se sigue ese.
+_bios_job_lock = threading.Lock()
+_bios_job_actual = None
+
 # Estados posibles de un fichero de BIOS esperado.
 BIOS_ESTADOS = ("ok", "sin_verificar", "miembro_falta",
                 "reparable_zip", "reparable_ruta", "ausente", "ilegible")
@@ -7787,10 +7794,21 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"ok": False,
                                 "error": "el modulo de herramientas no esta disponible"})
                 return
+            global _bios_job_actual
+            with _bios_job_lock:
+                actual = _bios_job_actual
+                if actual is not None and actual.estado == "trabajando":
+                    # Ya hay un escaneo en marcha: se sigue ese en vez de
+                    # escribir las mismas BIOS dos veces.
+                    self.send_json({"ok": True, "job": actual.id,
+                                    "ya_corriendo": True})
+                    return
             trabajo = _rt_jobs.JOBS.lanzar(
                 "bios",
                 lambda job: bios_descargar(s, progreso=job.progreso),
                 mensaje="comprobando las BIOS")
+            with _bios_job_lock:
+                _bios_job_actual = trabajo
             self.send_json({"ok": True, "job": trabajo.id})
         elif path == "/api/bios/scan":
             try:

@@ -122,8 +122,17 @@ def test_los_endpoints_nuevos_estan():
 def test_el_escaneo_va_en_segundo_plano():
     """Baja ficheros de internet: tiene que ir en un hilo, no en la peticion."""
     txt = APP.read_text(encoding="utf-8")
-    bloque = txt.split('"/api/bios/descargar/start"')[1][:600]
+    bloque = txt.split('"/api/bios/descargar/start"')[1][:1200]
     assert "_rt_jobs.JOBS.lanzar" in bloque
+
+
+def test_no_se_lanzan_dos_escaneos_a_la_vez():
+    """El modal del primer arranque y el boton de la pagina pueden pedirlo los
+    dos: dos escaneos escribiendo las mismas BIOS a la vez es una carrera."""
+    txt = APP.read_text(encoding="utf-8")
+    bloque = txt.split('"/api/bios/descargar/start"')[1][:1200]
+    assert "_bios_job_actual" in bloque
+    assert "ya_corriendo" in bloque
 
 
 def test_la_comprobacion_no_toca_lo_que_ya_esta():

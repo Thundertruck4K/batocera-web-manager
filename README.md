@@ -883,12 +883,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **872 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **873 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 872 passed in ~50s
+# 873 passed in ~50s
 ```
 
 ---
@@ -995,7 +995,7 @@ BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
 # Backend en desarrollo
 python app.py --port 5001
 
-# Tests del backend (872)
+# Tests del backend (873)
 python -m pytest
 
 # Frontend
