@@ -378,8 +378,16 @@ El proyecto se trabaja en **un solo repositorio**:
     wins, so custom systems count too) and a curated table of 80 systems as a fallback, plus which
     tool each conversion needs. `acciones_para()` filters by both, and every action says whether the
     system admits it (`admite`) and whether the tool is there (`disponible`). **What is missing is
-    never faked**: the RVZ needs `dolphin-tool` and the WBFS `wiitool`, and neither is in Batocera,
-    so those buttons come disabled, in amber, with the reason.
+    never faked**: if the tool is not on the console the button comes disabled, in amber, with the
+    reason.
+  - **The RVZ and the WBFS go through `rom-converto`** (DevYukine/rom-converto, MIT, static Linux
+    binaries): `dol` is GameCube and `rvl` is Wii, so the same target is a different command
+    depending on the console. **A real RVZ starts with `RVZ\x01`** (the version is the fourth
+    byte), not `RVZ\x00` — looking for the wrong magic meant **no RVZ was ever detected**. The tool
+    does not create a WBFS from an ISO (only from an RVZ) nor writes a WIA (it only reads it), and
+    those conversions are not offered. The binary goes in `/userdata/system/bin` (it survives a
+    reboot) and `install.sh` writes a `# [batocera-tools]` block in `custom.sh` that links it into
+    `/usr/bin` on every boot, because `/usr` is an overlay that is lost.
   - **Compression is a property of the system**: if the system accepts `.zip` or `.7z`, both are
     offered for any ROM. The ZIP of a SNES saves a lot of space; the PSP never reads a ZIP, so it is
     not offered there.

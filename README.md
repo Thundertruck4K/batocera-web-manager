@@ -661,10 +661,19 @@ es el preferido y lo que hay que saber de él.
 - **Parchear** con un parche IPS, y deshacerlo.
 
 Las utilidades externas se detectan en la consola: el **CHD** se hace con el `chdman` de MAME, que ya
-viene en Batocera (`/usr/bin/chdman`), y el **7Z** con el `7z` del p7zip. Las que faltan (el
-`dolphin-tool` para el RVZ, el `wiitool` para el WBFS) aparecen **desactivadas**, diciendo qué falta y
-cómo conseguirlo, en vez de fingir que se han hecho. La página incluye un **panel de utilidades** con
-la lista completa: para qué sirve cada una, su licencia y de dónde sale.
+viene en Batocera (`/usr/bin/chdman`), y el **7Z** con el `7z` del p7zip.
+
+El **RVZ** (el formato que recomienda la wiki de Batocera para GameCube y Wii) y el **WBFS** se hacen
+con el **`rom-converto`**, que no viene en la imagen pero se instala en un minuto: es un binario
+estático de Linux con su `sha256` publicado. Se copia a `/userdata/system/bin` (la ruta que sobrevive
+a los reinicios) y se enlaza en `/usr/bin`; el `install.sh` deja un bloque en el `custom.sh` que
+vuelve a hacer ese enlace en cada arranque, porque `/usr` es un overlay que se pierde al reiniciar.
+Con él instalado, el manager convierte de verdad: ISO o GCM de GameCube → RVZ, ISO o WBFS de Wii →
+RVZ, GCZ o WIA → RVZ, RVZ → ISO y RVZ de Wii → WBFS.
+
+Las que falten aparecen **desactivadas**, diciendo qué falta y cómo conseguirlo, en vez de fingir que
+se han hecho. La página incluye un **panel de utilidades** con la lista completa: para qué sirve cada
+una, su licencia y de dónde sale.
 
 La lista completa, con licencias, repositorios y cómo instalarlas en Batocera, está en
 [`docs/utilidades-conversion.md`](docs/utilidades-conversion.md).
