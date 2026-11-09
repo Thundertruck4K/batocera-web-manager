@@ -220,7 +220,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 841 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 872 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -303,15 +303,34 @@ El proyecto se trabaja en **un solo repositorio**:
     destination**, so a failed repair never leaves the system without its BIOS.
   - Endpoints: `GET /api/bios/catalog`, `GET /api/bios/summary`, `POST /api/bios/scan`,
     `POST /api/bios/repair`. The SPA section is `pages/Bios.tsx` (+ `components/bios/`).
-- **A missing BIOS is found on Google or uploaded by hand** — there is no third-party catalogue.
+- **A missing BIOS is downloaded from the BIOS source at the first boot** (and can still be found on
+  Google or uploaded by hand).
   - `busqueda_fichero_url()` builds a Google search for the exact file name (quoted) and
     `busqueda_sistema_url()` one for the whole system (name quoted plus `bios`); both travel in the
     catalogue payload (`busqueda` per file and per system) so the UI never builds them itself.
     Google replaced the GitHub code search on purpose: a quoted search finds the file across the
     whole web (forums, collection mirrors, emulation pages), not only in code repositories.
-  - The app **downloads nothing by itself**: no collections are indexed and nothing is fetched
-    automatically. The user finds the file (Google) and uploads it; the upload lands it in the exact
-    path the catalogue expects and the result is checked.
+  - **The source lives in `romtools/biosfuente.py`** (`FUENTE_BIOS`, an Apache directory index with
+    the BIOS in the same layout Batocera expects: `Acorn/basic2.rom`, `enterprise/ep128emu/roms/…`).
+    The index is built **directed**: only the folders that are needed are fetched (6 requests for 51
+    BIOS instead of ~64 for the whole tree, which takes minutes on the console). Matching is by exact
+    path, then ignoring case, then by file name.
+  - **What is not in the source is not invented**: it is reported by name and left alone. Only what is
+    missing is downloaded; after the download the console is scanned again to check that every BIOS
+    landed where Batocera expects it.
+  - The app does **not** index collections of ROMs and does not download games: the only automated
+    download is the missing BIOS of the user's own systems, from that source.
+  - **The check does not run in `install.sh`**: it needs the console's BIOS catalogue (only there with
+    the manager running) and its progress can only be shown in the UI. The installer only **arms** it
+    (it deletes the marker `/userdata/system/batocera_manager_bios_first.json`) and warns. The marker
+    is written again by the backend when the check completes, so the modal does not come back on every
+    reload; if the source could not be reached, the check is repeated next time.
+  - Endpoints: `GET /api/bios/firstcheck`, `POST /api/bios/descargar/start`,
+    `GET /api/bios/job?id=…`. The modal is `components/bios/PrimerArranqueBios.tsx` and the polling
+    lives in `hooks/useTrabajoBios.ts`.
+  - **A job is only "listo" when its function has returned**: the progress reaching 100 % does not
+    finish the job (`romtools/jobs.py`). Otherwise the client sees a finished job with no result (the
+    BIOS check keeps verifying after the download is over).
   - The old archive.org integration (item metadata, HTTP Range ZIP reading, source cache in
     `batocera_manager_bios_sources.json`) was removed on purpose: searching there took 30-120 s from
     the console and the wait was not worth it.

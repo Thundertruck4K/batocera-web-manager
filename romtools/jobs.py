@@ -52,8 +52,11 @@ class Job:
             self.actual = str(estado.get("actual", self.actual) or "")
             self.porcentaje = int(estado.get("porcentaje", self.porcentaje) or 0)
             self.mensaje = str(estado.get("mensaje", self.mensaje) or "")
-            if estado.get("terminado"):
-                self.estado = "listo"
+            # Ojo: que la barra llegue al 100 % NO termina el trabajo. El
+            # trabajo termina cuando su funcion devuelve el resultado: si se
+            # marcara como "listo" aqui, el cliente veria un trabajo terminado
+            # sin resultado (la comprobacion de BIOS sigue revisando cuando
+            # la descarga ya ha terminado).
 
     def terminar(self, resultado=None) -> None:
         with self._lock:

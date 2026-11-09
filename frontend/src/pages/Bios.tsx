@@ -2,6 +2,7 @@ import { motion } from 'motion/react'
 import {
   CircleAlert,
   CircleCheck,
+  Download,
   Gamepad2,
   PackageSearch,
   RefreshCw,
@@ -9,18 +10,20 @@ import {
   Wrench,
   X,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MetricCard } from '@/components/dashboard/MetricCard'
 import { PageContainer, useShell } from '@/components/layout/AppShell'
 import { SectionTabs, type SectionTab } from '@/components/layout/SectionTabs'
 import { Topbar } from '@/components/layout/Topbar'
 import { BiosSystemCard } from '@/components/bios/BiosSystemCard'
 import { BiosSystemModal } from '@/components/bios/BiosSystemModal'
-import { Button, IconButton } from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Progress } from '@/components/ui/Progress'
 import { Pill, PillBar } from '@/components/ui/Pill'
 import { useApi } from '@/hooks/useApi'
 import { useNotify } from '@/hooks/useNotify'
+import { useTrabajoBios } from '@/hooks/useTrabajoBios'
 import { triggerHaptic } from '@/hooks/useWebHaptics'
 import { api } from '@/lib/api'
 import { esProblema, esReparable, peorEstado } from '@/lib/biosStates'
@@ -80,7 +83,14 @@ export function BiosPage({ tab = 'bios', onTab }: BiosPageProps) {
    *  así que se actualiza solo cuando cambia el catálogo (por ejemplo, tras
    *  subir una BIOS a mano). */
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
-  const [scanning, setScanning] = useState(false)
+  /** La comprobacion que escanea la consola y baja lo que falte. */
+  const { trabajo, resultado, corriendo, error: errorTrabajo, arrancar } = useTrabajoBios()
+
+  // Cuando el trabajo termina, el catalogo se vuelve a leer: lo que se ha
+  // descargado ya esta en su sitio y se tiene que ver.
+  useEffect(() => {
+    if (resultado) void refresh()
+  }, [resultado, refresh])
 
   /* Sistemas con su estado ya calculado. */
   const systems = useMemo<BiosSystemView[]>(() => {
@@ -160,25 +170,6 @@ export function BiosPage({ tab = 'bios', onTab }: BiosPageProps) {
     }
   }, [systems, data])
 
-  /** Relee el disco y el catálogo (fuerza el escaneo). */
-  const rescan = async () => {
-    setScanning(true)
-    triggerHaptic('light')
-    try {
-      await api.biosScan()
-      await refresh()
-      showNotify({ variant: 'success', title: 'BIOS revisadas' })
-    } catch (err) {
-      showNotify({
-        variant: 'error',
-        title: 'No se pudo verificar',
-        message: err instanceof Error ? err.message : undefined,
-      })
-    } finally {
-      setScanning(false)
-    }
-  }
-
   /* Repara todo lo reparable de un sistema. */
   const repairSystem = async (system: BiosSystemView) => {
     const reparables = system.files.filter((file) => esReparable(file.estado))
@@ -211,14 +202,72 @@ export function BiosPage({ tab = 'bios', onTab }: BiosPageProps) {
         subtitle={`${totals.sistemas} sistemas · ${totals.ok} de ${totals.total} BIOS en su sitio`}
         onMenu={openMenu}
         actions={
-          <IconButton label="Volver a verificar las BIOS" onClick={rescan}>
-            <RefreshCw className={cn('size-4', (loading || scanning) && 'animate-spin')} />
-          </IconButton>
+          <Button size="sm" variant="secondary" onClick={() => void arrancar()} disabled={corriendo}>
+            <RefreshCw className={cn('size-4', (loading || corriendo) && 'animate-spin')} />
+            Escanear el sistema
+          </Button>
         }
       />
 
       <PageContainer>
         {onTab && <SectionTabs value={tab} onChange={onTab} />}
+
+        {/* El escaneo en curso: la barra de progreso para que se vea que la
+            aplicacion sigue viva (baja ficheros de internet). */}
+        {(corriendo || resultado || errorTrabajo) && (
+          <div className="mt-4 rounded-2xl border border-border bg-card px-4 py-3">
+            {corriendo && (
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <RefreshCw className="size-4 shrink-0 animate-spin text-brand" />
+                  <span className="font-semibold text-foreground">
+                    {trabajo?.mensaje || 'comprobando las BIOS'}
+                  </span>
+                  <span className="ml-auto min-w-0 truncate text-[11px] text-muted-foreground">
+                    {trabajo?.actual || 'preparando…'}
+                  </span>
+                </div>
+                <Progress
+                  value={trabajo?.porcentaje ?? 0}
+                  label={`${trabajo?.hechos ?? 0} de ${trabajo?.total ?? 0}`}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  No hace falta cerrar la ventana: puedes seguir usando la aplicacion.
+                </p>
+              </div>
+            )}
+            {!corriendo && errorTrabajo && (
+              <p className="flex items-center gap-2 text-xs text-destructive">
+                <CircleAlert className="size-4 shrink-0" />
+                {errorTrabajo}
+              </p>
+            )}
+            {!corriendo && resultado && (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                <span className="font-semibold text-foreground">Revision terminada</span>
+                <span className="text-muted-foreground">
+                  {resultado.resumen.esperadas} BIOS revisadas
+                </span>
+                {resultado.resumen.descargadas > 0 && (
+                  <span className="inline-flex items-center gap-1 text-brand">
+                    <Download className="size-3.5" />
+                    {resultado.resumen.descargadas} descargadas
+                  </span>
+                )}
+                {resultado.resumen.no_encontradas > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    {resultado.resumen.no_encontradas} no estan en la fuente
+                  </span>
+                )}
+                {resultado.resumen.fallidas > 0 && (
+                  <span className="text-destructive">
+                    {resultado.resumen.fallidas} con problemas
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -326,9 +375,9 @@ export function BiosPage({ tab = 'bios', onTab }: BiosPageProps) {
 
         {/* Tarjetas */}
         {loading && !data ? (
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="card h-72 animate-pulse bg-muted/40" />
+              <div key={index} className="card h-44 animate-pulse bg-muted/40" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -338,24 +387,31 @@ export function BiosPage({ tab = 'bios', onTab }: BiosPageProps) {
               title={statusFilter === 'problemas' ? 'Ninguna BIOS con problemas' : 'Ningún sistema coincide'}
               description={
                 statusFilter === 'problemas'
-                  ? 'Todas las BIOS que pide Batocera están donde deben.'
+                  ? 'Todas las BIOS que pide Batocera están donde deben. Puedes volver a comprobarlo cuando quieras.'
                   : 'Prueba con otro texto o cambia los filtros.'
               }
               action={
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setQuery('')
-                    setStatusFilter('all')
-                  }}
-                >
-                  Quitar filtros
-                </Button>
+                statusFilter === 'problemas' ? (
+                  <Button variant="secondary" onClick={() => void arrancar()}>
+                    <RefreshCw className="size-4" />
+                    Escanear el sistema
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setQuery('')
+                      setStatusFilter('all')
+                    }}
+                  >
+                    Quitar filtros
+                  </Button>
+                )
               }
             />
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
             {filtered.map((system, index) => (
               <motion.div
                 key={system.slug}
