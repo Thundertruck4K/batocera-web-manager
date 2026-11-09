@@ -6,6 +6,14 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+### Arreglado
+- **El bloque `# [batocera-tools]` del `custom.sh` no llegaba a enlazar nada.** Usaba la variable
+  `$TOOLS_BIN_DIR`, que sólo existe dentro del `install.sh`: en el `custom.sh` no estaba definida, así
+  que la comprobación de «¿escribible?» salía falsa y el enlace no se hacía. Además enlazaba *todo* lo
+  ejecutable de `/userdata/system/bin`, incluidos los enlaces simbólicos que ya hay ahí (el `npsget` y
+  el `ps3i`), con lo que podía pisar lo que ya estuviera en `/usr/bin`. Ahora sólo enlaza los ficheros
+  de verdad que se hayan puesto en esa carpeta, y no puede dejar el arranque a medias aunque algo falle.
+
 ### Añadido
 - **El `rom-converto` se puede instalar en la consola y el manager lo usa de verdad.** Es el
   programa más completo que hay para convertir imágenes de disco (RVZ, WBFS, WIA, GCZ, XISO,

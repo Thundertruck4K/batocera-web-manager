@@ -470,10 +470,12 @@ write_tools_block() {
     printf '%s\n' "$TOOLS_MARKER"
     printf '%s\n' '# Utilidades de conversion (opcional) - enlaces al PATH'
     printf '%s\n' "TOOLS_HOME=\"$TOOLS_DIR\""
+    printf '%s\n' "TOOLS_BIN=\"$TOOLS_BIN_DIR\""
     printf '%s\n' 'if [ -d "$TOOLS_HOME" ]; then'
     printf '%s\n' '  for t in "$TOOLS_HOME"/*; do'
     printf '%s\n' '    [ -x "$t" ] || continue'
-    printf '%s\n' '    [ -w "$TOOLS_BIN_DIR" ] && ln -sf "$t" "$TOOLS_BIN_DIR/$(basename "$t")" || true'
+    printf '%s\n' '    if [ -L "$t" ]; then continue; fi'
+    printf '%s\n' '    if [ -w "$TOOLS_BIN" ]; then ln -sf "$t" "$TOOLS_BIN/$(basename "$t")"; fi'
     printf '%s\n' '  done'
     printf '%s\n' 'fi'
     printf '%s\n' "$TOOLS_TAG_END"

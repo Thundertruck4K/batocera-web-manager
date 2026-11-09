@@ -153,14 +153,20 @@ escribe un bloque `# [batocera-tools]` en el `custom.sh` que enlaza en
 # [batocera-tools]
 # Utilidades de conversion (opcional) - enlaces al PATH
 TOOLS_HOME="/userdata/system/bin"
+TOOLS_BIN="/usr/bin"
 if [ -d "$TOOLS_HOME" ]; then
   for t in "$TOOLS_HOME"/*; do
     [ -x "$t" ] || continue
-    [ -w "/usr/bin" ] && ln -sf "$t" "/usr/bin/$(basename "$t")" || true
+    if [ -L "$t" ]; then continue; fi
+    if [ -w "$TOOLS_BIN" ]; then ln -sf "$t" "$TOOLS_BIN/$(basename "$t")"; fi
   done
 fi
 # [/batocera-tools]
 ```
+
+Los enlaces que ya estén en `/userdata/system/bin` (como el `npsget`) **no se
+tocan**: el bloque sólo enlaza los ficheros de verdad que se hayan puesto
+ahí, para no pisar lo que ya haya en `/usr/bin`.
 
 **Qué se puede hacer con él** (comprobado sobre la consola, con un juego de
 GameCube y otro de Wii de verdad):

@@ -561,3 +561,62 @@ def test_el_bloque_de_node_se_escribe_si_el_node_ya_esta(base):
     sh = (base / "custom.sh").read_text(encoding="utf-8")
     assert "# [batocera-node]" in sh, sh
     assert "npm_config_prefix" in sh, sh
+
+
+# ── El bloque de las utilidades de conversion ──────────────────────────
+def test_it_writes_the_tools_block(base, tmp_path):
+    """El bloque # [batocera-tools] deja las utilidades en el PATH."""
+    destino = tmp_path / "usrbin"
+    destino.mkdir()
+    _run(base, answer="s", env_extra={"BM_TOOLS_BIN_DIR": _msys(destino)})
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "# [batocera-tools]" in sh, sh
+    assert "# [/batocera-tools]" in sh
+
+
+def test_the_tools_block_links_the_real_files(base, tmp_path):
+    """El bloque enlaza las utilidades de verdad y no toca los enlaces."""
+    destino = tmp_path / "usrbin"
+    destino.mkdir()
+    _run(base, answer="s", env_extra={"BM_TOOLS_BIN_DIR": _msys(destino)})
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    bloque = sh.split("# [batocera-tools]")[1].split("# [/batocera-tools]")[0]
+    bloque = "# [batocera-tools]" + bloque + "# [/batocera-tools]"
+
+    # Una utilidad de verdad (el rom-converto) y un enlace que ya hay.
+    herramientas = base / "bin"
+    herramientas.mkdir()
+    ejecutable = herramientas / "rom-converto"
+    ejecutable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    ejecutable.chmod(0o755)
+    (herramientas / "npsget").symlink_to(base / "npsget")
+
+    r = subprocess.run([_bash(), "-c", bloque], capture_output=True, text=True,
+                       encoding="utf-8", timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+    # En Windows el `ln -s` de MSYS copia en vez de enlazar, asi que lo que se
+    # comprueba es que el ejecutable ha llegado al destino.
+    assert (destino / "rom-converto").exists(), "debe enlazar el ejecutable"
+    assert not (destino / "npsget").exists(), "no debe tocar los enlaces que ya hay"
+
+
+def test_the_tools_block_does_not_break_with_set_e(base, tmp_path):
+    """El bloque no puede dejar el arranque a medias si algo falla."""
+    destino = tmp_path / "usrbin"
+    destino.mkdir()
+    _run(base, answer="s", env_extra={"BM_TOOLS_BIN_DIR": _msys(destino)})
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    bloque = sh.split("# [batocera-tools]")[1].split("# [/batocera-tools]")[0]
+    bloque = "# [batocera-tools]" + bloque + "# [/batocera-tools]"
+
+    herramientas = base / "bin"
+    herramientas.mkdir()
+    ejecutable = herramientas / "rom-converto"
+    ejecutable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    ejecutable.chmod(0o755)
+
+    r = subprocess.run([_bash(), "-c", "set -e\n" + bloque + "\necho LLEGADO"],
+                       capture_output=True, text=True, encoding="utf-8",
+                       timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "LLEGADO" in r.stdout, r.stdout
