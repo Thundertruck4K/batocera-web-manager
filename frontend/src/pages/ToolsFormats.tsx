@@ -1,11 +1,14 @@
 import {
   CircleAlert,
+  CircleCheck,
+  ExternalLink,
   FileCog,
   FileCode2,
   HardDrive,
   Layers,
   RefreshCw,
   Wand2,
+  Wrench,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { PageContainer, useShell } from '@/components/layout/AppShell'
@@ -14,6 +17,7 @@ import { Button, IconButton } from '@/components/ui/Button'
 import { PanelCard } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Modal } from '@/components/ui/Modal'
+import { Pill, PillBar } from '@/components/ui/Pill'
 import { useApi } from '@/hooks/useApi'
 import { useNotify } from '@/hooks/useNotify'
 import { api } from '@/lib/api'
@@ -38,12 +42,38 @@ function sinReconocer(file: ToolsRomFile): boolean {
   return !file.label || file.kind === 'desconocido'
 }
 
+/**
+ * ¿El sistema admite el formato de destino? Si no lo admite, la conversión no
+ * se ofrece: sería un trabajo que luego no sirve (un ZIP en un PSP, un CHD en
+ * un GameCube).
+ */
+function admiteSistema(accion: ToolsFormatAction): boolean {
+  return accion.admite !== false
+}
+
+/** ¿Está en la consola la utilidad que hace falta para la conversión? */
+function tieneHerramienta(accion: ToolsFormatAction): boolean {
+  return accion.disponible !== false
+}
+
+/**
+ * Por qué no se puede hacer la conversión, en palabras del backend (que las
+ * escribe sin acentos y en minúscula: se empiezan en mayúscula).
+ */
+function motivo(accion: ToolsFormatAction): string {
+  const texto = accion.motivo || (accion.falta ? `falta la utilidad ${accion.falta}` : '')
+  if (!texto) return 'La utilidad que hace falta no está en la consola.'
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
 /** Un destino de conversión y cuántos ficheros del sistema lo admiten. */
 interface Destino {
   id: string
   label: string
   nota?: string
   count: number
+  /** Si se puede ejecutar en lote (la utilidad está en la consola). */
+  disponible: boolean
 }
 
 /** Un formato detectado y cuántos ficheros del sistema lo tienen. */
@@ -70,11 +100,28 @@ export function ToolsFormatsPage() {
 
   const files = useApi(() => api.toolsRoms(system), [system], { enabled: !!system })
 
+  /** Los formatos que admite cada sistema y el catálogo de utilidades. */
+  const catalogo = useApi(() => api.toolsFormatSystems(), [])
+
   /** Los sistemas que tienen ROMs y ademas tienen formato que ver. */
   const conRom = useMemo(
     () => (systems.data ?? []).filter((item) => (item.rom_count ?? 0) > 0),
     [systems.data],
   )
+
+  /** Los datos del sistema elegido: qué formatos admite y qué compresiones. */
+  const sistemaInfo = useMemo(() => {
+    const lista = catalogo.data?.sistemas ?? []
+    const elegido = system.trim().toLowerCase()
+    return (
+      lista.find((item) => item.sistema === system) ??
+      lista.find((item) => item.sistema.toLowerCase() === elegido) ??
+      null
+    )
+  }, [catalogo.data, system])
+
+  /** El catálogo de utilidades de conversión. */
+  const herramientas = useMemo(() => catalogo.data?.herramientas ?? [], [catalogo.data])
 
   const lista = files.data?.files ?? []
 
@@ -82,6 +129,19 @@ export function ToolsFormatsPage() {
   const parches = useMemo(
     () => (files.data?.files ?? []).filter((file) => file.name.toLowerCase().endsWith('.ips')),
     [files.data],
+  )
+
+  /** Las conversiones que se ofrecen del fichero abierto: solo las que el
+      sistema admite (las demás ni se enseñan). */
+  const accionesSeleccionadas = useMemo(
+    () => (selected?.acciones ?? []).filter(admiteSistema),
+    [selected],
+  )
+
+  /** Las que el sistema no admite: no se ofrecen, pero se explican. */
+  const accionesOcultas = useMemo(
+    () => (selected?.acciones ?? []).filter((accion) => !admiteSistema(accion)),
+    [selected],
   )
 
   /** Cuántos ficheros tienen un formato reconocido. */
@@ -95,14 +155,20 @@ export function ToolsFormatsPage() {
     const mapa = new Map<string, Destino>()
     for (const file of files.data?.files ?? []) {
       for (const accion of file.acciones ?? []) {
+        // Los formatos que el sistema no admite no se ofrecen ni en lote.
+        if (!admiteSistema(accion)) continue
         const actual = mapa.get(accion.id)
-        if (actual) actual.count += 1
-        else
+        if (actual) {
+          actual.count += 1
+          // Si un solo fichero lo tiene disponible, la utilidad está puesta.
+          if (tieneHerramienta(accion)) actual.disponible = true
+        } else
           mapa.set(accion.id, {
             id: accion.id,
             label: accion.label,
             nota: accion.nota,
             count: 1,
+            disponible: tieneHerramienta(accion),
           })
       }
     }
@@ -110,6 +176,12 @@ export function ToolsFormatsPage() {
       (a, b) => b.count - a.count || a.label.localeCompare(b.label, 'es'),
     )
   }, [files.data])
+
+  /** Los destinos que se pueden ejecutar: sin la utilidad no hay lote. */
+  const destinosDisponibles = useMemo(
+    () => destinos.filter((item) => item.disponible),
+    [destinos],
+  )
 
   /** Formatos detectados en el sistema (para filtrar el lote). */
   const formatos = useMemo<Formato[]>(() => {
@@ -128,15 +200,20 @@ export function ToolsFormatsPage() {
   }, [files.data])
 
   /** El destino elegido (si ya no existe, el primero disponible). */
-  const destinoActual = destinos.find((item) => item.id === destino) ?? destinos[0] ?? null
+  const destinoActual =
+    destinosDisponibles.find((item) => item.id === destino) ?? destinosDisponibles[0] ?? null
 
   /** Ficheros que entran en el lote con el destino y el filtro elegidos. */
   const candidatos = useMemo(() => {
     if (!destinoActual) return []
     return (files.data?.files ?? []).filter(
       (file) =>
-        (file.acciones ?? []).some((accion) => accion.id === destinoActual.id) &&
-        (!origen || file.kind === origen),
+        (file.acciones ?? []).some(
+          (accion) =>
+            accion.id === destinoActual.id &&
+            admiteSistema(accion) &&
+            tieneHerramienta(accion),
+        ) && (!origen || file.kind === origen),
     )
   }, [files.data, destinoActual, origen])
 
@@ -275,6 +352,82 @@ export function ToolsFormatsPage() {
 
         <div className="mt-4">
           <PanelCard
+            title={system ? `Formatos de ${system}` : 'Formatos del sistema'}
+            subtitle="Los formatos que admite este sistema y los que admite comprimidos"
+            icon={<FileCode2 className="size-4" />}
+          >
+            {!system ? (
+              <EmptyState
+                title="Ningún sistema elegido"
+                description="Elige un sistema arriba para ver los formatos que admite."
+              />
+            ) : catalogo.error ? (
+              <div className="flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <CircleAlert className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1">{catalogo.error}</span>
+                <Button size="sm" variant="outline" onClick={catalogo.refresh}>
+                  Reintentar
+                </Button>
+              </div>
+            ) : catalogo.loading && !catalogo.data ? (
+              <EmptyState title="Leyendo los formatos…" description="Un momento." />
+            ) : !sistemaInfo ? (
+              <EmptyState
+                title="Sin datos de este sistema"
+                description={`No hay formatos registrados para ${system}.`}
+              />
+            ) : (
+              <div className="space-y-4">
+                {sistemaInfo.nota && (
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {sistemaInfo.nota}
+                  </p>
+                )}
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Formatos admitidos
+                  </p>
+                  <PillBar>
+                    {(sistemaInfo.formatos ?? []).map((extension) => (
+                      <Pill
+                        key={extension}
+                        active={extension === sistemaInfo.preferido}
+                        disabled
+                      >
+                        {extension === sistemaInfo.preferido ? `${extension} *` : extension}
+                      </Pill>
+                    ))}
+                  </PillBar>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    El formato con * es el preferido del sistema.
+                  </p>
+                </div>
+
+                {(sistemaInfo.compresiones ?? []).length > 0 && (
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Compresiones
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(sistemaInfo.compresiones ?? []).map((compresion) => (
+                        <span
+                          key={compresion}
+                          className="rounded-md border border-border px-1.5 py-0.5 text-[11px] font-medium text-foreground"
+                        >
+                          {compresion}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </PanelCard>
+        </div>
+
+        <div className="mt-4">
+          <PanelCard
             title={system ? `Ficheros de ${system}` : 'Ficheros'}
             subtitle={
               system
@@ -298,7 +451,11 @@ export function ToolsFormatsPage() {
             ) : (
               <ul className="divide-y divide-border">
                 {lista.map((file) => {
-                  const conversiones = (file.acciones ?? []).map((accion) => accion.label)
+                  /* Solo se anuncian los destinos que admite el sistema; los
+                     que además necesitan una utilidad que no está, en ámbar. */
+                  const acciones = (file.acciones ?? []).filter(admiteSistema)
+                  const conversiones = acciones.filter(tieneHerramienta).map((a) => a.label)
+                  const bloqueadas = acciones.filter((a) => !tieneHerramienta(a))
                   return (
                     <li key={file.name}>
                       <button
@@ -325,6 +482,14 @@ export function ToolsFormatsPage() {
                             <span>{humanSize(file.size)}</span>
                             {conversiones.length > 0 && (
                               <span className="truncate">· {conversiones.join(' · ')}</span>
+                            )}
+                            {bloqueadas.length > 0 && (
+                              <span
+                                className="truncate text-amber-700 dark:text-amber-400"
+                                title={bloqueadas.map((a) => motivo(a)).join(' · ')}
+                              >
+                                · {bloqueadas.map((a) => a.label).join(' · ')} (sin herramientas)
+                              </span>
                             )}
                           </span>
                         </span>
@@ -355,6 +520,21 @@ export function ToolsFormatsPage() {
                 title="Nada que convertir"
                 description="Ningún fichero de este sistema admite una conversión."
               />
+            ) : !destinosDisponibles.length ? (
+              <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+                <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">
+                    Sin las utilidades necesarias no se puede convertir en lote.
+                  </p>
+                  <p className="mt-1 text-[11px] leading-relaxed">
+                    Este sistema admite{' '}
+                    {destinos.map((item) => item.label).join(', ')}, pero en la consola falta la
+                    herramienta que las hace. Mira abajo, en «Utilidades de conversión», cuál
+                    instalar.
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-3">
@@ -364,7 +544,7 @@ export function ToolsFormatsPage() {
                     aria-label="Destino de la conversión"
                     className="h-10 w-full max-w-xs cursor-pointer rounded-xl border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
-                    {destinos.map((item) => (
+                    {destinosDisponibles.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.label} · {item.count} ficheros
                       </option>
@@ -425,6 +605,91 @@ export function ToolsFormatsPage() {
             )}
           </PanelCard>
         </div>
+
+        <div className="mt-4">
+          <PanelCard
+            title="Utilidades de conversión"
+            subtitle="Los programas que hacen las conversiones, de dónde salen y si están en la consola"
+            icon={<Wrench className="size-4" />}
+          >
+            {catalogo.error ? (
+              <div className="flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <CircleAlert className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1">{catalogo.error}</span>
+                <Button size="sm" variant="outline" onClick={catalogo.refresh}>
+                  Reintentar
+                </Button>
+              </div>
+            ) : catalogo.loading && !catalogo.data ? (
+              <EmptyState title="Leyendo el catálogo…" description="Un momento." />
+            ) : !herramientas.length ? (
+              <EmptyState
+                title="Sin catálogo"
+                description="No hay utilidades de conversión registradas."
+              />
+            ) : (
+              <ul className="divide-y divide-border">
+                {herramientas.map((herramienta) => (
+                  <li key={herramienta.id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">
+                        {herramienta.nombre}
+                      </span>
+                      {herramienta.licencia && (
+                        <span className="rounded-md border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {herramienta.licencia}
+                        </span>
+                      )}
+                      {herramienta.disponible !== false ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <CircleCheck className="size-3" />
+                          Disponible
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                          <CircleAlert className="size-3" />
+                          Falta
+                        </span>
+                      )}
+                    </div>
+
+                    {herramienta.para && (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {herramienta.para}
+                      </p>
+                    )}
+
+                    {herramienta.instalar && (
+                      <p
+                        className={cn(
+                          'mt-1 text-[11px] leading-relaxed',
+                          herramienta.disponible !== false
+                            ? 'text-muted-foreground'
+                            : 'text-amber-700 dark:text-amber-400',
+                        )}
+                      >
+                        <span className="font-medium">Cómo instalarla: </span>
+                        {herramienta.instalar}
+                      </p>
+                    )}
+
+                    {herramienta.url && (
+                      <a
+                        href={herramienta.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        <ExternalLink className="size-3" />
+                        {herramienta.url}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PanelCard>
+        </div>
       </PageContainer>
 
       <Modal
@@ -456,32 +721,47 @@ export function ToolsFormatsPage() {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Conversiones disponibles
               </p>
-              {(selected.acciones ?? []).length === 0 ? (
+              {accionesSeleccionadas.length === 0 ? (
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Este fichero no se puede convertir: el formato detectado ({selected.kind}) no
-                  admite ninguna conversión.
+                  {accionesOcultas.length > 0
+                    ? 'Este fichero no se puede convertir: el sistema no admite ninguno de los formatos de destino.'
+                    : `Este fichero no se puede convertir: el formato detectado (${selected.kind}) no admite ninguna conversión.`}
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {(selected.acciones ?? []).map((accion) => (
-                    <div
-                      key={accion.id}
-                      className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2"
-                    >
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => convertir(accion)}
+                  {accionesSeleccionadas.map((accion) => {
+                    const falta = !tieneHerramienta(accion)
+                    return (
+                      <div
+                        key={accion.id}
+                        className={cn(
+                          'flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2',
+                          falta
+                            ? 'border-amber-500/40 bg-amber-500/10'
+                            : 'border-border bg-muted/40',
+                        )}
                       >
-                        <Wand2 className="size-4" />
-                        Convertir a {accion.label}
-                      </Button>
-                      {accion.nota && (
-                        <span className="text-[11px] text-muted-foreground">{accion.nota}</span>
-                      )}
-                    </div>
-                  ))}
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={busy || falta}
+                          onClick={() => convertir(accion)}
+                        >
+                          <Wand2 className="size-4" />
+                          Convertir a {accion.label}
+                        </Button>
+                        {falta ? (
+                          <span className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
+                            {motivo(accion)}
+                          </span>
+                        ) : (
+                          accion.nota && (
+                            <span className="text-[11px] text-muted-foreground">{accion.nota}</span>
+                          )
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

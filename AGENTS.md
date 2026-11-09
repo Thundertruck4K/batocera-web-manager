@@ -372,6 +372,20 @@ El proyecto se trabaja en **un solo repositorio**:
     descriptor the ISO is written back byte for byte (the result is the original); otherwise the plain
     ISO 9660 skeleton is built. It is written sector by sector: a 4.7 GB DVD does not fit in the
     console's RAM.
+  - **The offered conversions depend on the system, not only on the file format**: the catalogue by
+    format says what an ISO or a CHD can become, but not whether the system being looked at accepts
+    it. `romtools/formatos_sistemas.py` holds the map: the `es_systems.cfg` of the console (which
+    wins, so custom systems count too) and a curated table of 80 systems as a fallback, plus which
+    tool each conversion needs. `acciones_para()` filters by both, and every action says whether the
+    system admits it (`admite`) and whether the tool is there (`disponible`). **What is missing is
+    never faked**: the RVZ needs `dolphin-tool` and the WBFS `wiitool`, and neither is in Batocera,
+    so those buttons come disabled, in amber, with the reason.
+  - **Compression is a property of the system**: if the system accepts `.zip` or `.7z`, both are
+    offered for any ROM. The ZIP of a SNES saves a lot of space; the PSP never reads a ZIP, so it is
+    not offered there.
+  - **The tools are checked, not assumed**: `herramienta_disponible()` looks for the binary with
+    `shutil.which`, and the inventory says which ones are in the console right now. The full list,
+    with licences and where each one comes from, is in `docs/utilidades-conversion.md`.
 - The `--port` CLI flag is the only command-line argument supported
 
 ## Workflow

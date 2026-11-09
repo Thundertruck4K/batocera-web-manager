@@ -14,7 +14,13 @@ export function Pill({
     <button
       type="button"
       data-active={active}
-      className={cn('pill cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50', className)}
+      className={cn(
+        'pill cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+        // Una píldora que no hace nada (por ejemplo, un dato informative) no
+        // debe parecer pulsable.
+        'disabled:pointer-events-none',
+        className,
+      )}
       {...props}
     />
   )

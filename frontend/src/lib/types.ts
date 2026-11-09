@@ -793,6 +793,63 @@ export interface ToolsFormatAction {
   label: string
   /** Explicación corta de la conversión (puede ir vacía). */
   nota?: string
+  /**
+   * Si el sistema admite el formato de destino. Con `false` la conversión no
+   * se ofrece: sería trabajo que luego no sirve.
+   */
+  admite?: boolean
+  /** Si la utilidad que hace falta está en la consola ahora mismo. */
+  disponible?: boolean
+  /** Nombre de la utilidad que falta, si es que falta. */
+  falta?: string
+  /** Por qué no se puede: «falta la utilidad dolphin-tool». */
+  motivo?: string
+  /** Identificador de la utilidad que hace la conversión (`chdman`…). */
+  herramienta?: string
+}
+
+/** Un sistema con los formatos que admite. */
+export interface ToolsFormatSystem {
+  /** Slug del sistema (`snes`, `psp`…). */
+  sistema: string
+  /** Extensiones que admite el sistema, sin el punto. */
+  formatos: string[]
+  /** El formato que se suele usar en ese sistema. */
+  preferido?: string | null
+  /** Lo que hay que saber de ese sistema (nota de la wiki). */
+  nota?: string
+  /** Compresiones que admite el sistema (`zip`, `7z`…). */
+  compresiones?: string[]
+}
+
+/** Una utilidad externa para convertir entre formatos. */
+export interface ToolsFormatTool {
+  /** Identificador de la utilidad (`chdman`…). */
+  id: string
+  /** Nombre legible. */
+  nombre: string
+  /** Binario que se busca en la consola. */
+  binario?: string | null
+  /** Dónde está el proyecto. */
+  url?: string | null
+  /** Licencia del programa. */
+  licencia?: string | null
+  /** Para qué sirve. */
+  para?: string
+  /** Cómo se instala en la consola. */
+  instalar?: string
+  /** Si está en la consola ahora mismo. */
+  disponible?: boolean
+}
+
+/** La respuesta de `/api/tools/formats/sistemas`. */
+export interface ToolsFormatSystems {
+  ok: boolean
+  /** Todos los sistemas que se pueden elegir, con sus formatos. */
+  sistemas: ToolsFormatSystem[]
+  /** El catálogo de utilidades de conversión. */
+  herramientas: ToolsFormatTool[]
+  error?: string
 }
 
 /** Un fichero de un sistema con su formato detectado. */

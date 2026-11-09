@@ -642,17 +642,32 @@ consola, el 64 % de los ficheros salía antes como «formato desconocido»; ahor
 NSP, XCI, WAD, ZIP, IPS…) y, cuando no se puede convertir, la interfaz lo dice en vez de dejar un
 hueco.
 
+**Las opciones que se ofrecen dependen del sistema, no sólo del formato.** El mapa sale del
+`es_systems.cfg` de la consola (el mismo que usa EmulationStation, con los sistemas personalizados
+incluidos) y de la wiki oficial: un PSP no admite un ZIP y un GameCube no admite un CHD, así que esas
+conversiones ya no se ofrecen. Con el sistema elegido, la página enseña los formatos que admite, cuál
+es el preferido y lo que hay que saber de él.
+
 - **Convertir** entre los formatos que se pueden reconstruir sin pérdida: BIN/CUE ↔ ISO, PBP ↔
   BIN/CUE, XDVDF → ISO, GCM → ISO, Nintendo 64 entre sus tres byte orders (`.n64`, `.z64`, `.v64`),
-  Super Nintendo entre `.sfc`, `.smc` y `.fig`, ISO ↔ CSO/CISO/GCZ (PSP, GameCube y Wii) e ISO ↔ CHD.
+  Super Nintendo entre `.sfc`, `.smc` y `.fig`, ISO ↔ CSO/CISO/GCZ (PSP, GameCube y Wii), ISO ↔ CHD y
+  las imágenes de disco proprietarias (GDI, MDS, CCD) → ISO.
 - **Convertir en lote**: eliges un destino y se convierten todos los ficheros del sistema que lo
   admitan, con filtro opcional por formato de origen. El lote acaba con un resumen de cuántos han
   salido bien y por qué han fallado los que no.
-- **Comprimir** y **descomprimir** en ZIP.
+- **Comprimir** y **descomprimir** en **ZIP** y en **7Z**. La compresión es una propiedad del
+  **sistema**, no del formato: si el sistema admite `.zip` o `.7z`, se ofrecen para cualquier ROM. En
+  una SNES el ZIP ahorra mucho espacio; en un PSP, donde el ZIP no se lee, no se ofrece.
 - **Parchear** con un parche IPS, y deshacerlo.
 
-El CHD se hace con el `chdman` de MAME, que ya viene en Batocera (`/usr/bin/chdman`); si no está, se
-dice que hace falta en vez de fingir que ha salido bien.
+Las utilidades externas se detectan en la consola: el **CHD** se hace con el `chdman` de MAME, que ya
+viene en Batocera (`/usr/bin/chdman`), y el **7Z** con el `7z` del p7zip. Las que faltan (el
+`dolphin-tool` para el RVZ, el `wiitool` para el WBFS) aparecen **desactivadas**, diciendo qué falta y
+cómo conseguirlo, en vez de fingir que se han hecho. La página incluye un **panel de utilidades** con
+la lista completa: para qué sirve cada una, su licencia y de dónde sale.
+
+La lista completa, con licencias, repositorios y cómo instalarlas en Batocera, está en
+[`docs/utilidades-conversion.md`](docs/utilidades-conversion.md).
 
 Cada conversión escribe el fichero nuevo **al lado del original**, nunca encima (si el nombre ya
 existe, se numera: «Juego (1).chd»), así que la operación siempre se puede deshacer a mano.
@@ -871,7 +886,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` · `/api/bios/firstcheck` · `/api/bios/descargar/start` · `/api/bios/job` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
-| **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/batch` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/plan/start` · `/api/tools/rename/apply` · `/api/tools/rename/apply/start` · `/api/tools/rename/job` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
+| **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/sistemas` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/batch` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/plan/start` · `/api/tools/rename/apply` · `/api/tools/rename/apply/start` · `/api/tools/rename/job` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
 | **Actualización** | `/api/update` · `/api/app-update` |
 
 Los contadores de la biblioteca salen de `GET /api/info`: `rom_systems_count` (los sistemas con juegos),

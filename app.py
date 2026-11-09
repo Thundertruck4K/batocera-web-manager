@@ -43,6 +43,7 @@ try:
     from romtools import dats as _rt_dats
     from romtools import faltantes as _rt_faltantes
     from romtools import formats as _rt_formats
+    from romtools import formatos_sistemas as _rt_sistemas
     from romtools import identify as _rt_identify
     from romtools import jobs as _rt_jobs
     from romtools import library as _rt_library
@@ -148,7 +149,7 @@ def tools_rom_files(settings, system, limit=400):
         out.append({"name": item.name, "size": size,
                     "kind": info.kind, "label": info.label,
                     "plataforma": info.details.get("plataforma"),
-                    "acciones": info.actions})
+                    "acciones": tools_acciones(info, system, settings)})
         if len(out) >= limit:
             break
     return out
@@ -329,6 +330,45 @@ def tools_resultado(resultado):
     return out
 
 
+def tools_acciones(info, system, settings):
+    """Las conversiones que admite un fichero **en su sistema**.
+
+    El motor de formatos sabe que de una ISO se puede pasar a CHD, pero no si
+    el sistema que se esta mirando admite ese CHD: un PSP no admite un ZIP y
+    un GameCube no admite un CHD. Aqui se filtra por lo que admite el
+    sistema; el `es_systems.cfg` de la consola manda sobre la tabla de
+    respaldo, asi que los sistemas personalizados tambien cuentan.
+    """
+    if not HAS_ROMTOOLS:
+        return list(info.actions or [])
+    try:
+        exts = get_system_extensions(system, settings)
+    except Exception:
+        exts = set()
+    return _rt_sistemas.acciones_para(info, system, exts)
+
+
+def tools_formatos_sistemas(settings):
+    """Que formatos admite cada sistema y que utilidades hacen falta.
+
+    La lista es la de la biblioteca (los sistemas que se pueden elegir), con
+    los formatos que admite cada uno. Y el catalogo de utilidades de
+    conversion, con si estan en la consola ahora mismo.
+    """
+    sistemas = []
+    for item in tools_sistemas(settings):
+        nombre = item.get("name") if isinstance(item, dict) else str(item)
+        if not nombre or nombre.startswith("."):
+            continue
+        try:
+            exts = get_system_extensions(nombre, settings)
+        except Exception:
+            exts = set()
+        sistemas.append(_rt_sistemas.resumen_sistema(nombre, exts))
+    return {"ok": True, "sistemas": sistemas,
+            "herramientas": _rt_sistemas.inventario_herramientas()}
+
+
 def tools_convert(settings, system, name, target):
     """Convierte un fichero de un sistema al formato pedido.
 
@@ -339,6 +379,14 @@ def tools_convert(settings, system, name, target):
     path = safe_path_under(folder, name)
     if not path.is_file():
         raise ValueError("el fichero no existe")
+    ext = _rt_sistemas.extension_de_accion(target)
+    if ext:
+        try:
+            admitidos = get_system_extensions(system, settings)
+        except Exception:
+            admitidos = set()
+        if admitidos and ext not in admitidos:
+            raise ValueError("este sistema no admite el formato .%s" % ext)
     return tools_resultado(_rt_formats.convert(str(path), target,
                                                sistema=system))
 
@@ -362,7 +410,8 @@ def tools_convert_batch(settings, system, target, kind=None,
     for item in archivos:
         if kind and item["kind"] != kind:
             continue
-        if not any(a.get("id") == target for a in item.get("acciones") or []):
+        if not any(a.get("id") == target and a.get("disponible", True)
+                   for a in item.get("acciones") or []):
             continue
         if len(hechos) >= limit:
             break
@@ -1871,13 +1920,30 @@ def is_gamelist_image_type(media_type):
     """
     return SS_MEDIA_LAYOUT.get(media_type, ("images", "-image"))[1] == "-image"
 
+#: Cache de las extensiones por sistema. El `es_systems.cfg` no cambia solo y
+#: parsearlo es leer un XML con 253 sistemas: en la lista de ROMs se pregunta
+#: por cada fichero, y sin cache eso son cientos de parseos por peticion.
+_EXT_CACHE = {}          # {(sistema, carpeta, ruta): (momento, {extensiones})}
+_EXT_CACHE_TTL = 300     # segundos
+
 def get_system_extensions(system, settings, builtin_path=None):
     """Extensiones permitidas para un sistema según es_systems.cfg.
 
     Semántica de EmulationStation/Batocera: si un `es_systems_*.cfg` de usuario
     define el sistema, **reemplaza** por completo la definición integrada (no se
     unen). Solo si no hay definición de usuario se usa la integrada.
+
+    El resultado se cachea unos minutos: el fichero no cambia solo y parsearlo
+    por cada fichero de la lista sería lentísimo en la consola.
     """
+    cfg_dir = Path(settings.get("es_cfg_dir", "/userdata/system/configs/emulationstation"))
+    builtin = str(builtin_path or "/usr/share/emulationstation/es_systems.cfg")
+    clave = (system, str(cfg_dir), builtin)
+    ahora = time.time()
+    hit = _EXT_CACHE.get(clave)
+    if hit and (ahora - hit[0]) < _EXT_CACHE_TTL:
+        return set(hit[1])
+
     def _exts_from(path):
         out = set()
         try:
@@ -1890,16 +1956,16 @@ def get_system_extensions(system, settings, builtin_path=None):
         return out
 
     custom = set()
-    cfg_dir = Path(settings.get("es_cfg_dir", "/userdata/system/configs/emulationstation"))
     if cfg_dir.is_dir():
         for f in sorted(cfg_dir.glob("es_systems_*.cfg")):
             custom |= _exts_from(f)
     if custom:
-        return custom
-    builtin = Path(builtin_path or "/usr/share/emulationstation/es_systems.cfg")
-    if builtin.is_file():
-        return _exts_from(builtin)
-    return set()
+        resultado = custom
+    else:
+        builtin_path_ = Path(builtin)
+        resultado = _exts_from(builtin_path_) if builtin_path_.is_file() else set()
+    _EXT_CACHE[clave] = (ahora, set(resultado))
+    return set(resultado)
 
 # ─── Juegos que son carpetas ────────────────────────────────────────────
 # EmulationStation (y por tanto Batocera) trata una carpeta como un juego
@@ -7308,6 +7374,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     self.send_json({"ok": True,
                                     "catalogo": _rt_formats.FORMAT_CATALOGUE,
                                     "convertibles": list(_rt_formats.CONVERTIBLE_TO_ISO)}); return
+                if sub == "formats/sistemas":
+                    self.send_json(tools_formatos_sistemas(s)); return
                 if sub == "roms":
                     system = (query.get("system") or [""])[0]
                     if not system:
@@ -7373,7 +7441,8 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                     self.send_json({"ok": False, "error": "faltan 'system' o 'file'"}); return
                 folder = system_dir(s, system)
                 path = safe_path_under(folder, name)
-                info = _rt_formats.detect_format(str(path))
+                info = _rt_formats.detect_format(str(path), system)
+                info.actions = tools_acciones(info, system, s)
                 self.send_json({"ok": True, **info.as_dict()}); return
             if sub == "formats/convert":
                 system = (data.get("system") or "").strip()
