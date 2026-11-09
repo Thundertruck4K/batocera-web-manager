@@ -30,6 +30,7 @@ import type {
   ToolsActionResult,
   ToolsBatchResult,
   ToolsDatsStatus,
+  ToolsFormatSystems,
   ToolsJob,
   ToolsRenamePlan,
   ToolsRenameResult,
@@ -314,6 +315,12 @@ export const api = {
     ),
   toolsPatch: (payload: { system: string; file: string; patch: string }) =>
     post<ToolsActionResult>('/api/tools/formats/patch', payload).then(unwrap),
+  /**
+   * Los sistemas con los formatos que admiten y el catálogo de utilidades de
+   * conversión (con su licencia y si están en la consola ahora mismo).
+   */
+  toolsFormatSystems: () =>
+    get<ToolsFormatSystems>('/api/tools/formats/sistemas').then(unwrap),
   toolsRenamePlan: (system: string) =>
     get<ToolsRenamePlan>(`/api/tools/rename/plan?system=${enc(system)}`).then(unwrap),
   /**

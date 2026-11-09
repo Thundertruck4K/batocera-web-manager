@@ -7,6 +7,42 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **Los formatos que se ofrecen dependen ahora del sistema, no sólo del formato del fichero.** Antes
+  la sección de Formatos miraba la cabecera de la imagen y decía «esto se puede convertir en CHD, en
+  ZIP…», sin mirar **para qué sistema** es: así que un PSP ofrecía comprimir en ZIP (que el PSP no
+  lee) y un GameCube ofrecía CHD (que el GameCube no admite). Ahora el motor de conversiones se
+  filtra por lo que admite cada sistema.
+  - **De dónde sale el mapa**: del `es_systems.cfg` de la propia consola (el mismo que usa
+    EmulationStation, con los sistemas personalizados del usuario incluidos) y, como respaldo, de la
+    wiki oficial de Batocera. La tabla de respaldo cubre 80 sistemas con su formato preferido y su
+    nota: el RVZ es el recomendado en GameCube y Wii, el CHD en los sistemas de disco (3DO, Saturn,
+    Dreamcast, Mega CD, Neo Geo CD, PC Engine CD, PSX y PS2), el CSO en PSP (con el aviso de que el
+    core libretro-ppsspp no lo lee) y el ZIP en las consolas de cartucho.
+  - **La compresión es una propiedad del sistema**: si el sistema admite `.zip` o `.7z`, se ofrecen
+    para cualquier ROM. En una SNES el ZIP ahorra mucho espacio; en un PSP, donde el ZIP no se lee,
+    no se ofrece.
+  - **Las utilidades que faltan se avisan, no se fingen**: si una conversión necesita el
+    `dolphin-tool` (el RVZ) o el `wiitool` (el WBFS) y no están en la consola, el botón sale
+    desactivado, en ámbar, con el motivo y con el nombre de lo que falta.
+  - **Panel del sistema**: con el sistema elegido se ven los formatos que admite, cuál es el
+    preferido, las compresiones disponibles y la nota de la wiki sobre ese sistema.
+  - **Panel de utilidades**: la lista de programas de conversión con su licencia, su página y si
+    están en la consola ahora mismo.
+  - **Endpoint nuevo**: `GET /api/tools/formats/sistemas`, que devuelve los formatos admitidos por
+    cada sistema y el inventario de utilidades con su disponibilidad.
+- **El GDI de Dreamcast se lee con su formato de verdad** (una línea por pista con su LBA, su tipo
+  y el tamaño de sector, que no es un CUE) y se convierte a ISO uniéndo las pistas de la zona de
+  alta densidad. El **CDI no se convierte**: es un contenedor binario del que no se sabe leer la
+  sesión, y es mejor que no aparezca el botón a que aparezca y falle.
+- **La lista de las utilidades que hacen falta para cada conversión**, con licencias, repositorios
+  y cómo conseguirlas en Batocera, en [`docs/utilidades-conversion.md`](docs/utilidades-conversion.md).
+  - **Ya están en la consola**: el `chdman` de MAME (CHD), el `7z` del p7zip (7Z), el `zip` de
+    Info-ZIP, el `unrar`, la libcdio, el `gzip`, el `bzip2`, el `zstd` y el VICE (con su `c1541`).
+  - **Faltan y hay que instalarlas a mano**: el `rom-converto` (MIT, con binarios estáticos para
+    Linux: el más completo de todos), el `nodtool` (Apache-2.0), el `dolphin-tool`, el `wiitool`, el
+    `ndstool`, el `3dstool`, el `xorriso`, el `maxcso`, el `extract-xiso` y el `cdrdao`.
+  - El **store de Batocera no sirve para esto**: su base de datos tiene 106 paquetes y son todos
+    bezeles y temas. El `chdman` y el `7z` vienen de la imagen (Buildroot), no del repositorio.
 - **La comprobación de BIOS del primer arranque: lo que falta, se baja solo.** El catálogo de
   Batocera dice qué BIOS hace falta, pero no las trae: dice el nombre y el hash. Para no tener que
   buscar cada BIOS a mano, el manager las baja de **una fuente que ya las tiene todas**, en la misma

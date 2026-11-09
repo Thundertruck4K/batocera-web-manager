@@ -30,6 +30,7 @@ biblioteca estandar se detecta y se explica, pero no se simula.
 from __future__ import annotations
 
 import gzip
+import itertools
 import os
 import re
 import shutil
@@ -37,6 +38,7 @@ import struct
 import subprocess
 import zipfile
 import zlib
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -95,41 +97,51 @@ CAPACIDADES = {
     "smc": {"label": "SMC", "ayuda": "super nintendo con cabecera"},
     "fig": {"label": "FIG", "ayuda": "super nintendo con cabecera de 512 bytes"},
     "zip": {"label": "ZIP", "ayuda": "comprimido en ZIP"},
+    "7z": {"label": "7Z", "ayuda": "comprimido en 7Z (squeeza mas que el ZIP)"},
     "extraer": {"label": "Extraer", "ayuda": "descomprimir en una carpeta al lado"},
     "gcm": {"label": "GCM", "ayuda": "imagen de GameCube"},
     "xiso": {"label": "XISO", "ayuda": "imagen de Xbox"},
 }
 
 #: Como se llama cada formato y a que se puede convertir.
+#:
+#: Aqui solo van los **candidatos**: que se puede sacar de un fichero de este
+#: tipo. Lo que el sistema admite lo filtra despues otro modulo
+#: (``romtools.formatos_sistemas``), que es quien sabe si un PSP admite un
+#: ZIP o si un GameCube admite un CHD. Por eso el catalogo puede ser
+#: generico: no hace falta que sepa de que consola se trata.
 FORMAT_CATALOGUE = {
-    "bin-cue": ("BIN + CUE", ["iso", "pbp", "chd", "zip"]),
-    "iso": ("ISO 9660", ["bin-cue", "chd", "zip"]),
-    "iso-gamecube": ("ISO de GameCube", ["gcz", "ciso", "chd", "zip"]),
-    "iso-wii": ("ISO de Wii", ["chd", "zip"]),
-    "iso-ps1": ("ISO de PlayStation", ["bin-cue", "pbp", "chd", "zip"]),
-    "iso-ps2": ("ISO de PlayStation 2", ["chd", "zip"]),
-    "pbp": ("PBP (PlayStation)", ["bin-cue", "iso", "zip"]),
+    "bin-cue": ("BIN + CUE", ["iso", "pbp", "chd", "zip", "7z"]),
+    "iso": ("ISO 9660", ["bin-cue", "chd", "cso", "gcz", "ciso", "pbp", "zip", "7z"]),
+    "iso-gamecube": ("ISO de GameCube", ["gcz", "ciso", "rvz", "wbfs", "chd", "zip", "7z"]),
+    "iso-wii": ("ISO de Wii", ["rvz", "wbfs", "ciso", "chd", "zip", "7z"]),
+    "iso-ps1": ("ISO de PlayStation", ["bin-cue", "pbp", "chd", "zip", "7z"]),
+    "iso-ps2": ("ISO de PlayStation 2", ["chd", "cso", "zip", "7z"]),
+    "pbp": ("PBP (PlayStation)", ["bin-cue", "iso", "zip", "7z"]),
     "chd": ("CHD (imagen comprimida)", ["iso", "bin-cue"]),
-    "gcm": ("GCM (GameCube)", ["iso", "zip"]),
-    "xiso": ("XDVDF (Xbox)", ["iso", "zip"]),
-    "cso": ("CSO (PSP)", ["iso", "zip"]),
-    "gcz": ("GCZ (GameCube)", ["iso", "zip"]),
-    "ciso": ("CISO (GameCube o Wii)", ["iso", "zip"]),
+    "gcm": ("GCM (GameCube)", ["iso", "zip", "7z"]),
+    "xiso": ("XDVDF (Xbox)", ["iso", "zip", "7z"]),
+    "cso": ("CSO (PSP)", ["iso", "zip", "7z"]),
+    "gcz": ("GCZ (GameCube)", ["iso", "zip", "7z"]),
+    "ciso": ("CISO (GameCube o Wii)", ["iso", "zip", "7z"]),
     "rvz": ("RVZ (Dolphin)", []),
     "wia": ("WIA (Wii)", []),
     "wbfs": ("WBFS (Wii)", []),
-    "mdf": ("MDF / CCD / IMG", []),
-    "gdi": ("GDI (Dreamcast)", []),
+    "mdf": ("MDF / CCD / IMG / MDS", ["iso"]),
+    "gdi": ("GDI (Dreamcast)", ["iso"]),
+    # El CDI es un contenedor binario del que no se sabe leer la sesion:
+    # no se ofrece conversion en vez de ofrecer una que falla.
     "cdi": ("CDI (DiscJuggler)", []),
+    "nrg": ("NRG (Nero)", ["iso"]),
     "g64": ("G64 / NDD", []),
-    "n64-z64": ("Nintendo 64 (little endian)", ["n64", "v64"]),
-    "n64-n64": ("Nintendo 64 (big endian)", ["z64", "v64"]),
-    "n64-v64": ("Nintendo 64 (byte swapped)", ["z64", "n64"]),
-    "snes-smc": ("Super Nintendo (con cabecera)", ["sfc", "fig"]),
-    "snes-sfc": ("Super Nintendo (sin cabecera)", ["smc", "fig"]),
-    "snes-fig": ("Super Nintendo (FIG)", ["sfc", "smc"]),
-    "megadrive": ("Mega Drive", ["zip"]),
-    "3do-iso": ("3DO", ["zip"]),
+    "n64-z64": ("Nintendo 64 (little endian)", ["n64", "v64", "zip", "7z"]),
+    "n64-n64": ("Nintendo 64 (big endian)", ["z64", "v64", "zip", "7z"]),
+    "n64-v64": ("Nintendo 64 (byte swapped)", ["z64", "n64", "zip", "7z"]),
+    "snes-smc": ("Super Nintendo (con cabecera)", ["sfc", "fig", "zip", "7z"]),
+    "snes-sfc": ("Super Nintendo (sin cabecera)", ["smc", "fig", "zip", "7z"]),
+    "snes-fig": ("Super Nintendo (FIG)", ["sfc", "smc", "zip", "7z"]),
+    "megadrive": ("Mega Drive", ["zip", "7z"]),
+    "3do-iso": ("3DO", ["zip", "7z"]),
     "nesica": ("Nesica (arcade)", []),
     "atari8": ("Atari 8-bit", []),
     "pcengine-rom": ("PC Engine (rom)", []),
@@ -138,6 +150,7 @@ FORMAT_CATALOGUE = {
     "xci": ("XCI (Nintendo Switch)", []),
     "3ds": ("Nintendo 3DS", []),
     "zip": ("ZIP", ["extraer"]),
+    "7z": ("7Z", ["extraer"]),
     "ips": ("Parche IPS", []),
     "bps": ("Parche BPS", []),
     "desconocido": ("Formato no reconocido", []),
@@ -146,7 +159,7 @@ FORMAT_CATALOGUE = {
 #: Formatos que se pueden convertir a ISO.
 CONVERTIBLE_TO_ISO = ("bin-cue", "iso", "iso-gamecube", "iso-wii", "iso-ps1",
                       "iso-ps2", "pbp", "xiso", "gcm", "chd", "cso", "gcz",
-                      "ciso")
+                      "ciso", "gdi", "mdf", "cdi", "nrg")
 
 
 def acciones_de(info) -> list:
@@ -186,6 +199,21 @@ def _head(path: str, size: int = 64) -> bytes:
         return b""
 
 
+def _cola(path: str, size: int = 16) -> bytes:
+    """Los ultimos bytes del fichero.
+
+    Hay formatos que llevan su firma al final (el NRG de Nero, por ejemplo).
+    """
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            total = fh.tell()
+            fh.seek(max(total - size, 0))
+            return fh.read()
+    except OSError:
+        return b""
+
+
 def detect_format(path: str, sistema: str | None = None) -> FormatInfo:
     """Detecta el formato de un fichero de ROM.
 
@@ -211,6 +239,14 @@ def detect_format(path: str, sistema: str | None = None) -> FormatInfo:
     # ── 1 · Firmas de disco ──────────────────────────────────────────────
     if head.startswith(b"MComprHD"):
         return puesto("chd", **_chd_header(path))
+
+    # El NRG de Nero lleva su firma al final del fichero (el pie dice donde
+    # empieza la cadena de chunks), pero algunos volcados la poner delante.
+    # Solo se mira el pie en los ficheros que podrian ser un disco.
+    if head.startswith(b"NERO") or head.startswith(b"NER5"):
+        return puesto("nrg")
+    if ext in (".iso", ".bin", ".img", ".mdf", ".mds", ".ccd") and _firma_nrg(path):
+        return puesto("nrg")
 
     if head.startswith(b"WBFS"):
         return puesto("wbfs", **_wbfs_header(path))
@@ -307,8 +343,11 @@ def detect_format(path: str, sistema: str | None = None) -> FormatInfo:
     if ext in (".cdi",):
         return puesto("cdi")
 
-    if ext in (".mdf", ".img", ".ccd", ".nrg", ".mds"):
+    if ext in (".mdf", ".img", ".ccd", ".mds"):
         return puesto("mdf")
+
+    if ext == ".nrg":
+        return puesto("nrg")
 
     if ext in (".g64", ".ndd"):
         return puesto("g64")
@@ -358,7 +397,9 @@ def detect_format(path: str, sistema: str | None = None) -> FormatInfo:
 
     if ext == ".zip":
         return puesto("zip")
-    if ext in (".gz", ".7z", ".rar", ".tar"):
+    if ext == ".7z":
+        return puesto("7z")
+    if ext in (".gz", ".rar", ".tar"):
         return puesto("desconocido", extension=ext)
 
     if ext == ".ips":
@@ -1192,6 +1233,107 @@ def extract_zip(path: str, out_dir: str | None = None) -> dict:
             "miembros": len(miembros)}
 
 
+# ── 7Z, con el 7z de la consola ─────────────────────────────────────────
+
+#: Rutas donde puede estar el 7z de la consola (p7zip).
+_7Z_RUTAS = ("/usr/bin/7z", "/usr/local/bin/7z", "/usr/bin/p7zip",
+             "/usr/bin/7za", "/usr/bin/7zr")
+
+
+def _sevenzip_path() -> str | None:
+    """Donde esta el 7z, si esta.
+
+    En la consola esta en ``/usr/bin/7z``. En un PC se busca en el PATH, que
+    tambien encuentra el ``7z.exe`` de Windows.
+    """
+    exe = shutil.which("7z")
+    if exe:
+        return exe
+    for ruta in _7Z_RUTAS:
+        if os.path.isfile(ruta) and os.access(ruta, os.X_OK):
+            return ruta
+    return None
+
+
+def sevenzip_disponible() -> bool:
+    """Si la consola tiene el 7z (p7zip)."""
+    return _sevenzip_path() is not None
+
+
+def _7z(args: list, cwd: str | None = None, timeout: int = 7200) -> str:
+    """Ejecuta el 7z y devuelve su salida.
+
+    Se llama siempre con una lista de argumentos y sin shell, para que las
+    rutas con espacios no se rompan.
+    """
+    exe = _sevenzip_path()
+    if not exe:
+        raise ValueError("falta la utilidad 7z para comprimir en 7Z")
+    try:
+        res = subprocess.run([exe] + args, capture_output=True, text=True,
+                             timeout=timeout, cwd=cwd)
+    except subprocess.TimeoutExpired:
+        raise ValueError("el 7z ha tardado demasiado y se ha parado")
+    except OSError as exc:
+        raise ValueError(f"no se ha podido ejecutar el 7z: {exc}")
+    if res.returncode != 0:
+        mensaje = (res.stderr or res.stdout or "").strip()
+        raise ValueError(mensaje[-400:] or "el 7z no pudo hacer la conversion")
+    return res.stdout or ""
+
+
+def compress_7z(path: str, out_path: str | None = None, level: int = 5) -> dict:
+    """Comprime un fichero (o una carpeta) en un 7Z.
+
+    Se usa el 7z de la consola (p7zip), que squeezea mas que el ZIP. El
+    fichero se comprime desde dentro de su carpeta, asi que el 7Z guarda solo
+    el nombre y no todo el camino.
+    """
+    path = os.path.abspath(path)
+    out_path = out_path or _replace_ext(path, ".7z")
+    if not _sevenzip_path():
+        raise ValueError("falta la utilidad 7z para comprimir en 7Z")
+    carpeta = os.path.dirname(path)
+    nombre = os.path.basename(path)
+    _7z(["a", "-t7z", f"-mx={level}", out_path, nombre], cwd=carpeta)
+    if not os.path.exists(out_path):
+        raise ValueError("el 7z no ha creado el fichero 7Z")
+    return {"ok": True, "out": out_path, "size": os.path.getsize(out_path),
+            "nota": "comprimido en 7Z", "before": _size(path)}
+
+
+def extract_7z(path: str, out_dir: str | None = None) -> dict:
+    """Descomprime un 7Z en una carpeta al lado.
+
+    Antes de descomprimir se mira lo que lleva dentro, para que no pueda
+    escribir fuera de la carpeta de destino.
+    """
+    path = os.path.abspath(path)
+    if out_dir is None:
+        base = os.path.splitext(os.path.basename(path))[0]
+        carpeta = os.path.dirname(path)
+        out_dir = os.path.join(carpeta, base)
+        numero = 1
+        while os.path.exists(out_dir):
+            out_dir = os.path.join(carpeta, f"{base} ({numero})")
+            numero += 1
+    os.makedirs(out_dir, exist_ok=True)
+    raiz = os.path.abspath(out_dir)
+    listado = _7z(["l", "-slt", "-ba", path])
+    for linea in listado.splitlines():
+        if not linea.lower().startswith("path = "):
+            continue
+        miembro = linea[len("path = "):].strip()
+        if os.path.abspath(miembro) == path:
+            continue                      # el propio fichero 7Z
+        destino = os.path.normpath(os.path.join(out_dir, miembro))
+        absoluto = os.path.abspath(destino)
+        if absoluto != raiz and not absoluto.startswith(raiz + os.sep):
+            raise ValueError("el 7Z intenta escribir fuera de la carpeta")
+    _7z(["x", "-y", "-o" + out_dir, path])
+    return {"ok": True, "out": out_dir, "nota": "contenido extraido"}
+
+
 # ── Formatos comprimidos: CSO, CISO y GCZ ───────────────────────────────
 
 #: Bloque de 2048 bytes con el que se trocean los CSO y los CISO.
@@ -1513,6 +1655,689 @@ def chd_to_bin_cue(chd_path: str, out_bin: str | None = None,
             "nota": "extraido con chdman"}
 
 
+# ── Imagenes de disco proprietarias ──────────────────────────────────────
+
+#: Los tamanos de sector que se pueden encontrar en una imagen de disco:
+#: 2352 (MODE1), 2448 (con la correccion de errores), 2336 (MODE2) y 2048
+#: (que ya son los datos de usuario).
+_TAMANOS_SECTOR = (SECTOR_RAW, 2448, 2336, SECTOR_ISO)
+
+
+def _datos_de_sector(sector: bytes) -> bytes | None:
+    """Los 2048 bytes de usuario de un sector, sea del tamano que sea."""
+    if len(sector) < SECTOR_ISO:
+        return None
+    if len(sector) == SECTOR_ISO:
+        return sector[:SECTOR_ISO]
+    if len(sector) in (SECTOR_RAW, 2448):
+        return _sector_to_user_data(sector[:SECTOR_RAW])
+    if len(sector) == 2336:
+        return sector[8:8 + SECTOR_ISO]
+    return None
+
+
+def _tamano_sector(path: str) -> int:
+    """De que tamano son los sectores de una imagen en crudo."""
+    size = _size(path)
+    for tamano in _TAMANOS_SECTOR:
+        if size and size % tamano == 0:
+            return tamano
+    return SECTOR_RAW
+
+
+def _sectores_de_imagen(ruta: str, tamano: int, inicio: int = 0,
+                        cuantos: int | None = None):
+    """Los sectores de datos de usuario de una imagen en crudo.
+
+    Se van sacando de uno en uno, para no tener el disco entero en memoria.
+    """
+    with open(ruta, "rb") as fh:
+        fh.seek(inicio * tamano)
+        leidos = 0
+        while cuantos is None or leidos < cuantos:
+            bruto = fh.read(tamano)
+            if len(bruto) < tamano:
+                break
+            datos = _datos_de_sector(bruto)
+            if datos is None:
+                raise ValueError(
+                    "la imagen tiene un tipo de sector que no se puede convertir a ISO")
+            yield datos
+            leidos += 1
+
+
+def _escribir_iso_de_imagen(ruta: str, out_path: str, tamano: int,
+                            inicio: int, cuantos: int, volumen: str) -> dict:
+    """Escribe el ISO de una imagen en crudo, con su esqueleto si hace falta."""
+    return _escribir_iso(_sectores_de_imagen(ruta, tamano, inicio, cuantos),
+                         out_path, volume_id=volumen[:32], total_data=cuantos)
+
+
+# ── GDI (Dreamcast) ──────────────────────────────────────────────────────
+
+#: El GDI de Sega: una linea por pista con el numero, el LBA donde empieza,
+#: el tipo (4 datos, 0 audio), el tamano de sector, el fichero y el
+#: desplazamiento. El nombre del fichero puede llevar espacios.
+_GDI_SEGA_RE = re.compile(r"^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(.+?)\s+(\d+)\s*$")
+
+#: El area de alta densidad de un GD-ROM (donde esta el juego) empieza en
+#: este LBA: es la pista 3. Antes esta la zona de baja densidad, que es el
+#: menu de la consola y no va en el ISO.
+_GDI_LBA_ALTA = 45000
+
+#: Tambien se leen los GDI derivados del CUE (TRACK/INDEX/FILE), que son los
+#: que hay en los discos rippeados en modo multicue.
+_GDI_TRACK_RE = re.compile(r"^\s*TRACK\s+(\d+)\s+(\S+)", re.I)
+_GDI_INDEX_RE = re.compile(r"^\s*INDEX\s+(\d+)\s+(\d+):(\d+):(\d+)", re.I)
+_GDI_FILE_RE = re.compile(r'^\s*FILE\s+"?([^"\r\n]+?)"?\s+(\d+)\s+(\d+)', re.I)
+
+
+def _parse_gdi(gdi_path: str) -> list:
+    """Lee un GDI y devuelve sus pistas.
+
+    Un GDI es un fichero de texto con una linea por pista: el tipo (DATA o
+    AUDIO), el sector donde empieza y, al final, el fichero de datos con su
+    desplazamiento y su longitud (en bytes; un 0 quiere decir "hasta el final").
+    """
+    pistas = []
+    actual = None
+    with open(gdi_path, "r", encoding="latin-1", errors="replace") as fh:
+        for linea in fh:
+            linea = linea.rstrip("\n")
+            match = _GDI_SEGA_RE.match(linea)
+            if match:
+                pistas.append({
+                    "numero": int(match.group(1)),
+                    "lba": int(match.group(2)),
+                    "tipo": "DATA" if match.group(3) == "4" else "AUDIO",
+                    "sector": int(match.group(4)),
+                    "archivo": match.group(5).strip(),
+                    "offset": 0, "longitud": 0, "inicio": 0,
+                    "formato": "sega"})
+                continue
+            match = _GDI_TRACK_RE.match(linea)
+            if match:
+                actual = {"numero": int(match.group(1)),
+                          "tipo": match.group(2).upper(),
+                          "inicio": 0, "archivo": None,
+                          "offset": 0, "longitud": 0, "lba": 0,
+                          "sector": 0, "formato": "cue"}
+                pistas.append(actual)
+                continue
+            match = _GDI_INDEX_RE.match(linea)
+            if match and actual is not None:
+                actual["inicio"] = (int(match.group(2)) * 60 * 75
+                                    + int(match.group(3)) * 75
+                                    + int(match.group(4)))
+                continue
+            match = _GDI_FILE_RE.match(linea)
+            if match and actual is not None:
+                actual["archivo"] = match.group(1)
+                actual["offset"] = int(match.group(2))
+                actual["longitud"] = int(match.group(3))
+    return pistas
+
+
+def _datos_del_gdi(gdi_path: str, pista: dict) -> str:
+    """El fichero de datos de la pista de datos de un GDI."""
+    carpeta = os.path.dirname(gdi_path)
+    archivo = pista.get("archivo")
+    if archivo:
+        candidato = os.path.join(carpeta, archivo)
+        # El GDI no puede sacar la lectura de la carpeta de las ROMs: un GDI
+        # manipulado podria pedir un fichero de cualquier sitio.
+        base = os.path.abspath(carpeta)
+        destino = os.path.abspath(candidato)
+        if destino != base and not destino.startswith(base + os.sep):
+            return ""
+        if os.path.isfile(candidato):
+            if candidato.lower().endswith(".cue"):
+                return _bin_for_cue(candidato) or candidato
+            return candidato
+        if candidato.lower().endswith(".cue"):
+            binario = _bin_for_cue(candidato)
+            if binario:
+                return binario
+    # El GDI no lo dice (o no esta el fichero): se busca el BIN o el CUE que
+    # estan al lado.
+    base = os.path.splitext(gdi_path)[0]
+    for extension in (".bin", ".cue"):
+        candidato = base + extension
+        if os.path.isfile(candidato):
+            if candidato.lower().endswith(".cue"):
+                return _bin_for_cue(candidato) or candidato
+            return candidato
+    try:
+        nombres = sorted(os.listdir(carpeta))
+    except OSError:
+        return ""
+    for nombre in nombres:
+        if nombre.lower().endswith(".bin"):
+            return os.path.join(carpeta, nombre)
+    return ""
+
+
+def _empieza_pista_datos(ruta: str, tamano: int, inicio: int) -> bool:
+    """Si en ese sector empieza una pista de datos (un ISO 9660).
+
+    La pista de datos de un disco de juego es un ISO 9660: en el sector 16
+    esta su descriptor de volumen. Sirve para saber si el INDEX del GDI
+   说的是 la posicion dentro del fichero o la posicion en el disco.
+    """
+    try:
+        with open(ruta, "rb") as fh:
+            fh.seek((inicio + 16) * tamano)
+            sector = fh.read(SECTOR_ISO)
+    except OSError:
+        return False
+    return len(sector) == SECTOR_ISO and sector[1:6] == b"CD001"
+
+
+def _gdi_sega_a_iso(gdi_path: str, out_path: str, pistas: list,
+                    de_datos: list) -> dict:
+    """Convierte un GDI de Sega (una linea por pista con el LBA).
+
+    El GDI de Sega describe las pistas del GD-ROM: la zona de baja densidad
+    (LBA 0, que es el menu de la consola) y la zona de alta densidad (LBA
+    45000, que es el juego). Al ISO solo va la de alta densidad; y si el juego
+    esta repartido en varias pistas van todas seguidas, porque el indice del
+    filesystem cuenta desde el LBA 45000 y asi el resultado es el mismo disco.
+
+    El audio del CD se queda en su BIN: un ISO de Dreamcast no lleva pistas de
+    audio.
+    """
+    alta = [p for p in de_datos if p["lba"] >= _GDI_LBA_ALTA]
+    if alta:
+        elegidas = sorted(alta, key=lambda p: p["lba"])
+    else:
+        elegidas = [max(de_datos, key=lambda p: p["lba"])]
+
+    fuentes = []
+    for pista in elegidas:
+        origen = _datos_del_gdi(gdi_path, pista)
+        if not origen or not os.path.isfile(origen):
+            raise ValueError(
+                "no se encuentra el fichero de datos del GDI (%s)"
+                % (pista.get("archivo") or "sin nombre"))
+        tamano = pista.get("sector") or 0
+        if tamano not in _TAMANOS_SECTOR:
+            tamano = _tamano_sector(origen)
+        fuentes.append((origen, tamano))
+
+    total = sum(_size(origen) // tamano for origen, tamano in fuentes)
+    if total <= 0:
+        raise ValueError("el GDI no dice donde estan los datos del disco")
+    volumen = os.path.splitext(os.path.basename(fuentes[0][0]))[0]
+    generador = itertools.chain(
+        *[_sectores_de_imagen(origen, tamano) for origen, tamano in fuentes])
+    salida = _escribir_iso(generador, out_path, volume_id=volumen[:32],
+                            total_data=total)
+    hay_audio = any(p["tipo"] == "AUDIO" for p in pistas)
+    if len(fuentes) > 1:
+        nota = "pistas de datos unidas: %d" % len(fuentes)
+    else:
+        nota = "pista de datos convertida"
+    if hay_audio:
+        nota += "; el audio se queda en su BIN"
+    salida["nota"] = nota
+    return salida
+
+
+def _gdi_cue_a_iso(gdi_path: str, out_path: str, pistas: list,
+                   de_datos: list) -> dict:
+    """Convierte un GDI derivado del CUE (TRACK / INDEX / FILE).
+
+    El INDEX dice donde empieza la pista: normalmente dentro del fichero,
+    pero en los GDI que guardan cada pista en su fichero es la posicion en
+    el disco. Se mira cual de las dos vale.
+    """
+    pista = de_datos[0]
+    origen = _datos_del_gdi(gdi_path, pista)
+    if not origen or not os.path.isfile(origen):
+        raise ValueError("no se encuentra el BIN de datos del GDI")
+
+    tamano = _tamano_sector(origen)
+    total = _size(origen) // tamano
+    inicio = pista["offset"] // tamano + pista["inicio"]
+    if inicio > total:
+        inicio = pista["offset"] // tamano
+    if not _empieza_pista_datos(origen, tamano, inicio):
+        otro = pista["offset"] // tamano
+        if otro != inicio and _empieza_pista_datos(origen, tamano, otro):
+            inicio = otro
+    cuantos = None
+    if pista["longitud"]:
+        cuantos = pista["longitud"] // tamano
+    for otra in pistas:
+        if otra is pista:
+            continue
+        if otra["inicio"] > inicio:
+            limite = otra["inicio"] - inicio
+            if cuantos is None or limite < cuantos:
+                cuantos = limite
+    if cuantos is None:
+        cuantos = max(total - inicio, 0)
+    if cuantos <= 0:
+        raise ValueError("el GDI no dice donde estan los datos del disco")
+
+    volumen = os.path.splitext(os.path.basename(origen))[0]
+    salida = _escribir_iso_de_imagen(origen, out_path, tamano, inicio, cuantos,
+                                     volumen)
+    hay_audio = any(p["tipo"] == "AUDIO" for p in pistas)
+    salida["nota"] = ("solo la pista de datos: el audio se queda en su BIN"
+                      if hay_audio else "pista de datos convertida")
+    return salida
+
+
+def gdi_to_iso(gdi_path: str, out_path: str | None = None) -> dict:
+    """Convierte un GDI (Dreamcast) en un ISO de 2048 bytes por sector.
+
+    Se leen los dos formatos de GDI que hay: el de Sega, que es una linea por
+    pista con su LBA, y el derivado del CUE, con TRACK/INDEX/FILE.
+    """
+    gdi_path = os.path.abspath(gdi_path)
+    out_path = out_path or _salida_libre(gdi_path, ".iso")
+    pistas = _parse_gdi(gdi_path)
+    if not pistas:
+        raise ValueError("el GDI no describe ninguna pista")
+    de_datos = [p for p in pistas if p["tipo"] == "DATA"]
+    if not de_datos:
+        raise ValueError("el GDI no tiene ninguna pista de datos")
+    if pistas[0].get("formato") == "sega":
+        return _gdi_sega_a_iso(gdi_path, out_path, pistas, de_datos)
+    return _gdi_cue_a_iso(gdi_path, out_path, pistas, de_datos)
+
+
+# ── MDS y CCD (Alcohol 120% y CloneCD) ─────────────────────────────────
+
+def _xml_raiz(path: str):
+    """Lee el XML de un descriptor (MDS o CCD).
+
+    Los descriptores no siempre son un XML bien formado: el MDS de Alcohol
+    120% tiene dos raices (la de las notas y la del contenido). Si no se
+    puede leer tal cual, se envuelve todo en una raiz y se vuelve a leer.
+    """
+    try:
+        with open(path, "r", encoding="utf-8-sig", errors="replace") as fh:
+            texto = fh.read()
+    except OSError:
+        raise ValueError("no se puede leer el descriptor")
+    try:
+        return ET.fromstring(texto)
+    except ET.ParseError:
+        pass
+    cuerpo = re.sub(r"<\?xml[^>]*\?>", "", texto, count=1).strip()
+    try:
+        return ET.fromstring("<raiz>" + cuerpo + "</raiz>")
+    except ET.ParseError:
+        raise ValueError("el descriptor no es un XML valido")
+
+
+def _elemento_imagen(raiz):
+    """El elemento IMAGE del descriptor: que fichero y de que tamano."""
+    for elem in raiz.iter():
+        if elem.tag.rsplit("}", 1)[-1].upper() == "IMAGE":
+            return elem
+    return None
+
+
+def _atributo(elem, nombre: str, defecto: str = "") -> str:
+    """Un atributo del descriptor, buscandolo sin distinguir mayusculas."""
+    for clave, valor in elem.attrib.items():
+        if clave.rsplit("}", 1)[-1].upper() == nombre.upper():
+            return valor
+    return defecto
+
+
+def _tamano_de_formato(formato: str) -> int:
+    """El tamano de sector que dice el descriptor (2352, 2048...)."""
+    digitos = ""
+    for caracter in (formato or ""):
+        if caracter.isdigit():
+            digitos += caracter
+        else:
+            break
+    if not digitos:
+        return 0
+    valor = int(digitos)
+    return valor if valor in _TAMANOS_SECTOR else 0
+
+
+def _img_del_descriptor(desc_path: str, imagen) -> str:
+    """El fichero de imagen que dice el descriptor (o el que esta al lado)."""
+    carpeta = os.path.dirname(desc_path)
+    nombre = _atributo(imagen, "FNAME")
+    if nombre:
+        candidato = os.path.join(carpeta, nombre)
+        # El descriptor no puede sacar la lectura de la carpeta de las ROMs: un
+        # MDS manipulado podria pedir un fichero de cualquier sitio.
+        base = os.path.abspath(carpeta)
+        destino = os.path.abspath(candidato)
+        if (destino == base or destino.startswith(base + os.sep)) \
+                and os.path.isfile(candidato):
+            return candidato
+    base = os.path.splitext(desc_path)[0]
+    for extension in (".img", ".mdf", ".bin"):
+        candidato = base + extension
+        if os.path.isfile(candidato):
+            return candidato
+    return ""
+
+
+def _descriptor_a_iso(desc_path: str, out_path: str | None,
+                      etiqueta: str) -> dict:
+    """Convierte un descriptor (MDS o CCD) en ISO, usando su fichero de datos.
+
+    El descriptor (MDS de Alcohol 120% o CCD de CloneCD) es un XML que dice
+    como es el disco y en que fichero estan los datos. El ISO sale de ese
+    fichero, con los sectores de datos de usuario.
+    """
+    desc_path = os.path.abspath(desc_path)
+    out_path = out_path or _salida_libre(desc_path, ".iso")
+    raiz = _xml_raiz(desc_path)
+    imagen = _elemento_imagen(raiz)
+    if imagen is None:
+        raise ValueError(f"el {etiqueta} no dice que fichero de imagen tiene")
+    img_path = _img_del_descriptor(desc_path, imagen)
+    if not img_path:
+        raise ValueError(f"no se encuentra el fichero de imagen del {etiqueta}")
+
+    tamano = _tamano_de_formato(_atributo(imagen, "FORMAT"))
+    if not tamano:
+        tamano = _tamano_sector(img_path)
+    total = _size(img_path) // tamano
+
+    # El descriptor puede dar el tamano en bytes o en sectores: se usa el que
+    # cuadre con el fichero de imagen.
+    declarado = _atributo(imagen, "SIZE")
+    if declarado.isdigit() and int(declarado):
+        valor = int(declarado)
+        if valor % tamano == 0 and valor // tamano <= total:
+            total = valor // tamano
+        elif valor <= total:
+            total = valor
+    if total <= 0:
+        raise ValueError(f"el {etiqueta} no dice cuantos sectores tiene el disco")
+
+    volumen = os.path.splitext(os.path.basename(img_path))[0]
+    salida = _escribir_iso_de_imagen(img_path, out_path, tamano, 0, total,
+                                     volumen)
+    salida["nota"] = f"imagen del {etiqueta} convertida a ISO"
+    return salida
+
+
+def mds_to_iso(mds_path: str, out_path: str | None = None) -> dict:
+    """Convierte un MDS (Alcohol 120%) en un ISO de 2048 bytes por sector.
+
+    El MDS es un descriptor: dice como es el disco y en que fichero estan los
+    datos (el IMG o el MDF que estan al lado).
+    """
+    return _descriptor_a_iso(mds_path, out_path, "MDS")
+
+
+def ccd_to_iso(ccd_path: str, out_path: str | None = None) -> dict:
+    """Convierte un CCD (CloneCD) en un ISO de 2048 bytes por sector.
+
+    El CCD es un descriptor: dice como es el disco y en que fichero estan los
+    datos (el IMG que esta al lado).
+    """
+    return _descriptor_a_iso(ccd_path, out_path, "CCD")
+
+
+def img_to_iso(img_path: str, out_path: str | None = None) -> dict:
+    """Convierte una imagen en crudo (2352 bytes por sector) en un ISO."""
+    img_path = os.path.abspath(img_path)
+    out_path = out_path or _salida_libre(img_path, ".iso")
+    tamano = _tamano_sector(img_path)
+    total = _size(img_path) // tamano
+    if total <= 0:
+        raise ValueError("la imagen esta vacia")
+    volumen = os.path.splitext(os.path.basename(img_path))[0]
+    salida = _escribir_iso_de_imagen(img_path, out_path, tamano, 0, total,
+                                     volumen)
+    salida["nota"] = "imagen en crudo convertida a ISO"
+    return salida
+
+
+def cdi_to_iso(cdi_path: str, out_path: str | None = None) -> dict:
+    """Convierte un CDI (DiscJuggler) en un ISO.
+
+    El CDI es un contenedor binario propietario de DiscJuggler: con la
+    biblioteca estandar no se puede leer con fiabilidad, asi que se explica y
+    no se inventa una conversion que salga mal.
+    """
+    raise ValueError("no se sabe leer este CDI (DiscJuggler): "
+                     "usa un GDI o un BIN/CUE del mismo disco")
+
+
+def mdf_a_iso(mdf_path: str, out_path: str | None = None) -> dict:
+    """El MDF, el CCD, el IMG y el MDS: cada uno se lee de una manera."""
+    ext = os.path.splitext(mdf_path)[1].lower()
+    if ext == ".mds":
+        return mds_to_iso(mdf_path, out_path)
+    if ext == ".ccd":
+        return ccd_to_iso(mdf_path, out_path)
+    if ext == ".img":
+        return img_to_iso(mdf_path, out_path)
+    raise ValueError("no se sabe leer este MDF (Alcohol 120%): "
+                     "usa el descriptor .mds que va con el")
+
+
+# ── NRG (Nero) ──────────────────────────────────────────────────────────
+
+def _firma_nrg(path: str) -> bool:
+    """Si el fichero es un NRG de Nero.
+
+    La firma no esta al principio, sino en el pie: cuatro bytes de
+    identificador ("NERO" en la version 1 y "NER5" en la 2) seguidos del
+    desplazamiento del primer chunk.
+    """
+    cola = _cola(path, 12)
+    if len(cola) >= 12 and cola[-12:-8] == b"NER5":
+        return True
+    if len(cola) >= 8 and cola[-8:-4] == b"NERO":
+        return True
+    return False
+
+
+def _nrg_chunks(nrg_path: str) -> dict:
+    """Los chunks del NRG, que van al final del fichero.
+
+    El pie del NRG dice donde empieza la cadena de chunks: cuatro bytes de
+    identificador ("NERO" en la version 1 y "NER5" en la 2) y el
+    desplazamiento del primer chunk (32 bits o 64 bits segun la version).
+    """
+    with open(nrg_path, "rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        total = fh.tell()
+        fh.seek(max(total - 12, 0))
+        pie = fh.read()
+        if len(pie) >= 12 and pie[-12:-8] == b"NER5":
+            inicio = struct.unpack(">Q", pie[-8:])[0]
+        elif len(pie) >= 8 and pie[-8:-4] == b"NERO":
+            inicio = struct.unpack(">I", pie[-4:])[0]
+        else:
+            raise ValueError("no es un NRG de Nero")
+        fh.seek(inicio)
+        chunks = {}
+        while True:
+            cabecera = fh.read(8)
+            if len(cabecera) < 8:
+                break
+            identificador = cabecera[:4]
+            (tamano,) = struct.unpack(">I", cabecera[4:8])
+            if identificador == b"END!":
+                break
+            cuerpo = fh.read(tamano)
+            if len(cuerpo) < tamano:
+                break
+            chunks[identificador] = cuerpo
+    return chunks
+
+
+def _nrg_pistas_dao(cuerpo: bytes, version2: bool) -> list:
+    """Las pistas de un chunk DAOI/DAOX (disco a disco).
+
+    El chunk lleva una cabecera (el UPC, el tipo de TOC y el numero de
+    pistas) y despues una entrada por pista: su ISRC, el tamano de sector, el
+    modo y los desplazamientos de los tres indices.
+    """
+    pistas = []
+    pos = 22                     # cabecera del chunk
+    ancho = 8 if version2 else 4
+    tamano = 18 + 3 * ancho
+    while pos + tamano <= len(cuerpo):
+        (sector_size,) = struct.unpack(">H", cuerpo[pos + 12:pos + 14])
+        (modo,) = struct.unpack(">H", cuerpo[pos + 14:pos + 16])
+        pos += 18
+        if version2:
+            idx0, idx1, fin = struct.unpack(">QQQ", cuerpo[pos:pos + 24])
+        else:
+            idx0, idx1, fin = struct.unpack(">III", cuerpo[pos:pos + 12])
+        pos += 3 * ancho
+        pistas.append({"sector_size": sector_size, "modo": modo,
+                       "pregap": idx0, "inicio": idx1, "fin": fin})
+    return pistas
+
+
+def _nrg_pistas_tao(cuerpo: bytes, version2: bool) -> list:
+    """Las pistas de un chunk ETNF/ETN2 (pista a pista).
+
+    Cada entrada dice el desplazamiento en el fichero, la longitud en bytes,
+    el modo, el sector del disco donde empieza la pista y un dato sin usar.
+    """
+    pistas = []
+    pos = 0
+    ancho = 8 if version2 else 4
+    tamano = 12 + 8 + ancho
+    while pos + tamano <= len(cuerpo):
+        if version2:
+            (inicio,) = struct.unpack(">Q", cuerpo[pos:pos + 8])
+            (longitud,) = struct.unpack(">Q", cuerpo[pos + 8:pos + 16])
+            (modo,) = struct.unpack(">I", cuerpo[pos + 16:pos + 20])
+            (lba,) = struct.unpack(">I", cuerpo[pos + 20:pos + 24])
+        else:
+            (inicio,) = struct.unpack(">I", cuerpo[pos:pos + 4])
+            (longitud,) = struct.unpack(">I", cuerpo[pos + 4:pos + 8])
+            (modo,) = struct.unpack(">I", cuerpo[pos + 8:pos + 12])
+            (lba,) = struct.unpack(">I", cuerpo[pos + 12:pos + 16])
+        pos += tamano
+        pistas.append({"inicio": inicio, "longitud": longitud, "modo": modo,
+                       "lba": lba, "sector_size": 0})
+    return pistas
+
+
+def _nrg_cue(cuerpo: bytes, version2: bool) -> list:
+    """Las entradas del cue sheet: el control y el sector de cada indice."""
+    entradas = []
+    ancho = 8 if version2 else 4
+    pos = 0
+    while pos + 8 + ancho <= len(cuerpo):
+        control = cuerpo[pos]
+        numero = cuerpo[pos + 1]
+        indice = cuerpo[pos + 2]
+        if version2:
+            (lba,) = struct.unpack(">i", cuerpo[pos + 4:pos + 8])
+        else:
+            lba = (cuerpo[pos + 5] * 60 + cuerpo[pos + 6]) * 75 + cuerpo[pos + 7]
+        entradas.append({"control": control, "pista": numero,
+                         "indice": indice, "lba": lba})
+        pos += 8 + ancho
+    return entradas
+
+
+def _nrg_tamano_sector(nrg_path: str, inicio: int, longitud: int) -> int:
+    """De que tamano son los sectores de la pista, mirando el primer sector.
+
+    Un sector en crudo empieza con la sincronizacion (12 bytes de 00 y 10 de
+    FF); si no la tiene, son sectores de 2048 o de 2336 bytes.
+    """
+    try:
+        with open(nrg_path, "rb") as fh:
+            fh.seek(inicio)
+            primero = fh.read(16)
+    except OSError:
+        primero = b""
+    if primero[:12] == b"\x00" + b"\xff" * 10 + b"\x00":
+        return SECTOR_RAW
+    for tamano in (SECTOR_ISO, 2336):
+        if longitud and longitud % tamano == 0:
+            return tamano
+    return SECTOR_ISO
+
+
+def nrg_to_iso(nrg_path: str, out_path: str | None = None) -> dict:
+    """Convierte un NRG (Nero) en un ISO de 2048 bytes por sector.
+
+    El NRG es un fichero de Nero: los datos del disco estan al principio y al
+    final hay una cadena de chunks con la tabla de pistas. De las pistas solo
+    se mete la de datos, que es la que lleva el sistema de ficheros.
+    """
+    nrg_path = os.path.abspath(nrg_path)
+    out_path = out_path or _salida_libre(nrg_path, ".iso")
+    chunks = _nrg_chunks(nrg_path)
+
+    pistas = []
+    lbas = {}
+    if b"DAOX" in chunks or b"DAOI" in chunks:
+        version2 = b"DAOX" in chunks
+        identificador = b"DAOX" if version2 else b"DAOI"
+        pistas = _nrg_pistas_dao(chunks[identificador], version2)
+        if b"CUEX" in chunks:
+            for entrada in _nrg_cue(chunks[b"CUEX"], True):
+                if entrada["indice"] == 1:
+                    lbas[entrada["pista"]] = entrada["lba"]
+        elif b"CUES" in chunks:
+            for entrada in _nrg_cue(chunks[b"CUES"], False):
+                if entrada["indice"] == 1:
+                    lbas[entrada["pista"]] = entrada["lba"]
+    elif b"ETN2" in chunks or b"ETNF" in chunks:
+        version2 = b"ETN2" in chunks
+        identificador = b"ETN2" if version2 else b"ETNF"
+        pistas = _nrg_pistas_tao(chunks[identificador], version2)
+    if not pistas:
+        raise ValueError("el NRG no dice como son sus pistas")
+
+    # La pista de datos es la que tiene el control de datos en el cue sheet
+    # (0x40) o, si no hay cue sheet, la que guarda sectores de 2048 bytes.
+    elegida = None
+    for numero, pista in enumerate(pistas, start=1):
+        if pista.get("sector_size") == SECTOR_ISO:
+            elegida = pista
+            break
+    if elegida is None and pistas:
+        elegida = pistas[0]
+
+    tamano = elegida.get("sector_size") or 0
+    if tamano not in _TAMANOS_SECTOR:
+        tamano = _nrg_tamano_sector(nrg_path, elegida["inicio"],
+                                    elegida.get("longitud", 0))
+    if tamano not in _TAMANOS_SECTOR:
+        tamano = SECTOR_ISO
+
+    lba = elegida.get("lba")
+    if lba is None:
+        lba = lbas.get(1, 0)
+    # El desplazamiento de la pista es el de su sector 0: el sector 0 del
+    # disco esta antes, si la pista no empieza en el.
+    inicio = elegida["inicio"] - lba * tamano
+    if inicio < 0:
+        inicio = elegida["inicio"]
+
+    if "longitud" in elegida and elegida["longitud"]:
+        cuantos = elegida["longitud"] // tamano
+    else:
+        cuantos = (elegida["fin"] - elegida["inicio"]) // tamano
+    if cuantos <= 0:
+        raise ValueError("el NRG no dice cuantos sectores tiene la pista de datos")
+
+    volumen = os.path.splitext(os.path.basename(nrg_path))[0]
+    salida = _escribir_iso_de_imagen(nrg_path, out_path, tamano, inicio,
+                                     cuantos, volumen)
+    salida["nota"] = "pista de datos extraida del NRG"
+    return salida
+
+
 # ── El despachador ──────────────────────────────────────────────────────
 
 def convert(path: str, target: str, out_path: str | None = None,
@@ -1531,9 +2356,19 @@ def convert(path: str, target: str, out_path: str | None = None,
 
     if target == "zip":
         return compress_zip(path, out_path or _salida_libre(path, ".zip"))
+    if target == "7z":
+        return compress_7z(path, out_path or _salida_libre(path, ".7z"))
     if target == "extraer":
-        if kind != "zip":
-            raise ValueError("solo se puede extraer un ZIP")
+        if kind == "zip":
+            return extract_zip(path, out_path)
+        if kind == "7z":
+            return extract_7z(path, out_path)
+        raise ValueError("solo se puede extraer un ZIP o un 7Z")
+    if target == "rvz":
+        raise ValueError("no se puede convertir a RVZ: falta la utilidad dolphin-tool")
+    if target in ("wbfs", "wia"):
+        raise ValueError(f"no se puede convertir a {target.upper()}: "
+                         "falta la utilidad wiitool")
         return extract_zip(path, out_path)
     if target in ("n64", "z64", "v64"):
         return n64_convert(path, target, out_path)
@@ -1588,6 +2423,14 @@ def _a_iso(path: str, kind: str, out_path: str | None = None) -> dict:
         return gcz_to_iso(path, salida)
     if kind == "ciso":
         return ciso_to_iso(path, salida)
+    if kind == "gdi":
+        return gdi_to_iso(path, salida)
+    if kind == "mdf":
+        return mdf_a_iso(path, salida)
+    if kind == "cdi":
+        return cdi_to_iso(path, salida)
+    if kind == "nrg":
+        return nrg_to_iso(path, salida)
     raise ValueError(f"no se puede convertir de {kind} a ISO")
 
 
@@ -1631,6 +2474,9 @@ def _a_pbp(path: str, kind: str, out_path: str | None = None) -> dict:
         salida = out_path or _salida_libre(cue, ".pbp")
         return bin_cue_to_pbp(cue, salida)
     if kind == "iso-ps1":
+        salida = out_path or _salida_libre(path, ".pbp")
+        return _iso_a_pbp(path, salida)
+    if kind == "iso":
         salida = out_path or _salida_libre(path, ".pbp")
         return _iso_a_pbp(path, salida)
     raise ValueError(f"no se puede convertir de {kind} a PBP")
