@@ -522,6 +522,65 @@ export interface BiosCatalog {
   error?: string
 }
 
+export interface BiosFirstCheck {
+  ok: boolean
+  /** Queda por hacer la comprobacion de BIOS del primer arranque. */
+  pendiente: boolean
+  /** De donde se bajan las BIOS que falten. */
+  fuente: string
+  /** Cuando se hizo la comprobacion (si ya se hizo). */
+  fecha?: number | null
+  /** Lo que dio la ultima comprobacion. */
+  resumen?: Record<string, number>
+}
+
+export interface BiosJob {
+  ok: boolean
+  id: string
+  estado: 'trabajando' | 'listo' | 'error'
+  hechos: number
+  total: number
+  /** Lo que esta haciendo ahora. */
+  actual: string
+  porcentaje: number
+  mensaje: string
+  error?: string
+  resultado?: BiosDescargaResultado
+}
+
+export interface BiosDescarga {
+  /** La ruta que espera Batocera. */
+  file: string
+  /** De donde se ha bajado (dentro de la fuente). */
+  origen?: string
+  md5?: string
+  size?: number
+  /** Estado tras la descarga: `ok` o `sin_verificar`. */
+  estado?: string | null
+}
+
+export interface BiosDescargaResultado {
+  ok: boolean
+  fuente: string
+  /** Cuantas BIOS faltaban. */
+  total: number
+  descargadas: BiosDescarga[]
+  /** Bajadas pero que no se han podido verificar. */
+  sin_verificar: BiosDescarga[]
+  /** Las que no estan en la fuente. */
+  no_encontradas: string[]
+  fallidas: { file: string; error?: string }[]
+  resumen: {
+    /** Cuantas BIOS espera el catalogo de tus sistemas. */
+    esperadas: number
+    faltantes: number
+    descargadas: number
+    no_encontradas: number
+    fallidas: number
+  }
+  error?: string
+}
+
 export interface BiosRepairResult {
   ok: boolean
   estado?: string

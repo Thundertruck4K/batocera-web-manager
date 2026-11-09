@@ -7,6 +7,36 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased]
 
 ### Añadido
+- **La comprobación de BIOS del primer arranque: lo que falta, se baja solo.** El catálogo de
+  Batocera dice qué BIOS hace falta, pero no las trae: dice el nombre y el hash. Para no tener que
+  buscar cada BIOS a mano, el manager las baja de **una fuente que ya las tiene todas**, en la misma
+  disposición en que Batocera las espera (`Acorn/basic2.rom`, `enterprise/ep128emu/roms/exos21.rom`…),
+  así que descargarlas es copiarlas a su sitio.
+  - **La comprobación NO se hace en la instalación**: `install.sh` sólo **arma** el mecanismo (borra
+    el marcador `/userdata/system/batocera_manager_bios_first.json`) y avisa de que va a pasar. El
+    escaneo necesita el catálogo de BIOS de la consola —que sólo existe con el manager arrancado— y
+    el progreso sólo se puede enseñar en la interfaz, no en un terminal.
+  - **Al abrir el manager por primera vez** sale un modal que revisa qué BIOS pide Batocera para los
+    sistemas del usuario, baja de la fuente las que falten **con barra de progreso** (avisando de que
+    no hace falta cerrar la ventana) e informa de **cuántas se han revisado, cuántas se han
+    descargado, cuántas no están en la fuente y cuántas han dado problemas**, con la lista de las que
+    no se han encontrado.
+  - **El botón «Escanear el sistema»** queda siempre a mano en la sección de BIOS (barra superior) y
+    también en el modal, para repetir la comprobación cuando se quiera.
+  - **El índice se construye dirigido**: sólo se bajan las carpetas que hacen falta (6 peticiones para
+    51 BIOS, frente a ~64 del árbol completo, que son varios minutos en la consola). El emparejamiento
+    va por ruta exacta → ruta exacta ignorando mayúsculas → mismo nombre de fichero en otra carpeta.
+  - **Lo que no está en la fuente no se inventa**: se informa con su nombre y se deja como estaba.
+    **Lo que ya está bien no se toca**: sólo se baja lo que falta, y después se vuelve a escanear para
+    comprobar que cada BIOS ha quedado donde Batocera la espera.
+  - **Las tarjetas de la sección BIOS son más pequeñas** y la rejilla es más apretada (hasta 6
+    columnas): tras el primer escaneo la sección queda casi vacía, que es justo lo que tiene que pasar.
+  - Con la consola real (108 sistemas y 362 BIOS): 357 BIOS revisadas, 49 bajadas de la fuente y 2
+    que no están en ella (`BBCMicro/dfs-2.26.rom` y `BBCMicro/os12.rom`), que se informan con su
+    nombre.
+  - **Endpoints nuevos**: `GET /api/bios/firstcheck`, `POST /api/bios/descargar/start` y
+    `GET /api/bios/job?id=…`. El módulo nuevo `romtools/biosfuente.py` (stdlib puro) hace la búsqueda
+    y la descarga; `app.py` solo enruta.
 - **«Lo que falta»: el DAT de un sistema comparado con tu biblioteca.** El DAT es la lista de
   todos los juegos de un sistema, así que comparado con la biblioteca dice qué te falta... pero la
   lista completa no informa de nada: el DAT de PlayStation 2 tiene 13.618 juegos y una biblioteca

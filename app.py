@@ -39,6 +39,7 @@ except ImportError:
 # de nombres y las conversiones de formato. Vive aparte de app.py porque ya
 # no cabria dentro: son cuatro temas con sus propios tests.
 try:
+    from romtools import biosfuente as _rt_biosfuente
     from romtools import dats as _rt_dats
     from romtools import faltantes as _rt_faltantes
     from romtools import formats as _rt_formats
@@ -3048,6 +3049,133 @@ def collect_missing_bios(user_systems, bios_dir):
     return items
 
 
+def _bios_first_file():
+    """Fichero que marca que ya se comprobo las BIOS del primer arranque."""
+    return Path(SETTINGS_FILE).with_name("batocera_manager_bios_first.json")
+
+
+def bios_firstcheck(settings):
+    """Si queda por hacer la comprobacion de BIOS del primer arranque.
+
+    El marcador lo borra ``install.sh`` al terminar, de modo que al arrancar
+    el manager por primera vez se comprueben las BIOS y se baja lo que falte.
+    """
+    ruta = _bios_first_file()
+    fecha = None
+    resumen = {}
+    if ruta.exists():
+        try:
+            with open(ruta, "r", encoding="utf-8") as fh:
+                datos = json.load(fh)
+            fecha = datos.get("fecha")
+            resumen = datos.get("resumen") or {}
+        except (OSError, ValueError):
+            fecha = None
+            resumen = {}
+    return {"ok": True, "pendiente": not fecha, "fuente": BIOS_FUENTE_URL,
+            "fecha": fecha, "resumen": resumen}
+
+
+def _bios_first_write(resumen):
+    """Marca que la comprobacion de BIOS ya se hizo."""
+    ruta = _bios_first_file()
+    try:
+        with open(ruta, "w", encoding="utf-8") as fh:
+            json.dump({"fecha": time.time(), "resumen": resumen,
+                       "fuente": BIOS_FUENTE_URL}, fh, ensure_ascii=False)
+    except OSError:
+        pass
+
+
+def bios_esperadas(user_systems, bios_dir):
+    """Cuantas BIOS espera el catalogo de los sistemas del usuario."""
+    total = 0
+    for usys in user_systems:
+        name = usys.get("name")
+        if not name:
+            continue
+        try:
+            info = _check_bios_grouped(name, bios_dir)
+        except Exception:
+            continue
+        if info and info.get("files"):
+            total += len(info["files"])
+    return total
+
+
+def bios_descargar(settings, progreso=None):
+    """Comprueba las BIOS que faltan y las baja de la fuente.
+
+    Va en segundo plano: baja ficheros de internet y hay que poder ensenar el
+    progreso (si no, el usuario cierra la ventana creyendo que la aplicacion
+    se ha colgado).
+
+    No borra ni sobrescribe nada que ya este bien: solo se baja lo que falta.
+    """
+    if not HAS_ROMTOOLS:
+        return {"ok": False,
+                "error": "el modulo de herramientas no esta disponible"}
+    bios_dir = Path(settings.get("bios_dir", "/userdata/bios"))
+    user_systems = get_rom_systems_cached(settings)
+    faltantes = collect_missing_bios(user_systems, bios_dir)
+    esperadas = bios_esperadas(user_systems, bios_dir)
+
+    resultado = _rt_biosfuente.bajar_faltantes(
+        str(bios_dir), faltantes, url=BIOS_FUENTE_URL, progreso=progreso)
+
+    # Verificacion: se vuelve a escanear y se mira donde ha quedado cada una.
+    # La barra ya esta al 100 % (la descarga ha terminado), pero el trabajo
+    # sigue: se dice en que va para que no parezca colgado.
+    if progreso:
+        progreso({"hechos": 0, "total": 1, "porcentaje": 100,
+                  "actual": "comprobando las BIOS descargadas",
+                  "mensaje": "comprobando lo que se ha descargado"})
+    estados = {}
+    if resultado.get("descargadas"):
+        try:
+            datos = scan_bios(settings, force=True)
+            for _slug, info in (datos.get("systems") or {}).items():
+                for f in info.get("files") or []:
+                    estados[f.get("file")] = f.get("estado")
+        except Exception:
+            estados = {}
+
+    verificadas = []
+    sin_verificar = []
+    for item in resultado.get("descargadas") or []:
+        copia = dict(item)
+        copia["estado"] = estados.get(item.get("file"))
+        if estados and copia["estado"] not in ("ok", "sin_verificar"):
+            sin_verificar.append(copia)
+        else:
+            verificadas.append(copia)
+
+    resumen = {
+        "esperadas": esperadas,
+        "faltantes": len(faltantes),
+        "descargadas": len(verificadas),
+        "no_encontradas": len(resultado.get("no_encontradas") or []),
+        "fallidas": len(sin_verificar) + len(resultado.get("fallidas") or []),
+    }
+    salida = {
+        "ok": True,
+        "fuente": BIOS_FUENTE_URL,
+        "total": len(faltantes),
+        "descargadas": verificadas,
+        "sin_verificar": sin_verificar,
+        "no_encontradas": resultado.get("no_encontradas") or [],
+        "fallidas": resultado.get("fallidas") or [],
+        "resumen": resumen,
+    }
+    # El marcador se escribe si la comprobacion llego a su fin: si la fuente
+    # no respondio, se repite la proxima vez (eso si es un fallo de internet).
+    # Pero una BIOS que no esta en la fuente no es motivo para volver a
+    # preguntar en cada arranque: eso se deja para el boton de escanear.
+    if resultado.get("ok"):
+        _bios_first_write(resumen)
+    return salida
+
+
 def get_rom_systems(settings, fast=False):
     roms_base = Path(settings["roms_base"])
     result = []
@@ -3259,6 +3387,10 @@ BIOS_INDEX_TTL      = 300      # 5 min: el índice del disco
 BIOS_ZIP_TTL        = 300      # 5 min: el índice de miembros de los ZIP
 BIOS_MD5_MAX        = 64 * 1024 * 1024   # 64 MiB: por encima no es BIOS
 BIOS_QUARANTINE     = ".quarantine"
+#: La fuente de BIOS donde se baja lo que falta. Es un indice de directorios
+#: con las BIOS en la misma disposicion en que Batocera las espera, asi que
+#: descargar una BIOS es copiarla a su sitio.
+BIOS_FUENTE_URL = "http://rgsretro1986.ds78102.seedhost.eu/update/Batocera/bios/"
 
 # Estados posibles de un fichero de BIOS esperado.
 BIOS_ESTADOS = ("ok", "sin_verificar", "miembro_falta",
@@ -7549,6 +7681,17 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
             for it in items:
                 systems.setdefault(it["system"], []).append(it)
             self.send_json({"ok":True,"total_missing":total,"items":items,"systems":systems})
+        elif path == "/api/bios/firstcheck":
+            self.send_json(bios_firstcheck(s))
+        elif path == "/api/bios/job":
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            job_id = (query.get("id") or [""])[0]
+            trabajo = _rt_jobs.JOBS.obtener(job_id)
+            if trabajo is None:
+                self.send_json({"ok": False, "error": "el trabajo no existe"},
+                               404)
+                return
+            self.send_json(trabajo.as_dict())
         elif path == "/api/service/read-sh":
             try:
                 txt = CUSTOM_SH.read_text(errors="replace") if CUSTOM_SH.exists() else "(no existe)"
@@ -7639,6 +7782,16 @@ class BatoceraHandler(http.server.BaseHTTPRequestHandler):
                 result["estado"] = check.get("estado")
                 result["presente"] = check.get("presente")
             self.send_json(result)
+        elif path == "/api/bios/descargar/start":
+            if not HAS_ROMTOOLS:
+                self.send_json({"ok": False,
+                                "error": "el modulo de herramientas no esta disponible"})
+                return
+            trabajo = _rt_jobs.JOBS.lanzar(
+                "bios",
+                lambda job: bios_descargar(s, progreso=job.progreso),
+                mensaje="comprobando las BIOS")
+            self.send_json({"ok": True, "job": trabajo.id})
         elif path == "/api/bios/scan":
             try:
                 data = scan_bios(s, force=True)

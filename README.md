@@ -140,6 +140,11 @@ La unificación deja las cosas así:
   presente* y *media ausente*; con un modal flotante se escapea el sistema entero o un juego suelto,
   con la carátula a la vista y las tres fuentes en orden de prioridad (ScreenScraper primero y
   TheGamesDB e IGDB como respaldo).
+- **🔄 La comprobación de BIOS del primer arranque** — al abrir el manager por primera vez,
+  revise qué BIOS pide Batocera para **tus** sistemas, baja de la fuente las que falten **con barra de
+  progreso** y te dice qué encontró y qué no. La instalación no hace el escaneo (eso necesita la
+  consola ya arrancada): sólo lo arma y avisa. Y siempre queda el botón **Escanear el sistema** para
+  repetirlo a mano.
 - **🧰 Herramientas de ROMs** — dos páginas nuevas en el sidebar, bajo **Herramientas**:
   **Formatos** (detectar, convertir, comprimir y parchear las imágenes de tus sistemas de discos)
   y **Renombrado** (ordenar la biblioteca con la convención de los sets, como hace Romulus
@@ -579,8 +584,45 @@ que poner, no toca el destino.
 encontrado»: si el contenido no está en la SD, la app ofrece las dos vías que quedan —**buscarlo en
 Google** (enlace directo con el nombre exacto del fichero entrecomillado y otro con las BIOS del
 sistema) o **subir el archivo** (la app lo deja en su sitio y comprueba que queda bien colocado—.
-No hay descarga automática de nada: son BIOS con copyright y la app no aloja ni baja colecciones por
-su cuenta. Si el BIOS es un ZIP, hay que subir el ZIP completo.
+Si el BIOS es un ZIP, hay que subir el ZIP completo.
+
+### 🔄 La comprobación del primer arranque
+
+El catálogo de Batocera dice qué BIOS hace falta, pero **no las trae**: dice el nombre y el hash. Para
+que no tengas que buscar cada BIOS a mano, el manager las baja de **una fuente que ya las tiene
+todas**, en la misma disposición en que Batocera las espera (`Acorn/basic2.rom`,
+`enterprise/ep128emu/roms/exos21.rom`…), así que descargarlas es copiarlas a su sitio.
+
+**No se hace al instalar.** `install.sh` sólo **arma** la comprobación (borra el marcador de
+`/userdata/system/batocera_manager_bios_first.json`) y avisa de que va a pasar. El escaneo en sí
+necesita el catálogo de BIOS de la consola —que sólo existe con el manager arrancado— y el progreso
+sólo se puede enseñar en la interfaz, no en un terminal. Al **abrir el manager por primera vez** sale
+un modal que:
+
+- revisa qué BIOS pide Batocera para los sistemas que tienes;
+- baja de la fuente las que falten, **con barra de progreso** (y avisa de que no hace falta cerrar la
+  ventana);
+- informa de **cuántas se han revisado, cuántas se han descargado, cuántas no están en la fuente y
+  cuántas han dado problemas**, y enseña la lista de las que no se han encontrado.
+
+**El botón *Escanear el sistema*** está siempre a mano en la sección de BIOS (en la barra superior) y
+también en el propio modal, para repetir la comprobación cuando quieras.
+
+**La fuente es un índice de directorios**, así que no hace falta bajarse el árbol entero: se indexan
+**sólo las carpetas que hacen falta** (6 peticiones para 51 BIOS, frente a ~64 del árbol completo, que
+son varios minutos en la consola). El emparejamiento va en este orden: ruta exacta → ruta exacta
+ignorando mayúsculas → mismo nombre de fichero en otra carpeta.
+
+**Lo que no está en la fuente no se inventa.** Si una BIOS no aparece, se informa con su nombre y se
+deja como estaba; no se busca en ningún otro sitio. **Lo que ya está bien no se toca**: sólo se baja
+lo que falta, y después de descargar se vuelve a escanear para comprobar que cada BIOS ha quedado
+donde Batocera la espera.
+
+La fuente que se usa por defecto es
+`http://rgsretro1986.ds78102.seedhost.eu/update/Batocera/bios/` (un índice Apache con las BIOS en la
+misma disposición que Batocera). En la consola de desarrollo, de las 51 BIOS que faltaban, 49 se
+encontraron por su ruta exacta; las dos que no (`BBCMicro/dfs-2.26.rom` y `BBCMicro/os12.rom`) no
+están en la fuente y se informan como tales.
 
 ---
 
@@ -826,7 +868,7 @@ interfaz clásica consumen exactamente los mismos endpoints**:
 | **Sistemas** | `/api/systems` · `/api/create` · `/api/preview` · `/api/batocera-systems` · `/api/themes` · `/api/upload-logo` |
 | **ROMs** | `/api/rom-systems` · `/api/rom/rename` · `/api/rom/update-meta` · `/api/rom-image-info` · `/api/game-stats` · `/api/random-game` |
 | **Biblioteca** | `/api/library/summary` · `/api/library/audit/start` · `/api/library/job` · `/api/library/journal` · `/api/library/quarantine` · `/api/library/gamelist/clean` · `/api/library/undo` · `/api/library/missing/systems` · `/api/library/missing/start` |
-| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` |
+| **BIOS** | `/api/bios/catalog` · `/api/bios/summary` · `/api/bios/scan` · `/api/bios/repair` · `/api/bios/all` · `/api/bios/missing` · `/api/bios/fetch` · `/api/bios/upload` · `/api/bios/missing/skip` · `/api/bios/missing/skipped` · `/api/bios/missing/unskip` · `/api/bios/firstcheck` · `/api/bios/descargar/start` · `/api/bios/job` |
 | **Scraper** | `/api/scraper/config` · `/api/scraper/save-config` · `/api/scraper/search` · `/api/scraper/download` · `/api/scraper/scrape-system` · `/api/scraper/batch` · `/api/scraper/image` |
 | **RetroAchievements** | `/api/retroachievements` · `/api/retroachievements/test` · `/api/retroachievements/games` |
 | **Herramientas** | `/api/tools/systems` · `/api/tools/dats` · `/api/tools/dats/install` · `/api/tools/dats/remove` · `/api/tools/formats` · `/api/tools/formats/detect` · `/api/tools/formats/convert` · `/api/tools/formats/batch` · `/api/tools/formats/compress` · `/api/tools/formats/patch` · `/api/tools/roms` · `/api/tools/rename/plan` · `/api/tools/rename/plan/start` · `/api/tools/rename/apply` · `/api/tools/rename/apply/start` · `/api/tools/rename/job` · `/api/tools/rename/undo` · `/api/tools/rename/journal` |
@@ -841,12 +883,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **841 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **872 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 841 passed in ~35s
+# 872 passed in ~50s
 ```
 
 ---
@@ -953,7 +995,7 @@ BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
 # Backend en desarrollo
 python app.py --port 5001
 
-# Tests del backend (504)
+# Tests del backend (872)
 python -m pytest
 
 # Frontend

@@ -2,6 +2,8 @@ import type {
   AppInfo,
   BatoceraSystems,
   BiosCatalog,
+  BiosFirstCheck,
+  BiosJob,
   BiosRepairResult,
   CustomSystem,
   CustomSystemDetail,
@@ -269,6 +271,13 @@ export const api = {
       error?: string
     }>('/api/bios/upload', form)
   },
+  /** Si queda por hacer la comprobacion de BIOS del primer arranque. */
+  biosFirstCheck: () => get<BiosFirstCheck>('/api/bios/firstcheck'),
+  /** Arranca la comprobacion: escanea y baja lo que falte de la fuente. */
+  biosDownloadStart: () =>
+    post<{ ok: boolean; job: string }>('/api/bios/descargar/start').then(unwrap),
+  /** Estado del trabajo de BIOS. */
+  biosJob: (id: string) => get<BiosJob>(`/api/bios/job?id=${encodeURIComponent(id)}`),
   biosSkip: (skipKey: string) =>
     post<{ ok: boolean }>('/api/bios/missing/skip', { skip_key: skipKey }),
   biosUnskip: (skipKey: string) =>

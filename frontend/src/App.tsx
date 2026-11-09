@@ -2,6 +2,7 @@ import { MotionConfig } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
+import { PrimerArranqueBios } from '@/components/bios/PrimerArranqueBios'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { ToastProvider } from '@/hooks/useToast'
 import { NotifyProvider } from '@/hooks/useNotify'
@@ -46,6 +47,9 @@ function ManagerShell() {
 
   return (
     <AppShell version={version} esRunning={esRunning}>
+      {/* La comprobacion de BIOS del primer arranque: aparece en cualquier
+          pagina, porque el usuario puede abrir el manager en la que sea. */}
+      <PrimerArranqueBios />
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/sistemas" element={<Systems />} />

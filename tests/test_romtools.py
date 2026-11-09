@@ -1299,6 +1299,34 @@ def test_el_trabajo_que_falla_lo_dice():
     assert "se ha roto" in trabajo.as_dict()["error"]
 
 
+def test_el_trabajo_no_termina_hasta_que_devuelve_el_resultado():
+    """La barra puede acabarse antes de que el trabajo tenga su resultado.
+
+    Si al llegar al 100 % el trabajo se marcara como "listo", el cliente lo
+    daria por bueno con el resultado vacio (la comprobacion de BIOS, por
+    ejemplo, sigue revisando cuando la descarga ya ha terminado).
+    """
+    registro = jobs.Jobs()
+    vistos = []
+
+    def tarea(job):
+        job.progreso({"hechos": 1, "total": 1, "porcentaje": 100,
+                      "actual": "", "mensaje": "descargando", "terminado": True})
+        vistos.append(job.as_dict())
+        return {"ok": True, "resultado": "el resultado"}
+
+    trabajo = registro.lanzar("bios", tarea)
+    for _ in range(300):
+        if trabajo.estado != "trabajando":
+            break
+        time.sleep(0.01)
+
+    assert vistos[0]["estado"] == "trabajando", \
+        "con la barra al 100 % el trabajo todavia no ha devuelto su resultado"
+    assert trabajo.estado == "listo"
+    assert trabajo.as_dict()["resultado"] == {"ok": True, "resultado": "el resultado"}
+
+
 def test_el_trabajo_guarda_el_progreso():
     """El trabajo va guardando el progreso que le pasa el calculo."""
     registro = jobs.Jobs()

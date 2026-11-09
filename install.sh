@@ -807,5 +807,21 @@ case "$DATS_ANSWER" in
   *) warn "DAT no descargados (se pueden bajar luego en Herramientas > Renombrado)" ;;
 esac
 
+# ── 8 · BIOS (la comprobacion se hace en la web) ────────────────
+# El escaneo de BIOS NO se hace aqui: necesita el catalogo de BIOS de la
+# consola (que solo existe con el manager arrancado) y el progreso solo se
+# puede ensenar en la interfaz. Lo que se hace aqui es ARMAR la
+# comprobacion: se borra el marcador para que el primer arranque del manager
+# la haga, avise de lo que falta y baje lo que falte de la fuente.
+BIOS_FIRST="$BASE_DIR/batocera_manager_bios_first.json"
+if rm -f "$BIOS_FIRST" 2>/dev/null; then
+  kv "BIOS" "✔ se comprobarán al abrir el manager"
+  tip "Al entrar en la web se revisa qué BIOS faltan y se bajan de la fuente."
+else
+  warn "No se pudo armar la comprobación de BIOS"
+  tip "Se puede lanzar a mano desde la sección ROMs y BIOS."
+fi
+
 foot "Listo. Abre ${CU}http://BATOCERA:$PORT${C0}${CP}"
+tip "Al abrirlo se comprobarán las BIOS y se bajarán las que falten."
 exit 0
