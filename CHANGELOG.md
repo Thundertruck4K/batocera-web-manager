@@ -6,15 +6,26 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
-### Arreglado
-- **El bloque `# [batocera-tools]` del `custom.sh` no llegaba a enlazar nada.** Usaba la variable
-  `$TOOLS_BIN_DIR`, que sólo existe dentro del `install.sh`: en el `custom.sh` no estaba definida, así
-  que la comprobación de «¿escribible?» salía falsa y el enlace no se hacía. Además enlazaba *todo* lo
-  ejecutable de `/userdata/system/bin`, incluidos los enlaces simbólicos que ya hay ahí (el `npsget` y
-  el `ps3i`), con lo que podía pisar lo que ya estuviera en `/usr/bin`. Ahora sólo enlaza los ficheros
-  de verdad que se hayan puesto en esa carpeta, y no puede dejar el arranque a medias aunque algo falle.
-
 ### Añadido
+- **El `install.sh` instala solo las utilidades de conversión externas.** La primera vez que se
+  ejecuta deja listos el **`rom-converto`**, el **`nodtool`** y el **`3dstool`**: se descargan de la
+  release oficial de cada proyecto, se **comprueba su `sha256`** y se copian a
+  `/userdata/system/bin`, que es la ruta que sobrevive a los reinicios. Después se enlazan en
+  `/usr/bin` (lo que lleva el PATH) y el bloque `# [batocera-tools]` del `custom.sh` vuelve a hacer
+  ese enlace en cada arranque, porque `/usr` es un overlay.
+  - **Las sumas están fijadas en el código** (`romtools/utilidades.py`), no se bajan de la red: un
+    release que cambiase no puede colar un binario distinto del esperado. Si la suma no cuadra, **no
+    se instala nada** y se avisa.
+  - **La descarga enseña el porcentaje** y el instalador avisa de que no hace falta cerrar la
+    ventana: son unos 50 MB y pueden tardar.
+  - **El modo lo manda `BM_UTILS`**: `auto` (por defecto) instala las que falten, `all` las
+    reinstala todas y `skip` no instala ninguna. A mano, con
+    `python3 -m romtools utilidades --list|--install|--remove`.
+  - **Lo que no se puede instalar se dice con el motivo**: el `dolphin-tool` (Dolphin compila con
+    `-DENABLE_CLI_TOOL=OFF`), el `wiitool` (no hay repositorio oficial ni release), el `ndstool`
+    (el único precompilado necesita el cargador musl de `/opt/wonderful`), el `extract-xiso` (no
+    declara licencia), el `maxcso` (su release sólo trae el binario de Windows) y el `xorriso`, el
+    `cdrdao` y el `makecue` (sólo se publica el código fuente, o el manager ya lo hace en Python).
 - **El `rom-converto` se puede instalar en la consola y el manager lo usa de verdad.** Es el
   programa más completo que hay para convertir imágenes de disco (RVZ, WBFS, WIA, GCZ, XISO,
   NSP, XCI, 3DS…), con licencia MIT y binarios estáticos para Linux.
@@ -503,6 +514,18 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   los de la versión anterior se quedaban ocupando sitio en la SD sin usarse. Ahora el bundle se copia
   a un temporal y se sustituye la carpeta entera, de modo que no quedan restos (y sin borrar el bundle
   de origen cuando el instalador se ejecuta dentro de la propia carpeta de destino).
+
+### Arreglado
+- **El bloque `# [batocera-tools]` del `custom.sh` no llegaba a enlazar nada.** Usaba la variable
+  `$TOOLS_BIN_DIR`, que sólo existe dentro del `install.sh`: en el `custom.sh` no estaba definida, así
+  que la comprobación de «¿escribible?» salía falsa y el enlace no se hacía. Además enlazaba *todo* lo
+  ejecutable de `/userdata/system/bin`, incluidos los enlaces simbólicos que ya hay ahí (el `npsget` y
+  el `ps3i`), con lo que podía pisar lo que ya estuviera en `/usr/bin`. Ahora sólo enlaza los ficheros
+  de verdad que se hayan puesto en esa carpeta, y no puede dejar el arranque a medias aunque algo falle.
+- **La URL del `wiitool` en el panel de herramientas estaba rota**: el repositorio
+  `WiiTools/wiitool` no existe (da 404). Ahora apunta a la página de herramientas externas de
+  Dolphin, que es donde está documentado, y el texto explica que no hay release con binarios.
+- **La licencia del `xorriso` era incorrecta**: es **GPL-3.0-or-later**, no GPL-2.0.
 
 ## [1.5] — 2026-11-03
 

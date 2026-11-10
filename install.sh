@@ -484,6 +484,27 @@ write_tools_block() {
   rm -f "$tmp"
 }
 
+# Enlaza en /usr/bin las utilidades de conversion que haya en
+# /userdata/system/bin. Es el mismo trabajo que hace el bloque
+# # [batocera-tools] en cada arranque, pero aqui y ahora: /usr es un overlay
+# y se pierde al reiniciar.
+# Los enlaces simbolicos que ya esten en la carpeta no se tocan, para no
+# pisar lo que haya (el npsget, por ejemplo).
+link_tools_binaries() {
+  local t
+  if [ ! -d "$TOOLS_DIR" ]; then
+    return 0
+  fi
+  if [ ! -w "$TOOLS_BIN_DIR" ]; then
+    return 0
+  fi
+  for t in "$TOOLS_DIR"/*; do
+    [ -x "$t" ] || continue
+    if [ -L "$t" ]; then continue; fi
+    ln -sf "$t" "$TOOLS_BIN_DIR/$(basename "$t")" 2>/dev/null || true
+  done
+}
+
 # ═══════════════════════════════════════════════════════════════
 #  Validación de utilidades
 #
@@ -855,6 +876,57 @@ if rm -f "$BIOS_FIRST" 2>/dev/null; then
 else
   warn "No se pudo armar la comprobación de BIOS"
   tip "Se puede lanzar a mano desde la sección ROMs y BIOS."
+fi
+
+# ── 9 · Utilidades de conversion ──────────────────────────────────
+# Las utilidades externas que el manager puede usar (el rom-converto, el
+# nodtool y el 3dstool) se instalan solas: se descargan de la release
+# oficial de cada proyecto, se comprueba su suma sha256 y se copian a
+# /userdata/system/bin, que sobrevive a los reinicios. Despues se enlazan
+# en /usr/bin, que es lo que lleva el PATH.
+#
+# BM_UTILS decide:
+#   auto  (por defecto) instala las que falten
+#   all   las instala todas, aunque ya esten
+#   skip  no instala ninguna
+UTILS_MODE="${BM_UTILS:-auto}"
+case "$UTILS_MODE" in
+  auto|all|skip) ;;
+  *)
+    warn "BM_UTILS='$UTILS_MODE' no vale (auto, all o skip): sigo con auto"
+    UTILS_MODE=auto
+    ;;
+esac
+
+if [ "$UTILS_MODE" = skip ]; then
+  kv "Utilidades" "◌ omitidas (BM_UTILS=skip)"
+  tip "Se pueden instalar luego con: python3 -m romtools utilidades --install"
+else
+  hdr
+  sub "Instalando las utilidades de conversion"
+  tip "Se descargan de la release oficial de cada proyecto y se comprueba su sha256."
+  tip "No hace falta cerrar esta ventana aunque tarde un rato."
+  UTILS_CMD="utilidades --install --destino $TOOLS_DIR"
+  if [ "$UTILS_MODE" = all ]; then
+    UTILS_CMD="$UTILS_CMD --forzar"
+  fi
+  if ( cd "$INSTALL_DIR" && "$PYTHON" -m romtools $UTILS_CMD ); then
+    ok "Utilidades de conversion en $TOOLS_DIR"
+  else
+    warn "No se pudieron instalar todas las utilidades"
+    tip "El manager funciona igual: lo que falte aparece desactivado en Herramientas."
+    tip "Se puede reintentar con: python3 -m romtools utilidades --install"
+  fi
+fi
+
+# Los enlaces al PATH: ahora mismo y en cada arranque (el bloque
+# # [batocera-tools] los vuelve a crear, porque /usr es un overlay).
+link_tools_binaries
+# El bloque sólo se escribe si ya hay un custom.sh (que es el caso cuando se
+# configuró el arranque automático): no se crea un fichero de arranque sin
+# que el usuario lo haya pedido.
+if [ -f "$SERVICE_SCRIPT" ]; then
+  write_tools_block
 fi
 
 foot "Listo. Abre ${CU}http://BATOCERA:$PORT${C0}${CP}"

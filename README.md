@@ -340,6 +340,11 @@ instala. Después comprueba Python y Pillow (opcional), valida el puerto, deja l
 `/userdata/system/batocera_web/` y **pregunta si quieres arranque automático**: si aceptas, escribe un
 bloque marcado en `/userdata/system/custom.sh` y arranca el manager en ese momento.
 
+Al final **instala también las utilidades de conversión** que se pueden bajar solas (el
+`rom-converto`, el `nodtool` y el `3dstool`): se descargan de la release oficial de cada
+proyecto, se comprueba su `sha256` y se dejan en `/userdata/system/bin`, enlazados en
+`/usr/bin`. Se puede cambiar con `BM_UTILS=auto|all|skip`.
+
 El bloque de arranque se **reescribe** en cada instalación (no se duplica ni se queda con el puerto
 antiguo) y empieza con un `pkill` que mata la instancia anterior, para que el manager nuevo no se
 quede sin puerto si estaba levantado a mano. Si el manager ya estaba corriendo, el instalador lo
@@ -425,6 +430,9 @@ Si no lo encuentra, el instalador pregunta si quieres instalarlo. La consola es 
 | `BM_NODE_DIR` | `$BM_BASE_DIR/node` | Dónde se instala Node |
 | `BM_NODE_BIN_DIR` | `/usr/bin` | Dónde se enlazan los binarios |
 | `BM_NODE_URL` | `https://nodejs.org/dist` | Espejo de nodejs.org (por si hace falta otro) |
+| `BM_UTILS` | `auto` | `auto` (instala las que falten), `all` (las instala todas) o `skip` |
+| `BM_TOOLS_DIR` | `$BM_BASE_DIR/bin` | Dónde se dejan las utilidades de conversión |
+| `BM_TOOLS_BIN_DIR` | `/usr/bin` | Dónde se enlazan al `PATH` |
 | `NO_COLOR` | — | Desactiva el color de la salida |
 
 Ejemplo sin interacción: `BM_PORT=8080 BM_AUTOSTART=s bash install.sh`
@@ -664,12 +672,15 @@ Las utilidades externas se detectan en la consola: el **CHD** se hace con el `ch
 viene en Batocera (`/usr/bin/chdman`), y el **7Z** con el `7z` del p7zip.
 
 El **RVZ** (el formato que recomienda la wiki de Batocera para GameCube y Wii) y el **WBFS** se hacen
-con el **`rom-converto`**, que no viene en la imagen pero se instala en un minuto: es un binario
-estático de Linux con su `sha256` publicado. Se copia a `/userdata/system/bin` (la ruta que sobrevive
-a los reinicios) y se enlaza en `/usr/bin`; el `install.sh` deja un bloque en el `custom.sh` que
-vuelve a hacer ese enlace en cada arranque, porque `/usr` es un overlay que se pierde al reiniciar.
+con el **`rom-converto`**, que no viene en la imagen pero **el `install.sh` lo instala solo** la
+primera vez que se ejecuta: es un binario de Linux con su `sha256` publicado, que se copia a
+`/userdata/system/bin` (la ruta que sobrevive a los reinicios) y se enlaza en `/usr/bin`. El
+`install.sh` deja un bloque en el `custom.sh` que vuelve a hacer ese enlace en cada arranque,
+porque `/usr` es un overlay que se pierde al reiniciar.
 Con él instalado, el manager convierte de verdad: ISO o GCM de GameCube → RVZ, ISO o WBFS de Wii →
 RVZ, GCZ o WIA → RVZ, RVZ → ISO y RVZ de Wii → WBFS.
+Del mismo modo se instalan el **`nodtool`** (los comprimidos de Dolphin) y el **`3dstool`**, cada
+uno con su `sha256` comprobado.
 
 Las que falten aparecen **desactivadas**, diciendo qué falta y cómo conseguirlo, en vez de fingir que
 se han hecho. La página incluye un **panel de utilidades** con la lista completa: para qué sirve cada
@@ -907,7 +918,7 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **873 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **988 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
@@ -939,14 +950,16 @@ batocera_web/
 │   ├── sets.py               # puntuación de variantes y elección por juego
 │   ├── rename.py             # plan, aplicación y deshacer del renombrado
 │   ├── formats.py            # detección, conversión, compresión y parches
+│   ├── formatos_sistemas.py  # qué formatos admite cada sistema y qué herramienta hace falta
+│   ├── utilidades.py          # las utilidades de conversión que se instalan solas
 │   ├── library.py            # inventario de la biblioteca, duplicados y auditoría
 │   ├── faltantes.py          # qué otras versiones hay de los juegos que ya tienes
 │   ├── progress.py           # la cuenta de lo que lleva hecho un trabajo largo
 │   ├── jobs.py               # los trabajos en segundo plano, con su progreso
-│   └── __main__.py            # CLI: `python3 -m romtools dats --install`
+│   └── __main__.py            # CLI: `python3 -m romtools dats --install` y `utilidades --install`
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 841 tests con pytest
+├── tests/                    # 988 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto
