@@ -133,7 +133,7 @@ HERRAMIENTAS = {
         "url": "https://www.gnu.org/software/xorriso/",
         "licencia": "GPL-3.0-or-later",
         "para": "Monta y extrae XDVDF (Xbox) y otras imagenes de disco.",
-        "instalar": "No se puede instalar sola: solo se publica el codigo fuente, hay que compilarlo.",
+        "instalar": "No se puede instalar sola: el paquete esta en el buildroot de Batocera pero no esta habilitado en su build, y solo se publica el codigo fuente.",
     },
 }
 

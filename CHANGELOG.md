@@ -526,6 +526,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
   `WiiTools/wiitool` no existe (da 404). Ahora apunta a la página de herramientas externas de
   Dolphin, que es donde está documentado, y el texto explica que no hay release con binarios.
 - **La licencia del `xorriso` era incorrecta**: es **GPL-3.0-or-later**, no GPL-2.0.
+- **El manifiesto de las utilidades no guardaba la suma de las que ya estaban puestas.** Si el
+  `rom-converto` estaba en la consola de antes de instalar nada, el `.utilidades.json` lo anotaba
+  con la `sha256` en blanco. Ahora se apunta la suma que le toca y se conserva la fecha que ya había.
 
 ## [1.5] — 2026-11-03
 

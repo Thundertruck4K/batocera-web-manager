@@ -251,6 +251,53 @@ def test_el_manifiesto_apunta_que_esta_instalado(tmp_path, monkeypatch):
     assert datos["demo"]["version"] == "v1.0.0"
 
 
+def test_el_manifiesto_apunta_la_suma_tambien_si_ya_estaba(tmp_path, monkeypatch):
+    """Si el binario ya estaba puesto a mano, se apunta su suma igualmente."""
+    contenido = b"#!/bin/sh\n"
+    entrada = _entrada(contenido)
+    monkeypatch.setattr(utilidades, "descarga", _descarga_falsa(contenido))
+    monkeypatch.setattr(utilidades, "arquitectura", lambda: "x86_64")
+    monkeypatch.setattr(utilidades, "UTILIDADES", (entrada,))
+    (tmp_path / "demo").write_bytes(contenido)
+
+    utilidades.instalar_varias(str(tmp_path))
+
+    datos = utilidades.manifiesto(str(tmp_path))
+    assert datos["demo"]["sha256"] == hashlib.sha256(contenido).hexdigest()
+
+
+def test_el_manifiesto_actualiza_la_suma_de_lo_que_ya_estaba(tmp_path, monkeypatch):
+    """Un manifiesto viejo, sin suma, se completa en la siguiente pasada."""
+    contenido = b"#!/bin/sh\n"
+    entrada = _entrada(contenido)
+    monkeypatch.setattr(utilidades, "descarga", _descarga_falsa(contenido))
+    monkeypatch.setattr(utilidades, "arquitectura", lambda: "x86_64")
+    monkeypatch.setattr(utilidades, "UTILIDADES", (entrada,))
+    (tmp_path / "demo").write_bytes(contenido)
+    # Como queda tras una instalacion anterior, sin la suma.
+    utilidades.guardar_manifiesto(str(tmp_path),
+                                  {"demo": {"version": "v1.0.0", "sha256": "",
+                                            "instalado": "2026-01-01T00:00:00"}})
+
+    utilidades.instalar_varias(str(tmp_path))
+
+    datos = utilidades.manifiesto(str(tmp_path))
+    assert datos["demo"]["sha256"] == hashlib.sha256(contenido).hexdigest()
+    assert datos["demo"]["instalado"] == "2026-01-01T00:00:00", "no se pierde la fecha"
+
+
+def test_un_binario_ya_puesto_no_se_toca_aunque_no_haya_asset(tmp_path, monkeypatch):
+    """En una arquitectura sin build, un binario puesto a mano se respeta."""
+    entrada = _entrada(b"x")
+    monkeypatch.setattr(utilidades, "arquitectura", lambda: "aarch64")
+    (tmp_path / "demo").write_bytes(b"#!/bin/sh\n")
+
+    resumen = utilidades.instalar(entrada, str(tmp_path))
+
+    assert resumen["estado"] == "ya-estaba"
+    assert (tmp_path / "demo").exists()
+
+
 def test_quitar_borra_el_binario_y_su_apunte(tmp_path, monkeypatch):
     contenido = b"#!/bin/sh\n"
     entrada = _entrada(contenido)
