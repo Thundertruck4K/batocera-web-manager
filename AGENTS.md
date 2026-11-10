@@ -221,7 +221,7 @@ El proyecto se trabaja en **un solo repositorio**:
 
 ## Key notes
 
-- **Tests**: 873 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
+- **Tests**: 991 con `pytest` en `tests/` (backend stdlib + helpers de UI extraídos por regex). No hay linting ni typechecking
 - UI is in Spanish (HTML `lang="es"`), variable names mix English and Spanish
 - **Design system "mono"**: dos capas conviven.
   - *Clásica* (`templates/index.html`): tokens `--mono-*` y piezas (`.mono-stage`, `.mono-pill`,
@@ -231,6 +231,12 @@ El proyecto se trabaja en **un solo repositorio**:
     (`--color-card`, `--color-stage`, `--color-chart-1..4`…) y componentes en `frontend/src/components/`.
     Los gráficos usan **Recharts** (`animationDuration={280}`, el límite del design system).
   - Al tocar un token, tócalo en las dos capas para que no se desincronicen.
+- **Tonos de acento (v2.0)**: el panel de control tiene color, pero **sin tocar el diseño mono**. Los
+  tonos son tokens CSS (`--tone-1` … `--tone-6` y sus variantes `-soft`), no colores sueltos, y cada
+  componente de gráfico acepta un prop `tone` tipado (`frontend/src/lib/tones.ts` es la fuente del
+  tipo `Tone`). **Sin `tone` el gráfico se queda monocromo**: así el resto de la SPA no cambia de
+  aspecto. En tema claro se usan las variantes `-600` y en oscuro las `-400`. La escala
+  `--chart-1..4` sigue siendo la de las rejillas, los ejes y el texto.
 - Scraper sources: ScreenScraper.fr (default, needs SS user/pass), TheGamesDB (needs API key), IGDB (needs Twitch Client ID + Secret)
 - **Source chain**: ScreenScraper is always tried first; if it has no data, TheGamesDB and IGDB are
   the fallback. The chain lives in the backend (`scrape_search_cascade`), so the ROM modal and the
