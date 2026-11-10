@@ -89,10 +89,13 @@ export function AppShell({ children, version, esRunning }: AppShellProps) {
 
 /**
  * Contenedor de página con las medidas del catálogo (skill §2).
+ *
+ * Es `relative` para que cada página pueda poner un halo de color detrás de
+ * su contenido sin tener que tocar el flujo.
  */
 export function PageContainer({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto max-w-[1800px] px-4 pt-5 pb-16 sm:px-6 sm:pt-4 lg:px-10 xl:px-14">
+    <div className="relative mx-auto max-w-[1800px] px-4 pt-5 pb-16 sm:px-6 sm:pt-4 lg:px-10 xl:px-14">
       {children}
     </div>
   )

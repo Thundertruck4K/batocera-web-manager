@@ -452,7 +452,7 @@ def tools_patch(settings, system, name, patch_name):
 
 
 HOST, PORT = "0.0.0.0", 5000
-APP_VERSION = "1.5"   # única fuente: la portada y el banner la reciben de aquí
+APP_VERSION = "2.0"   # única fuente: la portada y el banner la reciben de aquí
 
 # Frontend React compilado (`frontend/dist`). Si no está compilado se sirve
 # la interfaz clásica de un solo fichero (`templates/index.html`).

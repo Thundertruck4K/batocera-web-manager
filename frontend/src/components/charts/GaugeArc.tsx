@@ -1,4 +1,5 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts'
+import { TONE_COLOR, type Tone } from '@/lib/tones'
 
 interface GaugeArcProps {
   /** Valor entre 0 y 100. */
@@ -7,22 +8,34 @@ interface GaugeArcProps {
   caption?: string
   /** Altura del gráfico. */
   height?: number
-  /** Sufjo de la cifra (p. ej. "°C"). */
+  /** Sufijo de la cifra (p. ej. "°C"). */
   suffix?: string
   /** Decimales de la cifra. */
   decimals?: number
+  /** Acento de color del arco. */
+  tone?: Tone
 }
 
 /**
- * Velocímetro de 240° (arco de 210° a -30°). Escala monocroma: el valor va
- * en blanco/negro y el resto en la misma tinta con menos opacidad.
+ * Velocímetro de 240° (arco de 210° a -30°). Sin tono es monocromo: el valor
+ * va en blanco/negro y el resto en la misma tinta con menos opacidad. Con
+ * `tone` el arco toma el acento de su tarjeta y el resto se apaga.
  */
-export function GaugeArc({ value, caption, height = 140, suffix = '%', decimals = 0 }: GaugeArcProps) {
+export function GaugeArc({
+  value,
+  caption,
+  height = 140,
+  suffix = '%',
+  decimals = 0,
+  tone,
+}: GaugeArcProps) {
   const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0))
   const data = [
     { name: 'Uso', value: clamped },
     { name: 'Resto', value: Math.max(0, 100 - clamped) },
   ]
+  const principal = tone ? TONE_COLOR[tone] : 'var(--color-chart-1)'
+  const resto = tone ? TONE_COLOR[tone] : 'var(--color-chart-4)'
 
   return (
     <div className="relative w-full" style={{ height }}>
@@ -44,8 +57,8 @@ export function GaugeArc({ value, caption, height = 140, suffix = '%', decimals 
             animationDuration={280}
             isAnimationActive
           >
-            <Cell fill="var(--color-chart-1)" stroke="none" />
-            <Cell fill="var(--color-chart-4)" stroke="none" />
+            <Cell fill={principal} fillOpacity={tone ? 1 : undefined} stroke="none" />
+            <Cell fill={resto} fillOpacity={tone ? 0.25 : undefined} stroke="none" />
           </Pie>
         </PieChart>
       </ResponsiveContainer>

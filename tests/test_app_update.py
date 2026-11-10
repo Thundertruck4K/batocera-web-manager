@@ -19,10 +19,10 @@ APP = ROOT / "app.py"
 ATOM = """<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry>
-    <id>tag:github.com,2008:Repository/1/v2.0</id>
+    <id>tag:github.com,2008:Repository/1/v3.0</id>
     <updated>2026-11-01T10:00:00Z</updated>
-    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v2.0"/>
-    <title>v2.0 — Gran rewrite</title>
+    <link rel="alternate" type="text/html" href="https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v3.0"/>
+    <title>v3.0 — Gran rewrite</title>
   </entry>
   <entry>
     <id>tag:github.com,2008:Repository/1/v1.4</id>
@@ -64,12 +64,12 @@ def test_fetch_app_update_detecta_version_mayor(appmod, monkeypatch):
     monkeypatch.setattr(appmod, "_fetch_feed", lambda url, timeout=8: ATOM)
     out = appmod._fetch_app_update()
     assert out is not None
-    assert out["version"] == "2.0"
-    assert out["tag"] == "v2.0"
+    assert out["version"] == "3.0"
+    assert out["tag"] == "v3.0"
     assert out["major"] is True
     assert out["newer"] is True
     assert out["current"] == appmod.APP_VERSION
-    assert out["url"].endswith("/v2.0")
+    assert out["url"].endswith("/v3.0")
 
 
 def test_fetch_app_update_ignora_menor(appmod, monkeypatch):
@@ -117,8 +117,8 @@ def test_get_app_update_cachea_una_hora(appmod, monkeypatch):
 
     a = appmod.get_app_update()
     b = appmod.get_app_update()
-    assert a["version"] == "2.0"
-    assert b["version"] == "2.0"
+    assert a["version"] == "3.0"
+    assert b["version"] == "3.0"
     assert len(llamadas) == 1, "no debe repetir la descarga mientras la caché es válida"
 
 

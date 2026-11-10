@@ -157,14 +157,26 @@ export function Dashboard() {
       />
 
       <PageContainer>
+        {/* Halo ambiental: dos manchas de color muy tenues que le dan aire
+            al panel sin manchar el fondo ni salir del diseño. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-0 left-1/2 h-72 w-[52rem] -translate-x-1/2 opacity-45 blur-3xl"
+          style={{
+            background:
+              'radial-gradient(45% 55% at 28% 40%, var(--tone-1-soft) 0%, transparent 70%),' +
+              'radial-gradient(40% 50% at 72% 26%, var(--tone-2-soft) 0%, transparent 70%)',
+          }}
+        />
+
         {dash.error && (
-          <div className="mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+          <div className="relative z-10 mb-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
             {dash.error}
           </div>
         )}
 
         {dash.loading && !data ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <CardSkeleton />
             <CardSkeleton />
             <CardSkeleton />
@@ -175,13 +187,14 @@ export function Dashboard() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: EASE }}
-            className="space-y-4"
+            className="relative z-10 space-y-4"
           >
             {/* Métricas principales */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <ChartCard
                 label="CPU"
                 tag="Carga"
+                tone="amber"
                 value={`${data.cpu.cores} núcleos`}
                 footer={
                   <>
@@ -190,12 +203,13 @@ export function Dashboard() {
                   </>
                 }
               >
-                <GaugeArc value={data.cpu.usage} caption="en uso" />
+                <GaugeArc value={data.cpu.usage} caption="en uso" tone="amber" />
               </ChartCard>
 
               <ChartCard
                 label="Memoria RAM"
                 tag="Usada"
+                tone="cyan"
                 value={`${data.memory.used_mb.toLocaleString('es-ES')} MB`}
                 footer={
                   <>
@@ -204,12 +218,13 @@ export function Dashboard() {
                   </>
                 }
               >
-                <GaugeArc value={data.memory.used_pct} caption="ocupada" />
+                <GaugeArc value={data.memory.used_pct} caption="ocupada" tone="cyan" />
               </ChartCard>
 
               <ChartCard
                 label="Temperatura"
                 tag={data.cpu.temp_src || 'CPU'}
+                tone="rose"
                 value={data.cpu.temp != null ? `${data.cpu.temp} °C` : 'Sin sensor'}
                 footer={
                   <>
@@ -224,12 +239,14 @@ export function Dashboard() {
                   value={data.cpu.temp != null ? Math.min((data.cpu.temp / 100) * 100, 100) : 0}
                   suffix="°C"
                   caption="de 100 °C"
+                  tone="rose"
                 />
               </ChartCard>
 
               <ChartCard
                 label="Disco principal"
                 tag={primaryDisk ? primaryDisk.mount : '—'}
+                tone="violet"
                 value={primaryDisk ? `${primaryDisk.used_gb} GB usados` : 'Sin datos'}
                 footer={
                   <>
@@ -241,6 +258,7 @@ export function Dashboard() {
                 }
               >
                 <DonutChart
+                  tone="violet"
                   data={
                     primaryDisk
                       ? [
@@ -260,6 +278,7 @@ export function Dashboard() {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <MetricCard
                 label="Sistemas"
+                tone="sky"
                 value={info.data?.rom_systems_count ?? 0}
                 icon={Gamepad2}
                 hint={
@@ -270,18 +289,21 @@ export function Dashboard() {
               />
               <MetricCard
                 label="Procesos"
+                tone="amber"
                 value={data.processes.length}
                 icon={Cpu}
                 hint={`${topProcesses[0]?.label ?? 'sin datos'} en cabeza`}
               />
               <MetricCard
                 label="Particiones"
+                tone="cyan"
                 value={data.disk.length}
                 icon={HardDrive}
                 hint={data.disk_updated ? `Actualizado ${data.disk_updated}` : 'Sin fecha'}
               />
               <MetricCard
                 label="Juegos"
+                tone="emerald"
                 value={info.data?.disk_games_count ?? 0}
                 icon={Trophy}
                 hint={
@@ -297,10 +319,12 @@ export function Dashboard() {
               <ChartCard
                 label="Procesos principales"
                 tag="CPU %"
+                tone="sky"
                 value={`${data.processes.length}`}
                 footer={<span>Los 6 procesos con más carga</span>}
               >
                 <RoundedBarChart
+                  tone="sky"
                   data={topProcesses}
                   formatValue={(v) => `${v.toFixed(1)}%`}
                 />
@@ -309,10 +333,11 @@ export function Dashboard() {
               <ChartCard
                 label="Actividad de juego"
                 tag="Últimos 14 días"
+                tone="emerald"
                 value={stats.data ? `${stats.data.totals.playcount}` : '—'}
                 footer={<span>Partidas registradas por día</span>}
               >
-                <AreaTrend data={activity} formatValue={(v) => `${v} partidas`} />
+                <AreaTrend tone="emerald" data={activity} formatValue={(v) => `${v} partidas`} />
               </ChartCard>
             </div>
 
@@ -328,6 +353,7 @@ export function Dashboard() {
                 title="Almacenamiento"
                 subtitle={`${data.disk.length} partición(es)`}
                 icon={<HardDrive className="size-4" />}
+                tone="amber"
               >
                 {data.disk.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No se han detectado particiones.</p>

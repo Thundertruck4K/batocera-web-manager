@@ -32,6 +32,7 @@ export function EsPanel({
       title="EmulationStation"
       subtitle={running ? 'En ejecución' : 'Detenido'}
       icon={<MonitorCog className="size-4" />}
+      tone="emerald"
       actions={
         onRestart && (
           <Button size="sm" variant="secondary" onClick={onRestart} disabled={busy}>
@@ -76,6 +77,7 @@ export function NetworkPanel({ interfaces }: { interfaces: NetworkIface[] }) {
       title="Red"
       subtitle={interfaces.length > 0 ? `${interfaces.length} interfaz(es)` : 'Sin interfaces'}
       icon={<Network className="size-4" />}
+      tone="cyan"
     >
       {interfaces.length === 0 ? (
         <p className="text-xs text-muted-foreground">No se han detectado interfaces de red.</p>
@@ -108,6 +110,7 @@ export function FansPanel({ fans }: { fans: FanEntry[] }) {
       title="Ventiladores"
       subtitle={fans.length > 0 ? `${fans.length} sensor(es)` : 'Sin sensores'}
       icon={<Fan className="size-4" />}
+      tone="sky"
     >
       {fans.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -158,7 +161,7 @@ export function BatteryPanel({ battery }: { battery: BatteryInfo | null }) {
     capacity <= 20 && !battery.charging ? 'text-destructive' : 'text-emerald-500'
 
   return (
-    <PanelCard title="Batería" icon={<Icon className={cn('size-4', tone)} />}>
+    <PanelCard title="Batería" icon={<Icon className={cn('size-4', tone)} />} tone="emerald">
       <StatRow label="Capacidad" value={`${Math.round(capacity)}%`} />
       <StatRow label="Estado" value={battery.status ?? '—'} />
       {battery.minutes != null && (
@@ -180,7 +183,7 @@ export function GpuPanel({
 }) {
   if (!gpu?.available) {
     return (
-      <PanelCard title="GPU" subtitle="No detectada" icon={<Gauge className="size-4" />}>
+      <PanelCard title="GPU" subtitle="No detectada" icon={<Gauge className="size-4" />} tone="violet">
         <p className="text-xs text-muted-foreground">
           Esta máquina no expone ninguna GPU por DRM ni por nvidia-smi.
         </p>
@@ -189,7 +192,7 @@ export function GpuPanel({
   }
 
   return (
-    <PanelCard title="GPU" subtitle={gpu.name} icon={<Cpu className="size-4" />}>
+    <PanelCard title="GPU" subtitle={gpu.name} icon={<Cpu className="size-4" />} tone="violet">
       <StatRow label="Uso" value={gpu.util != null ? `${gpu.util}%` : '—'} />
       <StatRow label="Temperatura" value={gpu.temp != null ? `${gpu.temp} °C` : '—'} />
       {gpu.power && <StatRow label="Consumo" value={gpu.power} />}

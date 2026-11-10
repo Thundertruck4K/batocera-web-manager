@@ -6,6 +6,8 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased]
 
+## [2.0] - 2026-11-10
+
 ### Añadido
 - **El `install.sh` instala solo las utilidades de conversión externas.** La primera vez que se
   ejecuta deja listos el **`rom-converto`**, el **`nodtool`** y el **`3dstool`**: se descargan de la
@@ -376,6 +378,24 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
     de 20 a 100; la interfaz clásica sigue mostrando los 5 primeros.
 
 ### Cambiado
+- **La versión del manager pasa a 2.0.** `APP_VERSION` (en `app.py`) es la única fuente de la versión y
+  ahora coincide con la release publicada. Es una versión grande: desde la 1.5 el gestor de sistemas,
+  el panel, la biblioteca y las herramientas de ROMs han cambiado bastante.
+- **El panel de control de la SPA tiene color.** El diseño sigue siendo el mismo (tarjetas redondeadas,
+  velocímetros de 240°, charts propios), pero cada tarjeta lleva ahora un tono de acento y la página
+  tiene un halo ambiental muy tenue arriba. Es color **por elemento**, no un rediseño.
+  - Los tonos son **tokens de CSS** (`--tone-1` … `--tone-6`, con su variante `-soft`), no colores
+    sueltos en los componentes: en tema claro se usan las variantes `-600` (más oscuras) y en oscuro
+    las `-400`, y el color se usa en elementos gráficos, nunca como texto pequeño.
+  - Cada componente de gráfico acepta un prop `tone` tipado (`frontend/src/lib/tones.ts`). **Sin
+    `tone`, el comportamiento es el de siempre**: los gráficos siguen monocromos y ninguna otra
+    página de la SPA cambia de aspecto.
+  - La escala monocroma (`--chart-1` … `--chart-4`) se conserva para las rejillas, los ejes y el
+    texto, así que la paleta sigue siendo coherente en el resto de la aplicación.
+- **El README se actualiza con las últimas modificaciones grandes del sistema** (formatos por
+  sistema, motor RVZ/WBFS con el `rom-converto`, instalación automática de utilidades, sección de
+  biblioteca y de lo que falta) y **las capturas se vuelven a hacer** sobre la instalación real, con
+  el panel ya en color.
 - **La BIOS que falta se busca en Google, no en GitHub**: el enlace ya no es una búsqueda de código
   en repositorios, sino una búsqueda en `google.com` con el nombre del fichero **entrecomillado**
   (`"neogeo.zip"`), que es una coincidencia exacta y además mira en toda la web: foros, espejos de
@@ -529,6 +549,9 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - **El manifiesto de las utilidades no guardaba la suma de las que ya estaban puestas.** Si el
   `rom-converto` estaba en la consola de antes de instalar nada, el `.utilidades.json` lo anotaba
   con la `sha256` en blanco. Ahora se apunta la suma que le toca y se conserva la fecha que ya había.
+
+### Pruebas
+- 991 tests con `pytest` (backend stdlib + ayudantes de UI extraídos por regex).
 
 ## [1.5] — 2026-11-03
 
@@ -822,7 +845,8 @@ y el versionado sigue [Semantic Versioning](https://semver.org/lang/es/).
 - Primera versión: servidor HTTP puro (stdlib), sin dependencias, gestor de sistemas personalizados, dashboard básico, monitor de ROMs/BIOS, scraper, temas y arranque automático.
 - Licencia MIT.
 
-[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager/compare/v1.5...HEAD
+[Unreleased]: https://github.com/Thundertruck4K/batocera-web-manager/compare/v2.0...HEAD
+[2.0]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v2.0
 [1.5]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.5
 [1.4]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.4
 [1.3]: https://github.com/Thundertruck4K/batocera-web-manager/releases/tag/v1.3
