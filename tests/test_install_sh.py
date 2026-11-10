@@ -315,11 +315,15 @@ def _tool_path(tool: str) -> str:
     return out
 
 
-def _shim(base: Path, tools: list[str]) -> dict:
+def _shim(base: Path, tools: list[str], hidden: list[str] | None = None) -> dict:
     """Entorno con un PATH donde sólo están las utilidades indicadas.
 
     Cada herramienta es un lanzador que invoca la real, así que git (o
     node) desaparecen del PATH sin tocar el sistema.
+
+    ``hidden`` tapa además las utilidades que sí están en el PATH de la
+    máquina pero que no deben aparecer: sin esto, un node instalado en el
+    /usr/bin de MSYS impediría simular una consola que no lo tiene.
     """
     shim = base / "shim"
     shim.mkdir(parents=True, exist_ok=True)
@@ -332,7 +336,15 @@ def _shim(base: Path, tools: list[str]) -> dict:
                             encoding="utf-8")
         launcher.chmod(0o755)
     rc = base / "shimrc.sh"
-    rc.write_text(f'export PATH="{_msys(shim)}:/usr/bin"\n', encoding="utf-8")
+    lineas = [f'export PATH="{_msys(shim)}:/usr/bin"']
+    if hidden:
+        # `command -v <tapado>` no lo encuentra: es como si no estuviera.
+        # Una sola función para todos, que si no la segunda pisa a la primera.
+        casos = "|".join(hidden)
+        lineas.append(
+            'command() { if [ "$1" = "-v" ]; then case "$2" in %s) return 1 ;; esac; fi; '
+            'builtin command "$@"; }' % casos)
+    rc.write_text("\n".join(lineas) + "\n", encoding="utf-8")
     return {"BASH_ENV": _msys(rc)}
 
 
@@ -439,7 +451,7 @@ def test_sin_git_avisa_que_hay_que_instalarlo_y_lo_instala(base, tmp_path):
 
 def test_sin_node_avisa_que_hay_que_instalarlo_y_lo_instala(base, tmp_path):
     dist, name = _fake_node_dist(tmp_path)
-    env = _shim(base, ["git", "curl"])
+    env = _shim(base, ["git", "curl"], hidden=["node"])
     env.update(_node_env(base, dist))
     r = _run(base, answer="n", env_extra=env)
     assert r.returncode == 0, r.stdout + r.stderr
@@ -451,7 +463,7 @@ def test_sin_node_avisa_que_hay_que_instalarlo_y_lo_instala(base, tmp_path):
 def test_sin_git_y_sin_node_avisa_de_las_dos_utilidades(base, tmp_path):
     dist, name = _fake_node_dist(tmp_path)
     mirror, sha = _fake_micromamba(tmp_path)
-    env = _shim(base, ["curl", "bzip2"])
+    env = _shim(base, ["curl", "bzip2"], hidden=["node", "git"])
     env.update(_node_env(base, dist))
     env.update(_git_env(base, mirror, sha))
     r = _run(base, answer="n", env_extra=env)
@@ -620,3 +632,76 @@ def test_the_tools_block_does_not_break_with_set_e(base, tmp_path):
                        timeout=60)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "LLEGADO" in r.stdout, r.stdout
+
+
+# ── Las utilidades de conversion ────────────────────────────────────────
+# El instalador deja listas las utilidades que se pueden descargar (el
+# rom-converto, el nodtool y el 3dstool). El modo lo manda BM_UTILS:
+# auto (por defecto) instala las que falten, all las reinstalla y skip no
+# instala ninguna.
+
+def test_it_installs_the_utilities_by_default(base):
+    r = _run(base, answer="n")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "utilidades --install --destino" in r.stdout, r.stdout
+
+
+def test_bm_utils_skip_does_not_install_them(base):
+    r = _run(base, answer="n", env_extra={"BM_UTILS": "skip"})
+    assert r.returncode == 0, r.stdout + r.stderr
+    # El comando de instalacion siempre lleva --destino: si no aparece, no se
+    # lanza (el texto de ayuda si menciona el comando, pero sin --destino).
+    assert "--destino" not in r.stdout, r.stdout
+    assert "omitidas" in r.stdout, r.stdout
+
+
+def test_bm_utils_all_reinstalls_them(base):
+    r = _run(base, answer="n", env_extra={"BM_UTILS": "all"})
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "--forzar" in r.stdout, r.stdout
+
+
+def test_an_unknown_bm_utils_falls_back_to_auto(base):
+    r = _run(base, answer="n", env_extra={"BM_UTILS": "inventado"})
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "utilidades --install" in r.stdout, r.stdout
+
+
+def test_it_says_the_utilities_go_to_the_tools_folder(base):
+    r = _run(base, answer="n")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "bin" in r.stdout, r.stdout
+
+
+def test_it_links_the_utilities_to_the_path(base, tmp_path):
+    """Lo que se instala tiene que quedar en el PATH del sistema."""
+    destino = tmp_path / "usrbin"
+    destino.mkdir()
+    herramientas = base / "bin"
+    herramientas.mkdir()
+    ejecutable = herramientas / "rom-converto"
+    ejecutable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    ejecutable.chmod(0o755)
+
+    r = _run(base, answer="n", env_extra={"BM_TOOLS_BIN_DIR": _msys(destino)})
+
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (destino / "rom-converto").exists(), "debe enlazar la utilidad"
+
+
+def test_the_tools_block_is_written_in_an_existing_custom_sh(base):
+    """Con un custom.sh ya hecho, el bloque de las utilidades se añade."""
+    (base / "custom.sh").write_text("#!/bin/bash\n# cosas del usuario\n", encoding="utf-8")
+    r = _run(base, answer="n")
+    assert r.returncode == 0, r.stdout + r.stderr
+    sh = (base / "custom.sh").read_text(encoding="utf-8")
+    assert "cosas del usuario" in sh, "no debe pisar lo que ya había"
+    assert "# [batocera-tools]" in sh, sh
+
+
+def test_it_does_not_create_a_custom_sh_without_autostart(base):
+    """Sin arranque automático no se inventa un custom.sh."""
+    r = _run(base, answer="n")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not (base / "custom.sh").exists()
+

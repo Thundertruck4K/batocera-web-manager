@@ -69,7 +69,7 @@ HERRAMIENTAS = {
         "url": "https://github.com/DevYukine/rom-converto",
         "licencia": "MIT",
         "para": "La mas completa de todas: convierte entre CSO, ZSO, CHD, RVZ, WBFS, WIA, GCZ, XISO, NSP, XCI, 3DS, PBP, ZAR y mas.",
-        "instalar": "No viene en la consola: se baja el binario estatico linux-x64 de su release, se copia a /userdata/system/bin y se enlaza en /usr/bin (ver docs/utilidades-conversion.md).",
+        "instalar": "El install.sh la instala sola: baja el binario de su release, comprueba el sha256 y lo deja en /userdata/system/bin.",
     },
     "nodtool": {
         "nombre": "nodtool (nod)",
@@ -77,7 +77,7 @@ HERRAMIENTAS = {
         "url": "https://github.com/encounter/nod",
         "licencia": "Apache-2.0",
         "para": "Crea y extrae los comprimidos de Dolphin: CISO, GCZ, RVZ, WBFS, WIA y GCM.",
-        "instalar": "No viene en la consola: hay que compilarlo (Rust) o bajar el binario.",
+        "instalar": "El install.sh la instala sola: baja el binario estatico de su release y comprueba el sha256.",
     },
     "dolphin-tool": {
         "nombre": "dolphin-tool",
@@ -90,10 +90,10 @@ HERRAMIENTAS = {
     "wiitool": {
         "nombre": "wiitool",
         "binario": "wiitool",
-        "url": "https://github.com/WiiTools/wiitool",
+        "url": "https://github.com/dolphin-emu/dolphin/wiki/ExternalTools",
         "licencia": "GPL-3.0-or-later",
         "para": "Crea y extrae WBFS y WIA, los formatos de Wii.",
-        "instalar": "No viene en la consola: hay que instalar el binario a mano.",
+        "instalar": "No se puede instalar sola: no hay release con binarios de Linux (el wiitool original no tiene repositorio oficial). Su equivalente actual es el Wiimms ISO Tools.",
     },
     "extract-xiso": {
         "nombre": "extract-xiso",
@@ -106,10 +106,10 @@ HERRAMIENTAS = {
     "ndstool": {
         "nombre": "ndstool",
         "binario": "ndstool",
-        "url": "https://github.com/blocksds/ndstool",
+        "url": "https://github.com/devkitPro/ndstool",
         "licencia": "MIT o GPL-3.0-or-later (dual)",
         "para": "Convierte una ROM de Nintendo DS a cartucho (NOA/GB) y saca su contenido.",
-        "instalar": "No viene en la consola: hay que compilarlo.",
+        "instalar": "No se puede instalar sola: no hay release con binarios de Linux, hay que compilarlo.",
     },
     "3dstool": {
         "nombre": "3dstool",
@@ -117,7 +117,7 @@ HERRAMIENTAS = {
         "url": "https://github.com/dnasdw/3dstool",
         "licencia": "MIT",
         "para": "Empaqueta el contenido de un 3DS en un CIA.",
-        "instalar": "No viene en la consola: hay que compilarlo.",
+        "instalar": "El install.sh la instala sola en las consolas x86_64: baja el tarball de su release y comprueba el sha256.",
     },
     "maxcso": {
         "nombre": "maxcso",
@@ -131,9 +131,9 @@ HERRAMIENTAS = {
         "nombre": "xorriso",
         "binario": "xorriso",
         "url": "https://www.gnu.org/software/xorriso/",
-        "licencia": "GPL-2.0-or-later",
+        "licencia": "GPL-3.0-or-later",
         "para": "Monta y extrae XDVDF (Xbox) y otras imagenes de disco.",
-        "instalar": "No viene en la consola: hay que compilarlo.",
+        "instalar": "No se puede instalar sola: solo se publica el codigo fuente, hay que compilarlo.",
     },
 }
 

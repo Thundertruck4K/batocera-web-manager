@@ -29,19 +29,23 @@ hace el manager son idénticos a los que hace el propio MAME.
 
 ## 2. Las que hacen falta y no vienen
 
+Tres de ellas **se instalan solas** la primera vez que se ejecuta el `install.sh`
+(el [§6](#6-las-utilidades-que-instala-el-installsh) explica cómo). Las demás
+hay que instalarlas a mano o no hacen falta.
+
 | Utilidad | Para qué sirve | Licencia | Dónde está | Cómo se consigue |
 |---|---|---|---|---|
-| **rom-converto** | **La más completa**: CSO, ZSO, CHD, RVZ, WBFS, WIA, GCZ, XISO, NSP, XCI, 3DS (CIA/CCI/Z3DS), PBP, ZAR, PS3, NDS | MIT | [DevYukine/rom-converto](https://github.com/DevYukine/rom-converto) | **Publica binarios estáticos para Linux `x86_64`** (`rom-converto-cli-linux-x64`): hay que bajar el binario y copiarlo a `/userdata/system/bin` (ver [§7](#7-instalar-el-rom-converto)). Es la vía más fácil de todas |
-| **nodtool** (nod) | Crea y extrae los comprimidos de Dolphin: **CISO, GCZ, RVZ, WBFS, WIA y GCM** | Apache-2.0 | [encounter/nod](https://github.com/encounter/nod) | Compilarlo (Rust) o bajar el binario |
-| **dolphin-tool** | Crea y extrae **RVZ**, el comprimido de Dolphin (GameCube y Wii). La wiki de Batocera lo marca como **el recomendado** | GPL-2.0-or-later | [dolphin-emu/dolphin](https://github.com/dolphin-emu/dolphin) | No se puede con lo que hay: el `dolphin-emu` de Batocera es la interfaz gráfica y el paquete **no** construye la herramienta de línea de comandos |
-| **wiitool** | Crea y extrae **WBFS** y **WIA**, los formatos de Wii | GPL-3.0-or-later | [WiiTools/wiitool](https://github.com/WiiTools/wiitool) | Compilarlo |
+| **rom-converto** | **La más completa**: CSO, ZSO, CHD, RVZ, WBFS, WIA, GCZ, XISO, NSP, XCI, 3DS (CIA/CCI/Z3DS), PBP, ZAR, PS3, NDS | MIT | [DevYukine/rom-converto](https://github.com/DevYukine/rom-converto) | **Se instala sola.** Publica binarios para Linux `x86_64`, `aarch64` y `armv7l`, con su `sha256` al lado |
+| **nodtool** (nod) | Crea y extrae los comprimidos de Dolphin: **CISO, GCZ, RVZ, WBFS, WIA y GCM** | Apache-2.0 | [encounter/nod](https://github.com/encounter/nod) | **Se instala sola.** Publica binarios **estáticos** para `x86_64`, `aarch64` e `i686` |
+| **3dstool** | Empaqueta el contenido de un **3DS** en un CIA | MIT | [dnasdw/3dstool](https://github.com/dnasdw/3dstool) | **Se instala sola**, pero sólo en consolas `x86_64` (es la única build que publica) |
+| **dolphin-tool** | Crea y extrae **RVZ**, el comprimido de Dolphin (GameCube y Wii). La wiki de Batocera lo marca como **el recomendado** | GPL-2.0-or-later | [dolphin-emu/dolphin](https://github.com/dolphin-emu/dolphin) | No se puede con lo que hay: el `dolphin-emu` de Batocera es la interfaz gráfica y el paquete **no** construye la herramienta de línea de comandos (`-DENABLE_CLI_TOOL=OFF`) |
+| **wiitool** | Crea y extrae **WBFS** y **WIA**, los formatos de Wii | GPL-3.0-or-later | [Dolphin: herramientas externas](https://github.com/dolphin-emu/dolphin/wiki/ExternalTools) | Hay que compilarlo: **no hay repositorio oficial ni release con binarios**. Su equivalente actual es el [Wiimms ISO Tools](https://wit.wiimm.de/), que publica tarballs para Linux pero sin suma de comprobación |
 | **extract-xiso** | Extrae **XDVDF** (Xbox) a ISO | Sin licencia declarada en el repositorio | [XboxDev/extract-xiso](https://github.com/XboxDev/extract-xiso) | El manager ya lo hace en Python, sin él |
-| **maxcso** | Comprime la ISO en **CSO, CSO2, ZSO o DAX** (PSP y PS2) | ISC | [unknownbrackets/maxcso](https://github.com/unknownbrackets/maxcso) | El manager ya lo hace en Python, sin él |
-| **ndstool** | Convierte una ROM de **Nintendo DS** a cartucho (NOA/GB) y saca su contenido | MIT o GPL-3.0-or-later (dual) | [blocksds/ndstool](https://github.com/blocksds/ndstool) | Compilarlo |
-| **3dstool** | Empaqueta el contenido de un **3DS** en un CIA | MIT | [dnasdw/3dstool](https://github.com/dnasdw/3dstool) | Compilarlo (necesita `libiconv`, `openssl` y `libcurl`) |
-| **xorriso** | Monta y extrae **XDVDF** (Xbox) y otras imágenes de disco | GPL-2.0-or-later | [gnu.org/software/xorriso](https://www.gnu.org/software/xorriso/) | El paquete está en el *buildroot* pero **no está habilitado** en la build de Batocera: hay que compilarlo |
-| **cdrdao** | Convierte **NRG / MDS / CCD / IMG** a ISO | GPL-2.0-or-later | [cdrdao.sourceforge.net](https://cdrdao.sourceforge.net/) | El manager lo hace en Python, sin él |
-| **makecue** | Escribe la hoja **CUE** que acompaña al BIN | GPL-2.0-or-later | [makecue.org](https://www.makecue.org/) | El manager la escribe él mismo |
+| **maxcso** | Comprime la ISO en **CSO, CSO2, ZSO o DAX** (PSP y PS2) | ISC | [unknownbrackets/maxcso](https://github.com/unknownbrackets/maxcso) | El manager ya lo hace en Python, sin él (y la release sólo trae el binario de Windows) |
+| **ndstool** | Convierte una ROM de **Nintendo DS** a cartucho (NOA/GB) y saca su contenido | MIT o GPL-3.0-or-later (dual) | [devkitPro/ndstool](https://github.com/devkitPro/ndstool) | Hay que compilarlo: no hay release con binarios |
+| **xorriso** | Monta y extrae **XDVDF** (Xbox) y otras imágenes de disco | GPL-3.0-or-later | [gnu.org/software/xorriso](https://www.gnu.org/software/xorriso/) | Sólo se publica el código fuente: hay que compilarlo |
+| **cdrdao** | Convierte **NRG / MDS / CCD / IMG** a ISO | GPL-2.0 | [cdrdao/cdrdao](https://github.com/cdrdao/cdrdao) | El manager lo hace en Python, sin él (la release sólo trae el binario de Windows) |
+| **makecue** | Escribe la hoja **CUE** que acompaña al BIN | GPL-2.0 | [makecue.org](https://www.makecue.org/) | El manager la escribe él mismo |
 | **xdelta3** | ParchesIPS y BSD | Apache-2.0 | [jmacd/xdelta](https://github.com/jmacd/xdelta) | El manager ya los aplica en Python |
 
 ### Herramientas que **no** sirven aquí
@@ -60,7 +64,7 @@ hace el manager son idénticos a los que hace el propio MAME.
 
 | Proyecto | Licencia | Linux | Veredicto |
 |---|---|---|---|
-| **[rom-converto](https://github.com/DevYukine/rom-converto)** | MIT | Binarios estáticos `linux-x64` | **El mejor candidato**: cubre casi todos los formatos, en un binario sin dependencias, con licencia MIT (compatible con este proyecto) |
+| **[rom-converto](https://github.com/DevYukine/rom-converto)** | MIT | Binarios para `linux-x64`, `linux-arm64` y `linux-arm7` | **El mejor candidato**: cubre casi todos los formatos, en un binario sin dependencias de ejecución, con licencia MIT (compatible con este proyecto) y con su `sha256` publicado |
 | **[OpenROM](https://github.com/M5Devs/OpenROM)** | GPL-3.0 | CLI headless (`openrom-core`) | Es un **orquestador**, no un implementador: delega en `chdman`, `maxcso`, `nodtool`, `ecm` y `xdelta3`. Adoptarlo es implementar cada parte |
 | **[Game-Format-Converter](https://github.com/Mr-Shizzy/Game-Format-Converter)** | GPL-3.0 | CLI `chdm` (el autor marca Linux como experimental) | Trae **tkinter**, así que no sirve como librería en un servidor |
 | **[compressatorium](https://github.com/pacnpal/compressatorium)** | — | Docker | Sirve de referencia del catálogo de herramientas |
@@ -78,13 +82,14 @@ instalar.
 - Lo que sí está en el *buildroot* (`p7zip`, `unrar`, `libcdio`) se puede
   instalar con `pacman -S <paquete>` si el repositorio lo publica.
 - Lo que no está en ninguna parte (el `dolphin-tool`, el `wiitool`, el
-  `ndstool`, el `3dstool`, el `xorriso`) hay que instalarlo **a mano**: copiar
+  `ndstool`, el `xorriso`) hay que instalarlo **a mano**: copiar
   el binario a `/usr/bin`, darle permisos de ejecución y, si se quiere que
   sobreviva a las actualizaciones, añadir un paquete al *buildroot* de Batocera.
-- El caso fácil es **rom-converto**: un binario estático de Rust, sin
-  dependencias de ejecución, que se copia a `/usr/bin` y ya está (el
-  apartado 7 explica la receta que se sigue aquí, con la ruta que
-  sobrevive a los reinicios).
+- El caso fácil es el de las que **publican binario**: el `rom-converto`, el
+  `nodtool` y el `3dstool`. Esas las instala el propio `install.sh` la primera
+  vez, con su `sha256` comprobado (el [§6](#6-las-utilidades-que-instala-el-installsh)
+  explica el mecanismo y el apartado 7 la receta manual, por si hay que
+  hacerlo a mano).
 
 ## 5. Qué hace el manager y qué no
 
@@ -120,11 +125,85 @@ el **WBFS** de un RVZ de Wii. Lo que el rom-converto **no** sabe hacer, el
 manager no lo ofrece: no crea WBFS desde una ISO (sólo desde un RVZ) ni
 genera WIA (sólo la lee).
 
-## 7. Instalar el rom-converto
+## 6. Las utilidades que instala el `install.sh`
 
-Es el camino que se ha probado en la consola real (Batocera 43.1, `x86_64`).
-El binario es de la release **v0.24.0** y es estático: no necesita nada de
-la consola.
+Tres utilidades externas pueden bajarse solas, con binario publicado y suma de
+comprobación. El `install.sh` las deja listas **la primera vez que se ejecuta**,
+así que no hay que buscar nada a mano.
+
+| Utilidad | Release | Asset | Arquitecturas | `sha256` |
+|---|---|---|---|---|
+| **rom-converto** | `v0.24.0` | `rom-converto-cli-linux-x64` | `x86_64` | `0d4abd56cfec477ff447f68b656d45ca48f670f464363bca2d895b1eee2c356d` |
+| | | `rom-converto-cli-linux-arm64` | `aarch64` | `990286bc3367342b0e04ab6dd0d28d8e95c3133ac2b4c5d6440a119e541b0b43` |
+| | | `rom-converto-cli-linux-arm7` | `armv7l` | `00b4cf7a454ae4539459cc5f908f3b42603b59b1035b8b046c6ef5ae1982247f` |
+| **nodtool** | `v2.0.0-alpha.12` | `nodtool-linux-x86_64` | `x86_64` | `ee8345c004248eb82a86dd0c6068e0fcf3dc75baf68d18fe949bf4589822f5a5` |
+| | | `nodtool-linux-aarch64` | `aarch64` | `33e801c0e4aee7e714ad84e89521f50e2f79005571b9d4779b695e44ea21ff99` |
+| | | `nodtool-linux-i686` | `i686` | `efaa034f4d32a14856d5150c7eee45876ec38c07f75572cb6b4c33423c5850ce` |
+| **3dstool** | `v1.2.6` | `3dstool_linux_x86_64.tar.gz` | `x86_64` | `d42e3de7766ee552b3609ac5acb7ad3f07209dd91bc45a21d3fc2b049790ede2` |
+
+Las sumas **están fijadas en el código** (`romtools/utilidades.py`), no se
+bajan de la red: un release que cambiase no puede colar un binario distinto
+del esperado. El `3dstool` viene en un `tar.gz` y de dentro se saca sólo el
+binario.
+
+### Qué hace el instalador
+
+1. Baja el asset de la release oficial a `/userdata/system/bin` (que sobrevive
+   a los reinicios), mostrando el **porcentaje de descarga**.
+2. Calcula su `sha256` y lo compara con el fijado en el código. Si no
+   coincide, **no instala nada** y lo dice.
+3. Le da permisos de ejecución y lo deja en su sitio.
+4. Lo enlaza en `/usr/bin`, que es lo que lleva el `PATH`.
+5. Escribe el bloque `# [batocera-tools]` en el `custom.sh` para que el enlace
+   se vuelva a hacer en cada arranque (`/usr` es un overlay que se pierde al
+   reiniciar).
+
+### Cómo se controla
+
+El modo lo manda la variable `BM_UTILS`:
+
+| `BM_UTILS` | Qué hace |
+|---|---|
+| `auto` (por defecto) | Instala las que falten |
+| `all` | Las reinstala todas, aunque ya estén |
+| `skip` | No instala ninguna |
+
+A mano, sin tocar el instalador:
+
+```bash
+cd /userdata/system/batocera_web
+python3 -m romtools utilidades --list                    # qué se puede instalar
+python3 -m romtools utilidades --install                 # instala las que falten
+python3 -m romtools utilidades --install rom-converto    # sólo una
+python3 -m romtools utilidades --remove nodtool          # quita una
+```
+
+Lo que queda instalado se apunta en
+`/userdata/system/bin/.utilidades.json`, con la versión y la suma de cada
+binario.
+
+### Las que no se pueden instalar solas
+
+Y el motivo de cada una:
+
+| Utilidad | Por qué no |
+|---|---|
+| **dolphin-tool** | Dolphin no publica releases con binarios sueltos, y el paquete de Batocera compila con `-DENABLE_CLI_TOOL=OFF`: hay que tocar el *buildroot* |
+| **wiitool** | No hay repositorio oficial ni release con binarios. Su equivalente actual, el [Wiimms ISO Tools](https://wit.wiimm.de/), publica tarballs para Linux pero sin suma de comprobación |
+| **ndstool** | No hay release con binarios. El único precompilado va dentro del paquete de BlocksDS y necesita el cargador musl de `/opt/wonderful`, así que no funciona solo |
+| **extract-xiso** | El repositorio no declara licencia, así que no se instala solo. Además el manager ya extrae el XDVDF en Python |
+| **maxcso** | La release sólo trae el binario de Windows. El manager ya comprime en CSO, CSO2, ZSO y DAX en Python |
+| **xorriso** | Sólo se publica el código fuente: hay que compilarlo |
+| **cdrdao** | No hay binario de Linux en ninguna release (la que hay es de Windows). El manager ya convierte NRG, MDS, CCD e IMG en Python |
+| **makecue** | No hay binario precompilado. El manager escribe el CUE el mismo |
+
+## 7. Instalar el rom-converto a mano
+
+**Con el `install.sh` esto ya no hace falta**: el instalador lo deja listo solo
+(con el `sha256` comprobado) la primera vez que se ejecuta. El camino manual
+sigue aquí por si hay que hacerlo a mano, y es el que se ha probado en la
+consola real (Batocera 43.1, `x86_64`). El binario es de la release
+**v0.24.0**: enlaza contra la glibc de la consola y no necesita nada más.
 
 ```bash
 # 1. Descargar el binario y su suma de comprobación

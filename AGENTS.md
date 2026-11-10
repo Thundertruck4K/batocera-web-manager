@@ -81,7 +81,8 @@ El proyecto se trabaja en **un solo repositorio**:
   `romtools/` (stdlib puro: `dats`, `identify`, `naming`, `sets`, `rename`, `formats`, `library`,
   `faltantes`). Se importa
   de forma protegida (`HAS_ROMTOOLS`): si el paquete no esta en la consola, la API responde con un
-  error claro y el resto de la app no se cae. `python3 -m romtools dats --install` baja los DAT.
+  error claro y el resto de la app no se cae. `python3 -m romtools dats --install` baja los DAT y
+  `python3 -m romtools utilidades --install` deja listas las utilidades de conversion.
   - **El nombre destino es el del DAT**, como en Romulus Manager; la composicion propia solo es
     el respaldo cuando no hay DAT.
   - **La eleccion de variante se hace dentro del mismo juego**: el titulo y el disco identifican
@@ -394,6 +395,18 @@ El proyecto se trabaja en **un solo repositorio**:
   - **The tools are checked, not assumed**: `herramienta_disponible()` looks for the binary with
     `shutil.which`, and the inventory says which ones are in the console right now. The full list,
     with licences and where each one comes from, is in `docs/utilidades-conversion.md`.
+  - **The external utilities that can be downloaded are installed by `install.sh` itself**
+    (`romtools/utilidades.py`): the `rom-converto`, the `nodtool` and the `3dstool`. The table holds
+    the release, the asset per architecture and **the sha256 pinned in the code** — never fetched from
+    the network, so a changed release cannot slip a different binary in. A hash that does not match
+    installs nothing. They land in `/userdata/system/bin` (they survive a reboot) and are linked into
+    `/usr/bin` by the `# [batocera-tools]` block. `BM_UTILS=auto|all|skip` controls it; the CLI is
+    `python3 -m romtools utilidades --list|--install|--remove`. **What cannot be installed is stated
+    with the reason** (no Linux binary published, no declared licence, or the manager already does it
+    in Python): `dolphin-tool` (Dolphin builds with `-DENABLE_CLI_TOOL=OFF`), `wiitool` (no official
+    repo or release at all), `ndstool` (the only prebuilt one needs the Wonderful musl loader),
+    `extract-xiso` (no licence declared), `maxcso` (Windows only), `xorriso`, `cdrdao` and `makecue`.
+
 - The `--port` CLI flag is the only command-line argument supported
 
 ## Workflow
