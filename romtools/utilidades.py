@@ -303,20 +303,22 @@ def instalar(entrada: dict, destino: str, timeout: int = TIMEOUT_DESCARGA,
     destino = os.path.abspath(destino)
     os.makedirs(destino, exist_ok=True)
     final = os.path.join(destino, entrada["binario"])
+    asset = entrada["assets"].get(arq)
 
     if instalada(entrada, destino) and not forzar:
         resumen["estado"] = "ya-estaba"
         resumen["detalle"] = "ya estaba en %s" % final
         resumen["ruta"] = final
+        if asset:
+            resumen["sha256"] = asset[1]
         return resumen
 
-    asset = entrada["assets"].get(arq)
     if not asset:
         resumen["estado"] = "sin-binario"
         resumen["detalle"] = "no hay binario para %s" % (arq or "esta arquitectura")
         return resumen
-
     nombre_asset, esperado = asset
+
     url = url_de(entrada, nombre_asset)
     descargado = os.path.join(destino, ".%s.descargando" % entrada["id"])
     desempaquetado = os.path.join(destino, ".%s.binario" % entrada["id"])
@@ -375,11 +377,14 @@ def instalar_varias(destino: str, ids: list[str] | None = None, timeout: int = T
                 "instalado": time.strftime("%Y-%m-%dT%H:%M:%S"),
             }
         elif resumen["estado"] == "ya-estaba":
-            datos.setdefault(entrada["id"], {
+            # El binario ya estaba (puesto a mano o en una instalacion
+            # anterior): se apunta su suma y se conserva la fecha que habia.
+            anterior = datos.get(entrada["id"], {})
+            datos[entrada["id"]] = {
                 "version": entrada["version"],
-                "sha256": "",
-                "instalado": "",
-            })
+                "sha256": resumen.get("sha256", "") or anterior.get("sha256", ""),
+                "instalado": anterior.get("instalado", ""),
+            }
         if aviso:
             aviso(entrada, resumen)
         resultados.append(resumen)
