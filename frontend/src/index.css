@@ -64,6 +64,15 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-grid: var(--chart-grid);
+
+  /* Acentos de color: una paleta sobria para dar vida a los gráficos sin
+     salirse del diseño. Cada tarjeta del panel toma uno. */
+  --color-tone-1: var(--tone-1);
+  --color-tone-2: var(--tone-2);
+  --color-tone-3: var(--tone-3);
+  --color-tone-4: var(--tone-4);
+  --color-tone-5: var(--tone-5);
+  --color-tone-6: var(--tone-6);
 }
 
 /* ── Tema claro (por defecto) ─────────────────────────────────────────── */
@@ -100,6 +109,20 @@
 
   --brand: #0f766e;
   --brand-soft: rgba(15, 118, 110, 0.12);
+
+  /* Acentos del panel: ámbar, cian, rosa, violeta, azul y esmeralda. */
+  --tone-1: #d97706;
+  --tone-2: #0891b2;
+  --tone-3: #e11d48;
+  --tone-4: #7c3aed;
+  --tone-5: #0284c7;
+  --tone-6: #059669;
+  --tone-1-soft: rgba(217, 119, 6, 0.12);
+  --tone-2-soft: rgba(8, 145, 178, 0.12);
+  --tone-3-soft: rgba(225, 29, 72, 0.12);
+  --tone-4-soft: rgba(124, 58, 237, 0.12);
+  --tone-5-soft: rgba(2, 132, 199, 0.12);
+  --tone-6-soft: rgba(5, 150, 105, 0.12);
 
   --chart-1: #09090b;
   --chart-2: rgba(9, 9, 11, 0.7);
@@ -143,6 +166,20 @@
 
   --brand: #2dd4bf;
   --brand-soft: rgba(45, 212, 191, 0.14);
+
+  /* Acentos del panel: ámbar, cian, rosa, violeta, azul y esmeralda. */
+  --tone-1: #fbbf24;
+  --tone-2: #22d3ee;
+  --tone-3: #fb7185;
+  --tone-4: #a78bfa;
+  --tone-5: #38bdf8;
+  --tone-6: #34d399;
+  --tone-1-soft: rgba(251, 191, 36, 0.14);
+  --tone-2-soft: rgba(34, 211, 238, 0.14);
+  --tone-3-soft: rgba(251, 113, 133, 0.14);
+  --tone-4-soft: rgba(167, 139, 250, 0.14);
+  --tone-5-soft: rgba(56, 189, 248, 0.14);
+  --tone-6-soft: rgba(52, 211, 153, 0.14);
 
   --chart-1: #ffffff;
   --chart-2: rgba(255, 255, 255, 0.7);

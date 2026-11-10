@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { TONE_COLOR, type Tone } from '@/lib/tones'
 import { cn } from '@/lib/utils'
 
 interface MetricCardProps {
@@ -9,6 +10,8 @@ interface MetricCardProps {
   icon?: LucideIcon
   /** Franja de color de acento (barra inferior). */
   accent?: 'default' | 'good' | 'warn' | 'bad'
+  /** Acento de color: tiñe el icono y la franja inferior. */
+  tone?: Tone
   className?: string
 }
 
@@ -19,7 +22,10 @@ const ACCENTS: Record<NonNullable<MetricCardProps['accent']>, string> = {
   bad: 'bg-destructive/70',
 }
 
-/** Tarjeta compacta de indicador. */
+/**
+ * Tarjeta compacta de indicador. Con `tone` el icono y la franja inferior
+ * toman el acento de color de su fila.
+ */
 export function MetricCard({
   label,
   value,
@@ -27,6 +33,7 @@ export function MetricCard({
   hint,
   icon: Icon,
   accent = 'default',
+  tone,
   className,
 }: MetricCardProps) {
   return (
@@ -35,7 +42,12 @@ export function MetricCard({
         <span className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {label}
         </span>
-        {Icon && <Icon className="size-3.5 shrink-0 text-muted-foreground" />}
+        {Icon && (
+          <Icon
+            className={cn('size-3.5 shrink-0', !tone && 'text-muted-foreground')}
+            style={tone ? { color: TONE_COLOR[tone] } : undefined}
+          />
+        )}
       </div>
       <div className="mt-1.5 flex items-baseline gap-1">
         <span className="text-2xl font-bold tracking-tight tabular-nums text-foreground">{value}</span>
@@ -45,8 +57,9 @@ export function MetricCard({
       <span
         className={cn(
           'absolute inset-x-0 bottom-0 h-0.5 rounded-b-3xl opacity-70',
-          ACCENTS[accent],
+          !tone && ACCENTS[accent],
         )}
+        style={tone ? { backgroundColor: TONE_COLOR[tone] } : undefined}
       />
     </div>
   )

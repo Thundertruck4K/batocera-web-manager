@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { TONE_COLOR, type Tone } from '@/lib/tones'
 import { ChartTooltip } from './ChartTooltip'
 
 export interface DonutSegment {
@@ -20,15 +21,22 @@ interface DonutChartProps {
   centerValue?: number
   /** Formatea el valor del centro. */
   formatValue?: (value: number) => string
+  /** Acento de color del anillo. */
+  tone?: Tone
 }
 
-/** Donut con tapas redondeadas y escala monocroma (skill §1). */
+/**
+ * Donut con tapas redondeadas. Sin tono es monocromo (skill §1); con `tone`
+ * el primer segmento lleva el acento y los demás se apagan en la misma
+ * tinta, para que se lean como un reparto y no como una lista de colores.
+ */
 export function DonutChart({
   data,
   height = 170,
   centerLabel = 'Total',
   centerValue,
   formatValue = (v) => `${v.toFixed(1)}%`,
+  tone,
 }: DonutChartProps) {
   const [hover, setHover] = useState<number | null>(null)
   const total = data.reduce((acc, item) => acc + item.value, 0)
@@ -39,6 +47,8 @@ export function DonutChart({
     'var(--color-chart-3)',
     'var(--color-chart-4)',
   ]
+  // Con acento, los segmentos se apagan por pasos: el primero manda.
+  const opacidades = [1, 0.5, 0.32, 0.2]
 
   return (
     <div className="relative w-full" style={{ height }}>
@@ -68,7 +78,8 @@ export function DonutChart({
             {data.map((entry, index) => (
               <Cell
                 key={`${entry.name}-${index}`}
-                fill={shades[index % shades.length]}
+                fill={tone ? TONE_COLOR[tone] : shades[index % shades.length]}
+                fillOpacity={tone ? opacidades[index % opacidades.length] : undefined}
                 stroke="var(--color-stage)"
                 strokeWidth={2}
                 style={{

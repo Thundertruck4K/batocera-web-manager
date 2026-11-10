@@ -15,14 +15,14 @@ ROMs, BIOS, temas, carátulas y scraping — sin tocar la línea de comandos.
 > los dos sitios. El [motivo de la unificación](#-por-qué-un-solo-repositorio) está contado más
 > abajo.
 
-[![Versión](https://img.shields.io/badge/versi%C3%B3n-1.5-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager/releases)
+[![Versión](https://img.shields.io/badge/versi%C3%B3n-2.0-5a69d1?style=flat)](https://github.com/Thundertruck4K/batocera-web-manager/releases)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-3da639?style=flat)](LICENSE)
 [![Batocera v43+](https://img.shields.io/badge/Batocera-v43%2B-8a5cf6?style=flat)](https://batocera.org)
 [![Python 3 · stdlib](https://img.shields.io/badge/Python%203-stdlib-3776AB?logo=python&logoColor=white)](https://docs.python.org/3/)
 [![Backend sin dependencias](https://img.shields.io/badge/backend-sin%20dependencias-16a34a)]()
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat&logo=react&logoColor=black)](frontend)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38bdf8?style=flat&logo=tailwindcss&logoColor=white)](frontend)
-[![Tests](https://img.shields.io/badge/tests-692%20OK-success)](tests)
+[![Tests](https://img.shields.io/badge/tests-991%20OK-success)](tests)
 [![Estrellas](https://img.shields.io/github/stars/Thundertruck4K/batocera-web-manager?label=estrellas&color=yellow)](https://github.com/Thundertruck4K/batocera-web-manager/stargazers)
 [![Forks](https://img.shields.io/github/forks/Thundertruck4K/batocera-web-manager?label=forks)](https://github.com/Thundertruck4K/batocera-web-manager/forks)
 [![Incidencias](https://img.shields.io/github/issues/Thundertruck4K/batocera-web-manager?label=incidencias)](https://github.com/Thundertruck4K/batocera-web-manager/issues)
@@ -111,6 +111,30 @@ La unificación deja las cosas así:
 - **📊 Panel de control en vivo** — velocímetros de CPU (uso, núcleos, temperatura), GPU (modelo,
   uso, VRAM, consumo) y RAM; almacenamiento y ventiladores; estado/PID de EmulationStation y las últimas
   versiones oficiales de Batocera. Con refresco automático opcional.
+  - **Con color, sin rediseño**: cada tarjeta lleva un tono de acento (CPU en ámbar, RAM en cian,
+    temperatura en rosa, disco en violeta…) y la página tiene un halo ambiental muy tenue arriba. El
+    diseño, los gráficos y la rejilla son los de siempre: sólo cambia el acento de cada elemento.
+    Los tonos son tokens de CSS y cada componente de gráfico acepta un prop `tone`; **sin ese prop,
+    el gráfico sigue monocromo**, así que el resto de la aplicación no cambia de aspecto.
+- **📚 Biblioteca de ROMs: inventario, duplicados y auditoría** — la sección **ROMs y BIOS** tiene dos
+  pestañas. La de ROMs radiografía la biblioteca entera sin hashearla (una **huella rápida** de tamaño
+  y los extremos del fichero), avisa de duplicados, fichas sin fichero, ficheros vacíos, media sin
+  juego y games repetidos entre sistemas, y lo que sobra lo mueve a una **cuarentena** con un botón
+  de **deshacer**. También limpia el `gamelist.xml` de las fichas que ya no existen.
+- **🧭 «Lo que falta»: las otras versiones de los juegos que ya tienes** — en vez de listar los 13.000
+  juegos que te faltan de un DAT de PlayStation 2, dice **qué otras versiones hay de los juegos que
+  ya tienes** (otra región, otra revisión, otro idioma, el disco 2), con el motivo y la etiqueta
+  **«versión mejor»** cuando lo que falta es mejor que lo que tienes. Nada se borra ni se renombra:
+  esta sección sólo informa.
+- **🔧 Los formatos que se ofrecen dependen del sistema, no sólo del fichero** — el mapa sale del
+  `es_systems.cfg` de la propia consola (con los sistemas personalizados incluidos) y de la wiki
+  oficial: un PSP no admite un ZIP y un GameCube no admite un CHD, así que esas conversiones ya no se
+  ofrecen. El panel del sistema enseña qué formatos admite, cuál es el preferido y la nota de la
+  wiki; el de utilidades, qué programa hace falta para cada una y si está en la consola.
+- **📥 El instalador deja las utilidades de conversión listas** — el `rom-converto`, el `nodtool` y el
+  `3dstool` se bajan de la release oficial de cada proyecto, se comprueba su `sha256` (fijada en el
+  código, no bajada de la red) y se dejan en `/userdata/system/bin`, enlazados en `/usr/bin`. Con
+  `BM_UTILS=auto|all|skip` se controla, y a mano con `python3 -m romtools utilidades --list|--install|--remove`.
 - **🎲 Juego al azar + estadísticas** — tarjeta con carátula, ficha y descripción de un juego aleatorio
   de tu biblioteca, ranking de más jugados y horas totales. Se rellena sola al abrir la app (con sistema,
   carátula y metadatos) y el botón **Girar** sigue ahí para pedir otro cuando quieras.
@@ -190,7 +214,8 @@ sus metadatos, y **Girar** cambia de juego.
 ![Panel de control](docs/screenshots/01-dashboard.png)
 
 *Panel de control con los velocímetros en vivo, los contadores de la biblioteca y los gráficos de
-actividad y de carga.*
+actividad y de carga. Cada tarjeta lleva su propio tono de acento: el diseño es el de siempre, pero
+con un poco más de color.*
 
 ### 🕹️ Sistemas Personalizados
 
@@ -344,6 +369,28 @@ Al final **instala también las utilidades de conversión** que se pueden bajar 
 `rom-converto`, el `nodtool` y el `3dstool`): se descargan de la release oficial de cada
 proyecto, se comprueba su `sha256` y se dejan en `/userdata/system/bin`, enlazados en
 `/usr/bin`. Se puede cambiar con `BM_UTILS=auto|all|skip`.
+
+**Las sumas están fijadas en el código** (`romtools/utilidades.py`), no se bajan de la red: si una
+release cambiase, no puede colar un binario distinto del esperado. Si la suma no cuadra, **no se
+instala nada** y se avisa. La descarga **enseña el porcentaje** y el instalador avisa de que no
+hace falta cerrar la ventana (son unos 50 MB).
+
+Las utilidades también se manejan a mano, sin el instalador:
+
+```bash
+cd /userdata/system/batocera_web
+python3 -m romtools utilidades --list      # lo que hay y lo que falta
+python3 -m romtools utilidades --install   # instala las que falten
+python3 -m romtools utilidades --remove    # las quita
+```
+
+Lo que **no** se puede instalar se dice con el motivo, en vez de ocultarlo: el `dolphin-tool`
+(Dolphin compila con `-DENABLE_CLI_TOOL=OFF`), el `wiitool` (no hay release con binarios), el
+`ndstool` (el único precompilado necesita el cargador musl de `/opt/wonderful`), el `extract-xiso`
+(no declara licencia), el `maxcso` (su release sólo trae el binario de Windows) y el `xorriso`, el
+`cdrdao` y el `makecue` (o no se publica el binario, o el manager ya lo hace en Python). La lista
+completa, con licencias y repositorios, está en
+[`docs/utilidades-conversion.md`](docs/utilidades-conversion.md).
 
 El bloque de arranque se **reescribe** en cada instalación (no se duplica ni se queda con el puerto
 antiguo) y empieza con un `pkill` que mata la instancia anterior, para que el manager nuevo no se
@@ -507,7 +554,9 @@ El servidor escucha en `0.0.0.0`, así que también funciona desde el móvil.
 | **Configuración** | Estado del servicio y arranque automático (con el bloque de `custom.sh` a la vista), tema de la interfaz, información del sistema e instrucciones |
 | **Logros** | Dashboard de RetroAchievements: los juegos con más logros, con la carátula de tu biblioteca |
 | **Scraper** | Scrapea carátulas y metadatos, por sistema completo o por juego, desde ScreenScraper, TheGamesDB o IGDB |
-| **ROMs y BIOS** | Verificación de las BIOS contra el catálogo oficial de la consola: qué está correcto, qué falta y qué está mal colocado, con reparación sin salir de la SD, subida manual y lista de omisiones |
+| **ROMs y BIOS** | Inventario de la biblioteca (duplicados, auditoría y cuarentena con deshacer), verificación de las BIOS contra el catálogo oficial de la consola (qué está correcto, qué falta y qué está mal colocado, con reparación sin salir de la SD, subida manual y lista de omisiones) y **Lo que falta**: las otras versiones de los juegos que ya tienes |
+| **Herramientas → Formatos** | Detectar, convertir, comprimir y parchear las imágenes de tus sistemas de discos, según lo que admite cada sistema |
+| **Herramientas → Renombrado** | Ordenar la biblioteca con la convención de los sets (Redump y No-Intro), con plan previo, progreso en segundo plano y deshacer |
 
 Tras crear o modificar un sistema, Batocera necesita releer su configuración: el manager ofrece
 reiniciar EmulationStation desde la propia interfaz.
@@ -918,12 +967,12 @@ un juego de la biblioteca con su carátula y sus metadatos.
 
 ## 🧪 Tests
 
-La lógica del backend y los ayudantes de la interfaz están cubiertos con **988 tests** de `pytest`
+La lógica del backend y los ayudantes de la interfaz están cubiertos con **991 tests** de `pytest`
 (que no requiere dependencias del proyecto, sólo el propio pytest):
 
 ```bash
 python -m pytest
-# 873 passed in ~50s
+# 991 passed in ~60s
 ```
 
 ---
@@ -959,7 +1008,7 @@ batocera_web/
 │   └── __main__.py            # CLI: `python3 -m romtools dats --install` y `utilidades --install`
 ├── batocera_systems.json     # catálogo de referencia de sistemas de Batocera
 ├── install.sh                # instalador (bash: utilidades, ficheros y arranque automático)
-├── tests/                    # 988 tests con pytest
+├── tests/                    # 991 tests con pytest
 ├── docs/
 │   ├── media/banner.png      # banner del proyecto (cabecera del README)
 │   ├── media/logo.png        # logo del proyecto
@@ -1032,7 +1081,7 @@ BATOCERA_BACKEND=http://127.0.0.1:5001 npm run dev
 # Backend en desarrollo
 python app.py --port 5001
 
-# Tests del backend (873)
+# Tests del backend (991)
 python -m pytest
 
 # Frontend

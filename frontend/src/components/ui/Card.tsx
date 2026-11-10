@@ -1,3 +1,4 @@
+import { TONE_COLOR, TONE_SOFT, type Tone } from '@/lib/tones'
 import { cn } from '@/lib/utils'
 
 /** Tarjeta base del catálogo (skill §2). */
@@ -12,6 +13,8 @@ interface PanelCardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'tit
   actions?: React.ReactNode
   /** Cuerpo con padding por defecto. */
   bodyClassName?: string
+  /** Acento de color: tiñe el icono de la cabecera. */
+  tone?: Tone
 }
 
 /** Tarjeta con cabecera (título, subtítulo, icono y acciones). */
@@ -22,6 +25,7 @@ export function PanelCard({
   actions,
   className,
   bodyClassName,
+  tone,
   children,
   ...props
 }: PanelCardProps) {
@@ -32,7 +36,17 @@ export function PanelCard({
         <header className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
           <div className="flex min-w-0 items-start gap-3">
             {icon && (
-              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <span
+                className={cn(
+                  'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl',
+                  !tone && 'bg-muted text-muted-foreground',
+                )}
+                style={
+                  tone
+                    ? { backgroundColor: TONE_SOFT[tone], color: TONE_COLOR[tone] }
+                    : undefined
+                }
+              >
                 {icon}
               </span>
             )}

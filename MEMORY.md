@@ -1,6 +1,6 @@
 # MEMORY — Batocera System Manager Web
 
-Proyecto: `batocera_web` v1.5  
+Proyecto: `batocera_web` v2.0  
 Repositorio: `Thundertruck4K/batocera-web-manager`  
 Copia local: `D:\PROGRAMACION\PROYECTOS PROPIOS\batocera_web_react`  
 Plataforma destino: **Batocera v43+** (Linux, Python 3.12 stdlib)

@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { TONE_COLOR, type Tone } from '@/lib/tones'
 import { ChartTooltip } from './ChartTooltip'
 
 export interface BarDatum {
@@ -20,10 +21,16 @@ interface RoundedBarChartProps {
   height?: number
   /** Formatea el valor en el tooltip. */
   formatValue?: (value: number) => string
+  /** Acento de color de las barras. */
+  tone?: Tone
 }
 
-/** Barras verticales redondeadas con rejilla tenue. */
-export function RoundedBarChart({ data, height = 180, formatValue }: RoundedBarChartProps) {
+/**
+ * Barras verticales redondeadas con rejilla tenue. Sin tono, la primera barra
+ * destaca y las demás se apagan; con `tone` las barras llevan el acento de su
+ * tarjeta, la primera a plena y las demás cada vez más tenues.
+ */
+export function RoundedBarChart({ data, height = 180, formatValue, tone }: RoundedBarChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -31,6 +38,7 @@ export function RoundedBarChart({ data, height = 180, formatValue }: RoundedBarC
       </div>
     )
   }
+  const opacidades = [1, 0.55, 0.38, 0.26]
 
   return (
     <div className="w-full" style={{ height }}>
@@ -58,7 +66,10 @@ export function RoundedBarChart({ data, height = 180, formatValue }: RoundedBarC
             {data.map((entry, index) => (
               <Cell
                 key={`${entry.label}-${index}`}
-                fill={index === 0 ? 'var(--color-chart-1)' : 'var(--color-chart-3)'}
+                fill={tone ? TONE_COLOR[tone] : index === 0 ? 'var(--color-chart-1)' : 'var(--color-chart-3)'}
+                fillOpacity={
+                  tone ? opacidades[index % opacidades.length] : undefined
+                }
               />
             ))}
           </Bar>
